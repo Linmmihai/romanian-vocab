@@ -6,174 +6,146 @@
 <title>罗马尼亚语词汇学习</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --bg: #f9fafb; --bg2: #f3f4f6; --bg3: #e5e7eb;
-    --text: #111827; --text2: #6b7280; --text3: #9ca3af;
-    --border: #e5e7eb; --border2: #d1d5db;
-    --blue: #3b82f6; --blue-bg: #eff6ff; --blue-text: #1d4ed8;
-    --green: #10b981; --green-bg: #ecfdf5; --green-text: #065f46;
-    --red: #ef4444; --red-bg: #fef2f2; --red-text: #991b1b;
-    --yellow-bg: #fffbeb; --yellow-text: #92400e; --yellow-border: #fbbf24;
-    --radius: 10px; --radius-sm: 6px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-  /* ── AUTH ── */
-  #auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
-  .auth-card { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 2rem; width: 100%; max-width: 400px; }
-  .auth-logo { text-align: center; margin-bottom: 1.5rem; }
-  .auth-logo .flag { font-size: 40px; }
-  .auth-logo h1 { font-size: 20px; font-weight: 700; margin-top: 8px; color: var(--text); }
-  .auth-logo p { font-size: 14px; color: var(--text2); margin-top: 4px; }
-  .auth-tabs { display: flex; gap: 4px; background: var(--bg2); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 1.5rem; }
-  .auth-tab { flex: 1; padding: 8px; border: none; border-radius: var(--radius-sm); background: transparent; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text2); transition: all .15s; }
-  .auth-tab.active { background: white; color: var(--text); box-shadow: var(--shadow); }
-  .form-group { margin-bottom: 1rem; }
-  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
-  .form-group input { width: 100%; padding: 10px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; background: white; color: var(--text); outline: none; transition: border .15s; }
-  .form-group input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-  .btn-primary { width: 100%; padding: 11px; border: none; border-radius: var(--radius-sm); background: var(--blue); color: white; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
-  .btn-primary:hover { opacity: 0.9; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .auth-msg { margin-top: 1rem; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 14px; text-align: center; display: none; }
-  .auth-msg.success { background: var(--green-bg); color: var(--green-text); display: block; }
-  .auth-msg.error { background: var(--red-bg); color: var(--red-text); display: block; }
-  .pending-notice { background: var(--yellow-bg); border: 1px solid var(--yellow-border); border-radius: var(--radius); padding: 1.5rem; text-align: center; }
-  .pending-notice h3 { font-size: 16px; color: var(--yellow-text); margin-bottom: 8px; }
-  .pending-notice p { font-size: 14px; color: var(--yellow-text); opacity: 0.8; }
-  .logout-link { display: block; margin-top: 1rem; text-align: center; font-size: 13px; color: var(--text3); cursor: pointer; }
-  .logout-link:hover { color: var(--text2); }
-
-  /* ── LAYOUT ── */
-  #app-screen { display: none; }
-  .topbar { background: white; border-bottom: 1px solid var(--border); padding: 0 1rem; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-  .topbar-left { display: flex; align-items: center; gap: 10px; }
-  .topbar-logo { font-size: 18px; font-weight: 700; color: var(--text); }
-  .topbar-badge { font-size: 11px; background: var(--blue-bg); color: var(--blue-text); padding: 2px 8px; border-radius: 99px; font-weight: 500; }
-  .topbar-right { display: flex; align-items: center; gap: 10px; }
-  .user-chip { font-size: 13px; color: var(--text2); }
-  .btn-sm { padding: 6px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: white; font-size: 13px; cursor: pointer; color: var(--text2); }
-  .btn-sm:hover { background: var(--bg2); }
-  .nav-tabs { display: flex; gap: 4px; padding: 12px 1rem 0; overflow-x: auto; scrollbar-width: none; }
-  .nav-tabs::-webkit-scrollbar { display: none; }
-  .nav-tab { white-space: nowrap; padding: 8px 16px; border: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; transition: all .15s; }
-  .nav-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
-  .page { display: none; padding: 1rem; max-width: 680px; margin: 0 auto; }
-  .page.active { display: block; }
-
-  /* ── STATS ── */
-  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 1rem; }
-  .stat { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; box-shadow: var(--shadow); }
-  .stat-n { font-size: 22px; font-weight: 700; color: var(--text); }
-  .stat-l { font-size: 11px; color: var(--text3); margin-top: 2px; }
-
-  /* ── FLASH CARD ── */
-  .cat-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 1rem; scrollbar-width: none; }
-  .cat-bar::-webkit-scrollbar { display: none; }
-  .cat-chip { white-space: nowrap; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border2); background: white; font-size: 13px; color: var(--text2); cursor: pointer; flex-shrink: 0; transition: all .15s; }
-  .cat-chip.active { background: var(--text); color: white; border-color: var(--text); }
-  .card-wrap { perspective: 1000px; margin-bottom: 1rem; }
-  .card { width: 100%; min-height: 200px; border-radius: 14px; border: 1px solid var(--border); background: white; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform .45s; box-shadow: var(--shadow); }
-  .card.flipped { transform: rotateY(180deg); }
-  .card-face { position: absolute; inset: 0; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; border-radius: 14px; }
-  .card-back { transform: rotateY(180deg); background: var(--bg2); }
-  .card-cat { font-size: 11px; color: var(--blue-text); background: var(--blue-bg); padding: 3px 10px; border-radius: 99px; margin-bottom: 12px; }
-  .card-hint { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
-  .card-zh { font-size: 32px; font-weight: 600; color: var(--text); }
-  .card-ro { font-size: 24px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-  .ph-box { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; text-align: center; margin-bottom: 8px; }
-  .ph-ipa { font-size: 15px; color: var(--text); font-family: monospace; letter-spacing: 0.5px; }
-  .ph-hint { font-size: 12px; color: var(--text2); margin-top: 3px; }
-  .syls { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
-  .syl { padding: 3px 9px; border-radius: var(--radius-sm); font-size: 13px; background: white; border: 1px solid var(--border); color: var(--text2); }
-  .syl.stress { border-color: var(--green); color: var(--green-text); font-weight: 600; background: var(--green-bg); }
-  .spk-row { display: flex; gap: 8px; margin-top: 10px; }
-  .spk { padding: 5px 14px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: white; color: var(--text2); font-size: 13px; cursor: pointer; }
-  .spk.slow { border-color: var(--blue); color: var(--blue-text); }
-  .card-nav { display: flex; gap: 10px; align-items: center; justify-content: center; margin-bottom: 1rem; }
-  .nav-btn { padding: 8px 20px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: white; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
-  .nav-btn:hover { background: var(--bg2); }
-  .counter { font-size: 13px; color: var(--text2); }
-  .know-btns { display: flex; gap: 10px; }
-  .know-yes { flex: 1; padding: 11px; border: 1px solid var(--green); border-radius: var(--radius-sm); background: white; color: var(--green-text); font-size: 14px; font-weight: 600; cursor: pointer; }
-  .know-no { flex: 1; padding: 11px; border: 1px solid var(--red); border-radius: var(--radius-sm); background: white; color: var(--red-text); font-size: 14px; font-weight: 600; cursor: pointer; }
-  .know-yes:hover { background: var(--green-bg); }
-  .know-no:hover { background: var(--red-bg); }
-
-  /* ── QUIZ ── */
-  .qmode-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
-  .qmode-btn { flex: 1; padding: 8px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; background: white; color: var(--text2); font-weight: 500; }
-  .qmode-btn.active { background: var(--blue-bg); color: var(--blue-text); border-color: var(--blue); }
-  .quiz-q { font-size: 28px; font-weight: 600; text-align: center; margin: 1.5rem 0 6px; }
-  .quiz-sub { font-size: 13px; text-align: center; color: var(--text2); margin-bottom: 1.5rem; }
-  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
-  .opt { padding: 13px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: white; font-size: 15px; cursor: pointer; text-align: center; box-shadow: var(--shadow); transition: all .15s; }
-  .opt:hover { background: var(--bg2); }
-  .opt.correct { border-color: var(--green); background: var(--green-bg); color: var(--green-text); }
-  .opt.wrong { border-color: var(--red); background: var(--red-bg); color: var(--red-text); }
-  .quiz-fb { text-align: center; font-size: 14px; min-height: 22px; margin-bottom: 1rem; font-weight: 600; }
-  .next-btn { display: block; width: 100%; padding: 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg2); font-size: 14px; font-weight: 600; cursor: pointer; }
-  .result-box { text-align: center; padding: 2.5rem; background: white; border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
-  .result-score { font-size: 52px; font-weight: 700; }
-  .result-label { font-size: 16px; color: var(--text2); margin: 8px 0 20px; }
-  .restart-btn { padding: 10px 28px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: white; font-size: 14px; cursor: pointer; font-weight: 500; }
-
-  /* ── GUIDE ── */
-  .guide-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
-  .guide-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
-  .ph-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
-  .ph-item { background: var(--bg2); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
-  .ph-letter { font-size: 16px; font-weight: 600; font-family: monospace; }
-  .ph-sound { font-size: 11px; color: var(--text2); margin-top: 3px; }
-
-  /* ── WORD LIST ── */
-  .search-bar { margin-bottom: 1rem; }
-  .search-bar input { width: 100%; padding: 10px 14px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 14px; outline: none; background: white; }
-  .search-bar input:focus { border-color: var(--blue); }
-  .word-list { display: grid; gap: 6px; }
-  .word-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
-  .word-zh { font-size: 15px; font-weight: 600; }
-  .word-ro { font-size: 13px; color: var(--text2); }
-  .word-ipa { font-size: 11px; color: var(--text3); font-family: monospace; }
-  .word-cat { font-size: 11px; color: var(--blue-text); background: var(--blue-bg); padding: 2px 8px; border-radius: 99px; white-space: nowrap; margin-left: 8px; }
-  .word-known { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); margin-left: 8px; flex-shrink: 0; }
-  .word-known.yes { background: var(--green); }
-
-  /* ── ADMIN ── */
-  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-  .admin-title { font-size: 16px; font-weight: 700; }
-  .user-table { background: white; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-  .user-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-  .user-row:last-child { border-bottom: none; }
-  .user-email { font-size: 14px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; }
-  .user-nickname { font-size: 12px; color: var(--text2); }
-  .role-badge { font-size: 11px; padding: 3px 8px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
-  .role-admin { background: #fef3c7; color: #92400e; }
-  .role-user { background: var(--green-bg); color: var(--green-text); }
-  .role-pending { background: var(--red-bg); color: var(--red-text); }
-  .admin-btn { padding: 5px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; background: white; font-weight: 500; white-space: nowrap; }
-  .admin-btn.approve { border-color: var(--green); color: var(--green-text); }
-  .admin-btn.revoke { border-color: var(--red); color: var(--red-text); }
-  .admin-btn:hover { opacity: 0.8; }
-  .empty-state { text-align: center; padding: 2rem; color: var(--text3); font-size: 14px; }
-  .loading { text-align: center; padding: 2rem; color: var(--text3); }
-
-  /* misc */
-  .sync-badge { font-size: 11px; color: var(--text3); margin-left: 8px; }
-  .sync-badge.saved { color: var(--green-text); }
+:root{--bg:#f9fafb;--bg2:#f3f4f6;--bg3:#e5e7eb;--text:#111827;--text2:#6b7280;--text3:#9ca3af;--border:#e5e7eb;--border2:#d1d5db;--blue:#3b82f6;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--red:#ef4444;--red-bg:#fef2f2;--red-text:#991b1b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--yellow-border:#fbbf24;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(0,0,0,0.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.auth-card{background:white;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:2rem;width:100%;max-width:400px}
+.auth-logo{text-align:center;margin-bottom:1.5rem}
+.auth-logo .flag{font-size:40px}
+.auth-logo h1{font-size:20px;font-weight:700;margin-top:8px}
+.auth-logo p{font-size:14px;color:var(--text2);margin-top:4px}
+.auth-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--radius-sm);padding:4px;margin-bottom:1.5rem}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:var(--radius-sm);background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);transition:all .15s}
+.auth-tab.active{background:white;color:var(--text);box-shadow:var(--shadow)}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.form-group input{width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:15px;background:white;color:var(--text);outline:none;transition:border .15s}
+.form-group input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.btn-primary{width:100%;padding:11px;border:none;border-radius:var(--radius-sm);background:var(--blue);color:white;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:0.9}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.auth-msg{margin-top:1rem;padding:10px 12px;border-radius:var(--radius-sm);font-size:14px;text-align:center;display:none}
+.auth-msg.success{background:var(--green-bg);color:var(--green-text);display:block}
+.auth-msg.error{background:var(--red-bg);color:var(--red-text);display:block}
+.pending-notice{background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:var(--radius);padding:1.5rem;text-align:center}
+.pending-notice h3{font-size:16px;color:var(--yellow-text);margin-bottom:8px}
+.pending-notice p{font-size:14px;color:var(--yellow-text);opacity:0.8}
+.logout-link{display:block;margin-top:1rem;text-align:center;font-size:13px;color:var(--text3);cursor:pointer}
+.logout-link:hover{color:var(--text2)}
+#app-screen{display:none}
+.topbar{background:white;border-bottom:1px solid var(--border);padding:0 1rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{font-size:18px;font-weight:700}
+.topbar-badge{font-size:11px;background:var(--blue-bg);color:var(--blue-text);padding:2px 8px;border-radius:99px;font-weight:500}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.user-chip{font-size:13px;color:var(--text2)}
+.btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
+.btn-sm:hover{background:var(--bg2)}
+.nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{white-space:nowrap;padding:8px 16px;border:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s}
+.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.page{display:none;padding:1rem;max-width:680px;margin:0 auto}
+.page.active{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.stat{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow)}
+.stat-n{font-size:22px;font-weight:700}
+.stat-l{font-size:11px;color:var(--text3);margin-top:2px}
+.cat-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1rem;scrollbar-width:none}
+.cat-bar::-webkit-scrollbar{display:none}
+.cat-chip{white-space:nowrap;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;transition:all .15s}
+.cat-chip.active{background:var(--text);color:white;border-color:var(--text)}
+.card-wrap{perspective:1000px;margin-bottom:1rem}
+.card{width:100%;min-height:200px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow)}
+.card.flipped{transform:rotateY(180deg)}
+.card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
+.card-back{transform:rotateY(180deg);background:var(--bg2)}
+.card-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:3px 10px;border-radius:99px;margin-bottom:12px}
+.card-hint-txt{font-size:12px;color:var(--text3);margin-bottom:8px}
+.card-zh{font-size:32px;font-weight:600}
+.card-ro{font-size:24px;font-weight:600;margin-bottom:8px}
+.ph-box{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;margin-bottom:8px}
+.ph-ipa{font-size:15px;font-family:monospace;letter-spacing:0.5px}
+.ph-hint{font-size:12px;color:var(--text2);margin-top:3px}
+.syls{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.syl{padding:3px 9px;border-radius:var(--radius-sm);font-size:13px;background:white;border:1px solid var(--border);color:var(--text2)}
+.syl.stress{border-color:var(--green);color:var(--green-text);font-weight:600;background:var(--green-bg)}
+.spk-row{display:flex;gap:8px;margin-top:10px}
+.spk{padding:5px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text2);font-size:13px;cursor:pointer}
+.spk.slow{border-color:var(--blue);color:var(--blue-text)}
+.card-nav{display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:1rem}
+.nav-btn{padding:8px 20px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;box-shadow:var(--shadow)}
+.nav-btn:hover{background:var(--bg2)}
+.counter{font-size:13px;color:var(--text2)}
+.know-btns{display:flex;gap:10px}
+.know-yes{flex:1;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer}
+.know-no{flex:1;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer}
+.know-yes:hover{background:var(--green-bg)}.know-no:hover{background:var(--red-bg)}
+.qmode-bar{display:flex;gap:8px;margin-bottom:1rem}
+.qmode-btn{flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:500}
+.qmode-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue)}
+.quiz-q{font-size:28px;font-weight:600;text-align:center;margin:1.5rem 0 6px}
+.quiz-sub{font-size:13px;text-align:center;color:var(--text2);margin-bottom:1.5rem}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.opt{padding:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:15px;cursor:pointer;text-align:center;box-shadow:var(--shadow);transition:all .15s}
+.opt:hover{background:var(--bg2)}
+.opt.correct{border-color:var(--green);background:var(--green-bg);color:var(--green-text)}
+.opt.wrong{border-color:var(--red);background:var(--red-bg);color:var(--red-text)}
+.quiz-fb{text-align:center;font-size:14px;min-height:22px;margin-bottom:1rem;font-weight:600}
+.next-btn{display:block;width:100%;padding:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg2);font-size:14px;font-weight:600;cursor:pointer}
+.result-box{text-align:center;padding:2.5rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.result-score{font-size:52px;font-weight:700}
+.result-label{font-size:16px;color:var(--text2);margin:8px 0 20px}
+.restart-btn{padding:10px 28px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;font-weight:500}
+.guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+.guide-title{font-size:14px;font-weight:600;margin-bottom:10px}
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ph-item{background:var(--bg2);border-radius:var(--radius-sm);padding:8px;text-align:center}
+.ph-letter{font-size:16px;font-weight:600;font-family:monospace}
+.ph-sound{font-size:11px;color:var(--text2);margin-top:3px}
+.search-bar{margin-bottom:1rem}
+.search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;outline:none;background:white}
+.search-bar input:focus{border-color:var(--blue)}
+.word-list{display:grid;gap:6px}
+.word-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
+.word-zh{font-size:15px;font-weight:600}
+.word-ro{font-size:13px;color:var(--text2)}
+.word-ipa{font-size:11px;color:var(--text3);font-family:monospace}
+.word-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:2px 8px;border-radius:99px;white-space:nowrap;margin-left:8px}
+.word-known{width:8px;height:8px;border-radius:50%;background:var(--bg3);margin-left:8px;flex-shrink:0}
+.word-known.yes{background:var(--green)}
+.admin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.admin-title{font-size:16px;font-weight:700}
+.user-table{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.user-row:last-child{border-bottom:none}
+.user-email{font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis}
+.user-nickname{font-size:12px;color:var(--text2)}
+.role-badge{font-size:11px;padding:3px 8px;border-radius:99px;font-weight:600;white-space:nowrap}
+.role-admin{background:#fef3c7;color:#92400e}
+.role-user{background:var(--green-bg);color:var(--green-text)}
+.role-pending{background:var(--red-bg);color:var(--red-text)}
+.admin-btn{padding:5px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:white;font-weight:500;white-space:nowrap}
+.admin-btn.approve{border-color:var(--green);color:var(--green-text)}
+.admin-btn.revoke{border-color:var(--red);color:var(--red-text)}
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2)}
+.sync-badge{font-size:11px;color:var(--text3)}
+.sync-badge.saved{color:var(--green-text)}
+.empty-state{text-align:center;padding:2rem;color:var(--text3);font-size:14px}
 </style>
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
 <div id="auth-screen">
   <div class="auth-card" id="auth-card">
     <div class="auth-logo">
       <div class="flag">🇷🇴</div>
       <h1>罗马尼亚语词汇</h1>
-      <p>A1-A2 · 560词</p>
+      <p id="auth-subtitle">加载中...</p>
     </div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="showAuthTab('login')">登录</button>
@@ -192,9 +164,7 @@
     </div>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-
-  <!-- Pending approval notice -->
-  <div id="pending-card" style="display:none; padding:1rem; max-width:400px; margin:0 auto;">
+  <div id="pending-card" style="display:none;padding:1rem;max-width:400px;margin:0 auto">
     <div class="pending-notice">
       <h3>⏳ 等待管理员审批</h3>
       <p>你的账号已注册成功，管理员审批通过后即可使用。</p>
@@ -204,12 +174,11 @@
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="app-screen">
   <div class="topbar">
     <div class="topbar-left">
       <span class="topbar-logo">🇷🇴 罗语词汇</span>
-      <span class="topbar-badge" id="topbar-badge">A1-A2</span>
+      <span class="topbar-badge" id="topbar-badge">加载中</span>
     </div>
     <div class="topbar-right">
       <span class="user-chip" id="user-chip"></span>
@@ -225,49 +194,52 @@
     <button class="nav-tab" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
   </div>
 
-  <!-- FLASH PAGE -->
   <div class="page active" id="page-flash">
     <div class="stats-grid">
-      <div class="stat"><div class="stat-n" id="s-total">560</div><div class="stat-l">总词汇</div></div>
+      <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
       <div class="stat"><div class="stat-n" id="s-known">0</div><div class="stat-l">已掌握</div></div>
       <div class="stat"><div class="stat-n" id="s-right">0</div><div class="stat-l">答对</div></div>
       <div class="stat"><div class="stat-n" id="s-pct">0%</div><div class="stat-l">正确率</div></div>
     </div>
     <div class="cat-bar" id="cat-bar"></div>
-    <div class="card-wrap">
-      <div class="card" id="main-card" onclick="flipCard()">
-        <div class="card-face">
-          <div class="card-cat" id="fc-cat"></div>
-          <div class="card-hint">点击翻转查看罗马尼亚语</div>
-          <div class="card-zh" id="fc-zh"></div>
-        </div>
-        <div class="card-face card-back">
-          <div class="card-cat" id="fc-cat2"></div>
-          <div class="card-ro" id="fc-ro"></div>
-          <div class="ph-box">
-            <div class="ph-ipa" id="fc-ipa"></div>
-            <div class="ph-hint" id="fc-hint"></div>
+    <div id="flash-loading" class="loading-screen">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载词库...</div>
+    </div>
+    <div id="flash-content" style="display:none">
+      <div class="card-wrap">
+        <div class="card" id="main-card" onclick="flipCard()">
+          <div class="card-face">
+            <div class="card-cat" id="fc-cat"></div>
+            <div class="card-hint-txt">点击翻转查看罗马尼亚语</div>
+            <div class="card-zh" id="fc-zh"></div>
           </div>
-          <div class="syls" id="fc-syls"></div>
-          <div class="spk-row">
-            <button class="spk" onclick="event.stopPropagation();speak(1)">▶ 正常速度</button>
-            <button class="spk slow" onclick="event.stopPropagation();speak(0.45)">▶ 慢速拼读</button>
+          <div class="card-face card-back">
+            <div class="card-cat" id="fc-cat2"></div>
+            <div class="card-ro" id="fc-ro"></div>
+            <div class="ph-box">
+              <div class="ph-ipa" id="fc-ipa"></div>
+              <div class="ph-hint" id="fc-phint"></div>
+            </div>
+            <div class="spk-row">
+              <button class="spk" onclick="event.stopPropagation();speak(1)">▶ 正常速度</button>
+              <button class="spk slow" onclick="event.stopPropagation();speak(0.45)">▶ 慢速拼读</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="card-nav">
-      <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
-      <span class="counter" id="fc-count"></span>
-      <button class="nav-btn" onclick="nextCard()">下一个 ▶</button>
-    </div>
-    <div class="know-btns">
-      <button class="know-no" onclick="markCard(false)">✕ 不认识</button>
-      <button class="know-yes" onclick="markCard(true)">✓ 认识了</button>
+      <div class="card-nav">
+        <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
+        <span class="counter" id="fc-count"></span>
+        <button class="nav-btn" onclick="nextCard()">下一个 ▶</button>
+      </div>
+      <div class="know-btns">
+        <button class="know-no" onclick="markCard(false)">✕ 不认识</button>
+        <button class="know-yes" onclick="markCard(true)">✓ 认识了</button>
+      </div>
     </div>
   </div>
 
-  <!-- QUIZ PAGE -->
   <div class="page" id="page-quiz">
     <div class="qmode-bar">
       <button class="qmode-btn active" id="m-zh" onclick="setQMode('zh')">中文 → 罗语</button>
@@ -276,7 +248,6 @@
     <div id="quiz-area"></div>
   </div>
 
-  <!-- GUIDE PAGE -->
   <div class="page" id="page-guide">
     <div class="guide-card">
       <div class="guide-title">特殊字母发音</div>
@@ -285,8 +256,8 @@
         <div class="ph-item"><div class="ph-letter">â / î</div><div class="ph-sound">类似"嗯"，舌后</div></div>
         <div class="ph-item"><div class="ph-letter">ș</div><div class="ph-sound">类似"sh"（师）</div></div>
         <div class="ph-item"><div class="ph-letter">ț</div><div class="ph-sound">类似"ts"（次）</div></div>
-        <div class="ph-item"><div class="ph-letter">ce / ci</div><div class="ph-sound">类似"ch"（吃）</div></div>
-        <div class="ph-item"><div class="ph-letter">ge / gi</div><div class="ph-sound">类似"j"（日）</div></div>
+        <div class="ph-item"><div class="ph-letter">ce/ci</div><div class="ph-sound">类似"ch"（吃）</div></div>
+        <div class="ph-item"><div class="ph-letter">ge/gi</div><div class="ph-sound">类似"j"（日）</div></div>
         <div class="ph-item"><div class="ph-letter">ch</div><div class="ph-sound">类似"k"（克）</div></div>
         <div class="ph-item"><div class="ph-letter">gh</div><div class="ph-sound">类似"g"（哥）</div></div>
         <div class="ph-item"><div class="ph-letter">oa</div><div class="ph-sound">类似"wa"</div></div>
@@ -294,353 +265,122 @@
     </div>
     <div class="guide-card">
       <div class="guide-title">重音规则</div>
-      <p style="font-size:13px;color:#6b7280;line-height:1.8">
-        卡片中 <span style="color:#065f46;font-weight:600">绿色高亮</span> 的音节为重读音节。<br>
-        重音多落在倒数第二音节，但有很多例外。<br>
-        建议结合"慢速拼读"功能逐音节练习。
-      </p>
+      <p style="font-size:13px;color:#6b7280;line-height:1.8">卡片中音标里<strong>大写字母</strong>为重读音节。<br>重音多落在倒数第二音节，但有很多例外。<br>建议结合"慢速拼读"功能逐音节练习。</p>
     </div>
     <div class="guide-card">
       <div class="guide-title">音标说明</div>
-      <p style="font-size:13px;color:#6b7280;line-height:1.8">
-        音标用中文近似音辅助记忆，并非精确IPA。<br>
-        格式：音节-音节-<span style="color:#065f46;font-weight:600">【重读音节】</span><br>
-        例：Mulțumesc → mul·tzu·<span style="color:#065f46;font-weight:600">MESK</span>
-      </p>
+      <p style="font-size:13px;color:#6b7280;line-height:1.8">格式：音节-音节-<strong>【重读音节大写】</strong><br>例：Mulțumesc → mul-tzu-<strong>MESK</strong></p>
     </div>
   </div>
 
-  <!-- LIST PAGE -->
   <div class="page" id="page-list">
     <div class="search-bar"><input id="search-input" placeholder="搜索中文、罗语或分类..." oninput="renderList()"></div>
     <div class="word-list" id="word-list"></div>
   </div>
 
-  <!-- ADMIN PAGE -->
   <div class="page" id="page-admin">
     <div class="admin-header">
       <div class="admin-title">👤 用户管理</div>
       <button class="btn-sm" onclick="loadUsers()">刷新</button>
     </div>
-    <div id="users-container"><div class="loading">加载中...</div></div>
+    <div id="users-container"><div class="empty-state">加载中...</div></div>
   </div>
 </div>
 
 <script>
-// ── SUPABASE ──
-const SUPA_URL = 'https://wuiblzpyhcjxevotwcqz.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1aWJsenB5aGNqeGV2b3R3Y3F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMjg3NTksImV4cCI6MjA5MjcwNDc1OX0.ImJ1yH8v0op6_5G2P4fI--uJG8LOXIPt-JujPCzeN54';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPA_URL='https://wuiblzpyhcjxevotwcqz.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1aWJsenB5aGNqeGV2b3R3Y3F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMjg3NTksImV4cCI6MjA5MjcwNDc1OX0.ImJ1yH8v0op6_5G2P4fI--uJG8LOXIPt-JujPCzeN54';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
 
-let currentUser = null;
-let userRole = null;
-let progressMap = {}; // word_ro -> {known, quiz_right, quiz_total}
-let syncTimeout = null;
+let currentUser=null,userRole=null,progressMap={};
+let W=[]; // loaded from DB
+let filtered=[],idx=0,flipped=false,curCat='全部';
+let qMode='zh',qList=[],qIdx=0,qRight=0,qTotal=0;
 
-// ── WORD DATA ──
-const W=[
-{zh:"你好",ro:"Bună ziua",ipa:"BU-nə ZI-ua",syls:["Bu","nə","Zi","ua"],stress:[0,2],hint:"ă发'呃'音",cat:"问候"},
-{zh:"早上好",ro:"Bună dimineața",ipa:"BU-nə di-mi-NYAH-tsa",syls:["Bu","nə","di","mi","NYAH","tsa"],stress:[0,4],hint:"ța发'tsa'",cat:"问候"},
-{zh:"晚上好",ro:"Bună seara",ipa:"BU-nə SYAH-ra",syls:["Bu","nə","SYAH","ra"],stress:[0,2],hint:"ea发'ya'",cat:"问候"},
-{zh:"再见",ro:"La revedere",ipa:"la re-ve-DE-re",syls:["la","re","ve","DE","re"],stress:[3],hint:"重音在DE",cat:"问候"},
-{zh:"谢谢",ro:"Mulțumesc",ipa:"mul-tzu-MESK",syls:["mul","tzu","MESK"],stress:[2],hint:"ț发'ts'",cat:"问候"},
-{zh:"不客气",ro:"Cu plăcere",ipa:"ku plə-CHE-re",syls:["ku","plə","CHE","re"],stress:[2],hint:"ă发'呃'",cat:"问候"},
-{zh:"对不起",ro:"Îmi pare rău",ipa:"ÎMI PA-re RĂU",syls:["ÎMI","PA","re","RĂU"],stress:[0,1,3],hint:"î发'嗯'",cat:"问候"},
-{zh:"请",ro:"Vă rog",ipa:"və ROG",syls:["və","ROG"],stress:[1],hint:"ă发轻'呃'",cat:"问候"},
-{zh:"是",ro:"Da",ipa:"da",syls:["da"],stress:[0],hint:"同中文'大'",cat:"问候"},
-{zh:"不是",ro:"Nu",ipa:"nu",syls:["nu"],stress:[0],hint:"同中文'努'",cat:"问候"},
-{zh:"你好吗",ro:"Ce mai faci?",ipa:"che mai FACH",syls:["che","mai","FACH"],stress:[2],hint:"ce发'che'",cat:"问候"},
-{zh:"我很好",ro:"Sunt bine",ipa:"sunt BI-ne",syls:["sunt","BI","ne"],stress:[1],hint:"sunt发'soont'",cat:"问候"},
-{zh:"欢迎",ro:"Bun venit",ipa:"bun ve-NIT",syls:["bun","ve","NIT"],stress:[2],hint:"重音在最后",cat:"问候"},
-{zh:"很高兴认识你",ro:"Îmi pare bine",ipa:"ÎMI PA-re BI-ne",syls:["ÎMI","PA","re","BI","ne"],stress:[0,1,3],hint:"î发'嗯'",cat:"问候"},
-{zh:"零",ro:"Zero",ipa:"ZE-ro",syls:["ZE","ro"],stress:[0],hint:"同英文zero",cat:"数字"},
-{zh:"一",ro:"Unu",ipa:"U-nu",syls:["U","nu"],stress:[0],hint:"u发'乌'",cat:"数字"},
-{zh:"二",ro:"Doi",ipa:"doi",syls:["doi"],stress:[0],hint:"发'doy'",cat:"数字"},
-{zh:"三",ro:"Trei",ipa:"trei",syls:["trei"],stress:[0],hint:"发'tray'",cat:"数字"},
-{zh:"四",ro:"Patru",ipa:"PA-tru",syls:["PA","tru"],stress:[0],hint:"重音在PA",cat:"数字"},
-{zh:"五",ro:"Cinci",ipa:"chinch",syls:["chinch"],stress:[0],hint:"ci发'chi'",cat:"数字"},
-{zh:"六",ro:"Șase",ipa:"ȘA-se",syls:["ȘA","se"],stress:[0],hint:"ș发'sh'",cat:"数字"},
-{zh:"七",ro:"Șapte",ipa:"ȘAHP-te",syls:["ȘAHP","te"],stress:[0],hint:"ș发'sh'",cat:"数字"},
-{zh:"八",ro:"Opt",ipa:"opt",syls:["opt"],stress:[0],hint:"同英文opt",cat:"数字"},
-{zh:"九",ro:"Nouă",ipa:"NO-uə",syls:["NO","uə"],stress:[0],hint:"ă发'呃'",cat:"数字"},
-{zh:"十",ro:"Zece",ipa:"ZE-che",syls:["ZE","che"],stress:[0],hint:"ce发'che'",cat:"数字"},
-{zh:"二十",ro:"Douăzeci",ipa:"DO-uə-ZE-chi",syls:["DO","uə","ZE","chi"],stress:[0,2],hint:"复合词",cat:"数字"},
-{zh:"一百",ro:"O sută",ipa:"o SU-tə",syls:["o","SU","tə"],stress:[1],hint:"ă发'呃'",cat:"数字"},
-{zh:"一千",ro:"O mie",ipa:"o MI-e",syls:["o","MI","e"],stress:[1],hint:"ie发'ye'",cat:"数字"},
-{zh:"今天",ro:"Azi",ipa:"AZI",syls:["AZI"],stress:[0],hint:"z发'z'",cat:"时间"},
-{zh:"明天",ro:"Mâine",ipa:"MÂI-ne",syls:["MÂI","ne"],stress:[0],hint:"â发'嗯'",cat:"时间"},
-{zh:"昨天",ro:"Ieri",ipa:"IE-ri",syls:["IE","ri"],stress:[0],hint:"ie发'ye'",cat:"时间"},
-{zh:"现在",ro:"Acum",ipa:"a-KUM",syls:["a","KUM"],stress:[1],hint:"重音在后",cat:"时间"},
-{zh:"早上",ro:"Dimineață",ipa:"di-mi-NYAH-tsə",syls:["di","mi","NYAH","tsə"],stress:[2],hint:"ț发'ts'",cat:"时间"},
-{zh:"中午",ro:"Prânz",ipa:"prânz",syls:["prânz"],stress:[0],hint:"â发'嗯'",cat:"时间"},
-{zh:"晚上",ro:"Seară",ipa:"SEA-rə",syls:["SEA","rə"],stress:[0],hint:"ea发'ya'",cat:"时间"},
-{zh:"周一",ro:"Luni",ipa:"LU-ni",syls:["LU","ni"],stress:[0],hint:"u发'乌'",cat:"时间"},
-{zh:"周二",ro:"Marți",ipa:"MAHR-tsi",syls:["MAHR","tsi"],stress:[0],hint:"ț发'ts'",cat:"时间"},
-{zh:"周三",ro:"Miercuri",ipa:"MYER-ku-ri",syls:["MYER","ku","ri"],stress:[0],hint:"ie发'ye'",cat:"时间"},
-{zh:"周四",ro:"Joi",ipa:"zhoi",syls:["zhoi"],stress:[0],hint:"j发'zh'",cat:"时间"},
-{zh:"周五",ro:"Vineri",ipa:"VI-ne-ri",syls:["VI","ne","ri"],stress:[0],hint:"v发'v'",cat:"时间"},
-{zh:"周六",ro:"Sâmbătă",ipa:"SÂM-bə-tə",syls:["SÂM","bə","tə"],stress:[0],hint:"â发'嗯'",cat:"时间"},
-{zh:"周日",ro:"Duminică",ipa:"du-MI-ni-kə",syls:["du","MI","ni","kə"],stress:[1],hint:"重音在MI",cat:"时间"},
-{zh:"一月",ro:"Ianuarie",ipa:"ia-NUA-rie",syls:["ia","NUA","rie"],stress:[1],hint:"ia发'ya'",cat:"时间"},
-{zh:"二月",ro:"Februarie",ipa:"feb-RUA-rie",syls:["feb","RUA","rie"],stress:[1],hint:"类似英文February",cat:"时间"},
-{zh:"三月",ro:"Martie",ipa:"MAR-tie",syls:["MAR","tie"],stress:[0],hint:"ie发'ye'",cat:"时间"},
-{zh:"四月",ro:"Aprilie",ipa:"a-PRI-lie",syls:["a","PRI","lie"],stress:[1],hint:"类似英文April",cat:"时间"},
-{zh:"五月",ro:"Mai",ipa:"mai",syls:["mai"],stress:[0],hint:"发'my'",cat:"时间"},
-{zh:"六月",ro:"Iunie",ipa:"IU-nie",syls:["IU","nie"],stress:[0],hint:"iu发'you'",cat:"时间"},
-{zh:"七月",ro:"Iulie",ipa:"IU-lie",syls:["IU","lie"],stress:[0],hint:"iu发'you'",cat:"时间"},
-{zh:"八月",ro:"August",ipa:"au-GUST",syls:["au","GUST"],stress:[1],hint:"类似英文August",cat:"时间"},
-{zh:"九月",ro:"Septembrie",ipa:"sep-TEM-brie",syls:["sep","TEM","brie"],stress:[1],hint:"类似September",cat:"时间"},
-{zh:"十月",ro:"Octombrie",ipa:"ok-TOM-brie",syls:["ok","TOM","brie"],stress:[1],hint:"类似October",cat:"时间"},
-{zh:"十一月",ro:"Noiembrie",ipa:"no-IEM-brie",syls:["no","IEM","brie"],stress:[1],hint:"类似November",cat:"时间"},
-{zh:"十二月",ro:"Decembrie",ipa:"de-CHEM-brie",syls:["de","CHEM","brie"],stress:[1],hint:"ce发'che'",cat:"时间"},
-{zh:"父亲",ro:"Tată",ipa:"TA-tə",syls:["TA","tə"],stress:[0],hint:"ă发'呃'",cat:"家庭"},
-{zh:"母亲",ro:"Mamă",ipa:"MA-mə",syls:["MA","mə"],stress:[0],hint:"ă发'呃'",cat:"家庭"},
-{zh:"儿子",ro:"Fiu",ipa:"fiu",syls:["fiu"],stress:[0],hint:"发'fyoo'",cat:"家庭"},
-{zh:"女儿",ro:"Fiică",ipa:"FI-i-kə",syls:["FI","i","kə"],stress:[0],hint:"双i稍拉长",cat:"家庭"},
-{zh:"兄弟",ro:"Frate",ipa:"FRA-te",syls:["FRA","te"],stress:[0],hint:"类似frater",cat:"家庭"},
-{zh:"姐妹",ro:"Soră",ipa:"SO-rə",syls:["SO","rə"],stress:[0],hint:"ă发'呃'",cat:"家庭"},
-{zh:"祖父",ro:"Bunic",ipa:"bu-NIK",syls:["bu","NIK"],stress:[1],hint:"重音在后",cat:"家庭"},
-{zh:"祖母",ro:"Bunică",ipa:"bu-NI-kə",syls:["bu","NI","kə"],stress:[1],hint:"重音在NI",cat:"家庭"},
-{zh:"丈夫",ro:"Soț",ipa:"sots",syls:["sots"],stress:[0],hint:"ț发'ts'",cat:"家庭"},
-{zh:"妻子",ro:"Soție",ipa:"SO-tsie",syls:["SO","tsie"],stress:[0],hint:"ț发'ts'",cat:"家庭"},
-{zh:"孩子",ro:"Copil",ipa:"ko-PIL",syls:["ko","PIL"],stress:[1],hint:"重音在后",cat:"家庭"},
-{zh:"朋友",ro:"Prieten",ipa:"pri-E-ten",syls:["pri","E","ten"],stress:[1],hint:"ie发'ye'",cat:"家庭"},
-{zh:"邻居",ro:"Vecin",ipa:"ve-CHIN",syls:["ve","CHIN"],stress:[1],hint:"ci发'chi'",cat:"家庭"},
-{zh:"头",ro:"Cap",ipa:"kap",syls:["kap"],stress:[0],hint:"同英文cap",cat:"身体"},
-{zh:"脸",ro:"Față",ipa:"FA-tsə",syls:["FA","tsə"],stress:[0],hint:"ț发'ts'",cat:"身体"},
-{zh:"眼睛",ro:"Ochi",ipa:"oki",syls:["oki"],stress:[0],hint:"chi发'ki'",cat:"身体"},
-{zh:"耳朵",ro:"Ureche",ipa:"u-RE-ke",syls:["u","RE","ke"],stress:[1],hint:"che发'ke'",cat:"身体"},
-{zh:"鼻子",ro:"Nas",ipa:"nas",syls:["nas"],stress:[0],hint:"同英文nas",cat:"身体"},
-{zh:"嘴",ro:"Gură",ipa:"GU-rə",syls:["GU","rə"],stress:[0],hint:"ă发'呃'",cat:"身体"},
-{zh:"牙齿",ro:"Dinte",ipa:"DIN-te",syls:["DIN","te"],stress:[0],hint:"类似dental",cat:"身体"},
-{zh:"脖子",ro:"Gât",ipa:"gât",syls:["gât"],stress:[0],hint:"â发'嗯'",cat:"身体"},
-{zh:"手",ro:"Mână",ipa:"MÂ-nə",syls:["MÂ","nə"],stress:[0],hint:"â发'嗯'",cat:"身体"},
-{zh:"脚",ro:"Picior",ipa:"pi-CHOR",syls:["pi","CHOR"],stress:[1],hint:"ci发'chi'",cat:"身体"},
-{zh:"红色",ro:"Roșu",ipa:"RO-șu",syls:["RO","șu"],stress:[0],hint:"ș发'sh'",cat:"颜色"},
-{zh:"蓝色",ro:"Albastru",ipa:"al-BAS-tru",syls:["al","BAS","tru"],stress:[1],hint:"重音在BAS",cat:"颜色"},
-{zh:"绿色",ro:"Verde",ipa:"VER-de",syls:["VER","de"],stress:[0],hint:"类似verdant",cat:"颜色"},
-{zh:"黄色",ro:"Galben",ipa:"GAL-ben",syls:["GAL","ben"],stress:[0],hint:"重音在GAL",cat:"颜色"},
-{zh:"橙色",ro:"Portocaliu",ipa:"por-to-KA-liu",syls:["por","to","KA","liu"],stress:[2],hint:"重音在KA",cat:"颜色"},
-{zh:"紫色",ro:"Violet",ipa:"vio-LET",syls:["vio","LET"],stress:[1],hint:"类似英文violet",cat:"颜色"},
-{zh:"粉色",ro:"Roz",ipa:"roz",syls:["roz"],stress:[0],hint:"同rose",cat:"颜色"},
-{zh:"白色",ro:"Alb",ipa:"alb",syls:["alb"],stress:[0],hint:"同alb",cat:"颜色"},
-{zh:"黑色",ro:"Negru",ipa:"NE-gru",syls:["NE","gru"],stress:[0],hint:"类似negro",cat:"颜色"},
-{zh:"灰色",ro:"Gri",ipa:"gri",syls:["gri"],stress:[0],hint:"同grey",cat:"颜色"},
-{zh:"棕色",ro:"Maro",ipa:"MA-ro",syls:["MA","ro"],stress:[0],hint:"类似意大利语",cat:"颜色"},
-{zh:"衬衫",ro:"Cămașă",ipa:"kə-MA-șə",syls:["kə","MA","șə"],stress:[1],hint:"ș发'sh'",cat:"衣物"},
-{zh:"裤子",ro:"Pantaloni",ipa:"pan-ta-LO-ni",syls:["pan","ta","LO","ni"],stress:[2],hint:"类似英文pants",cat:"衣物"},
-{zh:"裙子",ro:"Fustă",ipa:"FUS-tə",syls:["FUS","tə"],stress:[0],hint:"ă发'呃'",cat:"衣物"},
-{zh:"外套",ro:"Haină",ipa:"HAI-nə",syls:["HAI","nə"],stress:[0],hint:"ai发'ai'",cat:"衣物"},
-{zh:"毛衣",ro:"Pulover",ipa:"pu-LO-ver",syls:["pu","LO","ver"],stress:[1],hint:"类似pullover",cat:"衣物"},
-{zh:"T恤",ro:"Tricou",ipa:"tri-KOU",syls:["tri","KOU"],stress:[1],hint:"类似tricot",cat:"衣物"},
-{zh:"鞋子",ro:"Pantofi",ipa:"pan-TO-fi",syls:["pan","TO","fi"],stress:[1],hint:"重音在TO",cat:"衣物"},
-{zh:"帽子",ro:"Pălărie",ipa:"pə-lə-RI-e",syls:["pə","lə","RI","e"],stress:[2],hint:"ă发'呃'",cat:"衣物"},
-{zh:"手套",ro:"Mănuși",ipa:"MÂ-nu-și",syls:["MÂ","nu","și"],stress:[0],hint:"ș发'sh'",cat:"衣物"},
-{zh:"眼镜",ro:"Ochelari",ipa:"o-ke-LA-ri",syls:["o","ke","LA","ri"],stress:[2],hint:"che发'ke'",cat:"衣物"},
-{zh:"面包",ro:"Pâine",ipa:"PÂI-ne",syls:["PÂI","ne"],stress:[0],hint:"â发'嗯'",cat:"食物"},
-{zh:"米饭",ro:"Orez",ipa:"o-REZ",syls:["o","REZ"],stress:[1],hint:"重音在后",cat:"食物"},
-{zh:"肉",ro:"Carne",ipa:"KAR-ne",syls:["KAR","ne"],stress:[0],hint:"类似carnal",cat:"食物"},
-{zh:"鸡肉",ro:"Pui",ipa:"pui",syls:["pui"],stress:[0],hint:"发'pwee'",cat:"食物"},
-{zh:"鱼",ro:"Pește",ipa:"PEȘ-te",syls:["PEȘ","te"],stress:[0],hint:"ș发'sh'",cat:"食物"},
-{zh:"蛋",ro:"Ou",ipa:"ou",syls:["ou"],stress:[0],hint:"发'oh'",cat:"食物"},
-{zh:"奶酪",ro:"Brânză",ipa:"BRÂN-zə",syls:["BRÂN","zə"],stress:[0],hint:"â发'嗯'",cat:"食物"},
-{zh:"糖",ro:"Zahăr",ipa:"ZA-hər",syls:["ZA","hər"],stress:[0],hint:"ă发'呃'",cat:"食物"},
-{zh:"盐",ro:"Sare",ipa:"SA-re",syls:["SA","re"],stress:[0],hint:"类似saline",cat:"食物"},
-{zh:"汤",ro:"Supă",ipa:"SU-pə",syls:["SU","pə"],stress:[0],hint:"ă发'呃'",cat:"食物"},
-{zh:"苹果",ro:"Măr",ipa:"mər",syls:["mər"],stress:[0],hint:"ă发'呃'",cat:"蔬果"},
-{zh:"香蕉",ro:"Banană",ipa:"ba-NA-nə",syls:["ba","NA","nə"],stress:[1],hint:"重音在NA",cat:"蔬果"},
-{zh:"橙子",ro:"Portocală",ipa:"por-to-KA-lə",syls:["por","to","KA","lə"],stress:[2],hint:"ă发'呃'",cat:"蔬果"},
-{zh:"草莓",ro:"Căpșună",ipa:"kəp-ȘU-nə",syls:["kəp","ȘU","nə"],stress:[1],hint:"ș发'sh'",cat:"蔬果"},
-{zh:"西红柿",ro:"Roșie",ipa:"RO-șie",syls:["RO","șie"],stress:[0],hint:"ș发'sh'",cat:"蔬果"},
-{zh:"土豆",ro:"Cartof",ipa:"kar-TOF",syls:["kar","TOF"],stress:[1],hint:"重音在后",cat:"蔬果"},
-{zh:"洋葱",ro:"Ceapă",ipa:"CHEA-pə",syls:["CHEA","pə"],stress:[0],hint:"cea发'chya'",cat:"蔬果"},
-{zh:"胡萝卜",ro:"Morcov",ipa:"mor-KOV",syls:["mor","KOV"],stress:[1],hint:"重音在后",cat:"蔬果"},
-{zh:"黄瓜",ro:"Castravete",ipa:"kas-tra-VE-te",syls:["kas","tra","VE","te"],stress:[2],hint:"重音在VE",cat:"蔬果"},
-{zh:"水",ro:"Apă",ipa:"A-pə",syls:["A","pə"],stress:[0],hint:"ă发'呃'",cat:"饮料"},
-{zh:"咖啡",ro:"Cafea",ipa:"ka-FEA",syls:["ka","FEA"],stress:[1],hint:"ea发'ya'",cat:"饮料"},
-{zh:"茶",ro:"Ceai",ipa:"chai",syls:["chai"],stress:[0],hint:"发'chay'",cat:"饮料"},
-{zh:"牛奶",ro:"Lapte",ipa:"LAP-te",syls:["LAP","te"],stress:[0],hint:"类似lapse",cat:"饮料"},
-{zh:"果汁",ro:"Suc",ipa:"suk",syls:["suk"],stress:[0],hint:"发'sook'",cat:"饮料"},
-{zh:"啤酒",ro:"Bere",ipa:"BE-re",syls:["BE","re"],stress:[0],hint:"类似beer",cat:"饮料"},
-{zh:"葡萄酒",ro:"Vin",ipa:"vin",syls:["vin"],stress:[0],hint:"同法文vin",cat:"饮料"},
-{zh:"汽车",ro:"Mașină",ipa:"ma-ȘI-nə",syls:["ma","ȘI","nə"],stress:[1],hint:"ș发'sh'",cat:"交通"},
-{zh:"公共汽车",ro:"Autobuz",ipa:"au-to-BUZ",syls:["au","to","BUZ"],stress:[2],hint:"重音在最后",cat:"交通"},
-{zh:"火车",ro:"Tren",ipa:"tren",syls:["tren"],stress:[0],hint:"同train词根",cat:"交通"},
-{zh:"地铁",ro:"Metrou",ipa:"me-TROU",syls:["me","TROU"],stress:[1],hint:"类似metro",cat:"交通"},
-{zh:"出租车",ro:"Taxi",ipa:"TAK-si",syls:["TAK","si"],stress:[0],hint:"同英文taxi",cat:"交通"},
-{zh:"自行车",ro:"Bicicletă",ipa:"bi-chi-KLE-tə",syls:["bi","chi","KLE","tə"],stress:[2],hint:"ci发'chi'",cat:"交通"},
-{zh:"飞机",ro:"Avion",ipa:"a-VION",syls:["a","VION"],stress:[1],hint:"类似aviation",cat:"交通"},
-{zh:"机场",ro:"Aeroport",ipa:"a-e-ro-PORT",syls:["a","e","ro","PORT"],stress:[3],hint:"重音在最后",cat:"交通"},
-{zh:"火车站",ro:"Gară",ipa:"GA-rə",syls:["GA","rə"],stress:[0],hint:"ă发'呃'",cat:"交通"},
-{zh:"城市",ro:"Oraș",ipa:"o-RAȘ",syls:["o","RAȘ"],stress:[1],hint:"ș发'sh'",cat:"地点"},
-{zh:"家",ro:"Casă",ipa:"KA-sə",syls:["KA","sə"],stress:[0],hint:"ă发'呃'",cat:"地点"},
-{zh:"学校",ro:"Școală",ipa:"ȘKOA-lə",syls:["ȘKOA","lə"],stress:[0],hint:"șc发'shk'",cat:"地点"},
-{zh:"医院",ro:"Spital",ipa:"spi-TAL",syls:["spi","TAL"],stress:[1],hint:"重音在后",cat:"地点"},
-{zh:"药店",ro:"Farmacie",ipa:"far-MA-chie",syls:["far","MA","chie"],stress:[1],hint:"ci发'chi'",cat:"地点"},
-{zh:"超市",ro:"Supermarket",ipa:"su-per-MAR-ket",syls:["su","per","MAR","ket"],stress:[2],hint:"同英文",cat:"地点"},
-{zh:"餐厅",ro:"Restaurant",ipa:"res-tau-RANT",syls:["res","tau","RANT"],stress:[2],hint:"同英文",cat:"地点"},
-{zh:"银行",ro:"Bancă",ipa:"BAN-kə",syls:["BAN","kə"],stress:[0],hint:"ă发'呃'",cat:"地点"},
-{zh:"图书馆",ro:"Bibliotecă",ipa:"bib-lio-TE-kə",syls:["bib","lio","TE","kə"],stress:[2],hint:"重音在TE",cat:"地点"},
-{zh:"公园",ro:"Parc",ipa:"park",syls:["park"],stress:[0],hint:"同英文park",cat:"地点"},
-{zh:"老师",ro:"Profesor",ipa:"pro-FE-sor",syls:["pro","FE","sor"],stress:[1],hint:"类似professor",cat:"职业"},
-{zh:"医生",ro:"Doctor",ipa:"DOK-tor",syls:["DOK","tor"],stress:[0],hint:"同doctor",cat:"职业"},
-{zh:"护士",ro:"Asistentă",ipa:"a-sis-TEN-tə",syls:["a","sis","TEN","tə"],stress:[2],hint:"重音在TEN",cat:"职业"},
-{zh:"工程师",ro:"Inginer",ipa:"in-ji-NER",syls:["in","ji","NER"],stress:[2],hint:"重音在最后",cat:"职业"},
-{zh:"律师",ro:"Avocat",ipa:"a-vo-KAT",syls:["a","vo","KAT"],stress:[2],hint:"重音在最后",cat:"职业"},
-{zh:"警察",ro:"Polițist",ipa:"po-li-TSIST",syls:["po","li","TSIST"],stress:[2],hint:"ț发'ts'",cat:"职业"},
-{zh:"厨师",ro:"Bucătar",ipa:"bu-kə-TAR",syls:["bu","kə","TAR"],stress:[2],hint:"重音在最后",cat:"职业"},
-{zh:"学生",ro:"Student",ipa:"stu-DENT",syls:["stu","DENT"],stress:[1],hint:"同student",cat:"职业"},
-{zh:"狗",ro:"Câine",ipa:"KÂI-ne",syls:["KÂI","ne"],stress:[0],hint:"â发'嗯'",cat:"动物"},
-{zh:"猫",ro:"Pisică",ipa:"pi-SI-kə",syls:["pi","SI","kə"],stress:[1],hint:"重音在SI",cat:"动物"},
-{zh:"鸟",ro:"Pasăre",ipa:"PA-sə-re",syls:["PA","sə","re"],stress:[0],hint:"ă发'呃'",cat:"动物"},
-{zh:"马",ro:"Cal",ipa:"kal",syls:["kal"],stress:[0],hint:"发'kal'",cat:"动物"},
-{zh:"牛",ro:"Vacă",ipa:"VA-kə",syls:["VA","kə"],stress:[0],hint:"ă发'呃'",cat:"动物"},
-{zh:"兔子",ro:"Iepure",ipa:"IE-pu-re",syls:["IE","pu","re"],stress:[0],hint:"ie发'ye'",cat:"动物"},
-{zh:"熊",ro:"Urs",ipa:"urs",syls:["urs"],stress:[0],hint:"发'oors'",cat:"动物"},
-{zh:"蝴蝶",ro:"Fluture",ipa:"FLU-tu-re",syls:["FLU","tu","re"],stress:[0],hint:"重音在FLU",cat:"动物"},
-{zh:"蜜蜂",ro:"Albină",ipa:"al-BI-nə",syls:["al","BI","nə"],stress:[1],hint:"重音在BI",cat:"动物"},
-{zh:"太阳",ro:"Soare",ipa:"SOA-re",syls:["SOA","re"],stress:[0],hint:"oa发'wa'",cat:"自然"},
-{zh:"月亮",ro:"Lună",ipa:"LU-nə",syls:["LU","nə"],stress:[0],hint:"ă发'呃'",cat:"自然"},
-{zh:"星星",ro:"Stea",ipa:"stea",syls:["stea"],stress:[0],hint:"ea发'ya'",cat:"自然"},
-{zh:"天空",ro:"Cer",ipa:"cher",syls:["cher"],stress:[0],hint:"ce发'che'",cat:"自然"},
-{zh:"雨",ro:"Ploaie",ipa:"PLOA-ie",syls:["PLOA","ie"],stress:[0],hint:"oa发'wa'",cat:"自然"},
-{zh:"雪",ro:"Zăpadă",ipa:"zə-PA-də",syls:["zə","PA","də"],stress:[1],hint:"ă发'呃'",cat:"自然"},
-{zh:"风",ro:"Vânt",ipa:"vânt",syls:["vânt"],stress:[0],hint:"â发'嗯'",cat:"自然"},
-{zh:"树",ro:"Copac",ipa:"ko-PAK",syls:["ko","PAK"],stress:[1],hint:"重音在后",cat:"自然"},
-{zh:"花",ro:"Floare",ipa:"FLOA-re",syls:["FLOA","re"],stress:[0],hint:"oa发'wa'",cat:"自然"},
-{zh:"森林",ro:"Pădure",ipa:"pə-DU-re",syls:["pə","DU","re"],stress:[1],hint:"ă发'呃'",cat:"自然"},
-{zh:"晴天",ro:"Senin",ipa:"se-NIN",syls:["se","NIN"],stress:[1],hint:"重音在后",cat:"天气"},
-{zh:"下雨",ro:"Plouă",ipa:"PLO-uə",syls:["PLO","uə"],stress:[0],hint:"ă发'呃'",cat:"天气"},
-{zh:"下雪",ro:"Ninge",ipa:"NIN-je",syls:["NIN","je"],stress:[0],hint:"ge发'je'",cat:"天气"},
-{zh:"热",ro:"Cald",ipa:"kald",syls:["kald"],stress:[0],hint:"类似caldron",cat:"天气"},
-{zh:"冷",ro:"Frig",ipa:"frig",syls:["frig"],stress:[0],hint:"类似frigid",cat:"天气"},
-{zh:"暴风雨",ro:"Furtună",ipa:"fur-TU-nə",syls:["fur","TU","nə"],stress:[1],hint:"重音在TU",cat:"天气"},
-{zh:"彩虹",ro:"Curcubeu",ipa:"kur-ku-BEU",syls:["kur","ku","BEU"],stress:[2],hint:"重音在最后",cat:"天气"},
-{zh:"房间",ro:"Cameră",ipa:"KA-me-rə",syls:["KA","me","rə"],stress:[0],hint:"ă发'呃'",cat:"家居"},
-{zh:"卧室",ro:"Dormitor",ipa:"dor-mi-TOR",syls:["dor","mi","TOR"],stress:[2],hint:"类似dormitory",cat:"家居"},
-{zh:"厨房",ro:"Bucătărie",ipa:"bu-kə-tə-RI-e",syls:["bu","kə","tə","RI","e"],stress:[3],hint:"重音在RI",cat:"家居"},
-{zh:"浴室",ro:"Baie",ipa:"BA-ie",syls:["BA","ie"],stress:[0],hint:"ie发'ye'",cat:"家居"},
-{zh:"床",ro:"Pat",ipa:"pat",syls:["pat"],stress:[0],hint:"同pat",cat:"家居"},
-{zh:"桌子",ro:"Masă",ipa:"MA-sə",syls:["MA","sə"],stress:[0],hint:"ă发'呃'",cat:"家居"},
-{zh:"椅子",ro:"Scaun",ipa:"SKAU-n",syls:["SKAU","n"],stress:[0],hint:"sc发'sk'",cat:"家居"},
-{zh:"沙发",ro:"Canapea",ipa:"ka-na-PEA",syls:["ka","na","PEA"],stress:[2],hint:"ea发'ya'",cat:"家居"},
-{zh:"窗户",ro:"Fereastră",ipa:"fe-REAS-trə",syls:["fe","REAS","trə"],stress:[1],hint:"ea发'ya'",cat:"家居"},
-{zh:"门",ro:"Ușă",ipa:"U-șə",syls:["U","șə"],stress:[0],hint:"ș发'sh'",cat:"家居"},
-{zh:"冰箱",ro:"Frigider",ipa:"fri-ji-DER",syls:["fri","ji","DER"],stress:[2],hint:"ge发'je'",cat:"家居"},
-{zh:"电视",ro:"Televizor",ipa:"te-le-vi-ZOR",syls:["te","le","vi","ZOR"],stress:[3],hint:"重音在最后",cat:"家居"},
-{zh:"书",ro:"Carte",ipa:"KAR-te",syls:["KAR","te"],stress:[0],hint:"类似card",cat:"学校"},
-{zh:"笔记本",ro:"Caiet",ipa:"KA-iet",syls:["KA","iet"],stress:[0],hint:"ie发'ye'",cat:"学校"},
-{zh:"铅笔",ro:"Creion",ipa:"KREIN",syls:["KREIN"],stress:[0],hint:"ei发'ay'",cat:"学校"},
-{zh:"书包",ro:"Ghiozdan",ipa:"gioz-DAN",syls:["gioz","DAN"],stress:[1],hint:"ghi发'gi'",cat:"学校"},
-{zh:"考试",ro:"Examen",ipa:"eg-ZA-men",syls:["eg","ZA","men"],stress:[1],hint:"类似exam",cat:"学校"},
-{zh:"数学",ro:"Matematică",ipa:"ma-te-MA-ti-kə",syls:["ma","te","MA","ti","kə"],stress:[2],hint:"重音在MA",cat:"学校"},
-{zh:"科学",ro:"Știință",ipa:"ȘTI-in-tsə",syls:["ȘTI","in","tsə"],stress:[0],hint:"șt发'sht'",cat:"学校"},
-{zh:"商店",ro:"Magazin",ipa:"ma-ga-ZIN",syls:["ma","ga","ZIN"],stress:[2],hint:"重音在最后",cat:"购物"},
-{zh:"市场",ro:"Piață",ipa:"PIA-tsə",syls:["PIA","tsə"],stress:[0],hint:"ț发'ts'",cat:"购物"},
-{zh:"价格",ro:"Preț",ipa:"prets",syls:["prets"],stress:[0],hint:"ț发'ts'",cat:"购物"},
-{zh:"贵",ro:"Scump",ipa:"skump",syls:["skump"],stress:[0],hint:"sc发'sk'",cat:"购物"},
-{zh:"便宜",ro:"Ieftin",ipa:"IEF-tin",syls:["IEF","tin"],stress:[0],hint:"ie发'ye'",cat:"购物"},
-{zh:"钱",ro:"Bani",ipa:"BA-ni",syls:["BA","ni"],stress:[0],hint:"类似bank词根",cat:"购物"},
-{zh:"多少钱",ro:"Cât costă?",ipa:"kât KOS-tə",syls:["kât","KOS","tə"],stress:[1],hint:"ă发'呃'",cat:"短语"},
-{zh:"在哪里",ro:"Unde este?",ipa:"UN-de YES-te",syls:["UN","de","YES","te"],stress:[0,2],hint:"e发'ye'",cat:"短语"},
-{zh:"我想要",ro:"Vreau",ipa:"vreau",syls:["vreau"],stress:[0],hint:"ea发'ya'",cat:"短语"},
-{zh:"我不懂",ro:"Nu înțeleg",ipa:"nu în-TSE-leg",syls:["nu","în","TSE","leg"],stress:[2],hint:"ț发'ts'",cat:"短语"},
-{zh:"请再说一遍",ro:"Repetați, vă rog",ipa:"re-pe-TATS və rog",syls:["re","pe","TATS","və","rog"],stress:[2],hint:"ț发'ts'",cat:"短语"},
-{zh:"没问题",ro:"Nicio problemă",ipa:"NI-chio pro-BLE-mə",syls:["NI","chio","pro","BLE","mə"],stress:[0,3],hint:"ci发'chi'",cat:"短语"},
-{zh:"也许",ro:"Poate",ipa:"PWOA-te",syls:["PWOA","te"],stress:[0],hint:"oa发'wa'",cat:"短语"},
-{zh:"高兴",ro:"Fericit",ipa:"fe-ri-CHIT",syls:["fe","ri","CHIT"],stress:[2],hint:"ci发'chi'",cat:"情感"},
-{zh:"悲伤",ro:"Trist",ipa:"trist",syls:["trist"],stress:[0],hint:"同英文trist",cat:"情感"},
-{zh:"生气",ro:"Supărat",ipa:"su-pə-RAT",syls:["su","pə","RAT"],stress:[2],hint:"ă发'呃'",cat:"情感"},
-{zh:"害怕",ro:"Speriat",ipa:"spe-RIAT",syls:["spe","RIAT"],stress:[1],hint:"ia发'ya'",cat:"情感"},
-{zh:"爱",ro:"Iubire",ipa:"iu-BI-re",syls:["iu","BI","re"],stress:[1],hint:"iu发'you'",cat:"情感"},
-{zh:"大",ro:"Mare",ipa:"MA-re",syls:["MA","re"],stress:[0],hint:"类似mare",cat:"形容词"},
-{zh:"小",ro:"Mic",ipa:"mik",syls:["mik"],stress:[0],hint:"同mic",cat:"形容词"},
-{zh:"长",ro:"Lung",ipa:"lung",syls:["lung"],stress:[0],hint:"同lung",cat:"形容词"},
-{zh:"短",ro:"Scurt",ipa:"skurt",syls:["skurt"],stress:[0],hint:"sc发'sk'",cat:"形容词"},
-{zh:"高",ro:"Înalt",ipa:"î-NALT",syls:["î","NALT"],stress:[1],hint:"î发'嗯'",cat:"形容词"},
-{zh:"新",ro:"Nou",ipa:"nou",syls:["nou"],stress:[0],hint:"发'noh'",cat:"形容词"},
-{zh:"旧",ro:"Vechi",ipa:"veki",syls:["veki"],stress:[0],hint:"chi发'ki'",cat:"形容词"},
-{zh:"快",ro:"Repede",ipa:"RE-pe-de",syls:["RE","pe","de"],stress:[0],hint:"重音在RE",cat:"形容词"},
-{zh:"慢",ro:"Încet",ipa:"în-CHET",syls:["în","CHET"],stress:[1],hint:"ce发'che'",cat:"形容词"},
-{zh:"好",ro:"Bun",ipa:"bun",syls:["bun"],stress:[0],hint:"同boon",cat:"形容词"},
-{zh:"坏",ro:"Rău",ipa:"rəu",syls:["rəu"],stress:[0],hint:"ă发'呃'",cat:"形容词"},
-{zh:"漂亮",ro:"Frumos",ipa:"fru-MOS",syls:["fru","MOS"],stress:[1],hint:"重音在MOS",cat:"形容词"},
-{zh:"干净",ro:"Curat",ipa:"ku-RAT",syls:["ku","RAT"],stress:[1],hint:"重音在后",cat:"形容词"},
-{zh:"是(动词)",ro:"A fi",ipa:"a fi",syls:["a","fi"],stress:[1],hint:"不定式",cat:"动词"},
-{zh:"有",ro:"A avea",ipa:"a a-VEA",syls:["a","a","VEA"],stress:[2],hint:"ea发'ya'",cat:"动词"},
-{zh:"去",ro:"A merge",ipa:"a MER-je",syls:["a","MER","je"],stress:[1],hint:"ge发'je'",cat:"动词"},
-{zh:"来",ro:"A veni",ipa:"a ve-NI",syls:["a","ve","NI"],stress:[2],hint:"重音在最后",cat:"动词"},
-{zh:"说",ro:"A vorbi",ipa:"a vor-BI",syls:["a","vor","BI"],stress:[2],hint:"重音在最后",cat:"动词"},
-{zh:"吃",ro:"A mânca",ipa:"a mân-KA",syls:["a","mân","KA"],stress:[2],hint:"â发'嗯'",cat:"动词"},
-{zh:"喝",ro:"A bea",ipa:"a bea",syls:["a","bea"],stress:[1],hint:"ea发'ya'",cat:"动词"},
-{zh:"睡觉",ro:"A dormi",ipa:"a dor-MI",syls:["a","dor","MI"],stress:[2],hint:"重音在最后",cat:"动词"},
-{zh:"工作",ro:"A lucra",ipa:"a lu-KRA",syls:["a","lu","KRA"],stress:[2],hint:"重音在最后",cat:"动词"},
-{zh:"学习",ro:"A învăța",ipa:"a în-və-TSA",syls:["a","în","və","TSA"],stress:[3],hint:"ț发'ts'",cat:"动词"},
-{zh:"读",ro:"A citi",ipa:"a chi-TI",syls:["a","chi","TI"],stress:[2],hint:"ci发'chi'",cat:"动词"},
-{zh:"写",ro:"A scrie",ipa:"a SKRIE",syls:["a","SKRIE"],stress:[1],hint:"sc发'sk'",cat:"动词"},
-{zh:"什么",ro:"Ce",ipa:"che",syls:["che"],stress:[0],hint:"ce发'che'",cat:"疑问词"},
-{zh:"谁",ro:"Cine",ipa:"CHI-ne",syls:["CHI","ne"],stress:[0],hint:"ci发'chi'",cat:"疑问词"},
-{zh:"哪里",ro:"Unde",ipa:"UN-de",syls:["UN","de"],stress:[0],hint:"重音在UN",cat:"疑问词"},
-{zh:"什么时候",ro:"Când",ipa:"kând",syls:["kând"],stress:[0],hint:"â发'嗯'",cat:"疑问词"},
-{zh:"为什么",ro:"De ce",ipa:"de che",syls:["de","che"],stress:[1],hint:"ce发'che'",cat:"疑问词"},
-{zh:"怎么",ro:"Cum",ipa:"kum",syls:["kum"],stress:[0],hint:"发'koom'",cat:"疑问词"},
-{zh:"多少",ro:"Cât",ipa:"kât",syls:["kât"],stress:[0],hint:"â发'嗯'",cat:"疑问词"},
-];
-
-// ── STATE ──
-let filtered=[...W], idx=0, flipped=false, qMode='zh', qList=[], qIdx=0, qRight=0, qTotal=0, curCat='全部';
-
-// ── AUTH ──
+// ── INIT ──
 async function init(){
-  const {data:{session}} = await sb.auth.getSession();
+  // Load word count for subtitle while waiting
+  const {count}=await sb.from('words').select('*',{count:'exact',head:true});
+  document.getElementById('auth-subtitle').textContent=`A1-A2 · ${count||'...'}词`;
+
+  const {data:{session}}=await sb.auth.getSession();
   if(session) await onLogin(session.user);
 }
 
+// ── AUTH ──
 async function onLogin(user){
-  currentUser = user;
-  const {data:profile} = await sb.from('profiles').select('*').eq('id',user.id).single();
-  userRole = profile?.role || 'pending';
-
-  if(userRole === 'pending'){
+  currentUser=user;
+  const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  userRole=profile?.role||'pending';
+  if(userRole==='pending'){
     document.getElementById('auth-screen').style.display='flex';
     document.getElementById('auth-card').style.display='none';
     document.getElementById('pending-card').style.display='block';
     return;
   }
-
-  // Show app
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
-  document.getElementById('user-chip').textContent = profile?.nickname || user.email.split('@')[0];
+  document.getElementById('user-chip').textContent=profile?.nickname||user.email.split('@')[0];
+  if(userRole==='admin') document.getElementById('admin-tab').style.display='';
 
-  if(userRole==='admin'){
-    document.getElementById('admin-tab').style.display='';
+  // Load words from DB + progress in parallel
+  await Promise.all([loadWords(), loadProgress()]);
+}
+
+async function loadWords(){
+  document.getElementById('flash-loading').style.display='flex';
+  document.getElementById('flash-content').style.display='none';
+
+  let allWords=[];
+  let from=0;
+  const pageSize=1000;
+  // Paginate to get all words
+  while(true){
+    const {data,error}=await sb.from('words').select('*').order('id').range(from,from+pageSize-1);
+    if(error||!data||data.length===0) break;
+    allWords=allWords.concat(data);
+    if(data.length<pageSize) break;
+    from+=pageSize;
   }
 
-  await loadProgress();
-  buildCats(); renderCard(); renderList(); upStats();
+  W=allWords;
+  filtered=[...W];
+  document.getElementById('s-total').textContent=W.length;
+  document.getElementById('topbar-badge').textContent=W.length+'词 · A1-A2';
+  document.getElementById('auth-subtitle').textContent=`A1-A2 · ${W.length}词`;
+
+  buildCats();
+  renderCard();
+  renderList();
+  upStats();
+
+  document.getElementById('flash-loading').style.display='none';
+  document.getElementById('flash-content').style.display='block';
+}
+
+async function loadProgress(){
+  if(!currentUser) return;
+  const {data}=await sb.from('progress').select('*').eq('user_id',currentUser.id);
+  progressMap={};
+  (data||[]).forEach(r=>{progressMap[r.word_ro]={known:r.known,qr:r.quiz_right,qt:r.quiz_total};});
 }
 
 function showAuthTab(tab){
   document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='signup')));
-  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
-  document.getElementById('signup-form').style.display = tab==='signup'?'block':'none';
+  document.getElementById('login-form').style.display=tab==='login'?'block':'none';
+  document.getElementById('signup-form').style.display=tab==='signup'?'block':'none';
   document.getElementById('auth-msg').className='auth-msg';
 }
-
-function showMsg(msg, type){
-  const el=document.getElementById('auth-msg');
-  el.textContent=msg; el.className='auth-msg '+type;
-}
+function showMsg(msg,type){const el=document.getElementById('auth-msg');el.textContent=msg;el.className='auth-msg '+type;}
 
 async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-pass').value;
   if(!email||!pass){showMsg('请填写邮箱和密码','error');return;}
   const btn=document.querySelector('#login-form .btn-primary');
-  btn.disabled=true; btn.textContent='登录中...';
-  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
-  btn.disabled=false; btn.textContent='登录';
+  btn.disabled=true;btn.textContent='登录中...';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false;btn.textContent='登录';
   if(error){showMsg('登录失败：'+error.message,'error');return;}
   await onLogin(data.user);
 }
@@ -652,52 +392,36 @@ async function doSignup(){
   if(!name||!email||!pass){showMsg('请填写所有字段','error');return;}
   if(pass.length<6){showMsg('密码至少6位','error');return;}
   const btn=document.querySelector('#signup-form .btn-primary');
-  btn.disabled=true; btn.textContent='注册中...';
-  const {data,error} = await sb.auth.signUp({email,password:pass});
-  btn.disabled=false; btn.textContent='注册账号';
+  btn.disabled=true;btn.textContent='注册中...';
+  const {data,error}=await sb.auth.signUp({email,password:pass});
+  btn.disabled=false;btn.textContent='注册账号';
   if(error){showMsg('注册失败：'+error.message,'error');return;}
-  // Update nickname
-  if(data.user){
-    await sb.from('profiles').update({nickname:name}).eq('id',data.user.id);
-  }
+  if(data.user) await sb.from('profiles').update({nickname:name}).eq('id',data.user.id);
   showMsg('注册成功！请等待管理员审批后登录。','success');
 }
 
 async function doLogout(){
   await sb.auth.signOut();
-  currentUser=null; userRole=null; progressMap={};
+  currentUser=null;userRole=null;progressMap={};W=[];
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('auth-card').style.display='block';
   document.getElementById('pending-card').style.display='none';
   document.getElementById('app-screen').style.display='none';
 }
 
-// ── PROGRESS SYNC ──
-async function loadProgress(){
-  const {data} = await sb.from('progress').select('*').eq('user_id',currentUser.id);
-  progressMap = {};
-  (data||[]).forEach(r=>{ progressMap[r.word_ro]={known:r.known,qr:r.quiz_right,qt:r.quiz_total}; });
-}
-
-function setSyncBadge(txt,cls){
-  const el=document.getElementById('sync-badge');
-  el.textContent=txt; el.className='sync-badge '+(cls||'');
-}
-
-async function syncProgress(wordRo, known, qr, qt){
+// ── PROGRESS ──
+function setSyncBadge(txt,cls){const el=document.getElementById('sync-badge');el.textContent=txt;el.className='sync-badge '+(cls||'');}
+async function syncProgress(wordRo,known,qr,qt){
   setSyncBadge('同步中...','');
   progressMap[wordRo]={known,qr,qt};
-  const {error} = await sb.from('progress').upsert({
-    user_id:currentUser.id, word_ro:wordRo,
-    known, quiz_right:qr||0, quiz_total:qt||0, updated_at:new Date().toISOString()
-  },{onConflict:'user_id,word_ro'});
-  setSyncBadge(error?'同步失败':'已保存', error?'':'saved');
+  const {error}=await sb.from('progress').upsert({user_id:currentUser.id,word_ro:wordRo,known,quiz_right:qr||0,quiz_total:qt||0,updated_at:new Date().toISOString()},{onConflict:'user_id,word_ro'});
+  setSyncBadge(error?'同步失败':'已保存',error?'':'saved');
   setTimeout(()=>setSyncBadge('',''),2000);
 }
 
 // ── STATS ──
 function upStats(){
-  const knownCount = Object.values(progressMap).filter(p=>p.known).length;
+  const knownCount=Object.values(progressMap).filter(p=>p.known).length;
   document.getElementById('s-known').textContent=knownCount;
   document.getElementById('s-right').textContent=qRight;
   document.getElementById('s-pct').textContent=(qTotal>0?Math.round(qRight/qTotal*100):0)+'%';
@@ -705,29 +429,26 @@ function upStats(){
 
 // ── FLASH CARDS ──
 function buildCats(){
-  const cats=['全部',...new Set(W.map(w=>w.cat))];
+  const cats=['全部',...new Set(W.map(w=>w.cat).filter(Boolean))].sort((a,b)=>a==='全部'?-1:b==='全部'?1:a.localeCompare(b,'zh'));
   document.getElementById('cat-bar').innerHTML=cats.map(c=>
-    `<button class="cat-chip${c===curCat?' active':''}" onclick="setCat('${c}')">${c}</button>`
+    `<button class="cat-chip${c===curCat?' active':''}" onclick="setCat('${c.replace(/'/g,"\\'")}')">${c}</button>`
   ).join('');
 }
 function setCat(c){
-  curCat=c; filtered=c==='全部'?[...W]:W.filter(w=>w.cat===c);
-  idx=0; flipped=false;
+  curCat=c;filtered=c==='全部'?[...W]:W.filter(w=>w.cat===c);
+  idx=0;flipped=false;
   document.getElementById('main-card').classList.remove('flipped');
-  buildCats(); renderCard();
+  buildCats();renderCard();
 }
 function renderCard(){
   if(!filtered.length)return;
   const w=filtered[idx];
-  document.getElementById('fc-cat').textContent=w.cat;
-  document.getElementById('fc-cat2').textContent=w.cat;
+  document.getElementById('fc-cat').textContent=w.cat||'';
+  document.getElementById('fc-cat2').textContent=w.cat||'';
   document.getElementById('fc-zh').textContent=w.zh;
   document.getElementById('fc-ro').textContent=w.ro;
-  document.getElementById('fc-ipa').textContent=w.ipa;
-  document.getElementById('fc-hint').textContent=w.hint;
-  document.getElementById('fc-syls').innerHTML=w.syls.map((s,i)=>
-    `<span class="syl${w.stress.includes(i)?' stress':''}">${s}</span>`
-  ).join('');
+  document.getElementById('fc-ipa').textContent=w.ipa||w.ro;
+  document.getElementById('fc-phint').textContent=w.hint||'';
   document.getElementById('fc-count').textContent=(idx+1)+' / '+filtered.length;
 }
 function flipCard(){flipped=!flipped;document.getElementById('main-card').classList.toggle('flipped',flipped);}
@@ -736,40 +457,43 @@ function prevCard(){idx=(idx-1+filtered.length)%filtered.length;flipped=false;do
 function markCard(yes){
   const w=filtered[idx];
   const prev=progressMap[w.ro]||{qr:0,qt:0};
-  syncProgress(w.ro, yes, prev.qr, prev.qt);
-  upStats(); nextCard();
+  syncProgress(w.ro,yes,prev.qr,prev.qt);
+  upStats();nextCard();
 }
 function speak(rate){
   const w=filtered[idx];
   if(!('speechSynthesis'in window))return;
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(w.ro);
-  u.lang='ro-RO'; u.rate=rate;
-  const voices=speechSynthesis.getVoices();
-  const rv=voices.find(v=>v.lang.startsWith('ro'));
+  u.lang='ro-RO';u.rate=rate;
+  const rv=speechSynthesis.getVoices().find(v=>v.lang.startsWith('ro'));
   if(rv)u.voice=rv;
   speechSynthesis.speak(u);
 }
 
-// ── QUIZ ──
+// ── NAV ──
 function switchPage(p){
-  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
-  const tabs=['flash','quiz','guide','list','admin'];
-  const ti=tabs.indexOf(p);
-  if(ti>=0) document.querySelectorAll('.nav-tab')[ti].classList.add('active');
-  document.getElementById('page-'+p).classList.add('active');
+  ['flash','quiz','guide','list','admin'].forEach((s,i)=>{
+    document.querySelectorAll('.nav-tab')[i].classList.toggle('active',s===p);
+    document.getElementById('page-'+s).classList.toggle('active',s===p);
+  });
   if(p==='quiz')startQuiz();
   if(p==='list')renderList();
   if(p==='admin')loadUsers();
 }
+
+// ── QUIZ ──
 function setQMode(m){
   qMode=m;
   document.getElementById('m-zh').classList.toggle('active',m==='zh');
   document.getElementById('m-ro').classList.toggle('active',m==='ro');
   startQuiz();
 }
-function startQuiz(){qList=[...W].sort(()=>Math.random()-0.5);qIdx=0;qRight=0;qTotal=0;upStats();renderQuiz();}
+function startQuiz(){
+  if(!W.length)return;
+  qList=[...W].sort(()=>Math.random()-0.5);
+  qIdx=0;qRight=0;qTotal=0;upStats();renderQuiz();
+}
 function renderQuiz(){
   if(qIdx>=qList.length){showResult();return;}
   const w=qList[qIdx];
@@ -782,7 +506,7 @@ function renderQuiz(){
     <div class="opts">${opts.map(o=>{
       const label=qMode==='zh'?o.ro:o.zh;
       const ok=o.ro===w.ro;
-      return`<button class="opt" onclick="answerQ(this,${ok},'${w.ro.replace(/'/g,'\\'+'\'')}')">${label}</button>`;
+      return`<button class="opt" onclick="answerQ(this,${ok},'${w.ro.replace(/'/g,"\\'")}')">${label}</button>`;
     }).join('')}</div>
     <div class="quiz-fb" id="qfb"></div>
     <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
@@ -792,10 +516,9 @@ function answerQ(btn,ok,ro){
   qTotal++;
   if(ok){btn.classList.add('correct');document.getElementById('qfb').style.color='var(--green-text)';document.getElementById('qfb').textContent='正确！';qRight++;}
   else{btn.classList.add('wrong');btn.parentElement.querySelectorAll('.opt').forEach(b=>{if(b.textContent===ro)b.classList.add('correct');});document.getElementById('qfb').style.color='var(--red-text)';document.getElementById('qfb').textContent='错误，答案已标出';}
-  // sync quiz stats
   const w=qList[qIdx];
   const prev=progressMap[w.ro]||{known:false,qr:0,qt:0};
-  syncProgress(w.ro, prev.known, (prev.qr||0)+(ok?1:0), (prev.qt||0)+1);
+  syncProgress(w.ro,prev.known,(prev.qr||0)+(ok?1:0),(prev.qt||0)+1);
   upStats();
   document.getElementById('qnxt').style.display='block';
 }
@@ -807,30 +530,30 @@ function showResult(){
 
 // ── WORD LIST ──
 function renderList(){
+  if(!W.length)return;
   const q=(document.getElementById('search-input')||{value:''}).value.toLowerCase();
-  const f=W.filter(w=>!q||w.zh.includes(q)||w.ro.toLowerCase().includes(q)||w.cat.includes(q));
-  document.getElementById('word-list').innerHTML=f.slice(0,150).map(w=>{
+  const f=W.filter(w=>!q||w.zh.includes(q)||w.ro.toLowerCase().includes(q)||(w.cat||'').includes(q));
+  document.getElementById('word-list').innerHTML=f.slice(0,200).map(w=>{
     const p=progressMap[w.ro];
     return`<div class="word-row">
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="word-zh">${w.zh}</div>
         <div class="word-ro">${w.ro}</div>
-        <div class="word-ipa">[${w.ipa}] · ${w.hint}</div>
+        <div class="word-ipa">[${w.ipa||w.ro}] · ${w.hint||''}</div>
       </div>
-      <div style="display:flex;align-items:center">
-        <div class="word-cat">${w.cat}</div>
+      <div style="display:flex;align-items:center;flex-shrink:0">
+        <div class="word-cat">${w.cat||''}</div>
         <div class="word-known${p?.known?' yes':''}"></div>
       </div>
     </div>`;
-  }).join('')+(f.length>150?'<div style="text-align:center;padding:12px;font-size:13px;color:#9ca3af">搜索缩小范围查看更多</div>':'');
+  }).join('')+(f.length>200?`<div style="text-align:center;padding:12px;font-size:13px;color:var(--text3)">显示前200条，请搜索缩小范围</div>`:'');
 }
 
 // ── ADMIN ──
 async function loadUsers(){
-  document.getElementById('users-container').innerHTML='<div class="loading">加载中...</div>';
-  const {data,error} = await sb.from('profiles').select('*').order('created_at',{ascending:false});
-  if(error||!data){document.getElementById('users-container').innerHTML='<div class="empty-state">加载失败，请刷新</div>';return;}
-  if(!data.length){document.getElementById('users-container').innerHTML='<div class="empty-state">暂无用户</div>';return;}
+  document.getElementById('users-container').innerHTML='<div class="empty-state">加载中...</div>';
+  const {data,error}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
+  if(error||!data){document.getElementById('users-container').innerHTML='<div class="empty-state">加载失败</div>';return;}
   document.getElementById('users-container').innerHTML=`<div class="user-table">${data.map(u=>`
     <div class="user-row">
       <div style="flex:1;min-width:0">
@@ -842,13 +565,11 @@ async function loadUsers(){
       ${u.role==='user'?`<button class="admin-btn revoke" onclick="setRole('${u.id}','pending')">撤销</button>`:''}
     </div>`).join('')}</div>`;
 }
-
-async function setRole(uid, role){
+async function setRole(uid,role){
   await sb.from('profiles').update({role}).eq('id',uid);
   await loadUsers();
 }
 
-// ── INIT ──
 if(window.speechSynthesis){speechSynthesis.onvoiceschanged=()=>{};}
 init();
 </script>
