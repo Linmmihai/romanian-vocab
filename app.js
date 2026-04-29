@@ -85,10 +85,10 @@ async function loadProgress() {
 function upStats() {
   const k = Object.values(progressMap).filter(p => p.known).length;
   document.getElementById('s-known').textContent = k;
-  document.getElementById('s-right').textContent = qRight;
-  document.getElementById('s-pct').textContent = (qTotal > 0 ? Math.round(qRight / qTotal * 100) : 0) + '%';
-  // 同步错题本徽标
   const wbCount = getWrongWords().length;
+  document.getElementById('s-wrong').textContent = wbCount;
+  const masteryPct = W.length > 0 ? Math.round(k / W.length * 100) : 0;
+  document.getElementById('s-pct').textContent = masteryPct + '%';
   const badge = document.getElementById('wb-tab-badge');
   if (badge) {
     badge.textContent = wbCount;
@@ -123,7 +123,7 @@ function switchPage(p) {
     document.querySelectorAll('.nav-tab')[i].classList.toggle('active', s === p);
     document.getElementById('page-' + s).classList.toggle('active', s === p);
   });
-  if (p === 'quiz') startQuiz();
+  if (p === 'quiz') showQuizSetup();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
   if (p === 'admin') { loadAdminReports(); loadAdminUsers(); }
@@ -344,16 +344,40 @@ async function answerWb(correct) {
 
 // ── 测验模式 ──────────────────────────────────────────────
 
+let qSize = 20; // 每轮题目数，默认20
+
 function setQMode(m) {
   qMode = m;
   document.getElementById('m-zh').classList.toggle('active', m === 'zh');
   document.getElementById('m-ro').classList.toggle('active', m === 'ro');
-  startQuiz();
+  showQuizSetup();
+}
+
+function setQSize(n) {
+  qSize = n;
+  document.querySelectorAll('.qsize-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.n) === n)
+  );
+}
+
+function showQuizSetup() {
+  document.getElementById('quiz-area').innerHTML = `
+    <div style="text-align:center;padding:1.5rem 0">
+      <div style="font-size:15px;font-weight:600;margin-bottom:1rem;color:var(--text)">选择本轮题目数</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem">
+        <button class="qsize-btn${qSize===20?' active':''}" data-n="20" onclick="setQSize(20)">20题</button>
+        <button class="qsize-btn${qSize===50?' active':''}" data-n="50" onclick="setQSize(50)">50题</button>
+        <button class="qsize-btn${qSize===100?' active':''}" data-n="100" onclick="setQSize(100)">100题</button>
+        <button class="qsize-btn${qSize===0?' active':''}" data-n="0" onclick="setQSize(0)">全部(${W.length}题)</button>
+      </div>
+      <button class="btn-primary" style="max-width:200px" onclick="startQuiz()">开始测验 →</button>
+    </div>`;
 }
 
 function startQuiz() {
   if (!W.length) return;
-  qList = [...W].sort(() => Math.random() - 0.5);
+  const pool = [...W].sort(() => Math.random() - 0.5);
+  qList = qSize > 0 ? pool.slice(0, qSize) : pool;
   qIdx = 0;
   qRoundRight = 0;
   qRoundTotal = 0;
@@ -366,9 +390,18 @@ function renderQuiz() {
   const wrongs = W.filter(x => x.ro !== w.ro).sort(() => Math.random() - 0.5).slice(0, 3);
   const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
   const qText = qMode === 'zh' ? w.zh : w.ro;
+  const pct = Math.round(qIdx / qList.length * 100);
+  const livePct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
   document.getElementById('quiz-area').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;color:var(--text2)">
+      <span>第 ${qIdx + 1} / ${qList.length} 题</span>
+      <span style="color:${livePct>=60?'var(--green-text)':'var(--red-text)'}">答对 ${qRoundRight}/${qRoundTotal}${qRoundTotal>0?' ('+livePct+'%)':''}</span>
+    </div>
+    <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
+    </div>
     <div class="quiz-q">${qText}</div>
-    <div class="quiz-sub">${qMode === 'zh' ? '选择对应的罗马尼亚语' : '选择对应的中文'} · 第${qIdx + 1}/${qList.length}题</div>
+    <div class="quiz-sub">${qMode === 'zh' ? '选择对应的罗马尼亚语' : '选择对应的中文'}</div>
     <div class="opts">${opts.map(o => {
       const label = qMode === 'zh' ? o.ro : o.zh;
       const ok = o.ro === w.ro;
