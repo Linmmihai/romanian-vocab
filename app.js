@@ -23,6 +23,14 @@ let qTotal = 0;
 let editingWordId = null;
 let editingReportId = null;
 
+// 错题本状态
+let wbList = [];      // 错题列表
+let wbIdx = 0;
+let wbFlipped = false;
+let wbStreaks = {};   // word_ro -> 当前连续答对次数（错题本专用）
+let wbGraduated = 0; // 本次会话毕业词数
+const WB_GRADUATE = 3; // 连续答对几次移出错题本
+
 // ── 入口 ─────────────────────────────────────────────────
 
 async function init() {
@@ -77,6 +85,13 @@ function upStats() {
   document.getElementById('s-known').textContent = k;
   document.getElementById('s-right').textContent = qRight;
   document.getElementById('s-pct').textContent = (qTotal > 0 ? Math.round(qRight / qTotal * 100) : 0) + '%';
+  // 同步错题本徽标
+  const wbCount = getWrongWords().length;
+  const badge = document.getElementById('wb-tab-badge');
+  if (badge) {
+    badge.textContent = wbCount;
+    badge.style.display = wbCount > 0 ? 'inline' : 'none';
+  }
 }
 
 // ── 进度同步 ──────────────────────────────────────────────
@@ -102,12 +117,13 @@ async function syncProgress(wordRo, known, qr, qt) {
 // ── 导航 ─────────────────────────────────────────────────
 
 function switchPage(p) {
-  ['flash', 'quiz', 'guide', 'list', 'admin'].forEach((s, i) => {
+  ['flash', 'wrongbook', 'quiz', 'guide', 'list', 'admin'].forEach((s, i) => {
     document.querySelectorAll('.nav-tab')[i].classList.toggle('active', s === p);
     document.getElementById('page-' + s).classList.toggle('active', s === p);
   });
   if (p === 'quiz') startQuiz();
   if (p === 'list') renderList();
+  if (p === 'wrongbook') initWrongbook();
   if (p === 'admin') { loadAdminReports(); loadAdminUsers(); }
 }
 
@@ -178,6 +194,150 @@ function speak(rate) {
   const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
   if (rv) u.voice = rv;
   speechSynthesis.speak(u);
+}
+
+// ── 错题本 ────────────────────────────────────────────────
+
+/**
+ * 判断一个词是否是错题：答题总数>=2 且 答错次数 > 答对次数
+ */
+function isWrongWord(wordRo) {
+  const p = progressMap[wordRo];
+  if (!p || !p.qt || p.qt < 2) return false;
+  const wrong = p.qt - (p.qr || 0);
+  return wrong > (p.qr || 0);
+}
+
+/**
+ * 获取当前错题列表
+ */
+function getWrongWords() {
+  return W.filter(w => isWrongWord(w.ro));
+}
+
+/**
+ * 初始化/刷新错题本
+ */
+function initWrongbook() {
+  wbList = getWrongWords();
+  wbIdx = 0;
+  wbFlipped = false;
+  wbStreaks = {};
+  wbGraduated = 0;
+  renderWrongbookStats();
+  renderWrongbookCard();
+}
+
+function renderWrongbookStats() {
+  const total = getWrongWords().length;
+  document.getElementById('wb-total').textContent = total;
+  document.getElementById('wb-graduated').textContent = wbGraduated;
+  document.getElementById('wb-tab-badge').textContent = total;
+  document.getElementById('wb-tab-badge').style.display = total > 0 ? 'inline' : 'none';
+}
+
+function renderWrongbookCard() {
+  const empty = document.getElementById('wb-empty');
+  const content = document.getElementById('wb-content');
+
+  if (!wbList.length) {
+    empty.style.display = 'flex';
+    content.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  content.style.display = 'block';
+
+  const w = wbList[wbIdx];
+  const p = progressMap[w.ro] || {};
+  const wrongCount = (p.qt || 0) - (p.qr || 0);
+  const streak = wbStreaks[w.ro] || 0;
+
+  document.getElementById('wb-cat').textContent = w.cat || '';
+  document.getElementById('wb-cat2').textContent = w.cat || '';
+  document.getElementById('wb-zh').textContent = w.zh;
+  document.getElementById('wb-ro').textContent = w.ro;
+  document.getElementById('wb-ipa').textContent = w.ipa || w.ro;
+  document.getElementById('wb-phint').textContent = w.hint || '';
+  document.getElementById('wb-count').textContent = (wbIdx + 1) + ' / ' + wbList.length;
+  document.getElementById('wb-wrong-count').textContent = `答错 ${wrongCount} 次`;
+  document.getElementById('wb-streak').textContent = streak > 0 ? `连续答对 ${streak}/${WB_GRADUATE}` : '';
+  document.getElementById('wb-streak').style.color = streak > 0 ? 'var(--green-text)' : '';
+
+  // 重置卡片翻转
+  wbFlipped = false;
+  document.getElementById('wb-card').classList.remove('flipped');
+}
+
+function flipWbCard() {
+  wbFlipped = !wbFlipped;
+  document.getElementById('wb-card').classList.toggle('flipped', wbFlipped);
+}
+
+function nextWbCard() {
+  wbIdx = (wbIdx + 1) % wbList.length;
+  wbFlipped = false;
+  document.getElementById('wb-card').classList.remove('flipped');
+  renderWrongbookCard();
+}
+
+function prevWbCard() {
+  wbIdx = (wbIdx - 1 + wbList.length) % wbList.length;
+  wbFlipped = false;
+  document.getElementById('wb-card').classList.remove('flipped');
+  renderWrongbookCard();
+}
+
+function speakWb(rate) {
+  const w = wbList[wbIdx];
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(w.ro);
+  u.lang = 'ro-RO'; u.rate = rate;
+  const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
+  if (rv) u.voice = rv;
+  speechSynthesis.speak(u);
+}
+
+/**
+ * 在错题本中答题
+ * @param {boolean} correct
+ */
+async function answerWb(correct) {
+  const w = wbList[wbIdx];
+  const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
+
+  // 更新进度
+  const newQr = (prev.qr || 0) + (correct ? 1 : 0);
+  const newQt = (prev.qt || 0) + 1;
+  await syncProgress(w.ro, prev.known, newQr, newQt);
+
+  if (correct) {
+    // 连击+1
+    wbStreaks[w.ro] = (wbStreaks[w.ro] || 0) + 1;
+    if (wbStreaks[w.ro] >= WB_GRADUATE) {
+      // 毕业！移出错题本
+      wbGraduated++;
+      showToast(`🎓 "${w.zh}" 已从错题本移出！`);
+      wbList.splice(wbIdx, 1);
+      if (wbList.length === 0) { renderWrongbookCard(); renderWrongbookStats(); return; }
+      wbIdx = wbIdx % wbList.length;
+      renderWrongbookStats();
+      renderWrongbookCard();
+      return;
+    } else {
+      showToast(`✓ 正确！连续答对 ${wbStreaks[w.ro]}/${WB_GRADUATE}`);
+    }
+  } else {
+    // 答错重置连击
+    wbStreaks[w.ro] = 0;
+    showToast('✗ 再来一次，加油！');
+  }
+
+  renderWrongbookStats();
+  // 自动跳下一张
+  setTimeout(() => nextWbCard(), 800);
 }
 
 // ── 测验模式 ──────────────────────────────────────────────
