@@ -17,8 +17,10 @@ let curCat = '全部';
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qList = [];
 let qIdx = 0;
-let qRight = 0;
-let qTotal = 0;
+let qRight = 0;       // 本次会话累计答对（不重置）
+let qTotal = 0;       // 本次会话累计答题（不重置）
+let qRoundRight = 0;  // 本轮答对（用于显示结算）
+let qRoundTotal = 0;  // 本轮答题
 
 let editingWordId = null;
 let editingReportId = null;
@@ -352,8 +354,9 @@ function setQMode(m) {
 function startQuiz() {
   if (!W.length) return;
   qList = [...W].sort(() => Math.random() - 0.5);
-  qIdx = 0; qRight = 0; qTotal = 0;
-  upStats();
+  qIdx = 0;
+  qRoundRight = 0;
+  qRoundTotal = 0;
   renderQuiz();
 }
 
@@ -378,11 +381,13 @@ function renderQuiz() {
 function answerQ(btn, ok, ro) {
   btn.parentElement.querySelectorAll('.opt').forEach(b => b.style.pointerEvents = 'none');
   qTotal++;
+  qRoundTotal++;
   if (ok) {
     btn.classList.add('correct');
     document.getElementById('qfb').style.color = 'var(--green-text)';
     document.getElementById('qfb').textContent = '正确！';
     qRight++;
+    qRoundRight++;
   } else {
     btn.classList.add('wrong');
     btn.parentElement.querySelectorAll('.opt').forEach(b => { if (b.textContent === ro) b.classList.add('correct'); });
@@ -391,7 +396,11 @@ function answerQ(btn, ok, ro) {
   }
   const w = qList[qIdx];
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
-  syncProgress(w.ro, prev.known, (prev.qr || 0) + (ok ? 1 : 0), (prev.qt || 0) + 1);
+  const newQr = (prev.qr || 0) + (ok ? 1 : 0);
+  const newQt = (prev.qt || 0) + 1;
+  // 立即更新本地 progressMap，确保错题本判断正确
+  progressMap[w.ro] = { known: prev.known, qr: newQr, qt: newQt };
+  syncProgress(w.ro, prev.known, newQr, newQt);
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -399,12 +408,17 @@ function answerQ(btn, ok, ro) {
 function nextQ() { qIdx++; renderQuiz(); }
 
 function showResult() {
-  const pct = Math.round(qRight / qTotal * 100);
+  const pct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
+  const wrongCount = getWrongWords().length;
   document.getElementById('quiz-area').innerHTML = `
     <div class="result-box">
-      <div class="result-score">${qRight}/${qTotal}</div>
-      <div class="result-label">正确率 ${pct}% · ${pct >= 80 ? '优秀🎉' : pct >= 60 ? '良好👍' : '继续加油💪'}</div>
-      <button class="restart-btn" onclick="startQuiz()">再来一次</button>
+      <div class="result-score">${qRoundRight}/${qRoundTotal}</div>
+      <div class="result-label">本轮正确率 ${pct}% · ${pct >= 80 ? '优秀🎉' : pct >= 60 ? '良好👍' : '继续加油💪'}</div>
+      ${wrongCount > 0 ? `<div style="font-size:13px;color:var(--red-text);margin-bottom:16px">错题本有 ${wrongCount} 个词待练习</div>` : ''}
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="restart-btn" onclick="startQuiz()">再来一轮</button>
+        ${wrongCount > 0 ? `<button class="restart-btn" style="border-color:var(--red);color:var(--red-text)" onclick="switchPage('wrongbook')">去错题本 →</button>` : ''}
+      </div>
     </div>`;
 }
 
