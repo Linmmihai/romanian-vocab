@@ -383,6 +383,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="page" id="page-admin">
     <div class="admin-section">
       <div class="admin-section-header">
+        <span class="admin-section-title">📚 词库管理</span>
+        <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="openAddWordModal()">+ 添加词汇</button>
+      </div>
+      <div style="padding:12px 14px;font-size:13px;color:var(--text2)">
+        在下方「词汇表」页面可以对每个词进行编辑和删除。点击「+ 添加词汇」可以单条或批量添加新词。
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-header">
         <span class="admin-section-title">⚠ 用户报错 <span id="report-count-badge" style="font-size:12px;color:var(--red);font-weight:600"></span></span>
         <button class="btn-sm" onclick="loadAdminReports()">刷新</button>
       </div>
@@ -440,6 +450,56 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeEditModal()">取消</button>
       <button class="btn-save" id="em-submit" onclick="saveEdit()">保存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 添加词汇弹窗（管理员） ────────────────────────────── -->
+<div class="modal-overlay" id="add-word-modal" style="display:none" onclick="if(event.target===this)closeAddWordModal()">
+  <div class="modal">
+    <div class="modal-title">📚 添加词汇 <button class="modal-close" onclick="closeAddWordModal()">✕</button></div>
+
+    <!-- 模式切换 -->
+    <div class="auth-tabs" style="margin-bottom:1.2rem">
+      <button class="aw-tab auth-tab active" onclick="switchAddMode('single')">逐条添加</button>
+      <button class="aw-tab auth-tab" onclick="switchAddMode('bulk')">批量粘贴</button>
+    </div>
+    <input type="hidden" id="aw-mode" value="single">
+
+    <!-- 单条添加 -->
+    <div id="aw-single">
+      <div class="form-group"><label>中文 <span style="color:var(--red)">*</span></label><input type="text" id="aw-zh" placeholder="例：苹果"></div>
+      <div class="form-group"><label>罗马尼亚语 <span style="color:var(--red)">*</span></label><input type="text" id="aw-ro" placeholder="例：Măr"></div>
+      <div class="form-group"><label>音标（大写标重读，可选）</label><input type="text" id="aw-ipa" placeholder="例：mər"></div>
+      <div class="form-group"><label>发音提示（可选）</label><input type="text" id="aw-hint" placeholder="例：ă发'呃'音"></div>
+      <div class="form-group"><label>分类</label>
+        <input type="text" id="aw-cat" placeholder="例：蔬果" list="cat-list">
+        <datalist id="cat-list"></datalist>
+      </div>
+    </div>
+
+    <!-- 批量粘贴 -->
+    <div id="aw-bulk" style="display:none">
+      <div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--blue-text)">
+        每行一个词，用 <strong>|</strong> 分隔：<br>
+        <code style="font-size:12px">中文|罗语|音标|发音提示|分类</code><br>
+        <span style="opacity:0.8">音标、提示、分类可省略，但 | 要保留位置</span>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
+        苹果|Măr|mər|ă发呃|蔬果<br>
+        香蕉|Banană|ba-NA-nə||蔬果<br>
+        跑步|Alergare|a-ler-GA-re||运动
+      </div>
+      <div class="form-group">
+        <label>粘贴词汇（每行一个）</label>
+        <textarea id="aw-bulk-text" placeholder="苹果|Măr|mər|ă发呃|蔬果&#10;香蕉|Banană|ba-NA-nə||蔬果" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
+      </div>
+    </div>
+
+    <div id="aw-result" style="font-size:13px;font-weight:500;min-height:20px;margin-bottom:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddWordModal()">关闭</button>
+      <button class="btn-save" id="aw-submit" onclick="submitAddWord()">保存</button>
     </div>
   </div>
 </div>
