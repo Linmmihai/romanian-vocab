@@ -465,7 +465,8 @@ function renderList() {
   const q = (document.getElementById('search-input') || { value: '' }).value.toLowerCase();
   const f = W.filter(w => !q || w.zh.includes(q) || w.ro.toLowerCase().includes(q) || (w.cat || '').includes(q));
   const editBtn = (w) => userRole === 'admin'
-    ? `<button class="admin-btn edit" style="margin-left:6px;padding:3px 8px;font-size:11px" onclick='openEditModal(${JSON.stringify(w)})'>编辑</button>`
+    ? `<button class="admin-btn edit" style="margin-left:6px;padding:3px 8px;font-size:11px" onclick='openEditModal(${JSON.stringify(w)})'>编辑</button>
+       <button class="admin-btn revoke" style="margin-left:4px;padding:3px 8px;font-size:11px" onclick='deleteWord(${w.id},"${w.zh.replace(/"/g,'&quot;')}")'>删除</button>`
     : '';
   document.getElementById('word-list').innerHTML = f.slice(0, 200).map(w => {
     const p = progressMap[w.ro];
@@ -561,6 +562,102 @@ async function saveEdit() {
     showToast('保存失败：' + e.message);
   }
   btn.disabled = false; btn.textContent = '保存修改';
+}
+
+// ── 管理员：词库管理 ──────────────────────────────────────
+
+function openAddWordModal() {
+  document.getElementById('aw-mode').value = 'single';
+  document.getElementById('aw-single').style.display = 'block';
+  document.getElementById('aw-bulk').style.display = 'none';
+  document.getElementById('aw-zh').value = '';
+  document.getElementById('aw-ro').value = '';
+  document.getElementById('aw-ipa').value = '';
+  document.getElementById('aw-hint').value = '';
+  document.getElementById('aw-cat').value = '';
+  document.getElementById('aw-bulk-text').value = '';
+  document.getElementById('aw-result').textContent = '';
+  document.getElementById('add-word-modal').style.display = 'flex';
+}
+
+function closeAddWordModal() {
+  document.getElementById('add-word-modal').style.display = 'none';
+}
+
+function switchAddMode(mode) {
+  document.getElementById('aw-mode').value = mode;
+  document.getElementById('aw-single').style.display = mode === 'single' ? 'block' : 'none';
+  document.getElementById('aw-bulk').style.display = mode === 'bulk' ? 'block' : 'none';
+  document.querySelectorAll('.aw-tab').forEach((b, i) =>
+    b.classList.toggle('active', (i === 0 && mode === 'single') || (i === 1 && mode === 'bulk'))
+  );
+  document.getElementById('aw-result').textContent = '';
+}
+
+async function submitAddWord() {
+  const mode = document.getElementById('aw-mode').value;
+  const btn = document.getElementById('aw-submit');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    let words = [];
+    if (mode === 'single') {
+      const zh = document.getElementById('aw-zh').value.trim();
+      const ro = document.getElementById('aw-ro').value.trim();
+      if (!zh || !ro) { showToast('中文和罗语是必填项'); btn.disabled = false; btn.textContent = '保存'; return; }
+      words = [{ zh, ro, ipa: document.getElementById('aw-ipa').value.trim(), hint: document.getElementById('aw-hint').value.trim(), cat: document.getElementById('aw-cat').value.trim() || '其他' }];
+    } else {
+      // 批量模式：每行 中文|罗语|音标|提示|分类
+      const lines = document.getElementById('aw-bulk-text').value.trim().split('\n').filter(l => l.trim());
+      words = lines.map(line => {
+        const parts = line.split('|').map(s => s.trim());
+        return { zh: parts[0] || '', ro: parts[1] || '', ipa: parts[2] || '', hint: parts[3] || '', cat: parts[4] || '其他' };
+      }).filter(w => w.zh && w.ro);
+      if (!words.length) { showToast('没有解析到有效词汇，请检查格式'); btn.disabled = false; btn.textContent = '保存'; return; }
+    }
+
+    const { inserted, skipped } = await apiInsertWords(words);
+
+    // 刷新本地词库
+    W = await apiLoadWords();
+    filtered = curCat === '全部' ? [...W] : W.filter(w => w.cat === curCat);
+    document.getElementById('s-total').textContent = W.length;
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
+    buildCats(); renderCard(); renderList();
+
+    const msg = `✅ 成功添加 ${inserted} 个词${skipped > 0 ? `，跳过重复 ${skipped} 个` : ''}`;
+    document.getElementById('aw-result').textContent = msg;
+    document.getElementById('aw-result').style.color = 'var(--green-text)';
+    showToast(msg);
+
+    if (mode === 'single') {
+      // 单条模式清空表单，方便继续添加
+      document.getElementById('aw-zh').value = '';
+      document.getElementById('aw-ro').value = '';
+      document.getElementById('aw-ipa').value = '';
+      document.getElementById('aw-hint').value = '';
+    }
+  } catch (e) {
+    document.getElementById('aw-result').textContent = '❌ 失败：' + e.message;
+    document.getElementById('aw-result').style.color = 'var(--red-text)';
+  }
+  btn.disabled = false; btn.textContent = '保存';
+}
+
+// 从词汇表删除词条（管理员）
+async function deleteWord(wordId, wordZh) {
+  if (!confirm(`确定删除「${wordZh}」吗？此操作不可撤销。`)) return;
+  try {
+    await apiDeleteWord(wordId);
+    W = W.filter(w => w.id !== wordId);
+    filtered = curCat === '全部' ? [...W] : W.filter(w => w.cat === curCat);
+    document.getElementById('s-total').textContent = W.length;
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
+    buildCats(); renderCard(); renderList();
+    showToast(`✅ 已删除「${wordZh}」`);
+  } catch (e) {
+    showToast('删除失败：' + e.message);
+  }
 }
 
 // ── 管理员：报错管理 ──────────────────────────────────────
