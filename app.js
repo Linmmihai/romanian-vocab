@@ -201,13 +201,13 @@ function speak(rate) {
 // ── 错题本 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否是错题：答题总数>=2 且 答错次数 > 答对次数
+ * 判断一个词是否是错题：答错过至少1次，且答错次数 >= 答对次数
  */
 function isWrongWord(wordRo) {
   const p = progressMap[wordRo];
-  if (!p || !p.qt || p.qt < 2) return false;
-  const wrong = p.qt - (p.qr || 0);
-  return wrong > (p.qr || 0);
+  if (!p || !p.qt) return false;
+  const wrong = (p.qt || 0) - (p.qr || 0);
+  return wrong >= 1 && wrong >= (p.qr || 0);
 }
 
 /**
@@ -405,13 +405,13 @@ function renderQuiz() {
     <div class="opts">${opts.map(o => {
       const label = qMode === 'zh' ? o.ro : o.zh;
       const ok = o.ro === w.ro;
-      return `<button class="opt" onclick="answerQ(this,${ok},'${w.ro.replace(/'/g, "\\'")}')">${label}</button>`;
+      return `<button class="opt" onclick="answerQ(this,${ok},'${w.ro.replace(/'/g, "\\'")}','${w.zh.replace(/'/g, "\\'")}')">${label}</button>`;
     }).join('')}</div>
     <div class="quiz-fb" id="qfb"></div>
     <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
 }
 
-function answerQ(btn, ok, ro) {
+function answerQ(btn, ok, ro, zh) {
   btn.parentElement.querySelectorAll('.opt').forEach(b => b.style.pointerEvents = 'none');
   qTotal++;
   qRoundTotal++;
@@ -423,7 +423,11 @@ function answerQ(btn, ok, ro) {
     qRoundRight++;
   } else {
     btn.classList.add('wrong');
-    btn.parentElement.querySelectorAll('.opt').forEach(b => { if (b.textContent === ro) b.classList.add('correct'); });
+    // 根据模式匹配正确答案：中文模式按钮显示罗语，罗语模式按钮显示中文
+    const correctLabel = qMode === 'zh' ? ro : zh;
+    btn.parentElement.querySelectorAll('.opt').forEach(b => {
+      if (b.textContent === correctLabel) b.classList.add('correct');
+    });
     document.getElementById('qfb').style.color = 'var(--red-text)';
     document.getElementById('qfb').textContent = '错误，答案已标出';
   }
@@ -431,7 +435,6 @@ function answerQ(btn, ok, ro) {
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (ok ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  // 立即更新本地 progressMap，确保错题本判断正确
   progressMap[w.ro] = { known: prev.known, qr: newQr, qt: newQt };
   syncProgress(w.ro, prev.known, newQr, newQt);
   upStats();
