@@ -92,6 +92,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .qmode-bar{display:flex;gap:8px;margin-bottom:1rem}
 .qmode-btn{flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:500}
 .qmode-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue)}
+.qsize-btn{padding:8px 18px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;cursor:pointer;background:white;color:var(--text2);font-weight:500;transition:all .15s}
+.qsize-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue);font-weight:600}
+.qsize-btn:hover{background:var(--bg2)}
 .quiz-q{font-size:28px;font-weight:600;text-align:center;margin:1.5rem 0 6px}
 .quiz-sub{font-size:13px;text-align:center;color:var(--text2);margin-bottom:1.5rem}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
@@ -238,8 +241,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stats-grid">
       <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
       <div class="stat"><div class="stat-n" id="s-known">0</div><div class="stat-l">已掌握</div></div>
-      <div class="stat"><div class="stat-n" id="s-right">0</div><div class="stat-l">答对</div></div>
-      <div class="stat"><div class="stat-n" id="s-pct">0%</div><div class="stat-l">正确率</div></div>
+      <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">错题数</div></div>
+      <div class="stat"><div class="stat-n" id="s-pct">0%</div><div class="stat-l">掌握率</div></div>
     </div>
     <div class="cat-bar" id="cat-bar"></div>
     <div id="flash-loading" class="loading-screen">
