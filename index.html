@@ -226,6 +226,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="switchPage('flash')">卡片记忆</button>
+    <button class="nav-tab" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
     <button class="nav-tab" onclick="switchPage('quiz')">测验模式</button>
     <button class="nav-tab" onclick="switchPage('guide')">发音指南</button>
     <button class="nav-tab" onclick="switchPage('list')">词汇表</button>
@@ -276,6 +277,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="know-btns">
         <button class="know-no" onclick="markCard(false)">✕ 不认识</button>
         <button class="know-yes" onclick="markCard(true)">✓ 认识了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 错题本 -->
+  <div class="page" id="page-wrongbook">
+    <!-- 统计栏 -->
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat"><div class="stat-n" id="wb-total">0</div><div class="stat-l">错题数</div></div>
+      <div class="stat"><div class="stat-n" style="font-size:14px;padding-top:4px">连对3次</div><div class="stat-l">移出条件</div></div>
+      <div class="stat"><div class="stat-n" id="wb-graduated" style="color:var(--green-text)">0</div><div class="stat-l">已毕业</div></div>
+    </div>
+
+    <!-- 空状态 -->
+    <div id="wb-empty" class="loading-screen" style="display:none">
+      <div style="font-size:48px">🎉</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text)">错题本是空的！</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">去测验模式做题，答错的词会自动出现在这里</div>
+      <button class="btn-sm" style="margin-top:8px" onclick="switchPage('quiz')">去测验 →</button>
+    </div>
+
+    <!-- 卡片内容 -->
+    <div id="wb-content" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;color:var(--red-text);font-weight:600" id="wb-wrong-count"></span>
+        <span style="font-size:13px;font-weight:600" id="wb-streak"></span>
+      </div>
+      <div class="card-wrap">
+        <div class="card" id="wb-card" onclick="flipWbCard()">
+          <div class="card-face">
+            <div class="card-cat" id="wb-cat"></div>
+            <div class="card-hint-txt">点击翻转 · 记住后再作答</div>
+            <div class="card-zh" id="wb-zh"></div>
+          </div>
+          <div class="card-face card-back">
+            <div class="card-cat" id="wb-cat2"></div>
+            <div class="card-ro" id="wb-ro"></div>
+            <div class="ph-box">
+              <div class="ph-ipa" id="wb-ipa"></div>
+              <div class="ph-hint" id="wb-phint"></div>
+            </div>
+            <div class="spk-row">
+              <button class="spk" onclick="event.stopPropagation();speakWb(1)">▶ 正常</button>
+              <button class="spk slow" onclick="event.stopPropagation();speakWb(0.45)">▶ 慢速</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="nav-btn" onclick="prevWbCard()">◀ 上一个</button>
+        <span class="counter" id="wb-count"></span>
+        <button class="nav-btn" onclick="nextWbCard()">下一个 ▶</button>
+      </div>
+      <!-- 作答按钮 -->
+      <div style="margin-bottom:10px;text-align:center;font-size:13px;color:var(--text2)">翻看答案后作答：</div>
+      <div class="know-btns">
+        <button class="know-no" onclick="answerWb(false)">✕ 还不会</button>
+        <button class="know-yes" onclick="answerWb(true)">✓ 记住了</button>
       </div>
     </div>
   </div>
