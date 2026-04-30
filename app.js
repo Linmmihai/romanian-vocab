@@ -227,19 +227,21 @@ async function renderCalendar() {
     const dateStr = d.toISOString().slice(0, 10);
     const log = logMap[dateStr];
     const isToday = i === 0;
-    const label = i === 0 ? '今' : (d.getMonth() + 1) + '/' + d.getDate();
-    let bg = 'var(--bg3)';
-    let tc = 'var(--text3)';
-    let title = label;
-    if (log) {
-      const pct = Math.min(1, log.new_words / (log.goal || dailyGoal));
-      if (log.completed) { bg = 'var(--green)'; tc = 'white'; }
-      else if (log.new_words > 0) { bg = '#bbf7d0'; tc = 'var(--green-text)'; }
-      title = `${label}\n${log.new_words}词`;
-    }
-    days.push(`<div title="${title}" style="width:36px;height:36px;border-radius:8px;background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:${tc};font-weight:${isToday ? '700' : '400'};border:${isToday ? '2px solid var(--blue)' : 'none'}">
+    const label = isToday ? '今' : (d.getMonth() + 1) + '/' + d.getDate();
+
+    // 今天用实时数据，历史用数据库
+    const newWords = isToday ? todayNewWords : (log?.new_words || 0);
+    const goal = isToday ? dailyGoal : (log?.goal || dailyGoal);
+    const completed = isToday ? (todayNewWords >= dailyGoal) : (log?.completed || false);
+
+    let bg = 'var(--bg3)', tc = 'var(--text3)';
+    if (completed) { bg = 'var(--green)'; tc = 'white'; }
+    else if (newWords > 0) { bg = '#bbf7d0'; tc = 'var(--green-text)'; }
+
+    const todayAttr = isToday ? 'data-today="1"' : '';
+    days.push(`<div ${todayAttr} title="${label}: ${newWords}词 / 目标${goal}词" style="width:36px;height:36px;border-radius:8px;background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:${tc};font-weight:${isToday ? '700' : '400'};border:${isToday ? '2px solid var(--blue)' : 'none'};cursor:default">
       <span>${label}</span>
-      ${log && log.new_words > 0 ? `<span style="font-size:9px">${log.new_words}</span>` : ''}
+      <span class="cal-sub" style="font-size:9px">${newWords > 0 ? newWords : ''}</span>
     </div>`);
   }
   el.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">${days.join('')}</div>`;
@@ -279,22 +281,43 @@ function renderCard() {
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
-  // 翻到背面时，算作「见过这个词」，计入今日新词
-  if (flipped) {
-    const w = filtered[idx];
-    const p = progressMap[w.ro];
-    // 只有从未答过题（unknown）的词才算新词
-    if (!todaySeenWords.has(w.ro) && (!p || calcLevel(p.qr, p.qt) === 'unknown')) {
-      todaySeenWords.add(w.ro);
-      todayNewWords++;
-      apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
-      renderDailyGoal();
-      if (todayNewWords === dailyGoal) showToast('🎉 恭喜！今日目标达成！');
+}
+
+/**
+ * 记录当前词为「今日已学」并更新进度条
+ * 只要点了下一个/认识了/不认识 就算学了一个词（不限于新词）
+ */
+async function recordDailyWord() {
+  const w = filtered[idx];
+  if (!todaySeenWords.has(w.ro)) {
+    todaySeenWords.add(w.ro);
+    todayNewWords++;
+    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+    renderDailyGoal();
+    // 更新日历格子颜色（今天那格）
+    updateTodayCalendarCell();
+    if (todayNewWords === dailyGoal) {
+      showToast('🎉 恭喜！今日目标达成！');
     }
   }
 }
 
+/**
+ * 只更新今天那个格子的颜色，不重新请求数据库
+ */
+function updateTodayCalendarCell() {
+  const cells = document.querySelectorAll('#calendar-container [data-today]');
+  cells.forEach(cell => {
+    const done = todayNewWords >= dailyGoal;
+    cell.style.background = done ? 'var(--green)' : (todayNewWords > 0 ? '#bbf7d0' : 'var(--bg3)');
+    cell.style.color = done ? 'white' : (todayNewWords > 0 ? 'var(--green-text)' : 'var(--text3)');
+    const sub = cell.querySelector('.cal-sub');
+    if (sub) sub.textContent = todayNewWords > 0 ? todayNewWords : '';
+  });
+}
+
 function nextCard() {
+  recordDailyWord(); // 点"下一个"算学了这个词
   idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
@@ -302,6 +325,7 @@ function nextCard() {
 }
 
 function prevCard() {
+  // 上一个不计入学习，只是浏览
   idx = (idx - 1 + filtered.length) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
@@ -309,11 +333,16 @@ function prevCard() {
 }
 
 function markCard(yes) {
+  recordDailyWord(); // 点"认识了/不认识"算学了这个词
   const w = filtered[idx];
   const prev = progressMap[w.ro] || { qr: 0, qt: 0 };
   syncProgress(w.ro, yes, prev.qr, prev.qt);
   upStats();
-  nextCard();
+  // 自动翻回正面再跳下一张
+  flipped = false;
+  document.getElementById('main-card').classList.remove('flipped');
+  idx = (idx + 1) % filtered.length;
+  renderCard();
 }
 
 function speak(rate) {
