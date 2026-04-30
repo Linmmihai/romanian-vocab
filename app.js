@@ -60,9 +60,18 @@ async function onLogin(user) {
 
   const nickname = profile?.nickname || user.email.split('@')[0];
   dailyGoal = profile?.daily_goal || 10;
+
+  // 先设置目标输入框
+  const goalInput = document.getElementById('goal-input');
+  if (goalInput) goalInput.value = dailyGoal;
+
   showAppScreen(nickname, userRole === 'admin');
 
-  await Promise.all([loadWords(), loadProgress(), loadTodayLog()]);
+  // 按顺序加载：词库 → 进度 → 今日记录，避免互相等待
+  await loadWords();
+  await loadProgress();
+  await loadTodayLog();
+
   if (userRole === 'admin') refreshAdminBadge();
 }
 
@@ -80,8 +89,6 @@ async function loadWords() {
 
   buildCats();
   renderCard();
-  renderList();
-  upStats();
 
   document.getElementById('flash-loading').style.display = 'none';
   document.getElementById('flash-content').style.display = 'block';
@@ -95,8 +102,11 @@ async function loadProgress() {
 async function loadTodayLog() {
   todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
   todayNewWords = todayLog?.new_words || 0;
-  // 恢复今日已见词（无法完整恢复，但进度数字正确）
+  // 全部数据加载完毕，统一渲染
+  upStats();
+  renderList();
   renderDailyGoal();
+  renderCalendar();
 }
 
 // ── 熟练度计算 ────────────────────────────────────────────
