@@ -283,11 +283,10 @@ function renderCard() {
   if (lvEl) { lvEl.textContent = LEVEL_LABEL[lv]; lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
 }
 
-// 点卡片：中文面 → 翻到罗语面；罗语面点击无效（防误触）
+// 点卡片：来回翻转（正面↔罗语面）
 function flipCard() {
-  if (flipped) return; // 已在罗语面，忽略点击
-  flipped = true;
-  document.getElementById('main-card').classList.add('flipped');
+  flipped = !flipped;
+  document.getElementById('main-card').classList.toggle('flipped', flipped);
 }
 
 /**
@@ -298,7 +297,7 @@ async function recordDailyWord() {
   if (!todaySeenWords.has(w.ro)) {
     todaySeenWords.add(w.ro);
     todayNewWords++;
-    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal); // 不 await，后台保存
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
     renderDailyGoal();
     updateTodayCalendarCell();
     if (todayNewWords === dailyGoal) showToast('🎉 恭喜！今日目标达成！');
@@ -319,10 +318,11 @@ function updateTodayCalendarCell() {
   });
 }
 
-// 「认识了」/ 「不认识」— 只在罗语面有效
+// 「认识了」/「不认识」— 无论正反面均可点击
+// 若还在中文面，先翻面让用户看答案；若已在罗语面，直接记录并跳下一张
 function markCard(yes) {
   if (!flipped) {
-    // 还没翻面，先翻面提示用户看答案
+    // 还没看答案，先翻面
     flipCard();
     return;
   }
