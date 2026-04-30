@@ -270,8 +270,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="card-wrap">
         <div class="card" id="main-card" onclick="flipCard()">
           <div class="card-face">
-            <div class="card-cat" id="fc-cat"></div>
-            <div class="card-hint-txt">点击翻转查看罗马尼亚语</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div class="card-cat" id="fc-cat" style="margin-bottom:0"></div>
+              <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
+            </div>
+            <div class="card-hint-txt">点击卡片查看罗马尼亚语</div>
             <div class="card-zh" id="fc-zh"></div>
           </div>
           <div class="card-face card-back">
@@ -292,12 +295,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="card-nav">
         <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
         <span class="counter" id="fc-count"></span>
-        <button class="nav-btn" onclick="nextCard()">下一个 ▶</button>
       </div>
       <div class="know-btns">
         <button class="know-no" onclick="markCard(false)">✕ 不认识</button>
         <button class="know-yes" onclick="markCard(true)">✓ 认识了</button>
       </div>
+      <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--text3)">点击卡片翻面后再作答</div>
     </div>
   </div>
 
