@@ -283,10 +283,12 @@ function renderCard() {
   if (lvEl) { lvEl.textContent = LEVEL_LABEL[lv]; lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
 }
 
-// 点卡片：来回翻转（正面↔罗语面）
+// 点卡片：来回翻转，同时控制按钮显隐
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
+  document.getElementById('know-btns-wrap').style.display = flipped ? 'block' : 'none';
+  document.getElementById('flip-hint').style.display = flipped ? 'none' : 'block';
 }
 
 /**
@@ -318,24 +320,29 @@ function updateTodayCalendarCell() {
   });
 }
 
-// 「认识了」/「不认识」— 只在罗语面显示，直接记录并跳下一张
+// 「认识了」/「不认识」— 按钮在卡片外，无事件冲突
 function markCard(yes) {
   recordDailyWord();
   const w = filtered[idx];
   const prev = progressMap[w.ro] || { qr: 0, qt: 0 };
   syncProgress(w.ro, yes, prev.qr, prev.qt);
   upStats();
+  // 跳下一张，重置为中文面
   idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
+  document.getElementById('know-btns-wrap').style.display = 'none';
+  document.getElementById('flip-hint').style.display = 'block';
   renderCard();
 }
 
-// 「上一个」— 回到上一张的罗语面
+// 「上一个」— 回到上一张的罗语面（同时显示按钮）
 function prevCard() {
   idx = (idx - 1 + filtered.length) % filtered.length;
   flipped = true;
   document.getElementById('main-card').classList.add('flipped');
+  document.getElementById('know-btns-wrap').style.display = 'block';
+  document.getElementById('flip-hint').style.display = 'none';
   renderCard();
 }
 
