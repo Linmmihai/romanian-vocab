@@ -26,12 +26,23 @@ let editingWordId = null;
 let editingReportId = null;
 
 // 错题本状态
-let wbList = [];      // 错题列表
+let wbList = [];
 let wbIdx = 0;
 let wbFlipped = false;
-let wbStreaks = {};   // word_ro -> 当前连续答对次数（错题本专用）
-let wbGraduated = 0; // 本次会话毕业词数
-const WB_GRADUATE = 3; // 连续答对几次移出错题本
+let wbStreaks = {};
+let wbGraduated = 0;
+const WB_GRADUATE = 3;
+
+// 每日目标状态
+let dailyGoal = 10;
+let todayNewWords = 0;      // 今日新学词数（首次翻到背面算学过）
+let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
+let todayLog = null;
+
+// 熟练度规则
+// unknown  → 从未答题
+// learning → 答题次数 ≥ 1，正确率 < 80%
+// mastered → 答题次数 ≥ 3，正确率 ≥ 80%
 
 // ── 入口 ─────────────────────────────────────────────────
 
@@ -48,9 +59,10 @@ async function onLogin(user) {
   if (userRole === 'pending') { showPendingScreen(); return; }
 
   const nickname = profile?.nickname || user.email.split('@')[0];
+  dailyGoal = profile?.daily_goal || 10;
   showAppScreen(nickname, userRole === 'admin');
 
-  await Promise.all([loadWords(), loadProgress()]);
+  await Promise.all([loadWords(), loadProgress(), loadTodayLog()]);
   if (userRole === 'admin') refreshAdminBadge();
 }
 
@@ -80,20 +92,49 @@ async function loadProgress() {
   upStats();
 }
 
+async function loadTodayLog() {
+  todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
+  todayNewWords = todayLog?.new_words || 0;
+  // 恢复今日已见词（无法完整恢复，但进度数字正确）
+  renderDailyGoal();
+}
+
+// ── 熟练度计算 ────────────────────────────────────────────
+
+/**
+ * 根据答题记录计算熟练度
+ * unknown  → 没答过题
+ * learning → 答过但正确率 < 80% 或答题次数 < 3
+ * mastered → 答题次数 ≥ 3 且正确率 ≥ 80%
+ */
+function calcLevel(qr, qt) {
+  if (!qt) return 'unknown';
+  const pct = qr / qt;
+  if (qt >= 3 && pct >= 0.8) return 'mastered';
+  return 'learning';
+}
+
+const LEVEL_LABEL = { unknown: '未学', learning: '学习中', mastered: '已掌握' };
+const LEVEL_COLOR = { unknown: 'var(--text3)', learning: 'var(--yellow)', mastered: 'var(--green)' };
+const LEVEL_BG    = { unknown: 'var(--bg3)', learning: '#fffbeb', mastered: 'var(--green-bg)' };
+const LEVEL_TC    = { unknown: 'var(--text2)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
+
 // ── 统计 ─────────────────────────────────────────────────
 
 function upStats() {
-  const k = Object.values(progressMap).filter(p => p.known).length;
-  document.getElementById('s-known').textContent = k;
+  const vals = Object.values(progressMap);
+  const mastered = vals.filter(p => calcLevel(p.qr, p.qt) === 'mastered').length;
+  const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning').length;
   const wbCount = getWrongWords().length;
+
+  document.getElementById('s-mastered').textContent = mastered;
+  document.getElementById('s-learning').textContent = learning;
   document.getElementById('s-wrong').textContent = wbCount;
-  const masteryPct = W.length > 0 ? Math.round(k / W.length * 100) : 0;
+  const masteryPct = W.length > 0 ? Math.round(mastered / W.length * 100) : 0;
   document.getElementById('s-pct').textContent = masteryPct + '%';
+
   const badge = document.getElementById('wb-tab-badge');
-  if (badge) {
-    badge.textContent = wbCount;
-    badge.style.display = wbCount > 0 ? 'inline' : 'none';
-  }
+  if (badge) { badge.textContent = wbCount; badge.style.display = wbCount > 0 ? 'inline' : 'none'; }
 }
 
 // ── 进度同步 ──────────────────────────────────────────────
@@ -106,14 +147,16 @@ function setSyncBadge(txt, cls) {
 
 async function syncProgress(wordRo, known, qr, qt) {
   setSyncBadge('同步中...', '');
-  progressMap[wordRo] = { known, qr, qt };
+  const level = calcLevel(qr, qt);
+  progressMap[wordRo] = { known, qr, qt, level };
   try {
-    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt);
+    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level);
     setSyncBadge('已保存', 'saved');
   } catch {
     setSyncBadge('同步失败', '');
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
+  upStats();
 }
 
 // ── 导航 ─────────────────────────────────────────────────
@@ -123,10 +166,73 @@ function switchPage(p) {
     document.querySelectorAll('.nav-tab')[i].classList.toggle('active', s === p);
     document.getElementById('page-' + s).classList.toggle('active', s === p);
   });
+  if (p === 'flash') { renderDailyGoal(); renderCalendar(); }
   if (p === 'quiz') showQuizSetup();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
   if (p === 'admin') { loadAdminReports(); loadAdminUsers(); }
+}
+
+// ── 每日目标 ──────────────────────────────────────────────
+
+function renderDailyGoal() {
+  const el = document.getElementById('daily-goal-bar');
+  if (!el) return;
+  const pct = Math.min(100, Math.round(todayNewWords / dailyGoal * 100));
+  const done = todayNewWords >= dailyGoal;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:13px;font-weight:600;color:var(--text)">
+        ${done ? '🎉 今日目标完成！' : '📅 今日目标'}
+      </span>
+      <span style="font-size:13px;color:var(--text2)">${todayNewWords} / ${dailyGoal} 词</span>
+    </div>
+    <div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${done ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
+    </div>`;
+}
+
+async function saveGoalSetting() {
+  const val = parseInt(document.getElementById('goal-input').value);
+  if (!val || val < 1 || val > 100) { showToast('请输入1-100之间的数字'); return; }
+  dailyGoal = val;
+  await apiSetDailyGoal(currentUser.id, val);
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  renderDailyGoal();
+  renderCalendar();
+  showToast('✅ 每日目标已更新');
+}
+
+async function renderCalendar() {
+  const el = document.getElementById('calendar-container');
+  if (!el) return;
+  const logs = await apiGetRecentLogs(currentUser.id, 14);
+  const logMap = {};
+  logs.forEach(l => { logMap[l.log_date] = l; });
+
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const log = logMap[dateStr];
+    const isToday = i === 0;
+    const label = i === 0 ? '今' : (d.getMonth() + 1) + '/' + d.getDate();
+    let bg = 'var(--bg3)';
+    let tc = 'var(--text3)';
+    let title = label;
+    if (log) {
+      const pct = Math.min(1, log.new_words / (log.goal || dailyGoal));
+      if (log.completed) { bg = 'var(--green)'; tc = 'white'; }
+      else if (log.new_words > 0) { bg = '#bbf7d0'; tc = 'var(--green-text)'; }
+      title = `${label}\n${log.new_words}词`;
+    }
+    days.push(`<div title="${title}" style="width:36px;height:36px;border-radius:8px;background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:${tc};font-weight:${isToday ? '700' : '400'};border:${isToday ? '2px solid var(--blue)' : 'none'}">
+      <span>${label}</span>
+      ${log && log.new_words > 0 ? `<span style="font-size:9px">${log.new_words}</span>` : ''}
+    </div>`);
+  }
+  el.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">${days.join('')}</div>`;
 }
 
 // ── 卡片记忆 ──────────────────────────────────────────────
@@ -163,6 +269,19 @@ function renderCard() {
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
+  // 翻到背面时，算作「见过这个词」，计入今日新词
+  if (flipped) {
+    const w = filtered[idx];
+    const p = progressMap[w.ro];
+    // 只有从未答过题（unknown）的词才算新词
+    if (!todaySeenWords.has(w.ro) && (!p || calcLevel(p.qr, p.qt) === 'unknown')) {
+      todaySeenWords.add(w.ro);
+      todayNewWords++;
+      apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+      renderDailyGoal();
+      if (todayNewWords === dailyGoal) showToast('🎉 恭喜！今日目标达成！');
+    }
+  }
 }
 
 function nextCard() {
@@ -464,22 +583,23 @@ function renderList() {
   if (!W.length) return;
   const q = (document.getElementById('search-input') || { value: '' }).value.toLowerCase();
   const f = W.filter(w => !q || w.zh.includes(q) || w.ro.toLowerCase().includes(q) || (w.cat || '').includes(q));
-  const editBtn = (w) => userRole === 'admin'
-    ? `<button class="admin-btn edit" style="margin-left:6px;padding:3px 8px;font-size:11px" onclick='openEditModal(${JSON.stringify(w)})'>编辑</button>
-       <button class="admin-btn revoke" style="margin-left:4px;padding:3px 8px;font-size:11px" onclick='deleteWord(${w.id},"${w.zh.replace(/"/g,'&quot;')}")'>删除</button>`
+  const editBtns = (w) => userRole === 'admin'
+    ? `<button class="admin-btn edit" style="margin-left:4px;padding:3px 8px;font-size:11px" onclick='openEditModal(${JSON.stringify(w)})'>编辑</button>
+       <button class="admin-btn revoke" style="margin-left:2px;padding:3px 8px;font-size:11px" onclick='deleteWord(${w.id},"${w.zh.replace(/"/g, '&quot;')}")'>删除</button>`
     : '';
   document.getElementById('word-list').innerHTML = f.slice(0, 200).map(w => {
-    const p = progressMap[w.ro];
+    const p = progressMap[w.ro] || {};
+    const lv = calcLevel(p.qr, p.qt);
     return `<div class="word-row">
       <div style="flex:1;min-width:0">
         <div class="word-zh">${w.zh}</div>
         <div class="word-ro">${w.ro}</div>
         <div class="word-ipa">[${w.ipa || w.ro}]${w.hint ? ' · ' + w.hint : ''}</div>
       </div>
-      <div style="display:flex;align-items:center;flex-shrink:0">
+      <div style="display:flex;align-items:center;flex-shrink:0;gap:4px">
         <div class="word-cat">${w.cat || ''}</div>
-        <div class="word-known${p?.known ? ' yes' : ''}"></div>
-        ${editBtn(w)}
+        <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${LEVEL_BG[lv]};color:${LEVEL_TC[lv]};white-space:nowrap">${LEVEL_LABEL[lv]}</span>
+        ${editBtns(w)}
       </div>
     </div>`;
   }).join('') + (f.length > 200 ? `<div style="text-align:center;padding:12px;font-size:13px;color:var(--text3)">显示前200条，请搜索缩小范围</div>` : '');
