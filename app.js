@@ -24,6 +24,7 @@ let qRoundTotal = 0;  // 本轮答题
 
 let editingWordId = null;
 let editingReportId = null;
+let flashcardButtonsBound = false;
 
 // 错题本状态
 let wbList = [];
@@ -137,14 +138,19 @@ function upStats() {
   const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning').length;
   const wbCount = getWrongWords().length;
 
-  document.getElementById('s-mastered').textContent = mastered;
-  document.getElementById('s-learning').textContent = learning;
-  document.getElementById('s-wrong').textContent = wbCount;
+  setText('s-mastered', mastered);
+  setText('s-learning', learning);
+  setText('s-wrong', wbCount);
   const masteryPct = W.length > 0 ? Math.round(mastered / W.length * 100) : 0;
-  document.getElementById('s-pct').textContent = masteryPct + '%';
+  setText('s-pct', masteryPct + '%');
 
   const badge = document.getElementById('wb-tab-badge');
   if (badge) { badge.textContent = wbCount; badge.style.display = wbCount > 0 ? 'inline' : 'none'; }
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
 // ── 进度同步 ──────────────────────────────────────────────
@@ -268,6 +274,7 @@ function setCat(c) {
 
 function renderCard() {
   if (!filtered.length) return;
+  bindFlashcardButtons();
   idx = (idx + filtered.length) % filtered.length;
   const w = filtered[idx];
   document.getElementById('fc-cat').textContent = w.cat || '';
@@ -288,6 +295,27 @@ function renderCard() {
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
+}
+
+function bindFlashcardButtons() {
+  if (flashcardButtonsBound) return;
+  const knownBtn = document.getElementById('mark-known-btn');
+  const unknownBtn = document.getElementById('mark-unknown-btn');
+  if (!knownBtn || !unknownBtn) return;
+
+  knownBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    markCard(true);
+  });
+
+  unknownBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    markCard(false);
+  });
+
+  flashcardButtonsBound = true;
 }
 
 /**
