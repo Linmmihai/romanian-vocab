@@ -37,6 +37,35 @@ async function apiUpdateWord(wordId, updates) {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * 批量插入词汇，跳过重复（以 ro 字段为唯一键）
+ * @param {Array} words - [{ zh, ro, ipa, hint, cat }]
+ * @returns {{ inserted: number, skipped: number }}
+ */
+async function apiInsertWords(words) {
+  const payload = words.map(w => ({
+    zh: w.zh, ro: w.ro,
+    ipa: w.ipa || '',
+    hint: w.hint || '',
+    cat: w.cat || '其他',
+    level: 'A1-A2'
+  }));
+  const { data, error } = await sb.from('words')
+    .upsert(payload, { onConflict: 'ro', ignoreDuplicates: true })
+    .select();
+  if (error) throw new Error(error.message);
+  return { inserted: data?.length || 0, skipped: words.length - (data?.length || 0) };
+}
+
+/**
+ * 删除一个词条
+ * @param {number} wordId
+ */
+async function apiDeleteWord(wordId) {
+  const { error } = await sb.from('words').delete().eq('id', wordId);
+  if (error) throw new Error(error.message);
+}
+
 // ── 学习进度 ──────────────────────────────────────────────
 
 /**
@@ -48,7 +77,7 @@ async function apiLoadProgress(userId) {
   const { data } = await sb.from('progress').select('*').eq('user_id', userId);
   const map = {};
   (data || []).forEach(r => {
-    map[r.word_ro] = { known: r.known, qr: r.quiz_right, qt: r.quiz_total };
+    map[r.word_ro] = { known: r.known, qr: r.quiz_right, qt: r.quiz_total, level: r.level || 'unknown' };
   });
   return map;
 }
@@ -61,9 +90,12 @@ async function apiLoadProgress(userId) {
  * @param {number} qr - 答对次数
  * @param {number} qt - 总答题次数
  */
-async function apiSaveProgress(userId, wordRo, known, qr, qt) {
+/**
+ * 保存/更新一个词的学习进度（含熟练度 level）
+ */
+async function apiSaveProgress(userId, wordRo, known, qr, qt, level) {
   const { error } = await sb.from('progress').upsert(
-    { user_id: userId, word_ro: wordRo, known, quiz_right: qr || 0, quiz_total: qt || 0, updated_at: new Date().toISOString() },
+    { user_id: userId, word_ro: wordRo, known, quiz_right: qr || 0, quiz_total: qt || 0, level: level || 'unknown', updated_at: new Date().toISOString() },
     { onConflict: 'user_id,word_ro' }
   );
   if (error) throw new Error(error.message);
@@ -140,5 +172,59 @@ async function apiSetUserRole(userId, role) {
  */
 async function apiUpdateNickname(userId, nickname) {
   const { error } = await sb.from('profiles').update({ nickname }).eq('id', userId);
+  if (error) throw new Error(error.message);
+}
+
+// ── 每日学习记录 ──────────────────────────────────────────
+
+/**
+ * 获取今日的学习记录，没有则创建
+ */
+async function apiGetTodayLog(userId, goal) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
+  if (data) return data;
+  // 创建今日记录
+  const { data: created } = await sb.from('daily_log').insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 10, completed: false }).select().single();
+  return created;
+}
+
+/**
+ * 更新今日新词数
+ */
+async function apiUpdateTodayLog(userId, newWords, goal) {
+  const today = new Date().toISOString().slice(0, 10);
+  const completed = newWords >= goal;
+  const { error } = await sb.from('daily_log').upsert(
+    { user_id: userId, log_date: today, new_words: newWords, goal, completed },
+    { onConflict: 'user_id,log_date' }
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * 获取最近N天的学习记录
+ */
+async function apiGetRecentLogs(userId, days = 14) {
+  const { data } = await sb.from('daily_log').select('*')
+    .eq('user_id', userId)
+    .order('log_date', { ascending: false })
+    .limit(days);
+  return data || [];
+}
+
+/**
+ * 获取用户设置的每日目标（存在 profiles 的 metadata 里）
+ */
+async function apiGetDailyGoal(userId) {
+  const { data } = await sb.from('profiles').select('daily_goal').eq('id', userId).single();
+  return data?.daily_goal || 10;
+}
+
+/**
+ * 保存每日目标
+ */
+async function apiSetDailyGoal(userId, goal) {
+  const { error } = await sb.from('profiles').update({ daily_goal: goal }).eq('id', userId);
   if (error) throw new Error(error.message);
 }
