@@ -276,72 +276,73 @@ function renderCard() {
   document.getElementById('fc-ipa').textContent = w.ipa || w.ro;
   document.getElementById('fc-phint').textContent = w.hint || '';
   document.getElementById('fc-count').textContent = (idx + 1) + ' / ' + filtered.length;
+  // 显示熟练度
+  const p = progressMap[w.ro] || {};
+  const lv = calcLevel(p.qr, p.qt);
+  const lvEl = document.getElementById('fc-level');
+  if (lvEl) { lvEl.textContent = LEVEL_LABEL[lv]; lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
 }
 
+// 点卡片：中文面 → 翻到罗语面；罗语面点击无效（防误触）
 function flipCard() {
-  flipped = !flipped;
-  document.getElementById('main-card').classList.toggle('flipped', flipped);
+  if (flipped) return; // 已在罗语面，忽略点击
+  flipped = true;
+  document.getElementById('main-card').classList.add('flipped');
 }
 
 /**
- * 记录当前词为「今日已学」并更新进度条
- * 只要点了下一个/认识了/不认识 就算学了一个词（不限于新词）
+ * 记录当前词为「今日已学」
  */
 async function recordDailyWord() {
   const w = filtered[idx];
   if (!todaySeenWords.has(w.ro)) {
     todaySeenWords.add(w.ro);
     todayNewWords++;
-    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal); // 不 await，后台保存
     renderDailyGoal();
-    // 更新日历格子颜色（今天那格）
     updateTodayCalendarCell();
-    if (todayNewWords === dailyGoal) {
-      showToast('🎉 恭喜！今日目标达成！');
-    }
+    if (todayNewWords === dailyGoal) showToast('🎉 恭喜！今日目标达成！');
   }
 }
 
 /**
- * 只更新今天那个格子的颜色，不重新请求数据库
+ * 只更新今天日历格子颜色，不重新请求数据库
  */
 function updateTodayCalendarCell() {
   const cells = document.querySelectorAll('#calendar-container [data-today]');
   cells.forEach(cell => {
     const done = todayNewWords >= dailyGoal;
-    cell.style.background = done ? 'var(--green)' : (todayNewWords > 0 ? '#bbf7d0' : 'var(--bg3)');
-    cell.style.color = done ? 'white' : (todayNewWords > 0 ? 'var(--green-text)' : 'var(--text3)');
+    cell.style.background = done ? 'var(--green)' : '#bbf7d0';
+    cell.style.color = done ? 'white' : 'var(--green-text)';
     const sub = cell.querySelector('.cal-sub');
-    if (sub) sub.textContent = todayNewWords > 0 ? todayNewWords : '';
+    if (sub) sub.textContent = todayNewWords;
   });
 }
 
-function nextCard() {
-  recordDailyWord(); // 点"下一个"算学了这个词
-  idx = (idx + 1) % filtered.length;
-  flipped = false;
-  document.getElementById('main-card').classList.remove('flipped');
-  renderCard();
-}
-
-function prevCard() {
-  // 上一个不计入学习，只是浏览
-  idx = (idx - 1 + filtered.length) % filtered.length;
-  flipped = false;
-  document.getElementById('main-card').classList.remove('flipped');
-  renderCard();
-}
-
+// 「认识了」/ 「不认识」— 只在罗语面有效
 function markCard(yes) {
-  recordDailyWord(); // 点"认识了/不认识"算学了这个词
+  if (!flipped) {
+    // 还没翻面，先翻面提示用户看答案
+    flipCard();
+    return;
+  }
+  recordDailyWord();
   const w = filtered[idx];
   const prev = progressMap[w.ro] || { qr: 0, qt: 0 };
   syncProgress(w.ro, yes, prev.qr, prev.qt);
   upStats();
-  // 自动翻回正面再跳下一张
+  // 跳到下一张，重置为中文面
+  idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
-  idx = (idx + 1) % filtered.length;
+  renderCard();
+}
+
+// 「上一个」— 回到上一张的罗语面
+function prevCard() {
+  idx = (idx - 1 + filtered.length) % filtered.length;
+  flipped = true;
+  document.getElementById('main-card').classList.add('flipped');
   renderCard();
 }
 
