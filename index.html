@@ -65,7 +65,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-chip{white-space:nowrap;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;transition:all .15s}
 .cat-chip.active{background:var(--text);color:white;border-color:var(--text)}
 .card-wrap{perspective:1000px;margin-bottom:1rem}
-.card{width:100%;min-height:200px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow)}
+.card{width:100%;min-height:260px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow)}
 .card.flipped{transform:rotateY(180deg)}
 .card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
 .card-back{transform:rotateY(180deg);background:var(--bg2)}
@@ -274,7 +274,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
               <div class="card-cat" id="fc-cat" style="margin-bottom:0"></div>
               <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
             </div>
-            <div class="card-hint-txt">点击卡片查看罗马尼亚语</div>
+            <div class="card-hint-txt">点击卡片查看罗马尼亚语 👆</div>
             <div class="card-zh" id="fc-zh"></div>
           </div>
           <div class="card-face card-back">
@@ -287,8 +287,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="spk-row">
               <button class="spk" onclick="event.stopPropagation();speak(1)">▶ 正常</button>
               <button class="spk slow" onclick="event.stopPropagation();speak(0.45)">▶ 慢速</button>
+              <button class="report-btn" style="margin-top:0" onclick="event.stopPropagation();openReportModal()">⚠ 报错</button>
             </div>
-            <button class="report-btn" onclick="event.stopPropagation();openReportModal()">⚠ 报错</button>
+            <!-- 作答按钮放在卡片内部罗语面 -->
+            <div style="display:flex;gap:10px;margin-top:14px;width:100%">
+              <button class="know-no" style="flex:1;padding:9px" onclick="event.stopPropagation();markCard(false)">✕ 不认识</button>
+              <button class="know-yes" style="flex:1;padding:9px" onclick="event.stopPropagation();markCard(true)">✓ 认识了</button>
+            </div>
           </div>
         </div>
       </div>
@@ -296,11 +301,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
         <span class="counter" id="fc-count"></span>
       </div>
-      <div class="know-btns">
-        <button class="know-no" onclick="markCard(false)">✕ 不认识</button>
-        <button class="know-yes" onclick="markCard(true)">✓ 认识了</button>
-      </div>
-      <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--text3)">点击卡片翻面查看答案，再作答</div>
     </div>
   </div>
 
