@@ -318,20 +318,13 @@ function updateTodayCalendarCell() {
   });
 }
 
-// 「认识了」/「不认识」— 无论正反面均可点击
-// 若还在中文面，先翻面让用户看答案；若已在罗语面，直接记录并跳下一张
+// 「认识了」/「不认识」— 只在罗语面显示，直接记录并跳下一张
 function markCard(yes) {
-  if (!flipped) {
-    // 还没看答案，先翻面
-    flipCard();
-    return;
-  }
   recordDailyWord();
   const w = filtered[idx];
   const prev = progressMap[w.ro] || { qr: 0, qt: 0 };
   syncProgress(w.ro, yes, prev.qr, prev.qt);
   upStats();
-  // 跳到下一张，重置为中文面
   idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
