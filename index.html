@@ -131,7 +131,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rank-meta{font-size:12px;color:var(--text2);margin-top:2px}
 .rank-score{text-align:right;font-size:13px;color:var(--text2)}
 .rank-score strong{display:block;font-size:20px;color:var(--text);line-height:1.1}
-/* GUIDE */
+/* DIFFICULTY BAR */
+.diff-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;scrollbar-width:none}
+.diff-bar::-webkit-scrollbar{display:none}
+.diff-chip{white-space:nowrap;padding:6px 14px;border-radius:99px;border:1.5px solid var(--border2);background:white;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;transition:all .2s;display:flex;align-items:center;gap:4px}
+.diff-chip.active{border-color:var(--blue);color:var(--blue-text);background:var(--blue-bg);font-weight:600}
+.diff-chip.locked{opacity:0.5;cursor:not-allowed}
+.diff-chip:hover:not(.locked){background:var(--bg2)}
 .guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
 .guide-title{font-size:14px;font-weight:600;margin-bottom:10px}
 .ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -286,7 +292,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="cat-bar" id="cat-bar"></div>
 
-    <!-- 每日目标进度 -->
+    <!-- 难度选择 -->
+    <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">选择难度 · 掌握当前级别70%解锁下一级</div>
+      <div class="diff-bar" id="difficulty-bar"></div>
+    </div>
     <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)">
       <div id="daily-goal-bar"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
@@ -329,17 +339,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
               <button class="spk slow" onclick="event.stopPropagation();speak(0.45)">▶ 慢速</button>
               <button class="report-btn" style="margin-top:0" onclick="event.stopPropagation();openReportModal()">⚠ 报错</button>
             </div>
-            <!-- 作答按钮放在卡片内部罗语面 -->
-            <div style="display:flex;gap:10px;margin-top:14px;width:100%">
-              <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识</button>
-              <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识了</button>
-            </div>
           </div>
         </div>
       </div>
       <div class="card-nav">
         <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
         <span class="counter" id="fc-count"></span>
+      </div>
+      <!-- 按钮在卡片外，翻面后才显示，完全避免事件冲突 -->
+      <div id="know-btns-wrap" style="display:none">
+        <div class="know-btns">
+          <button class="know-no" onclick="markCard(false)">✕ 不认识</button>
+          <button class="know-yes" onclick="markCard(true)">✓ 认识了</button>
+        </div>
+      </div>
+      <div id="flip-hint" style="text-align:center;margin-top:10px;font-size:12px;color:var(--text3)">
+        点击卡片翻面查看答案，再作答
       </div>
     </div>
   </div>
