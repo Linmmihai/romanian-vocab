@@ -83,6 +83,15 @@ async function apiLoadProgress(userId) {
 }
 
 /**
+ * 加载全班学习进度（排行榜用）
+ */
+async function apiLoadAllProgress() {
+  const { data, error } = await sb.from('progress').select('*');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
  * 保存/更新一个词的学习进度
  * @param {string} userId
  * @param {string} wordRo
@@ -152,6 +161,17 @@ async function apiLoadUsers() {
 }
 
 /**
+ * 加载排行榜用户资料
+ */
+async function apiLoadLeaderboardUsers() {
+  const { data, error } = await sb.from('profiles')
+    .select('id,nickname,email,role')
+    .in('role', ['user', 'admin']);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
  * 获取单个用户的 profile
  */
 async function apiGetProfile(userId) {
@@ -210,6 +230,20 @@ async function apiGetRecentLogs(userId, days = 14) {
     .eq('user_id', userId)
     .order('log_date', { ascending: false })
     .limit(days);
+  return data || [];
+}
+
+/**
+ * 加载最近N天的全班学习记录（排行榜连 streak 用）
+ */
+async function apiGetClassRecentLogs(days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days + 1);
+  const sinceStr = since.toISOString().slice(0, 10);
+  const { data, error } = await sb.from('daily_log').select('*')
+    .gte('log_date', sinceStr)
+    .order('log_date', { ascending: false });
+  if (error) throw new Error(error.message);
   return data || [];
 }
 
