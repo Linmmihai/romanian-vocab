@@ -108,6 +108,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .result-score{font-size:52px;font-weight:700}
 .result-label{font-size:16px;color:var(--text2);margin:8px 0 20px}
 .restart-btn{padding:10px 28px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;font-weight:500}
+/* STATS + LEADERBOARD */
+.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.metric{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+.metric-n{font-size:24px;font-weight:700}
+.metric-l{font-size:12px;color:var(--text2);margin-top:3px}
+.panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:1rem;box-shadow:var(--shadow)}
+.panel-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.bar-chart{display:flex;align-items:end;gap:6px;height:150px;border-bottom:1px solid var(--border);padding-top:8px}
+.day-bar{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:end;height:100%;gap:5px}
+.day-fill{width:100%;max-width:24px;border-radius:5px 5px 0 0;background:var(--blue);min-height:3px}
+.day-label{font-size:10px;color:var(--text3);white-space:nowrap}
+.cat-row{display:grid;grid-template-columns:minmax(72px,1fr) 2fr 54px;gap:10px;align-items:center;margin-bottom:10px;font-size:13px}
+.cat-meter{height:10px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.cat-fill{height:100%;background:var(--green);border-radius:99px}
+.rank-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.rank-row:last-child{border-bottom:none}
+.rank-row.me{background:var(--blue-bg);margin:0 -8px;padding:12px 8px;border-radius:var(--radius-sm);border-bottom:none}
+.rank-no{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg2);font-size:13px;font-weight:700;color:var(--text2)}
+.rank-row:nth-child(1) .rank-no{background:#fef3c7;color:#92400e}
+.rank-name{font-size:14px;font-weight:700}
+.rank-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.rank-score{text-align:right;font-size:13px;color:var(--text2)}
+.rank-score strong{display:block;font-size:20px;color:var(--text);line-height:1.1}
 /* GUIDE */
 .guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
 .guide-title{font-size:14px;font-weight:600;margin-bottom:10px}
@@ -151,6 +174,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .report-note{font-size:13px;background:var(--bg2);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:8px}
 .report-actions{display:flex;gap:8px;flex-wrap:wrap}
 .issue-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--yellow-bg);color:var(--yellow-text);border:1px solid var(--yellow-border);margin-right:6px}
+.admin-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.admin-stat{background:var(--bg2);border-radius:var(--radius-sm);padding:10px}
+.admin-stat-n{font-size:20px;font-weight:800}
+.admin-stat-l{font-size:11px;color:var(--text2);margin-top:2px}
+.admin-chart{padding:12px 14px;border-bottom:1px solid var(--border)}
+.admin-chart:last-child{border-bottom:none}
+.admin-chart-title{font-size:13px;font-weight:700;margin-bottom:10px}
+.admin-mini-row{display:grid;grid-template-columns:minmax(72px,1fr) 2fr auto;gap:10px;align-items:center;margin-bottom:9px;font-size:13px}
+.admin-mini-meter{height:9px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.admin-mini-fill{height:100%;border-radius:99px;background:var(--blue)}
+.admin-word-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.admin-word-row:last-child{border-bottom:none}
+.admin-word-name{font-size:13px;font-weight:700}
+.admin-word-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.admin-word-score{text-align:right;font-size:13px;font-weight:800;color:var(--red-text)}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
 .modal{background:white;border-radius:14px;padding:1.5rem;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-height:90vh;overflow-y:auto}
@@ -231,6 +269,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="nav-tab active" onclick="switchPage('flash')">卡片记忆</button>
     <button class="nav-tab" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
     <button class="nav-tab" onclick="switchPage('quiz')">测验模式</button>
+    <button class="nav-tab" onclick="switchPage('stats')">学习统计</button>
+    <button class="nav-tab" onclick="switchPage('leaderboard')">排行榜</button>
     <button class="nav-tab" onclick="switchPage('guide')">发音指南</button>
     <button class="nav-tab" onclick="switchPage('list')">词汇表</button>
     <button class="nav-tab" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
@@ -371,6 +411,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="quiz-area"></div>
   </div>
 
+  <!-- 学习统计 -->
+  <div class="page" id="page-stats">
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-n" id="stat-streak">0</div><div class="metric-l">连续学习天数</div></div>
+      <div class="metric"><div class="metric-n" id="stat-30days">0</div><div class="metric-l">近30天新学</div></div>
+      <div class="metric"><div class="metric-n" id="stat-accuracy">0%</div><div class="metric-l">测验正确率</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>每日学习量</span><span style="font-size:12px;color:var(--text2)">近14天</span></div>
+      <div id="daily-chart"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>分类掌握率</span><span style="font-size:12px;color:var(--text2)">按已掌握词汇计算</span></div>
+      <div id="cat-mastery"></div>
+    </div>
+  </div>
+
+  <!-- 排行榜 -->
+  <div class="page" id="page-leaderboard">
+    <div class="panel">
+      <div class="panel-title">
+        <span>班级排行榜</span>
+        <button class="btn-sm" onclick="renderLeaderboard()">刷新</button>
+      </div>
+      <div id="leaderboard-list"><div class="empty-state">加载中...</div></div>
+    </div>
+  </div>
+
   <!-- 发音指南 -->
   <div class="page" id="page-guide">
     <div class="guide-card">
@@ -401,6 +469,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- 管理员 -->
   <div class="page" id="page-admin">
+    <div class="admin-section">
+      <div class="admin-section-header">
+        <span class="admin-section-title">📊 词库统计</span>
+        <button class="btn-sm" onclick="loadAdminStats()">刷新</button>
+      </div>
+      <div id="admin-stats-container"><div class="empty-state">加载中...</div></div>
+    </div>
+
     <div class="admin-section">
       <div class="admin-section-header">
         <span class="admin-section-title">📚 词库管理</span>
@@ -527,6 +603,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
 <script src="api.js"></script>
 <script src="auth.js"></script>
-<script src="app.js?v=20260430-2"></script>
+<script src="app.js?v=20260430-5"></script>
 </body>
 </html>
