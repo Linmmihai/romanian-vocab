@@ -178,15 +178,17 @@ async function syncProgress(wordRo, known, qr, qt) {
 // ── 导航 ─────────────────────────────────────────────────
 
 function switchPage(p) {
-  ['flash', 'wrongbook', 'quiz', 'guide', 'list', 'admin'].forEach((s, i) => {
+  ['flash', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'list', 'admin'].forEach((s, i) => {
     document.querySelectorAll('.nav-tab')[i].classList.toggle('active', s === p);
     document.getElementById('page-' + s).classList.toggle('active', s === p);
   });
   if (p === 'flash') { renderDailyGoal(); renderCalendar(); }
   if (p === 'quiz') showQuizSetup();
+  if (p === 'stats') renderStatsPage();
+  if (p === 'leaderboard') renderLeaderboard();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
-  if (p === 'admin') { loadAdminReports(); loadAdminUsers(); }
+  if (p === 'admin') { loadAdminStats(); loadAdminReports(); loadAdminUsers(); }
 }
 
 // ── 每日目标 ──────────────────────────────────────────────
@@ -640,6 +642,176 @@ function showResult() {
     </div>`;
 }
 
+// ── 学习统计 / 排行榜 ─────────────────────────────────────
+
+function getDateKey(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildRecentDays(days) {
+  const arr = [];
+  for (let i = days - 1; i >= 0; i--) arr.push(getDateKey(-i));
+  return arr;
+}
+
+function fillDailyLogs(logs, days) {
+  const map = {};
+  (logs || []).forEach(l => { map[l.log_date] = l; });
+  return buildRecentDays(days).map(date => ({
+    log_date: date,
+    new_words: map[date]?.new_words || 0,
+    goal: map[date]?.goal || dailyGoal,
+    completed: map[date]?.completed || false
+  }));
+}
+
+function calcStreak(logs) {
+  const learned = new Set((logs || []).filter(l => (l.new_words || 0) > 0).map(l => l.log_date));
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    if (!learned.has(getDateKey(-i))) break;
+    streak++;
+  }
+  return streak;
+}
+
+function calcProgressSummary(map) {
+  const vals = Object.values(map || {});
+  const mastered = vals.filter(p => calcLevel(p.qr, p.qt) === 'mastered').length;
+  const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning').length;
+  const known = vals.filter(p => p.known).length;
+  const qr = vals.reduce((sum, p) => sum + (p.qr || 0), 0);
+  const qt = vals.reduce((sum, p) => sum + (p.qt || 0), 0);
+  return { mastered, learning, known, qr, qt, accuracy: qt ? Math.round(qr / qt * 100) : 0 };
+}
+
+async function renderStatsPage() {
+  const dailyEl = document.getElementById('daily-chart');
+  const catEl = document.getElementById('cat-mastery');
+  dailyEl.innerHTML = '<div class="empty-state">加载中...</div>';
+  catEl.innerHTML = '<div class="empty-state">加载中...</div>';
+
+  try {
+    const logs = await apiGetRecentLogs(currentUser.id, 30);
+    const filled14 = fillDailyLogs(logs, 14);
+    const summary = calcProgressSummary(progressMap);
+    const learned30 = fillDailyLogs(logs, 30).reduce((sum, l) => sum + (l.new_words || 0), 0);
+
+    setText('stat-streak', calcStreak(logs));
+    setText('stat-30days', learned30);
+    setText('stat-accuracy', summary.accuracy + '%');
+    renderDailyChart(filled14);
+    renderCategoryMastery();
+  } catch (e) {
+    dailyEl.innerHTML = '<div class="empty-state">学习记录暂时无法读取</div>';
+    catEl.innerHTML = '<div class="empty-state">分类统计暂时无法读取</div>';
+  }
+}
+
+function renderDailyChart(logs) {
+  const max = Math.max(1, ...logs.map(l => l.new_words || 0));
+  document.getElementById('daily-chart').innerHTML = `
+    <div class="bar-chart">
+      ${logs.map(l => {
+        const h = Math.max(3, Math.round((l.new_words || 0) / max * 120));
+        const d = new Date(l.log_date + 'T00:00:00');
+        const label = (d.getMonth() + 1) + '/' + d.getDate();
+        return `<div class="day-bar" title="${label}: ${l.new_words || 0}词">
+          <div style="font-size:10px;color:var(--text2)">${l.new_words || ''}</div>
+          <div class="day-fill" style="height:${h}px;background:${l.completed ? 'var(--green)' : 'var(--blue)'}"></div>
+          <div class="day-label">${label}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderCategoryMastery() {
+  const groups = {};
+  W.forEach(w => {
+    const cat = w.cat || '其他';
+    if (!groups[cat]) groups[cat] = { total: 0, mastered: 0, learning: 0 };
+    groups[cat].total++;
+    const lv = calcLevel(progressMap[w.ro]?.qr, progressMap[w.ro]?.qt);
+    if (lv === 'mastered') groups[cat].mastered++;
+    if (lv === 'learning') groups[cat].learning++;
+  });
+
+  const rows = Object.entries(groups)
+    .map(([cat, v]) => ({ cat, ...v, pct: v.total ? Math.round(v.mastered / v.total * 100) : 0 }))
+    .sort((a, b) => b.pct - a.pct || b.mastered - a.mastered)
+    .slice(0, 16);
+
+  document.getElementById('cat-mastery').innerHTML = rows.length ? rows.map(r => `
+    <div class="cat-row">
+      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cat}</div>
+      <div class="cat-meter"><div class="cat-fill" style="width:${r.pct}%"></div></div>
+      <div style="text-align:right;color:var(--text2)">${r.pct}%</div>
+    </div>`).join('') : '<div class="empty-state">还没有分类数据</div>';
+}
+
+async function renderLeaderboard() {
+  const el = document.getElementById('leaderboard-list');
+  el.innerHTML = '<div class="empty-state">加载中...</div>';
+
+  try {
+    const [users, rows, logs] = await Promise.all([
+      apiLoadLeaderboardUsers(),
+      apiLoadAllProgress(),
+      apiGetClassRecentLogs(30)
+    ]);
+    const byUser = {};
+    rows.forEach(r => {
+      if (!byUser[r.user_id]) byUser[r.user_id] = {};
+      byUser[r.user_id][r.word_ro] = {
+        known: r.known,
+        qr: r.quiz_right || 0,
+        qt: r.quiz_total || 0,
+        level: r.level || 'unknown'
+      };
+    });
+    const logsByUser = {};
+    logs.forEach(l => {
+      if (!logsByUser[l.user_id]) logsByUser[l.user_id] = [];
+      logsByUser[l.user_id].push(l);
+    });
+
+    const leaderboard = users.map(u => {
+      const s = calcProgressSummary(byUser[u.id] || {});
+      return {
+        id: u.id,
+        name: u.nickname || (u.email ? u.email.split('@')[0] : '同学'),
+        ...s,
+        streak: calcStreak(logsByUser[u.id] || [])
+      };
+    }).sort((a, b) =>
+      b.mastered - a.mastered ||
+      b.accuracy - a.accuracy ||
+      b.known - a.known ||
+      b.qt - a.qt
+    );
+
+    el.innerHTML = leaderboard.length ? leaderboard.map((u, i) => `
+      <div class="rank-row${u.id === currentUser.id ? ' me' : ''}">
+        <div class="rank-no">${i + 1}</div>
+        <div>
+          <div class="rank-name">${escapeHtml(u.name)}${u.id === currentUser.id ? ' · 我' : ''}</div>
+          <div class="rank-meta">正确率 ${u.accuracy}% · 连续 ${u.streak} 天 · 测验 ${u.qt} 题</div>
+        </div>
+        <div class="rank-score"><strong>${u.mastered}</strong>已掌握</div>
+      </div>`).join('') : '<div class="empty-state">暂时没有排行榜数据</div>';
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state">排行榜暂时无法读取。请确认 Supabase 允许读取同学的 profiles 和 progress。</div>`;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
 // ── 词汇表 ────────────────────────────────────────────────
 
 function renderList() {
@@ -836,11 +1008,129 @@ async function deleteWord(wordId, wordZh) {
     filtered = curCat === '全部' ? [...W] : W.filter(w => w.cat === curCat);
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
-    buildCats(); renderCard(); renderList();
+    buildCats(); renderCard(); renderList(); loadAdminStats();
     showToast(`✅ 已删除「${wordZh}」`);
   } catch (e) {
     showToast('删除失败：' + e.message);
   }
+}
+
+// ── 管理员：词库统计 ──────────────────────────────────────
+
+async function loadAdminStats() {
+  const el = document.getElementById('admin-stats-container');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">加载中...</div>';
+
+  try {
+    const [reports, allProgress] = await Promise.all([
+      apiLoadReports(),
+      apiLoadAllProgress()
+    ]);
+    const categoryStats = getAdminCategoryStats();
+    const reportStats = getAdminReportStats(reports);
+    const wrongStats = getAdminWrongStats(allProgress);
+    const pendingReports = reports.filter(r => r.status === 'pending').length;
+    const totalAnswers = allProgress.reduce((sum, r) => sum + (r.quiz_total || 0), 0);
+
+    el.innerHTML = `
+      <div class="admin-stat-grid">
+        <div class="admin-stat"><div class="admin-stat-n">${W.length}</div><div class="admin-stat-l">词库总量</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${categoryStats.length}</div><div class="admin-stat-l">分类数量</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${pendingReports}</div><div class="admin-stat-l">待处理报错</div></div>
+      </div>
+      <div class="admin-chart">
+        <div class="admin-chart-title">各分类词汇数量</div>
+        ${renderAdminCategoryRows(categoryStats)}
+      </div>
+      <div class="admin-chart">
+        <div class="admin-chart-title">被报错最多的词</div>
+        ${renderAdminReportRows(reportStats)}
+      </div>
+      <div class="admin-chart">
+        <div class="admin-chart-title">答错率最高的词 <span style="font-weight:400;color:var(--text2)">共 ${totalAnswers} 次测验记录</span></div>
+        ${renderAdminWrongRows(wrongStats)}
+      </div>`;
+  } catch (e) {
+    el.innerHTML = '<div class="empty-state">词库统计加载失败，请检查管理员读取权限</div>';
+  }
+}
+
+function getAdminCategoryStats() {
+  const map = {};
+  W.forEach(w => {
+    const cat = w.cat || '其他';
+    map[cat] = (map[cat] || 0) + 1;
+  });
+  return Object.entries(map)
+    .map(([cat, count]) => ({ cat, count }))
+    .sort((a, b) => b.count - a.count || a.cat.localeCompare(b.cat, 'zh'));
+}
+
+function getAdminReportStats(reports) {
+  const map = {};
+  (reports || []).forEach(r => {
+    const key = r.word_ro || r.word_zh || String(r.word_id || '');
+    if (!key) return;
+    if (!map[key]) map[key] = { ro: r.word_ro || '', zh: r.word_zh || '', count: 0, pending: 0 };
+    map[key].count++;
+    if (r.status === 'pending') map[key].pending++;
+  });
+  return Object.values(map).sort((a, b) => b.count - a.count || b.pending - a.pending).slice(0, 8);
+}
+
+function getAdminWrongStats(rows) {
+  const map = {};
+  (rows || []).forEach(r => {
+    if (!r.word_ro) return;
+    if (!map[r.word_ro]) map[r.word_ro] = { ro: r.word_ro, qt: 0, qr: 0 };
+    map[r.word_ro].qt += r.quiz_total || 0;
+    map[r.word_ro].qr += r.quiz_right || 0;
+  });
+  return Object.values(map)
+    .map(s => {
+      const word = W.find(w => w.ro === s.ro) || {};
+      const wrong = Math.max(0, s.qt - s.qr);
+      return { ...s, zh: word.zh || '', cat: word.cat || '', wrong, rate: s.qt ? Math.round(wrong / s.qt * 100) : 0 };
+    })
+    .filter(s => s.qt >= 3 && s.wrong > 0)
+    .sort((a, b) => b.rate - a.rate || b.wrong - a.wrong || b.qt - a.qt)
+    .slice(0, 8);
+}
+
+function renderAdminCategoryRows(rows) {
+  if (!rows.length) return '<div class="empty-state">暂无分类数据</div>';
+  const max = Math.max(...rows.map(r => r.count), 1);
+  return rows.slice(0, 12).map(r => `
+    <div class="admin-mini-row">
+      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.cat)}</div>
+      <div class="admin-mini-meter"><div class="admin-mini-fill" style="width:${Math.round(r.count / max * 100)}%"></div></div>
+      <div style="color:var(--text2)">${r.count}词</div>
+    </div>`).join('');
+}
+
+function renderAdminReportRows(rows) {
+  if (!rows.length) return '<div class="empty-state">暂无用户报错</div>';
+  return rows.map(r => `
+    <div class="admin-word-row">
+      <div>
+        <div class="admin-word-name">${escapeHtml(r.zh || r.ro)}</div>
+        <div class="admin-word-meta">${escapeHtml(r.ro)}${r.pending ? ` · ${r.pending} 条待处理` : ''}</div>
+      </div>
+      <div class="admin-word-score">${r.count}次</div>
+    </div>`).join('');
+}
+
+function renderAdminWrongRows(rows) {
+  if (!rows.length) return '<div class="empty-state">暂无足够答题数据</div>';
+  return rows.map(r => `
+    <div class="admin-word-row">
+      <div>
+        <div class="admin-word-name">${escapeHtml(r.zh || r.ro)}</div>
+        <div class="admin-word-meta">${escapeHtml(r.ro)}${r.cat ? ` · ${escapeHtml(r.cat)}` : ''} · 错 ${r.wrong}/${r.qt} 次</div>
+      </div>
+      <div class="admin-word-score">${r.rate}%</div>
+    </div>`).join('');
 }
 
 // ── 管理员：报错管理 ──────────────────────────────────────
