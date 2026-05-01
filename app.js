@@ -756,11 +756,22 @@ async function renderLeaderboard() {
   el.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
-    const [users, rows, logs] = await Promise.all([
+    const [usersResult, rowsResult, logsResult] = await Promise.allSettled([
       apiLoadLeaderboardUsers(),
       apiLoadAllProgress(),
       apiGetClassRecentLogs(30)
     ]);
+    const failures = [];
+    if (usersResult.status === 'rejected') failures.push('profiles: ' + usersResult.reason.message);
+    if (rowsResult.status === 'rejected') failures.push('progress: ' + rowsResult.reason.message);
+    if (logsResult.status === 'rejected') failures.push('daily_log: ' + logsResult.reason.message);
+    if (usersResult.status === 'rejected' || rowsResult.status === 'rejected') {
+      throw new Error(failures.join('；'));
+    }
+
+    const users = usersResult.value;
+    const rows = rowsResult.value;
+    const logs = logsResult.status === 'fulfilled' ? logsResult.value : [];
     const byUser = {};
     rows.forEach(r => {
       if (!byUser[r.user_id]) byUser[r.user_id] = {};
@@ -801,8 +812,11 @@ async function renderLeaderboard() {
         </div>
         <div class="rank-score"><strong>${u.mastered}</strong>已掌握</div>
       </div>`).join('') : '<div class="empty-state">暂时没有排行榜数据</div>';
+    if (logsResult.status === 'rejected') {
+      el.innerHTML += `<div class="empty-state">连续学习天数暂时无法读取：${escapeHtml(logsResult.reason.message)}</div>`;
+    }
   } catch (e) {
-    el.innerHTML = `<div class="empty-state">排行榜暂时无法读取。请确认 Supabase 允许读取同学的 profiles 和 progress。</div>`;
+    el.innerHTML = `<div class="empty-state">排行榜暂时无法读取：${escapeHtml(e.message || '未知错误')}</div>`;
   }
 }
 
@@ -1023,10 +1037,12 @@ async function loadAdminStats() {
   el.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
-    const [reports, allProgress] = await Promise.all([
+    const [reportsResult, progressResult] = await Promise.allSettled([
       apiLoadReports(),
       apiLoadAllProgress()
     ]);
+    const reports = reportsResult.status === 'fulfilled' ? reportsResult.value : [];
+    const allProgress = progressResult.status === 'fulfilled' ? progressResult.value : [];
     const categoryStats = getAdminCategoryStats();
     const reportStats = getAdminReportStats(reports);
     const wrongStats = getAdminWrongStats(allProgress);
@@ -1045,14 +1061,14 @@ async function loadAdminStats() {
       </div>
       <div class="admin-chart">
         <div class="admin-chart-title">被报错最多的词</div>
-        ${renderAdminReportRows(reportStats)}
+        ${reportsResult.status === 'fulfilled' ? renderAdminReportRows(reportStats) : `<div class="empty-state">报错记录无法读取：${escapeHtml(reportsResult.reason.message)}</div>`}
       </div>
       <div class="admin-chart">
         <div class="admin-chart-title">答错率最高的词 <span style="font-weight:400;color:var(--text2)">共 ${totalAnswers} 次测验记录</span></div>
-        ${renderAdminWrongRows(wrongStats)}
+        ${progressResult.status === 'fulfilled' ? renderAdminWrongRows(wrongStats) : `<div class="empty-state">答题记录无法读取：${escapeHtml(progressResult.reason.message)}</div>`}
       </div>`;
   } catch (e) {
-    el.innerHTML = '<div class="empty-state">词库统计加载失败，请检查管理员读取权限</div>';
+    el.innerHTML = `<div class="empty-state">词库统计加载失败：${escapeHtml(e.message || '未知错误')}</div>`;
   }
 }
 
