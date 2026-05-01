@@ -13,6 +13,11 @@ let filtered = [];    // 当前分类筛选后的词汇
 let idx = 0;          // 卡片当前索引
 let flipped = false;
 let curCat = '全部';
+let curDifficulty = 'all'; // 'all' | 'beginner' | 'intermediate' | 'advanced'
+
+// 难度配置
+const DIFF_LABEL = { all: '全部难度', beginner: '🟢 初级', intermediate: '🟡 中级', advanced: '🔴 高级' };
+const DIFF_UNLOCK = { beginner: 0, intermediate: 0.7, advanced: 0.7 }; // 上一级需要掌握的比例
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qList = [];
@@ -83,11 +88,12 @@ async function loadWords() {
   document.getElementById('flash-content').style.display = 'none';
 
   W = await apiLoadWords();
-  filtered = [...W];
+  filtered = getFiltered();
 
   document.getElementById('s-total').textContent = W.length;
   document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
 
+  buildDifficultyBar();
   buildCats();
   renderCard();
 
@@ -146,6 +152,8 @@ function upStats() {
 
   const badge = document.getElementById('wb-tab-badge');
   if (badge) { badge.textContent = wbCount; badge.style.display = wbCount > 0 ? 'inline' : 'none'; }
+  // 重新检查难度解锁状态
+  buildDifficultyBar();
 }
 
 function setText(id, value) {
@@ -255,10 +263,74 @@ async function renderCalendar() {
   el.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">${days.join('')}</div>`;
 }
 
+// ── 难度选择 ──────────────────────────────────────────────
+
+/**
+ * 计算某难度级别的掌握率（用于解锁判断）
+ */
+function difficultyMasteryPct(diff) {
+  const words = W.filter(w => w.difficulty === diff);
+  if (!words.length) return 1;
+  const mastered = words.filter(w => calcLevel(progressMap[w.ro]?.qr, progressMap[w.ro]?.qt) === 'mastered').length;
+  return mastered / words.length;
+}
+
+/**
+ * 判断某难度是否解锁
+ */
+function isDifficultyUnlocked(diff) {
+  if (diff === 'all' || diff === 'beginner') return true;
+  if (diff === 'intermediate') return difficultyMasteryPct('beginner') >= DIFF_UNLOCK.intermediate;
+  if (diff === 'advanced') return difficultyMasteryPct('intermediate') >= DIFF_UNLOCK.advanced;
+  return false;
+}
+
+/**
+ * 获取当前难度+分类筛选后的词汇
+ */
+function getFiltered() {
+  let base = curDifficulty === 'all' ? [...W] : W.filter(w => w.difficulty === curDifficulty);
+  if (curCat !== '全部') base = base.filter(w => w.cat === curCat);
+  return base;
+}
+
+function buildDifficultyBar() {
+  const el = document.getElementById('difficulty-bar');
+  if (!el) return;
+  const diffs = ['all', 'beginner', 'intermediate', 'advanced'];
+  el.innerHTML = diffs.map(d => {
+    const unlocked = isDifficultyUnlocked(d);
+    const active = d === curDifficulty;
+    const count = d === 'all' ? W.length : W.filter(w => w.difficulty === d).length;
+    const pct = d === 'all' ? null : Math.round(difficultyMasteryPct(d) * 100);
+    const lockIcon = !unlocked ? ' 🔒' : '';
+    const pctText = pct !== null ? ` ${pct}%` : '';
+    return `<button class="diff-chip${active ? ' active' : ''}${!unlocked ? ' locked' : ''}"
+      onclick="${unlocked ? `setDifficulty('${d}')` : `showToast('请先掌握上一级70%的词汇才能解锁')`}">
+      ${DIFF_LABEL[d]}${lockIcon}<span style="font-size:10px;opacity:0.7"> ${count}词${pctText}</span>
+    </button>`;
+  }).join('');
+}
+
+function setDifficulty(d) {
+  if (!isDifficultyUnlocked(d)) { showToast('请先掌握上一级70%的词汇才能解锁'); return; }
+  curDifficulty = d;
+  curCat = '全部';
+  idx = 0; flipped = false;
+  document.getElementById('main-card').classList.remove('flipped');
+  document.getElementById('know-btns-wrap').style.display = 'none';
+  document.getElementById('flip-hint').style.display = 'block';
+  filtered = getFiltered();
+  buildDifficultyBar();
+  buildCats();
+  renderCard();
+}
+
 // ── 卡片记忆 ──────────────────────────────────────────────
 
 function buildCats() {
-  const cats = ['全部', ...new Set(W.map(w => w.cat).filter(Boolean))]
+  const base = curDifficulty === 'all' ? W : W.filter(w => w.difficulty === curDifficulty);
+  const cats = ['全部', ...new Set(base.map(w => w.cat).filter(Boolean))]
     .sort((a, b) => a === '全部' ? -1 : b === '全部' ? 1 : a.localeCompare(b, 'zh'));
   document.getElementById('cat-bar').innerHTML = cats.map(c =>
     `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat('${c.replace(/'/g, "\\'")}')">${c}</button>`
@@ -267,16 +339,17 @@ function buildCats() {
 
 function setCat(c) {
   curCat = c;
-  filtered = c === '全部' ? [...W] : W.filter(w => w.cat === c);
+  filtered = getFiltered();
   idx = 0; flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
+  document.getElementById('know-btns-wrap').style.display = 'none';
+  document.getElementById('flip-hint').style.display = 'block';
   buildCats();
   renderCard();
 }
 
 function renderCard() {
   if (!filtered.length) return;
-  bindFlashcardButtons();
   idx = (idx + filtered.length) % filtered.length;
   const w = filtered[idx];
   document.getElementById('fc-cat').textContent = w.cat || '';
@@ -293,31 +366,12 @@ function renderCard() {
   if (lvEl) { lvEl.textContent = LEVEL_LABEL[lv]; lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
 }
 
-// 点卡片：来回翻转
+// 点卡片：来回翻转，控制按钮显隐
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
-}
-
-function bindFlashcardButtons() {
-  if (flashcardButtonsBound) return;
-  const knownBtn = document.getElementById('mark-known-btn');
-  const unknownBtn = document.getElementById('mark-unknown-btn');
-  if (!knownBtn || !unknownBtn) return;
-
-  knownBtn.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    markCard(true);
-  });
-
-  unknownBtn.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    markCard(false);
-  });
-
-  flashcardButtonsBound = true;
+  document.getElementById('know-btns-wrap').style.display = flipped ? 'flex' : 'none';
+  document.getElementById('flip-hint').style.display = flipped ? 'none' : 'block';
 }
 
 /**
@@ -349,7 +403,7 @@ function updateTodayCalendarCell() {
   });
 }
 
-// 「认识了」/「不认识」
+// 「认识了」/「不认识」— 按钮在卡片外，无事件冲突
 function markCard(yes) {
   recordDailyWord();
   const w = filtered[idx];
@@ -360,14 +414,18 @@ function markCard(yes) {
   idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
+  document.getElementById('know-btns-wrap').style.display = 'none';
+  document.getElementById('flip-hint').style.display = 'block';
   renderCard();
 }
 
-// 「上一个」— 回到上一张的罗语面
+// 「上一个」— 回到上一张的罗语面，显示按钮
 function prevCard() {
   idx = (idx - 1 + filtered.length) % filtered.length;
   flipped = true;
   document.getElementById('main-card').classList.add('flipped');
+  document.getElementById('know-btns-wrap').style.display = 'flex';
+  document.getElementById('flip-hint').style.display = 'none';
   renderCard();
 }
 
