@@ -77,34 +77,28 @@ async function apiLoadProgress(userId) {
   const { data } = await sb.from('progress').select('*').eq('user_id', userId);
   const map = {};
   (data || []).forEach(r => {
-    map[r.word_ro] = { known: r.known, qr: r.quiz_right, qt: r.quiz_total, level: r.level || 'unknown' };
+    map[r.word_ro] = {
+      known: r.known,
+      qr: r.quiz_right,
+      qt: r.quiz_total,
+      level: r.level || 'unknown',
+      nextReview: r.next_review || null,
+      reviewCount: r.review_count || 0
+    };
   });
   return map;
 }
 
-/**
- * 加载全班学习进度（排行榜用）
- */
-async function apiLoadAllProgress() {
-  const { data, error } = await sb.from('progress').select('*');
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-/**
- * 保存/更新一个词的学习进度
- * @param {string} userId
- * @param {string} wordRo
- * @param {boolean} known
- * @param {number} qr - 答对次数
- * @param {number} qt - 总答题次数
- */
-/**
- * 保存/更新一个词的学习进度（含熟练度 level）
- */
-async function apiSaveProgress(userId, wordRo, known, qr, qt, level) {
+async function apiSaveProgress(userId, wordRo, known, qr, qt, level, nextReview, reviewCount) {
   const { error } = await sb.from('progress').upsert(
-    { user_id: userId, word_ro: wordRo, known, quiz_right: qr || 0, quiz_total: qt || 0, level: level || 'unknown', updated_at: new Date().toISOString() },
+    {
+      user_id: userId, word_ro: wordRo, known,
+      quiz_right: qr || 0, quiz_total: qt || 0,
+      level: level || 'unknown',
+      updated_at: new Date().toISOString(),
+      next_review: nextReview || null,
+      review_count: reviewCount || 0
+    },
     { onConflict: 'user_id,word_ro' }
   );
   if (error) throw new Error(error.message);
@@ -156,17 +150,6 @@ async function apiPendingReportCount() {
  */
 async function apiLoadUsers() {
   const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-/**
- * 加载排行榜用户资料
- */
-async function apiLoadLeaderboardUsers() {
-  const { data, error } = await sb.from('profiles')
-    .select('id,nickname,email,role')
-    .in('role', ['user', 'admin']);
   if (error) throw new Error(error.message);
   return data || [];
 }
@@ -230,20 +213,6 @@ async function apiGetRecentLogs(userId, days = 14) {
     .eq('user_id', userId)
     .order('log_date', { ascending: false })
     .limit(days);
-  return data || [];
-}
-
-/**
- * 加载最近N天的全班学习记录（排行榜连 streak 用）
- */
-async function apiGetClassRecentLogs(days = 30) {
-  const since = new Date();
-  since.setDate(since.getDate() - days + 1);
-  const sinceStr = since.toISOString().slice(0, 10);
-  const { data, error } = await sb.from('daily_log').select('*')
-    .gte('log_date', sinceStr)
-    .order('log_date', { ascending: false });
-  if (error) throw new Error(error.message);
   return data || [];
 }
 
