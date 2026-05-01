@@ -16,8 +16,17 @@ let curCat = '全部';
 let curDifficulty = 'all'; // 'all' | 'beginner' | 'intermediate' | 'advanced'
 
 // 难度配置
-const DIFF_LABEL = { all: '全部难度', beginner: '🟢 初级', intermediate: '🟡 中级', advanced: '🔴 高级' };
-const DIFF_UNLOCK = { beginner: 0, intermediate: 0.7, advanced: 0.7 }; // 上一级需要掌握的比例
+const DIFF_LABEL = { all: '全部', beginner: '🟢 初级', intermediate: '🟡 中级', advanced: '🔴 高级' };
+const DIFF_UNLOCK = { beginner: 0, intermediate: 0.7, advanced: 0.7 };
+
+// Ebbinghaus 复习间隔（天）
+// reviewCount → 下次复习间隔
+const REVIEW_INTERVALS = [1, 3, 7, 14, 30, 90];
+
+// 卡片模式: 'new' = 学新词, 'review' = 复习到期词
+let cardMode = 'new'; // 'new' | 'review'
+let reviewQueue = []; // 今日待复习词列表
+let reviewIdx = 0;
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qList = [];
@@ -114,6 +123,7 @@ async function loadTodayLog() {
   renderList();
   renderDailyGoal();
   renderCalendar();
+  updateReviewBadge();
 }
 
 // ── 熟练度计算 ────────────────────────────────────────────
@@ -169,12 +179,12 @@ function setSyncBadge(txt, cls) {
   el.className = 'sync-badge ' + (cls || '');
 }
 
-async function syncProgress(wordRo, known, qr, qt) {
+async function syncProgress(wordRo, known, qr, qt, nextReview, reviewCount) {
   setSyncBadge('同步中...', '');
   const level = calcLevel(qr, qt);
-  progressMap[wordRo] = { known, qr, qt, level };
+  progressMap[wordRo] = { known, qr, qt, level, nextReview, reviewCount };
   try {
-    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level);
+    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, nextReview, reviewCount);
     setSyncBadge('已保存', 'saved');
   } catch {
     setSyncBadge('同步失败', '');
@@ -186,17 +196,26 @@ async function syncProgress(wordRo, known, qr, qt) {
 // ── 导航 ─────────────────────────────────────────────────
 
 function switchPage(p) {
-  ['flash', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'list', 'admin'].forEach((s, i) => {
-    document.querySelectorAll('.nav-tab')[i].classList.toggle('active', s === p);
-    document.getElementById('page-' + s).classList.toggle('active', s === p);
+  ['flash', 'review', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'list', 'admin'].forEach((s, i) => {
+    const tab = document.querySelectorAll('.nav-tab')[i];
+    if (tab) tab.classList.toggle('active', s === p);
+    const page = document.getElementById('page-' + s);
+    if (page) page.classList.toggle('active', s === p);
   });
   if (p === 'flash') { renderDailyGoal(); renderCalendar(); }
+  if (p === 'review') { initReviewQueue(); renderReviewCard(); updateReviewBadge(); }
   if (p === 'quiz') showQuizSetup();
   if (p === 'stats') renderStatsPage();
   if (p === 'leaderboard') renderLeaderboard();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
   if (p === 'admin') { loadAdminStats(); loadAdminReports(); loadAdminUsers(); }
+}
+
+function updateReviewBadge() {
+  const count = getTodayReviewWords().length;
+  const badge = document.getElementById('review-tab-badge');
+  if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none'; }
 }
 
 // ── 每日目标 ──────────────────────────────────────────────
@@ -403,20 +422,159 @@ function updateTodayCalendarCell() {
   });
 }
 
+// ── Ebbinghaus 遗忘曲线 ───────────────────────────────────
+
+/**
+ * 计算下次复习日期
+ * yes=认识 → 按间隔递增；no=不认识 → 重置到明天
+ */
+function calcNextReview(yes, reviewCount) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!yes) {
+    // 忘记了，明天重新复习
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return { nextReview: d.toISOString().slice(0, 10), reviewCount: 0 };
+  }
+  const newCount = (reviewCount || 0) + 1;
+  const interval = REVIEW_INTERVALS[Math.min(newCount - 1, REVIEW_INTERVALS.length - 1)];
+  const d = new Date();
+  d.setDate(d.getDate() + interval);
+  return { nextReview: d.toISOString().slice(0, 10), reviewCount: newCount };
+}
+
+/**
+ * 获取今日待复习词（next_review <= 今天，且已学过）
+ */
+function getTodayReviewWords() {
+  const today = new Date().toISOString().slice(0, 10);
+  return W.filter(w => {
+    const p = progressMap[w.ro];
+    if (!p || !p.nextReview) return false;
+    return p.nextReview <= today;
+  });
+}
+
+/**
+ * 初始化复习队列
+ */
+function initReviewQueue() {
+  reviewQueue = getTodayReviewWords().sort(() => Math.random() - 0.5);
+  reviewIdx = 0;
+}
+
+/**
+ * 渲染复习模式卡片
+ */
+function renderReviewCard() {
+  const wrap = document.getElementById('review-wrap');
+  const empty = document.getElementById('review-empty');
+  if (!reviewQueue.length) {
+    if (wrap) wrap.style.display = 'none';
+    if (empty) empty.style.display = 'flex';
+    return;
+  }
+  if (wrap) wrap.style.display = 'block';
+  if (empty) empty.style.display = 'none';
+  if (reviewIdx >= reviewQueue.length) {
+    showReviewComplete();
+    return;
+  }
+  const w = reviewQueue[reviewIdx];
+  const p = progressMap[w.ro] || {};
+  const rc = p.reviewCount || 0;
+  const interval = REVIEW_INTERVALS[Math.min(rc, REVIEW_INTERVALS.length - 1)];
+  setText('rv-count', `${reviewIdx + 1} / ${reviewQueue.length}`);
+  setText('rv-zh', w.zh);
+  setText('rv-ro', w.ro);
+  setText('rv-ipa', w.ipa || w.ro);
+  setText('rv-hint', w.hint || '');
+  setText('rv-cat', w.cat || '');
+  setText('rv-interval', `上次间隔 ${rc > 0 ? REVIEW_INTERVALS[Math.min(rc-1, REVIEW_INTERVALS.length-1)] : 0}天 · 下次将间隔 ${interval}天`);
+  // reset flip
+  document.getElementById('rv-card').classList.remove('flipped');
+  document.getElementById('rv-btns').style.display = 'none';
+  document.getElementById('rv-flip-hint').style.display = 'block';
+}
+
+function flipReviewCard() {
+  const card = document.getElementById('rv-card');
+  const flippedNow = card.classList.toggle('flipped');
+  document.getElementById('rv-btns').style.display = flippedNow ? 'flex' : 'none';
+  document.getElementById('rv-flip-hint').style.display = flippedNow ? 'none' : 'block';
+}
+
+function markReview(yes) {
+  const w = reviewQueue[reviewIdx];
+  const prev = progressMap[w.ro] || { known: true, qr: 0, qt: 0, reviewCount: 0 };
+  const { nextReview, reviewCount } = calcNextReview(yes, prev.reviewCount);
+  const newQr = (prev.qr || 0) + (yes ? 1 : 0);
+  const newQt = (prev.qt || 0) + 1;
+  syncProgress(w.ro, yes, newQr, newQt, nextReview, reviewCount);
+  reviewIdx++;
+  if (reviewIdx >= reviewQueue.length) { showReviewComplete(); return; }
+  renderReviewCard();
+}
+
+function showReviewComplete() {
+  const wrap = document.getElementById('review-wrap');
+  if (wrap) wrap.innerHTML = `
+    <div style="text-align:center;padding:2rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)">
+      <div style="font-size:48px;margin-bottom:12px">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px">今日复习完成！</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:20px">完成了 ${reviewQueue.length} 个词的复习</div>
+      <button class="btn-primary" style="max-width:200px" onclick="switchPage('flash')">去学新词 →</button>
+    </div>`;
+}
+
+// ── 「认识了」/「不认识」— 卡片模式 ──────────────────────
+
 // 「认识了」/「不认识」— 按钮在卡片外，无事件冲突
 function markCard(yes) {
   recordDailyWord();
   const w = filtered[idx];
-  const prev = progressMap[w.ro] || { qr: 0, qt: 0 };
-  syncProgress(w.ro, yes, prev.qr, prev.qt);
-  upStats();
-  // 跳下一张，重置为中文面
+  const prev = progressMap[w.ro] || { qr: 0, qt: 0, reviewCount: 0 };
+  const newQr = (prev.qr || 0) + (yes ? 1 : 0);
+  const newQt = (prev.qt || 0) + 1;
+  // Ebbinghaus: 第一次标「认识」就安排复习
+  const { nextReview, reviewCount } = yes
+    ? calcNextReview(true, prev.reviewCount || 0)
+    : { nextReview: null, reviewCount: 0 };
+  syncProgress(w.ro, yes, newQr, newQt, nextReview, reviewCount);
+
+  // 如果是最后一张，显示完成屏
+  if (idx === filtered.length - 1) {
+    showCardComplete();
+    return;
+  }
   idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
   document.getElementById('know-btns-wrap').style.display = 'none';
   document.getElementById('flip-hint').style.display = 'block';
   renderCard();
+}
+
+function showCardComplete() {
+  const reviewDue = getTodayReviewWords().length;
+  document.getElementById('flash-content').innerHTML = `
+    <div style="text-align:center;padding:2rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)">
+      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px">本组词汇学完了！</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:20px">
+        ${reviewDue > 0 ? `今日有 ${reviewDue} 个词需要复习` : '没有待复习词汇，明天再来！'}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="restart-btn" onclick="restartCards()">重新开始</button>
+        ${reviewDue > 0 ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="switchPage('review')">开始复习 →</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function restartCards() {
+  idx = 0; flipped = false;
+  // rebuild flash-content
+  loadWords().then(() => { loadProgress(); });
 }
 
 // 「上一个」— 回到上一张的罗语面，显示按钮
@@ -431,6 +589,18 @@ function prevCard() {
 
 function speak(rate) {
   const w = filtered[idx];
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(w.ro);
+  u.lang = 'ro-RO'; u.rate = rate;
+  const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
+  if (rv) u.voice = rv;
+  speechSynthesis.speak(u);
+}
+
+function speakReview(rate) {
+  if (!reviewQueue.length || reviewIdx >= reviewQueue.length) return;
+  const w = reviewQueue[reviewIdx];
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(w.ro);
