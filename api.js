@@ -30,7 +30,7 @@ async function apiLoadWords() {
 /**
  * 更新一个词条
  * @param {number} wordId
- * @param {object} updates - { zh, ro, ipa, hint, cat }
+ * @param {object} updates - { zh, ro, ipa, hint, cat, difficulty }
  */
 async function apiUpdateWord(wordId, updates) {
   const { error } = await sb.from('words').update(updates).eq('id', wordId);
@@ -39,7 +39,7 @@ async function apiUpdateWord(wordId, updates) {
 
 /**
  * 批量插入词汇，跳过重复（以 ro 字段为唯一键）
- * @param {Array} words - [{ zh, ro, ipa, hint, cat }]
+ * @param {Array} words - [{ zh, ro, ipa, hint, cat, difficulty }]
  * @returns {{ inserted: number, skipped: number }}
  */
 async function apiInsertWords(words) {
@@ -48,7 +48,8 @@ async function apiInsertWords(words) {
     ipa: w.ipa || '',
     hint: w.hint || '',
     cat: w.cat || '其他',
-    level: 'A1-A2'
+    level: 'A1-A2',
+    difficulty: w.difficulty || 'beginner'
   }));
   const { data, error } = await sb.from('words')
     .upsert(payload, { onConflict: 'ro', ignoreDuplicates: true })
@@ -77,31 +78,79 @@ async function apiLoadProgress(userId) {
   const { data } = await sb.from('progress').select('*').eq('user_id', userId);
   const map = {};
   (data || []).forEach(r => {
+    const legacyNextReviewAt = r.next_review ? new Date(`${r.next_review}T00:00:00`).toISOString() : null;
+    const reviewStage = r.review_stage ?? r.review_count ?? 0;
     map[r.word_ro] = {
       known: r.known,
       qr: r.quiz_right,
       qt: r.quiz_total,
       level: r.level || 'unknown',
-      nextReview: r.next_review || null,
-      reviewCount: r.review_count || 0
+      reviewStage,
+      nextReviewAt: r.next_review_at || legacyNextReviewAt,
+      lastReviewedAt: r.last_reviewed_at || null,
+      reviewCount: reviewStage,
+      nextReview: r.next_review || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null)
     };
   });
   return map;
 }
 
-async function apiSaveProgress(userId, wordRo, known, qr, qt, level, nextReview, reviewCount) {
-  const { error } = await sb.from('progress').upsert(
-    {
-      user_id: userId, word_ro: wordRo, known,
-      quiz_right: qr || 0, quiz_total: qt || 0,
-      level: level || 'unknown',
-      updated_at: new Date().toISOString(),
-      next_review: nextReview || null,
-      review_count: reviewCount || 0
-    },
-    { onConflict: 'user_id,word_ro' }
-  );
+/**
+ * 加载全班学习进度（排行榜用）
+ */
+async function apiLoadAllProgress() {
+  const { data, error } = await sb.from('progress').select('*');
   if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
+ * 保存/更新一个词的学习进度
+ * @param {string} userId
+ * @param {string} wordRo
+ * @param {boolean} known
+ * @param {number} qr - 答对次数
+ * @param {number} qt - 总答题次数
+ */
+/**
+ * 保存/更新一个词的学习进度（含熟练度 level）
+ */
+async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null) {
+  const normalized = typeof review === 'string'
+    ? {
+        nextReviewAt: new Date(`${review}T00:00:00`).toISOString(),
+        reviewStage: legacyReviewCount || 0,
+        lastReviewedAt: new Date().toISOString()
+      }
+    : review;
+  const now = new Date().toISOString();
+  const basePayload = {
+    user_id: userId,
+    word_ro: wordRo,
+    known,
+    quiz_right: qr || 0,
+    quiz_total: qt || 0,
+    level: level || 'unknown',
+    updated_at: now
+  };
+  const modernPayload = {
+    ...basePayload,
+    review_stage: normalized.reviewStage || 0,
+    next_review_at: normalized.nextReviewAt || now,
+    last_reviewed_at: normalized.lastReviewedAt || now
+  };
+  const legacyPayload = {
+    ...basePayload,
+    review_count: normalized.reviewStage || 0,
+    next_review: (normalized.nextReviewAt || now).slice(0, 10)
+  };
+
+  let { error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' });
+  if (!error) return;
+
+  const modernError = error;
+  ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
+  if (error) throw new Error(`${modernError.message}; ${error.message}`);
 }
 
 // ── 报错反馈 ──────────────────────────────────────────────
@@ -150,6 +199,17 @@ async function apiPendingReportCount() {
  */
 async function apiLoadUsers() {
   const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
+ * 加载排行榜用户资料
+ */
+async function apiLoadLeaderboardUsers() {
+  const { data, error } = await sb.from('profiles')
+    .select('id,nickname,email,role')
+    .in('role', ['user', 'admin']);
   if (error) throw new Error(error.message);
   return data || [];
 }
@@ -213,6 +273,20 @@ async function apiGetRecentLogs(userId, days = 14) {
     .eq('user_id', userId)
     .order('log_date', { ascending: false })
     .limit(days);
+  return data || [];
+}
+
+/**
+ * 加载最近N天的全班学习记录（排行榜连 streak 用）
+ */
+async function apiGetClassRecentLogs(days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days + 1);
+  const sinceStr = since.toISOString().slice(0, 10);
+  const { data, error } = await sb.from('daily_log').select('*')
+    .gte('log_date', sinceStr)
+    .order('log_date', { ascending: false });
+  if (error) throw new Error(error.message);
   return data || [];
 }
 
