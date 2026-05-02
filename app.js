@@ -13,19 +13,8 @@ let filtered = [];    // 当前分类筛选后的词汇
 let idx = 0;          // 卡片当前索引
 let flipped = false;
 let curCat = '全部';
-let curDifficulty = 'all'; // 'all' | 'beginner' | 'intermediate' | 'advanced'
-
-// 难度配置
-const DIFF_LABEL = { all: '全部', beginner: '🟢 初级', intermediate: '🟡 中级', advanced: '🔴 高级' };
-const DIFF_UNLOCK = { beginner: 0, intermediate: 0.7, advanced: 0.7 };
-
-// Ebbinghaus 复习间隔（天）
-// reviewCount → 下次复习间隔
-const REVIEW_INTERVALS = [1, 3, 7, 14, 30, 90];
-
-// 卡片模式: 'new' = 学新词, 'review' = 复习到期词
-let cardMode = 'new'; // 'new' | 'review'
-let reviewQueue = []; // 今日待复习词列表
+let curDifficulty = 'beginner';
+let reviewQueue = [];
 let reviewIdx = 0;
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
@@ -97,12 +86,12 @@ async function loadWords() {
   document.getElementById('flash-content').style.display = 'none';
 
   W = await apiLoadWords();
-  filtered = getFiltered();
+  applyFilters();
 
   document.getElementById('s-total').textContent = W.length;
   document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
 
-  buildDifficultyBar();
+  renderDifficultyTabs();
   buildCats();
   renderCard();
 
@@ -112,6 +101,8 @@ async function loadWords() {
 
 async function loadProgress() {
   progressMap = await apiLoadProgress(currentUser.id);
+  applyFilters();
+  renderCard();
   upStats();
 }
 
@@ -145,6 +136,190 @@ const LEVEL_LABEL = { unknown: '未学', learning: '学习中', mastered: '已�
 const LEVEL_COLOR = { unknown: 'var(--text3)', learning: 'var(--yellow)', mastered: 'var(--green)' };
 const LEVEL_BG    = { unknown: 'var(--bg3)', learning: '#fffbeb', mastered: 'var(--green-bg)' };
 const LEVEL_TC    = { unknown: 'var(--text2)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
+const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
+const REVIEW_INTERVALS = [
+  { label: '20分钟', ms: 20 * 60 * 1000 },
+  { label: '1天', ms: 24 * 60 * 60 * 1000 },
+  { label: '2天', ms: 2 * 24 * 60 * 60 * 1000 },
+  { label: '4天', ms: 4 * 24 * 60 * 60 * 1000 },
+  { label: '7天', ms: 7 * 24 * 60 * 60 * 1000 },
+  { label: '15天', ms: 15 * 24 * 60 * 60 * 1000 },
+  { label: '30天', ms: 30 * 24 * 60 * 60 * 1000 },
+  { label: '90天', ms: 90 * 24 * 60 * 60 * 1000 },
+];
+
+const DIFFICULTIES = [
+  { key: 'beginner', label: 'Beginner', cn: '初级' },
+  { key: 'intermediate', label: 'Intermediate', cn: '中级', required: 'beginner' },
+  { key: 'advanced', label: 'Advanced', cn: '高级', required: 'intermediate' },
+];
+const DIFFICULTY_LABEL = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
+const DIFFICULTY_CN = { beginner: '初级', intermediate: '中级', advanced: '高级' };
+const UNLOCK_THRESHOLD = 70;
+
+function normalizeDifficulty(value) {
+  return ['beginner', 'intermediate', 'advanced'].includes(value) ? value : 'beginner';
+}
+
+function getWordDifficulty(w) {
+  return normalizeDifficulty(w?.difficulty);
+}
+
+function calcDifficultyMastery(difficulty) {
+  const words = W.filter(w => getWordDifficulty(w) === difficulty);
+  const mastered = words.filter(w => calcLevel(progressMap[w.ro]?.qr, progressMap[w.ro]?.qt) === 'mastered').length;
+  return { total: words.length, mastered, pct: words.length ? Math.round(mastered / words.length * 100) : 0 };
+}
+
+function isDifficultyUnlocked(difficulty) {
+  const meta = DIFFICULTIES.find(d => d.key === difficulty);
+  if (!meta?.required) return true;
+  return calcDifficultyMastery(meta.required).pct >= UNLOCK_THRESHOLD;
+}
+
+function applyFilters() {
+  const base = W.filter(w => getWordDifficulty(w) === curDifficulty);
+  const scoped = curCat === '全部' ? base : base.filter(w => w.cat === curCat);
+  filtered = sortByReviewPriority(scoped);
+  idx = Math.min(idx, Math.max(filtered.length - 1, 0));
+  renderReviewPanel();
+}
+
+function renderDifficultyTabs() {
+  const el = document.getElementById('difficulty-tabs');
+  const note = document.getElementById('unlock-note');
+  if (!el) return;
+  el.innerHTML = DIFFICULTIES.map(d => {
+    const s = calcDifficultyMastery(d.key);
+    const unlocked = isDifficultyUnlocked(d.key);
+    const lockText = unlocked ? `${s.mastered}/${s.total} 已掌握 · ${s.pct}%` : '未解锁';
+    return `<button class="difficulty-btn${curDifficulty === d.key ? ' active' : ''}${unlocked ? '' : ' locked'}" onclick="setDifficulty('${d.key}')">
+      <div class="difficulty-name">${d.label} · ${d.cn}</div>
+      <div class="difficulty-meta">${lockText}</div>
+    </button>`;
+  }).join('');
+  if (note) {
+    const next = DIFFICULTIES.find(d => d.required && !isDifficultyUnlocked(d.key));
+    note.textContent = next ? `解锁 ${next.label} 需要先掌握 ${UNLOCK_THRESHOLD}% 的 ${DIFFICULTY_LABEL[next.required]}。当前：${calcDifficultyMastery(next.required).pct}%` : '所有等级已解锁。';
+  }
+}
+
+function isReviewDue(progress) {
+  if (!progress?.nextReviewAt) return false;
+  return new Date(progress.nextReviewAt).getTime() <= Date.now();
+}
+
+function getReviewBucket(w) {
+  const p = progressMap[w.ro];
+  if (!p || !p.qt && !p.known) return 1;
+  return isReviewDue(p) ? 0 : 2;
+}
+
+function sortByReviewPriority(words) {
+  return [...words].sort((a, b) => {
+    const ba = getReviewBucket(a);
+    const bb = getReviewBucket(b);
+    if (ba !== bb) return ba - bb;
+    const pa = progressMap[a.ro] || {};
+    const pb = progressMap[b.ro] || {};
+    const da = pa.nextReviewAt ? new Date(pa.nextReviewAt).getTime() : 0;
+    const db = pb.nextReviewAt ? new Date(pb.nextReviewAt).getTime() : 0;
+    return da - db || String(a.ro).localeCompare(String(b.ro), 'ro');
+  });
+}
+
+function getNextReview(progress, success) {
+  const now = new Date();
+  if (!success) {
+    return {
+      reviewStage: 0,
+      nextReviewAt: now.toISOString(),
+      lastReviewedAt: now.toISOString()
+    };
+  }
+  const current = Number(progress?.reviewStage || 0);
+  const nextStage = Math.min(current + 1, REVIEW_INTERVALS.length);
+  const interval = REVIEW_INTERVALS[Math.max(0, nextStage - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
+  return {
+    reviewStage: nextStage,
+    nextReviewAt: new Date(now.getTime() + interval.ms).toISOString(),
+    lastReviewedAt: now.toISOString()
+  };
+}
+
+function formatReviewDue(iso) {
+  if (!iso) return '未安排';
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return '现在';
+  const minutes = Math.ceil(diff / 60000);
+  if (minutes < 60) return `${minutes}分钟后`;
+  const hours = Math.ceil(minutes / 60);
+  if (hours < 24) return `${hours}小时后`;
+  return `${Math.ceil(hours / 24)}天后`;
+}
+
+function isRoVowel(ch) {
+  return RO_VOWELS.includes(ch);
+}
+
+function autoStressToken(token) {
+  const groups = [];
+  let start = -1;
+
+  for (let i = 0; i < token.length; i++) {
+    if (isRoVowel(token[i])) {
+      if (start === -1) start = i;
+    } else if (start !== -1) {
+      groups.push({ start, end: i });
+      start = -1;
+    }
+  }
+  if (start !== -1) groups.push({ start, end: token.length });
+  if (!groups.length) return token;
+
+  const target = groups[Math.max(0, groups.length - 2)];
+  return token
+    .split('')
+    .map((ch, i) => (i >= target.start && i < target.end ? ch.toUpperCase() : ch))
+    .join('');
+}
+
+function autoStressWord(value) {
+  return String(value || '')
+    .split(/([\s-]+)/)
+    .map(part => (/^[\s-]+$/.test(part) ? part : autoStressToken(part)))
+    .join('');
+}
+
+function getStressDisplay(w) {
+  const manual = String(w?.ipa || '').trim();
+  if (manual) return { text: manual, auto: false };
+  return { text: autoStressWord(w?.ro || ''), auto: true };
+}
+
+function getCurrentScopeWords() {
+  const base = W.filter(w => getWordDifficulty(w) === curDifficulty);
+  return curCat === '全部' ? base : base.filter(w => w.cat === curCat);
+}
+
+function renderReviewPanel() {
+  const dueEl = document.getElementById('review-due-count');
+  if (!dueEl) return;
+  const scoped = getCurrentScopeWords();
+  const due = scoped.filter(w => isReviewDue(progressMap[w.ro])).length;
+  const fresh = scoped.filter(w => {
+    const p = progressMap[w.ro];
+    return !p || (!p.qt && !p.known);
+  }).length;
+  const current = filtered[idx];
+  const p = current ? progressMap[current.ro] : null;
+  setText('review-due-count', due);
+  setText('review-new-count', fresh);
+  setText('review-stage-label', p?.reviewStage || 0);
+  setText('review-note', current
+    ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。答错会回到第0阶段，答对进入下一间隔。`
+    : '按艾宾浩斯曲线优先复习到期词。');
+}
 
 // ── 统计 ─────────────────────────────────────────────────
 
@@ -162,8 +337,8 @@ function upStats() {
 
   const badge = document.getElementById('wb-tab-badge');
   if (badge) { badge.textContent = wbCount; badge.style.display = wbCount > 0 ? 'inline' : 'none'; }
-  // 重新检查难度解锁状态
-  buildDifficultyBar();
+  updateReviewBadge();
+  renderDifficultyTabs();
 }
 
 function setText(id, value) {
@@ -179,18 +354,22 @@ function setSyncBadge(txt, cls) {
   el.className = 'sync-badge ' + (cls || '');
 }
 
-async function syncProgress(wordRo, known, qr, qt, nextReview, reviewCount) {
+async function syncProgress(wordRo, known, qr, qt, success = known) {
   setSyncBadge('同步中...', '');
   const level = calcLevel(qr, qt);
-  progressMap[wordRo] = { known, qr, qt, level, nextReview, reviewCount };
+  const prev = progressMap[wordRo] || {};
+  const review = getNextReview(prev, success);
+  progressMap[wordRo] = { ...prev, known, qr, qt, level, ...review };
   try {
-    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, nextReview, reviewCount);
+    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review);
     setSyncBadge('已保存', 'saved');
   } catch {
     setSyncBadge('同步失败', '');
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
+  applyFilters();
   upStats();
+  updateReviewBadge();
 }
 
 // ── 导航 ─────────────────────────────────────────────────
@@ -213,9 +392,11 @@ function switchPage(p) {
 }
 
 function updateReviewBadge() {
-  const count = getTodayReviewWords().length;
   const badge = document.getElementById('review-tab-badge');
-  if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none'; }
+  if (!badge) return;
+  const count = getTodayReviewWords().length;
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'inline' : 'none';
 }
 
 // ── 每日目标 ──────────────────────────────────────────────
@@ -282,121 +463,107 @@ async function renderCalendar() {
   el.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">${days.join('')}</div>`;
 }
 
-// ── 难度选择 ──────────────────────────────────────────────
-
-/**
- * 计算某难度级别的掌握率（用于解锁判断）
- */
-function difficultyMasteryPct(diff) {
-  const words = W.filter(w => w.difficulty === diff);
-  if (!words.length) return 1;
-  const mastered = words.filter(w => calcLevel(progressMap[w.ro]?.qr, progressMap[w.ro]?.qt) === 'mastered').length;
-  return mastered / words.length;
-}
-
-/**
- * 判断某难度是否解锁
- */
-function isDifficultyUnlocked(diff) {
-  if (diff === 'all' || diff === 'beginner') return true;
-  if (diff === 'intermediate') return difficultyMasteryPct('beginner') >= DIFF_UNLOCK.intermediate;
-  if (diff === 'advanced') return difficultyMasteryPct('intermediate') >= DIFF_UNLOCK.advanced;
-  return false;
-}
-
-/**
- * 获取当前难度+分类筛选后的词汇
- */
-function getFiltered() {
-  let base = curDifficulty === 'all' ? [...W] : W.filter(w => w.difficulty === curDifficulty);
-  if (curCat !== '全部') base = base.filter(w => w.cat === curCat);
-  return base;
-}
-
-function buildDifficultyBar() {
-  const el = document.getElementById('difficulty-bar');
-  if (!el) return;
-  const diffs = ['all', 'beginner', 'intermediate', 'advanced'];
-  el.innerHTML = diffs.map(d => {
-    const unlocked = isDifficultyUnlocked(d);
-    const active = d === curDifficulty;
-    const count = d === 'all' ? W.length : W.filter(w => w.difficulty === d).length;
-    const pct = d === 'all' ? null : Math.round(difficultyMasteryPct(d) * 100);
-    const lockIcon = !unlocked ? ' 🔒' : '';
-    const pctText = pct !== null ? ` ${pct}%` : '';
-    return `<button class="diff-chip${active ? ' active' : ''}${!unlocked ? ' locked' : ''}"
-      onclick="${unlocked ? `setDifficulty('${d}')` : `showToast('请先掌握上一级70%的词汇才能解锁')`}">
-      ${DIFF_LABEL[d]}${lockIcon}<span style="font-size:10px;opacity:0.7"> ${count}词${pctText}</span>
-    </button>`;
-  }).join('');
-}
-
-function setDifficulty(d) {
-  if (!isDifficultyUnlocked(d)) { showToast('请先掌握上一级70%的词汇才能解锁'); return; }
-  curDifficulty = d;
-  curCat = '全部';
-  idx = 0; flipped = false;
-  document.getElementById('main-card').classList.remove('flipped');
-  document.getElementById('know-btns-wrap').style.display = 'none';
-  document.getElementById('flip-hint').style.display = 'block';
-  filtered = getFiltered();
-  buildDifficultyBar();
-  buildCats();
-  renderCard();
-}
-
 // ── 卡片记忆 ──────────────────────────────────────────────
 
 function buildCats() {
-  const base = curDifficulty === 'all' ? W : W.filter(w => w.difficulty === curDifficulty);
-  const cats = ['全部', ...new Set(base.map(w => w.cat).filter(Boolean))]
+  const levelWords = W.filter(w => getWordDifficulty(w) === curDifficulty);
+  const cats = ['全部', ...new Set(levelWords.map(w => w.cat).filter(Boolean))]
     .sort((a, b) => a === '全部' ? -1 : b === '全部' ? 1 : a.localeCompare(b, 'zh'));
   document.getElementById('cat-bar').innerHTML = cats.map(c =>
     `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat('${c.replace(/'/g, "\\'")}')">${c}</button>`
   ).join('');
 }
 
-function setCat(c) {
-  curCat = c;
-  filtered = getFiltered();
+function setDifficulty(difficulty) {
+  if (!isDifficultyUnlocked(difficulty)) {
+    const required = DIFFICULTIES.find(d => d.key === difficulty)?.required;
+    const pct = required ? calcDifficultyMastery(required).pct : 0;
+    showToast(`需先掌握 ${UNLOCK_THRESHOLD}% 的 ${DIFFICULTY_LABEL[required]}，当前 ${pct}%`);
+    renderDifficultyTabs();
+    return;
+  }
+  curDifficulty = difficulty;
+  curCat = '全部';
   idx = 0; flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
-  document.getElementById('know-btns-wrap').style.display = 'none';
-  document.getElementById('flip-hint').style.display = 'block';
+  applyFilters();
+  renderDifficultyTabs();
+  buildCats();
+  renderCard();
+}
+
+function setCat(c) {
+  curCat = c;
+  applyFilters();
+  idx = 0; flipped = false;
+  document.getElementById('main-card').classList.remove('flipped');
   buildCats();
   renderCard();
 }
 
 function renderCard() {
-  if (!filtered.length) return;
+  if (!filtered.length) {
+    setText('fc-cat', DIFFICULTY_CN[curDifficulty] || '');
+    setText('fc-cat2', DIFFICULTY_CN[curDifficulty] || '');
+    setText('fc-zh', '当前等级暂无词汇');
+    setText('fc-ro', 'No words');
+    setText('fc-ipa', '');
+    setText('fc-phint', '');
+    setText('fc-count', '0 / 0');
+    setText('fc-level', '');
+    return;
+  }
+  bindFlashcardButtons();
   idx = (idx + filtered.length) % filtered.length;
   const w = filtered[idx];
-  document.getElementById('fc-cat').textContent = w.cat || '';
-  document.getElementById('fc-cat2').textContent = w.cat || '';
+  const stress = getStressDisplay(w);
+  document.getElementById('fc-cat').textContent = `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`;
+  document.getElementById('fc-cat2').textContent = `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`;
   document.getElementById('fc-zh').textContent = w.zh;
   document.getElementById('fc-ro').textContent = w.ro;
-  document.getElementById('fc-ipa').textContent = w.ipa || w.ro;
-  document.getElementById('fc-phint').textContent = w.hint || '';
+  document.getElementById('fc-ipa').textContent = stress.text;
+  document.getElementById('fc-phint').textContent = w.hint || (stress.auto ? '自动重音，建议核对' : '');
   document.getElementById('fc-count').textContent = (idx + 1) + ' / ' + filtered.length;
   // 显示熟练度
   const p = progressMap[w.ro] || {};
   const lv = calcLevel(p.qr, p.qt);
   const lvEl = document.getElementById('fc-level');
   if (lvEl) { lvEl.textContent = LEVEL_LABEL[lv]; lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
+  renderReviewPanel();
 }
 
-// 点卡片：来回翻转，控制按钮显隐
+// 点卡片：来回翻转
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
-  document.getElementById('know-btns-wrap').style.display = flipped ? 'flex' : 'none';
-  document.getElementById('flip-hint').style.display = flipped ? 'none' : 'block';
+}
+
+function bindFlashcardButtons() {
+  if (flashcardButtonsBound) return;
+  const knownBtn = document.getElementById('mark-known-btn');
+  const unknownBtn = document.getElementById('mark-unknown-btn');
+  if (!knownBtn || !unknownBtn) return;
+
+  knownBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    markCard(true);
+  });
+
+  unknownBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    markCard(false);
+  });
+
+  flashcardButtonsBound = true;
 }
 
 /**
  * 记录当前词为「今日已学」
  */
 async function recordDailyWord() {
+  if (!filtered.length) return;
   const w = filtered[idx];
   if (!todaySeenWords.has(w.ro)) {
     todaySeenWords.add(w.ro);
@@ -422,172 +589,34 @@ function updateTodayCalendarCell() {
   });
 }
 
-// ── Ebbinghaus 遗忘曲线 ───────────────────────────────────
-
-/**
- * 计算下次复习日期
- * yes=认识 → 按间隔递增；no=不认识 → 重置到明天
- */
-function calcNextReview(yes, reviewCount) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (!yes) {
-    // 忘记了，明天重新复习
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return { nextReview: d.toISOString().slice(0, 10), reviewCount: 0 };
-  }
-  const newCount = (reviewCount || 0) + 1;
-  const interval = REVIEW_INTERVALS[Math.min(newCount - 1, REVIEW_INTERVALS.length - 1)];
-  const d = new Date();
-  d.setDate(d.getDate() + interval);
-  return { nextReview: d.toISOString().slice(0, 10), reviewCount: newCount };
-}
-
-/**
- * 获取今日待复习词（next_review <= 今天，且已学过）
- */
-function getTodayReviewWords() {
-  const today = new Date().toISOString().slice(0, 10);
-  return W.filter(w => {
-    const p = progressMap[w.ro];
-    if (!p || !p.nextReview) return false;
-    return p.nextReview <= today;
-  });
-}
-
-/**
- * 初始化复习队列
- */
-function initReviewQueue() {
-  reviewQueue = getTodayReviewWords().sort(() => Math.random() - 0.5);
-  reviewIdx = 0;
-}
-
-/**
- * 渲染复习模式卡片
- */
-function renderReviewCard() {
-  const wrap = document.getElementById('review-wrap');
-  const empty = document.getElementById('review-empty');
-  if (!reviewQueue.length) {
-    if (wrap) wrap.style.display = 'none';
-    if (empty) empty.style.display = 'flex';
-    return;
-  }
-  if (wrap) wrap.style.display = 'block';
-  if (empty) empty.style.display = 'none';
-  if (reviewIdx >= reviewQueue.length) {
-    showReviewComplete();
-    return;
-  }
-  const w = reviewQueue[reviewIdx];
-  const p = progressMap[w.ro] || {};
-  const rc = p.reviewCount || 0;
-  const interval = REVIEW_INTERVALS[Math.min(rc, REVIEW_INTERVALS.length - 1)];
-  setText('rv-count', `${reviewIdx + 1} / ${reviewQueue.length}`);
-  setText('rv-zh', w.zh);
-  setText('rv-ro', w.ro);
-  setText('rv-ipa', w.ipa || w.ro);
-  setText('rv-hint', w.hint || '');
-  setText('rv-cat', w.cat || '');
-  setText('rv-interval', `上次间隔 ${rc > 0 ? REVIEW_INTERVALS[Math.min(rc-1, REVIEW_INTERVALS.length-1)] : 0}天 · 下次将间隔 ${interval}天`);
-  // reset flip
-  document.getElementById('rv-card').classList.remove('flipped');
-  document.getElementById('rv-btns').style.display = 'none';
-  document.getElementById('rv-flip-hint').style.display = 'block';
-}
-
-function flipReviewCard() {
-  const card = document.getElementById('rv-card');
-  const flippedNow = card.classList.toggle('flipped');
-  document.getElementById('rv-btns').style.display = flippedNow ? 'flex' : 'none';
-  document.getElementById('rv-flip-hint').style.display = flippedNow ? 'none' : 'block';
-}
-
-function markReview(yes) {
-  const w = reviewQueue[reviewIdx];
-  const prev = progressMap[w.ro] || { known: true, qr: 0, qt: 0, reviewCount: 0 };
-  const { nextReview, reviewCount } = calcNextReview(yes, prev.reviewCount);
-  const newQr = (prev.qr || 0) + (yes ? 1 : 0);
-  const newQt = (prev.qt || 0) + 1;
-  syncProgress(w.ro, yes, newQr, newQt, nextReview, reviewCount);
-  reviewIdx++;
-  if (reviewIdx >= reviewQueue.length) { showReviewComplete(); return; }
-  renderReviewCard();
-}
-
-function showReviewComplete() {
-  const wrap = document.getElementById('review-wrap');
-  if (wrap) wrap.innerHTML = `
-    <div style="text-align:center;padding:2rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)">
-      <div style="font-size:48px;margin-bottom:12px">🎉</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px">今日复习完成！</div>
-      <div style="font-size:14px;color:var(--text2);margin-bottom:20px">完成了 ${reviewQueue.length} 个词的复习</div>
-      <button class="btn-primary" style="max-width:200px" onclick="switchPage('flash')">去学新词 →</button>
-    </div>`;
-}
-
-// ── 「认识了」/「不认识」— 卡片模式 ──────────────────────
-
-// 「认识了」/「不认识」— 按钮在卡片外，无事件冲突
+// 「认识了」/「不认识」
 function markCard(yes) {
+  if (!filtered.length) return;
   recordDailyWord();
   const w = filtered[idx];
-  const prev = progressMap[w.ro] || { qr: 0, qt: 0, reviewCount: 0 };
+  const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (yes ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  // Ebbinghaus: 第一次标「认识」就安排复习
-  const { nextReview, reviewCount } = yes
-    ? calcNextReview(true, prev.reviewCount || 0)
-    : { nextReview: null, reviewCount: 0 };
-  syncProgress(w.ro, yes, newQr, newQt, nextReview, reviewCount);
-
-  // 如果是最后一张，显示完成屏
-  if (idx === filtered.length - 1) {
-    showCardComplete();
-    return;
-  }
-  idx = (idx + 1) % filtered.length;
+  syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
+  // 跳下一张，重置为中文面
+  applyFilters();
+  idx = filtered.length ? (idx + 1) % filtered.length : 0;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
-  document.getElementById('know-btns-wrap').style.display = 'none';
-  document.getElementById('flip-hint').style.display = 'block';
   renderCard();
 }
 
-function showCardComplete() {
-  const reviewDue = getTodayReviewWords().length;
-  document.getElementById('flash-content').innerHTML = `
-    <div style="text-align:center;padding:2rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)">
-      <div style="font-size:48px;margin-bottom:12px">✅</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px">本组词汇学完了！</div>
-      <div style="font-size:14px;color:var(--text2);margin-bottom:20px">
-        ${reviewDue > 0 ? `今日有 ${reviewDue} 个词需要复习` : '没有待复习词汇，明天再来！'}
-      </div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="restart-btn" onclick="restartCards()">重新开始</button>
-        ${reviewDue > 0 ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="switchPage('review')">开始复习 →</button>` : ''}
-      </div>
-    </div>`;
-}
-
-function restartCards() {
-  idx = 0; flipped = false;
-  // rebuild flash-content
-  loadWords().then(() => { loadProgress(); });
-}
-
-// 「上一个」— 回到上一张的罗语面，显示按钮
+// 「上一个」— 回到上一张的罗语面
 function prevCard() {
+  if (!filtered.length) return;
   idx = (idx - 1 + filtered.length) % filtered.length;
   flipped = true;
   document.getElementById('main-card').classList.add('flipped');
-  document.getElementById('know-btns-wrap').style.display = 'flex';
-  document.getElementById('flip-hint').style.display = 'none';
   renderCard();
 }
 
 function speak(rate) {
+  if (!filtered.length) return;
   const w = filtered[idx];
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
@@ -596,6 +625,71 @@ function speak(rate) {
   const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
   if (rv) u.voice = rv;
   speechSynthesis.speak(u);
+}
+
+// ── 艾宾浩斯复习页 ────────────────────────────────────────
+
+function getTodayReviewWords() {
+  return W.filter(w => {
+    const p = progressMap[w.ro];
+    return p && (p.qt || p.known) && isReviewDue(p);
+  });
+}
+
+function initReviewQueue() {
+  reviewQueue = getTodayReviewWords().sort((a, b) => {
+    const pa = progressMap[a.ro] || {};
+    const pb = progressMap[b.ro] || {};
+    return new Date(pa.nextReviewAt || 0) - new Date(pb.nextReviewAt || 0);
+  });
+  reviewIdx = 0;
+}
+
+function renderReviewCard() {
+  const wrap = document.getElementById('review-wrap');
+  const empty = document.getElementById('review-empty');
+  if (!wrap || !empty) return;
+
+  if (!reviewQueue.length || reviewIdx >= reviewQueue.length) {
+    wrap.style.display = 'none';
+    empty.style.display = 'flex';
+    empty.innerHTML = `
+      <div style="font-size:48px">😴</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text)">今日没有待复习词汇</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">先去学新词，系统会按复习间隔安排下一次复习</div>
+      <button class="btn-sm" style="margin-top:12px" onclick="switchPage('flash')">去学新词</button>`;
+    return;
+  }
+
+  wrap.style.display = 'block';
+  empty.style.display = 'none';
+
+  const w = reviewQueue[reviewIdx];
+  const p = progressMap[w.ro] || {};
+  const stress = getStressDisplay(w);
+  const stage = Number(p.reviewStage || p.reviewCount || 0);
+  const nextInterval = REVIEW_INTERVALS[Math.min(stage, REVIEW_INTERVALS.length - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
+
+  setText('rv-count', `${reviewIdx + 1} / ${reviewQueue.length}`);
+  setText('rv-zh', w.zh);
+  setText('rv-ro', w.ro);
+  setText('rv-ipa', stress.text);
+  setText('rv-hint', w.hint || (stress.auto ? '自动重音，建议核对' : ''));
+  setText('rv-cat', `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`);
+  setText('rv-cat2', `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`);
+  setText('rv-interval', `当前阶段 ${stage} · 答对后进入 ${nextInterval.label}`);
+
+  document.getElementById('rv-card').classList.remove('flipped');
+  document.getElementById('rv-btns').style.display = 'none';
+  document.getElementById('rv-flip-hint').style.display = 'block';
+}
+
+function flipReviewCard() {
+  const card = document.getElementById('rv-card');
+  if (!card) return;
+  const flippedNow = card.classList.toggle('flipped');
+  document.getElementById('rv-btns').style.display = flippedNow ? 'flex' : 'none';
+  document.getElementById('rv-flip-hint').style.display = flippedNow ? 'none' : 'block';
 }
 
 function speakReview(rate) {
@@ -604,10 +698,40 @@ function speakReview(rate) {
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(w.ro);
-  u.lang = 'ro-RO'; u.rate = rate;
+  u.lang = 'ro-RO';
+  u.rate = rate;
   const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
   if (rv) u.voice = rv;
   speechSynthesis.speak(u);
+}
+
+async function markReview(yes) {
+  if (!reviewQueue.length || reviewIdx >= reviewQueue.length) return;
+  const w = reviewQueue[reviewIdx];
+  const prev = progressMap[w.ro] || { known: true, qr: 0, qt: 0 };
+  const newQr = (prev.qr || 0) + (yes ? 1 : 0);
+  const newQt = (prev.qt || 0) + 1;
+  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
+
+  reviewIdx++;
+  if (reviewIdx >= reviewQueue.length) {
+    showReviewComplete();
+    return;
+  }
+  renderReviewCard();
+}
+
+function showReviewComplete() {
+  const wrap = document.getElementById('review-wrap');
+  const empty = document.getElementById('review-empty');
+  if (wrap) wrap.style.display = 'none';
+  if (!empty) return;
+  empty.style.display = 'flex';
+  empty.innerHTML = `
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">今日复习完成</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">完成了 ${reviewQueue.length} 个词的复习</div>
+      <button class="btn-sm" onclick="switchPage('flash')">去学新词</button>
+    `;
 }
 
 // ── 错题本 ────────────────────────────────────────────────
@@ -664,6 +788,7 @@ function renderWrongbookCard() {
   content.style.display = 'block';
 
   const w = wbList[wbIdx];
+  const stress = getStressDisplay(w);
   const p = progressMap[w.ro] || {};
   const wrongCount = (p.qt || 0) - (p.qr || 0);
   const streak = wbStreaks[w.ro] || 0;
@@ -672,8 +797,8 @@ function renderWrongbookCard() {
   document.getElementById('wb-cat2').textContent = w.cat || '';
   document.getElementById('wb-zh').textContent = w.zh;
   document.getElementById('wb-ro').textContent = w.ro;
-  document.getElementById('wb-ipa').textContent = w.ipa || w.ro;
-  document.getElementById('wb-phint').textContent = w.hint || '';
+  document.getElementById('wb-ipa').textContent = stress.text;
+  document.getElementById('wb-phint').textContent = w.hint || (stress.auto ? '自动重音，建议核对' : '');
   document.getElementById('wb-count').textContent = (wbIdx + 1) + ' / ' + wbList.length;
   document.getElementById('wb-wrong-count').textContent = `答错 ${wrongCount} 次`;
   document.getElementById('wb-streak').textContent = streak > 0 ? `连续答对 ${streak}/${WB_GRADUATE}` : '';
@@ -725,7 +850,7 @@ async function answerWb(correct) {
   // 更新进度
   const newQr = (prev.qr || 0) + (correct ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, prev.known, newQr, newQt);
+  await syncProgress(w.ro, correct || prev.known, newQr, newQt, correct);
 
   if (correct) {
     // 连击+1
@@ -772,23 +897,44 @@ function setQSize(n) {
   );
 }
 
+function getActiveStudyPool() {
+  const base = W.filter(w => getWordDifficulty(w) === curDifficulty);
+  const scoped = curCat === '全部' ? base : base.filter(w => w.cat === curCat);
+  return sortByReviewPriority(scoped);
+}
+
+function shuffleGroup(words) {
+  return [...words].sort(() => Math.random() - 0.5);
+}
+
+function buildReviewPriorityPool(words) {
+  return [
+    ...shuffleGroup(words.filter(w => getReviewBucket(w) === 0)),
+    ...shuffleGroup(words.filter(w => getReviewBucket(w) === 1)),
+    ...shuffleGroup(words.filter(w => getReviewBucket(w) === 2)),
+  ];
+}
+
 function showQuizSetup() {
+  const pool = getActiveStudyPool();
   document.getElementById('quiz-area').innerHTML = `
     <div style="text-align:center;padding:1.5rem 0">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${DIFFICULTY_LABEL[curDifficulty]}${curCat !== '全部' ? ' · ' + curCat : ''} · ${pool.length} 词</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:1rem;color:var(--text)">选择本轮题目数</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem">
         <button class="qsize-btn${qSize===20?' active':''}" data-n="20" onclick="setQSize(20)">20题</button>
         <button class="qsize-btn${qSize===50?' active':''}" data-n="50" onclick="setQSize(50)">50题</button>
         <button class="qsize-btn${qSize===100?' active':''}" data-n="100" onclick="setQSize(100)">100题</button>
-        <button class="qsize-btn${qSize===0?' active':''}" data-n="0" onclick="setQSize(0)">全部(${W.length}题)</button>
+        <button class="qsize-btn${qSize===0?' active':''}" data-n="0" onclick="setQSize(0)">全部(${pool.length}题)</button>
       </div>
       <button class="btn-primary" style="max-width:200px" onclick="startQuiz()">开始测验 →</button>
     </div>`;
 }
 
 function startQuiz() {
-  if (!W.length) return;
-  const pool = [...W].sort(() => Math.random() - 0.5);
+  const activePool = getActiveStudyPool();
+  if (!activePool.length) { showToast('当前等级没有可测验的词'); return; }
+  const pool = buildReviewPriorityPool(activePool);
   qList = qSize > 0 ? pool.slice(0, qSize) : pool;
   qIdx = 0;
   qRoundRight = 0;
@@ -799,7 +945,9 @@ function startQuiz() {
 function renderQuiz() {
   if (qIdx >= qList.length) { showResult(); return; }
   const w = qList[qIdx];
-  const wrongs = W.filter(x => x.ro !== w.ro).sort(() => Math.random() - 0.5).slice(0, 3);
+  const optionPool = getActiveStudyPool().filter(x => x.ro !== w.ro);
+  const fallbackPool = W.filter(x => x.ro !== w.ro && !optionPool.some(o => o.ro === x.ro));
+  const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
   const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
   const qText = qMode === 'zh' ? w.zh : w.ro;
   const pct = Math.round(qIdx / qList.length * 100);
@@ -847,8 +995,8 @@ function answerQ(btn, ok, ro, zh) {
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (ok ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  progressMap[w.ro] = { known: prev.known, qr: newQr, qt: newQt };
-  syncProgress(w.ro, prev.known, newQr, newQt);
+  progressMap[w.ro] = { ...prev, known: ok || prev.known, qr: newQr, qt: newQt };
+  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok);
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -1067,19 +1215,27 @@ function renderList() {
   document.getElementById('word-list').innerHTML = f.slice(0, 200).map(w => {
     const p = progressMap[w.ro] || {};
     const lv = calcLevel(p.qr, p.qt);
+    const stress = getStressDisplay(w);
     return `<div class="word-row">
       <div style="flex:1;min-width:0">
         <div class="word-zh">${w.zh}</div>
         <div class="word-ro">${w.ro}</div>
-        <div class="word-ipa">[${w.ipa || w.ro}]${w.hint ? ' · ' + w.hint : ''}</div>
+        <div class="word-ipa">[${stress.text}]${w.hint ? ' · ' + w.hint : (stress.auto ? ' · 自动重音' : '')}</div>
       </div>
       <div style="display:flex;align-items:center;flex-shrink:0;gap:4px">
+        <div class="word-cat" style="background:var(--bg2);color:var(--text2)">${DIFFICULTY_CN[getWordDifficulty(w)]}</div>
         <div class="word-cat">${w.cat || ''}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${LEVEL_BG[lv]};color:${LEVEL_TC[lv]};white-space:nowrap">${LEVEL_LABEL[lv]}</span>
         ${editBtns(w)}
       </div>
     </div>`;
   }).join('') + (f.length > 200 ? `<div style="text-align:center;padding:12px;font-size:13px;color:var(--text3)">显示前200条，请搜索缩小范围</div>` : '');
+}
+
+function getMissingIpaWords() {
+  return W
+    .filter(w => !String(w.ipa || '').trim())
+    .sort((a, b) => String(a.ro).localeCompare(String(b.ro), 'ro'));
 }
 
 // ── 报错弹窗（用户） ──────────────────────────────────────
@@ -1126,6 +1282,7 @@ function openEditModal(word, reportId = null) {
   document.getElementById('em-ipa').value = word.ipa || '';
   document.getElementById('em-hint').value = word.hint || '';
   document.getElementById('em-cat').value = word.cat || '';
+  document.getElementById('em-difficulty').value = getWordDifficulty(word);
   document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -1143,6 +1300,7 @@ async function saveEdit() {
     ipa: document.getElementById('em-ipa').value.trim(),
     hint: document.getElementById('em-hint').value.trim(),
     cat: document.getElementById('em-cat').value.trim(),
+    difficulty: normalizeDifficulty(document.getElementById('em-difficulty').value),
   };
   try {
     await apiUpdateWord(editingWordId, updates);
@@ -1150,10 +1308,11 @@ async function saveEdit() {
     // 更新本地缓存
     const wi = W.findIndex(w => w.id === editingWordId);
     if (wi >= 0) W[wi] = { ...W[wi], ...updates };
-    filtered = curCat === '全部' ? [...W] : W.filter(w => w.cat === curCat);
-    renderCard(); renderList();
+    applyFilters();
+    renderDifficultyTabs(); buildCats(); renderCard(); renderList();
     closeEditModal();
     showToast('✅ 修改已保存');
+    loadAdminStats();
     if (editingReportId) loadAdminReports();
   } catch (e) {
     showToast('保存失败：' + e.message);
@@ -1172,6 +1331,7 @@ function openAddWordModal() {
   document.getElementById('aw-ipa').value = '';
   document.getElementById('aw-hint').value = '';
   document.getElementById('aw-cat').value = '';
+  document.getElementById('aw-difficulty').value = 'beginner';
   document.getElementById('aw-bulk-text').value = '';
   document.getElementById('aw-result').textContent = '';
   document.getElementById('add-word-modal').style.display = 'flex';
@@ -1202,13 +1362,26 @@ async function submitAddWord() {
       const zh = document.getElementById('aw-zh').value.trim();
       const ro = document.getElementById('aw-ro').value.trim();
       if (!zh || !ro) { showToast('中文和罗语是必填项'); btn.disabled = false; btn.textContent = '保存'; return; }
-      words = [{ zh, ro, ipa: document.getElementById('aw-ipa').value.trim(), hint: document.getElementById('aw-hint').value.trim(), cat: document.getElementById('aw-cat').value.trim() || '其他' }];
+      words = [{
+        zh, ro,
+        ipa: document.getElementById('aw-ipa').value.trim(),
+        hint: document.getElementById('aw-hint').value.trim(),
+        cat: document.getElementById('aw-cat').value.trim() || '其他',
+        difficulty: normalizeDifficulty(document.getElementById('aw-difficulty').value)
+      }];
     } else {
-      // 批量模式：每行 中文|罗语|音标|提示|分类
+      // 批量模式：每行 中文|罗语|音标|提示|分类|难度
       const lines = document.getElementById('aw-bulk-text').value.trim().split('\n').filter(l => l.trim());
       words = lines.map(line => {
         const parts = line.split('|').map(s => s.trim());
-        return { zh: parts[0] || '', ro: parts[1] || '', ipa: parts[2] || '', hint: parts[3] || '', cat: parts[4] || '其他' };
+        return {
+          zh: parts[0] || '',
+          ro: parts[1] || '',
+          ipa: parts[2] || '',
+          hint: parts[3] || '',
+          cat: parts[4] || '其他',
+          difficulty: normalizeDifficulty(parts[5] || 'beginner')
+        };
       }).filter(w => w.zh && w.ro);
       if (!words.length) { showToast('没有解析到有效词汇，请检查格式'); btn.disabled = false; btn.textContent = '保存'; return; }
     }
@@ -1217,15 +1390,17 @@ async function submitAddWord() {
 
     // 刷新本地词库
     W = await apiLoadWords();
-    filtered = curCat === '全部' ? [...W] : W.filter(w => w.cat === curCat);
+    applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
-    buildCats(); renderCard(); renderList();
+    renderDifficultyTabs(); buildCats(); renderCard(); renderList();
 
     const msg = `✅ 成功添加 ${inserted} 个词${skipped > 0 ? `，跳过重复 ${skipped} 个` : ''}`;
+    const missingIpa = words.filter(w => !String(w.ipa || '').trim()).length;
     document.getElementById('aw-result').textContent = msg;
     document.getElementById('aw-result').style.color = 'var(--green-text)';
-    showToast(msg);
+    showToast(missingIpa ? `${msg}，其中 ${missingIpa} 个待校对音标` : msg);
+    loadAdminStats();
 
     if (mode === 'single') {
       // 单条模式清空表单，方便继续添加
@@ -1247,10 +1422,10 @@ async function deleteWord(wordId, wordZh) {
   try {
     await apiDeleteWord(wordId);
     W = W.filter(w => w.id !== wordId);
-    filtered = curCat === '全部' ? [...W] : W.filter(w => w.cat === curCat);
+    applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
-    buildCats(); renderCard(); renderList(); loadAdminStats();
+    renderDifficultyTabs(); buildCats(); renderCard(); renderList(); loadAdminStats();
     showToast(`✅ 已删除「${wordZh}」`);
   } catch (e) {
     showToast('删除失败：' + e.message);
@@ -1272,8 +1447,10 @@ async function loadAdminStats() {
     const reports = reportsResult.status === 'fulfilled' ? reportsResult.value : [];
     const allProgress = progressResult.status === 'fulfilled' ? progressResult.value : [];
     const categoryStats = getAdminCategoryStats();
+    const difficultyStats = getAdminDifficultyStats();
     const reportStats = getAdminReportStats(reports);
     const wrongStats = getAdminWrongStats(allProgress);
+    const missingIpaWords = getMissingIpaWords();
     const pendingReports = reports.filter(r => r.status === 'pending').length;
     const totalAnswers = allProgress.reduce((sum, r) => sum + (r.quiz_total || 0), 0);
 
@@ -1282,6 +1459,11 @@ async function loadAdminStats() {
         <div class="admin-stat"><div class="admin-stat-n">${W.length}</div><div class="admin-stat-l">词库总量</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${categoryStats.length}</div><div class="admin-stat-l">分类数量</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${pendingReports}</div><div class="admin-stat-l">待处理报错</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${missingIpaWords.length}</div><div class="admin-stat-l">待校对音标</div></div>
+      </div>
+      <div class="admin-chart">
+        <div class="admin-chart-title">各等级词汇数量</div>
+        ${renderAdminDifficultyRows(difficultyStats)}
       </div>
       <div class="admin-chart">
         <div class="admin-chart-title">各分类词汇数量</div>
@@ -1295,9 +1477,37 @@ async function loadAdminStats() {
         <div class="admin-chart-title">答错率最高的词 <span style="font-weight:400;color:var(--text2)">共 ${totalAnswers} 次测验记录</span></div>
         ${progressResult.status === 'fulfilled' ? renderAdminWrongRows(wrongStats) : `<div class="empty-state">答题记录无法读取：${escapeHtml(progressResult.reason.message)}</div>`}
       </div>`;
+    renderMissingIpaPanel();
   } catch (e) {
     el.innerHTML = `<div class="empty-state">词库统计加载失败：${escapeHtml(e.message || '未知错误')}</div>`;
+    renderMissingIpaPanel();
   }
+}
+
+function renderMissingIpaPanel() {
+  const el = document.getElementById('missing-ipa-container');
+  if (!el) return;
+  const rows = getMissingIpaWords();
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty-state">暂无待校对音标</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="admin-chart">
+      <div class="admin-chart-title">待校对音标 <span style="font-weight:400;color:var(--text2)">显示前 20 个 / 共 ${rows.length} 个</span></div>
+      ${rows.slice(0, 20).map(w => {
+        const stress = getStressDisplay(w);
+        return `<div class="admin-word-row">
+          <div>
+            <div class="admin-word-name">${escapeHtml(w.zh || w.ro)}</div>
+            <div class="admin-word-meta">${escapeHtml(w.ro)} · 自动推测：${escapeHtml(stress.text)}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
+          </div>
+          <div class="admin-word-actions">
+            <button class="admin-btn edit" onclick='openEditModal(${JSON.stringify(w)})'>补音标</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 function getAdminCategoryStats() {
@@ -1309,6 +1519,13 @@ function getAdminCategoryStats() {
   return Object.entries(map)
     .map(([cat, count]) => ({ cat, count }))
     .sort((a, b) => b.count - a.count || a.cat.localeCompare(b.cat, 'zh'));
+}
+
+function getAdminDifficultyStats() {
+  return DIFFICULTIES.map(d => {
+    const count = W.filter(w => getWordDifficulty(w) === d.key).length;
+    return { cat: `${d.label} · ${d.cn}`, count };
+  });
 }
 
 function getAdminReportStats(reports) {
@@ -1346,6 +1563,17 @@ function renderAdminCategoryRows(rows) {
   if (!rows.length) return '<div class="empty-state">暂无分类数据</div>';
   const max = Math.max(...rows.map(r => r.count), 1);
   return rows.slice(0, 12).map(r => `
+    <div class="admin-mini-row">
+      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.cat)}</div>
+      <div class="admin-mini-meter"><div class="admin-mini-fill" style="width:${Math.round(r.count / max * 100)}%"></div></div>
+      <div style="color:var(--text2)">${r.count}词</div>
+    </div>`).join('');
+}
+
+function renderAdminDifficultyRows(rows) {
+  if (!rows.length) return '<div class="empty-state">暂无等级数据</div>';
+  const max = Math.max(...rows.map(r => r.count), 1);
+  return rows.map(r => `
     <div class="admin-mini-row">
       <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.cat)}</div>
       <div class="admin-mini-meter"><div class="admin-mini-fill" style="width:${Math.round(r.count / max * 100)}%"></div></div>
