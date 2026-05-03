@@ -30,7 +30,7 @@ async function apiLoadWords() {
 /**
  * 更新一个词条
  * @param {number} wordId
- * @param {object} updates - { zh, ro, ipa, hint, cat, difficulty }
+ * @param {object} updates - { zh, ro, ipa, hint, cat }
  */
 async function apiUpdateWord(wordId, updates) {
   const { error } = await sb.from('words').update(updates).eq('id', wordId);
@@ -58,7 +58,7 @@ async function apiApplyStressGrammarPatch(rows, onProgress) {
 
 /**
  * 批量插入词汇，跳过重复（以 ro 字段为唯一键）
- * @param {Array} words - [{ zh, ro, ipa, hint, cat, difficulty }]
+ * @param {Array} words - [{ zh, ro, ipa, hint, cat }]
  * @returns {{ inserted: number, skipped: number }}
  */
 async function apiInsertWords(words) {
@@ -68,6 +68,7 @@ async function apiInsertWords(words) {
     hint: w.hint || '',
     cat: w.cat || '其他',
     level: 'A1-A2',
+    // Kept only for database compatibility; the app no longer uses difficulty.
     difficulty: w.difficulty || 'beginner'
   }));
   const { data, error } = await sb.from('words')
@@ -108,7 +109,10 @@ async function apiLoadProgress(userId) {
       nextReviewAt: r.next_review_at || legacyNextReviewAt,
       lastReviewedAt: r.last_reviewed_at || null,
       reviewCount: reviewStage,
-      nextReview: r.next_review || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null)
+      nextReview: r.next_review || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
+      wrongCount: r.wrong_count || Math.max(0, (r.quiz_total || 0) - (r.quiz_right || 0)),
+      errorStreak: r.error_streak || 0,
+      lastWrongAt: r.last_wrong_at || null
     };
   });
   return map;
@@ -134,7 +138,7 @@ async function apiLoadAllProgress() {
 /**
  * 保存/更新一个词的学习进度（含熟练度 level）
  */
-async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null) {
+async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}) {
   const normalized = typeof review === 'string'
     ? {
         nextReviewAt: new Date(`${review}T00:00:00`).toISOString(),
@@ -156,6 +160,15 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     ...basePayload,
     review_stage: normalized.reviewStage || 0,
     next_review_at: normalized.nextReviewAt || now,
+    last_reviewed_at: normalized.lastReviewedAt || now,
+    wrong_count: memory.wrongCount || 0,
+    error_streak: memory.errorStreak || 0,
+    last_wrong_at: memory.lastWrongAt || null
+  };
+  const reviewOnlyPayload = {
+    ...basePayload,
+    review_stage: normalized.reviewStage || 0,
+    next_review_at: normalized.nextReviewAt || now,
     last_reviewed_at: normalized.lastReviewedAt || now
   };
   const legacyPayload = {
@@ -168,8 +181,88 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
   if (!error) return;
 
   const modernError = error;
+  ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_ro' }));
+  if (!error) return;
+
   ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
   if (error) throw new Error(`${modernError.message}; ${error.message}`);
+}
+
+// ── 每日学习队列 ──────────────────────────────────────────
+
+function getQueueDateKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getLocalQueueKey(userId, date = getQueueDateKey()) {
+  return `daily_queue:${userId}:${date}`;
+}
+
+function readLocalQueue(userId, goal, date = getQueueDateKey()) {
+  try {
+    const raw = localStorage.getItem(getLocalQueueKey(userId, date));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      user_id: userId,
+      queue_date: date,
+      goal: parsed.goal || goal || 20,
+      word_ro: Array.isArray(parsed.word_ro) ? parsed.word_ro : [],
+      completed_word_ro: Array.isArray(parsed.completed_word_ro) ? parsed.completed_word_ro : [],
+      completed: !!parsed.completed,
+      local: true
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
+  const payload = {
+    goal: queue.goal || 20,
+    word_ro: queue.word_ro || [],
+    completed_word_ro: queue.completed_word_ro || [],
+    completed: !!queue.completed
+  };
+  localStorage.setItem(getLocalQueueKey(userId, date), JSON.stringify(payload));
+  return { user_id: userId, queue_date: date, ...payload, local: true };
+}
+
+async function apiGetDailyQueue(userId, goal) {
+  const today = getQueueDateKey();
+  try {
+    const { data, error } = await sb.from('daily_queue')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('queue_date', today)
+      .single();
+    if (!error && data) {
+      return {
+        ...data,
+        word_ro: data.word_ro || [],
+        completed_word_ro: data.completed_word_ro || []
+      };
+    }
+  } catch {}
+  return readLocalQueue(userId, goal, today);
+}
+
+async function apiSaveDailyQueue(userId, queue) {
+  const today = getQueueDateKey();
+  const payload = {
+    user_id: userId,
+    queue_date: today,
+    goal: queue.goal || 20,
+    word_ro: queue.word_ro || [],
+    completed_word_ro: queue.completed_word_ro || [],
+    completed: !!queue.completed,
+    updated_at: new Date().toISOString()
+  };
+  try {
+    const { error } = await sb.from('daily_queue').upsert(payload, { onConflict: 'user_id,queue_date' });
+    if (!error) return payload;
+  } catch {}
+  return writeLocalQueue(userId, payload, today);
 }
 
 // ── 报错反馈 ──────────────────────────────────────────────
@@ -267,7 +360,7 @@ async function apiGetTodayLog(userId, goal) {
   const { data } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
   if (data) return data;
   // 创建今日记录
-  const { data: created } = await sb.from('daily_log').insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 10, completed: false }).select().single();
+  const { data: created } = await sb.from('daily_log').insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false }).select().single();
   return created;
 }
 
@@ -314,7 +407,7 @@ async function apiGetClassRecentLogs(days = 30) {
  */
 async function apiGetDailyGoal(userId) {
   const { data } = await sb.from('profiles').select('daily_goal').eq('id', userId).single();
-  return data?.daily_goal || 10;
+  return data?.daily_goal || 20;
 }
 
 /**
