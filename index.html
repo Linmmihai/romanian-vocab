@@ -317,17 +317,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="review-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:15px;font-weight:800" id="flash-mode-title">今日新词</div>
-        <div style="font-size:12px;color:var(--text2)">每日队列 · 到期复习 · 弱项优先</div>
+        <div style="font-size:12px;color:var(--text2)">每日队列 · 到期复习</div>
       </div>
       <div class="study-mode-bar">
         <button class="study-mode-btn active" data-mode="today" onclick="setFlashMode('today')">今日新词</button>
         <button class="study-mode-btn" data-mode="review" onclick="setFlashMode('review')">到期复习</button>
-        <button class="study-mode-btn" data-mode="difficult" onclick="setFlashMode('difficult')">弱项优先</button>
       </div>
       <div class="review-grid">
         <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">今日应复习</div></div>
         <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日队列</div></div>
-        <div class="review-metric"><div class="review-n" id="review-stage-label">0</div><div class="review-l">弱项词</div></div>
+        <div class="review-metric"><div class="review-n" id="review-stage-label">0</div><div class="review-l">弱项参考</div></div>
       </div>
       <div class="review-note" id="review-note">按艾宾浩斯曲线优先复习到期词。</div>
     </div>
