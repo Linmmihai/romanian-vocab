@@ -64,14 +64,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-bar::-webkit-scrollbar{display:none}
 .cat-chip{white-space:nowrap;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;transition:all .15s}
 .cat-chip.active{background:var(--text);color:white;border-color:var(--text)}
-.difficulty-panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)}
-.difficulty-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.difficulty-btn{border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;padding:9px 8px;cursor:pointer;text-align:left;min-width:0}
-.difficulty-btn.active{border-color:var(--blue);background:var(--blue-bg)}
-.difficulty-btn.locked{opacity:.55;cursor:not-allowed;background:var(--bg2)}
-.difficulty-name{font-size:13px;font-weight:700;color:var(--text)}
-.difficulty-meta{font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.unlock-note{font-size:12px;color:var(--text2);margin-top:8px;min-height:16px}
 .review-panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)}
 .review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .review-metric{background:var(--bg2);border-radius:var(--radius-sm);padding:9px}
@@ -107,6 +99,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .qmode-bar{display:flex;gap:8px;margin-bottom:1rem}
 .qmode-btn{flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:500}
 .qmode-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue)}
+.study-mode-bar,.exercise-bar{display:flex;gap:8px;margin-bottom:1rem;overflow-x:auto;scrollbar-width:none}
+.study-mode-bar::-webkit-scrollbar,.exercise-bar::-webkit-scrollbar{display:none}
+.study-mode-btn,.exercise-btn{flex:1;min-width:max-content;padding:9px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:600}
+.study-mode-btn.active,.exercise-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue)}
+.hidden-tab{display:none!important}
+.unverified-badge{font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border2);padding:2px 8px;border-radius:99px}
+.unverified-text{color:var(--text3)!important}
 .qsize-btn{padding:8px 18px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;cursor:pointer;background:white;color:var(--text2);font-weight:500;transition:all .15s}
 .qsize-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue);font-weight:600}
 .qsize-btn:hover{background:var(--bg2)}
@@ -167,8 +166,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .word-known.yes{background:var(--green)}
 /* ADMIN */
 .admin-section{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:1.2rem}
-.admin-section-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg2)}
-.admin-section-title{font-size:14px;font-weight:700}
+.admin-section-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg2);cursor:pointer;gap:12px}
+.admin-section-header:hover{background:#eef2f7}
+.admin-section-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;min-width:0}
+.admin-toggle{width:22px;height:22px;border:1px solid var(--border2);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:white;color:var(--text2);font-size:13px;line-height:1;transition:transform .15s,background .15s}
+.admin-section.collapsed .admin-toggle{transform:rotate(-90deg)}
+.admin-section-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.admin-section-body{display:block}
+.admin-section.collapsed .admin-section-body{display:none}
+.admin-section.collapsed .admin-section-header{border-bottom:none}
 .user-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)}
 .user-row:last-child{border-bottom:none}
 .user-email{font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis}
@@ -282,8 +288,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchPage('flash')">卡片记忆</button>
-    <button class="nav-tab" onclick="switchPage('review')">复习 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab active" onclick="switchPage('flash')">卡片记忆 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab hidden-tab" onclick="switchPage('review')">复习</button>
     <button class="nav-tab" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
     <button class="nav-tab" onclick="switchPage('quiz')">测验模式</button>
     <button class="nav-tab" onclick="switchPage('stats')">学习统计</button>
@@ -301,15 +307,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">学习中</div></div>
       <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">错题数</div></div>
     </div>
-    <div class="difficulty-panel">
-      <div class="difficulty-tabs" id="difficulty-tabs"></div>
-      <div class="unlock-note" id="unlock-note"></div>
-    </div>
     <div class="review-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:15px;font-weight:800" id="flash-mode-title">今日新词</div>
+        <div style="font-size:12px;color:var(--text2)">每日队列 · 到期复习 · 弱项优先</div>
+      </div>
+      <div class="study-mode-bar">
+        <button class="study-mode-btn active" data-mode="today" onclick="setFlashMode('today')">今日新词</button>
+        <button class="study-mode-btn" data-mode="review" onclick="setFlashMode('review')">到期复习</button>
+        <button class="study-mode-btn" data-mode="difficult" onclick="setFlashMode('difficult')">弱项优先</button>
+      </div>
       <div class="review-grid">
         <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">今日应复习</div></div>
-        <div class="review-metric"><div class="review-n" id="review-new-count">0</div><div class="review-l">当前新词</div></div>
-        <div class="review-metric"><div class="review-n" id="review-stage-label">0</div><div class="review-l">当前复习阶段</div></div>
+        <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日队列</div></div>
+        <div class="review-metric"><div class="review-n" id="review-stage-label">0</div><div class="review-l">弱项词</div></div>
       </div>
       <div class="review-note" id="review-note">按艾宾浩斯曲线优先复习到期词。</div>
     </div>
@@ -320,7 +331,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="daily-goal-bar"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
         <span style="font-size:13px;color:var(--text2)">每日目标：</span>
-        <input type="number" id="goal-input" min="1" max="100" style="width:60px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="10">
+        <input type="number" id="goal-input" min="1" max="100" style="width:60px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="20">
         <span style="font-size:13px;color:var(--text2)">词</span>
         <button class="btn-sm" onclick="saveGoalSetting()">保存</button>
       </div>
@@ -342,6 +353,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
               <div class="card-cat" id="fc-cat" style="margin-bottom:0"></div>
               <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
+              <span id="fc-verify" class="unverified-badge" style="display:none"></span>
             </div>
             <div class="card-hint-txt">点击卡片查看罗马尼亚语 👆</div>
             <div class="card-zh" id="fc-zh"></div>
@@ -484,6 +496,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- 测验模式 -->
   <div class="page" id="page-quiz">
+    <div class="exercise-bar">
+      <button class="exercise-btn active" data-exercise="translation" onclick="setExerciseMode('translation')">翻译</button>
+      <button class="exercise-btn" data-exercise="nounPlural" onclick="setExerciseMode('nounPlural')">名词复数</button>
+      <button class="exercise-btn" data-exercise="verbConj" onclick="setExerciseMode('verbConj')">动词变位</button>
+      <button class="exercise-btn" data-exercise="stress" onclick="setExerciseMode('stress')">重音选择</button>
+    </div>
     <div class="qmode-bar">
       <button class="qmode-btn active" id="m-zh" onclick="setQMode('zh')">中文 → 罗语</button>
       <button class="qmode-btn" id="m-ro" onclick="setQMode('ro')">罗语 → 中文</button>
@@ -549,50 +567,68 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- 管理员 -->
   <div class="page" id="page-admin">
-    <div class="admin-section">
-      <div class="admin-section-header">
-        <span class="admin-section-title">📊 词库统计</span>
-        <button class="btn-sm" onclick="loadAdminStats()">刷新</button>
-      </div>
-      <div id="admin-stats-container"><div class="empty-state">加载中...</div></div>
-    </div>
-
-    <div class="admin-section">
-      <div class="admin-section-header">
-        <span class="admin-section-title">📚 词库管理</span>
-        <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="openAddWordModal()">+ 添加词汇</button>
-      </div>
-      <div style="padding:12px 14px;font-size:13px;color:var(--text2)">
-        没有人工音标的词会进入待校对列表。优先补全音标，再用于正式背诵。
-      </div>
-      <div id="missing-ipa-container"><div class="empty-state">加载中...</div></div>
-    </div>
-
-    <div class="admin-section">
-      <div class="admin-section-header">
-        <span class="admin-section-title">🧾 语法待核对</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn-sm" onclick="applyStressGrammarPatch()">应用补全</button>
-          <button class="btn-sm" onclick="renderPendingGrammarPanel()">刷新</button>
+    <div class="admin-section" id="admin-section-stats">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-stats')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>📊 词库统计</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminStats()">刷新</button>
         </div>
       </div>
-      <div id="grammar-patch-status" style="padding:0 14px 8px;font-size:12px;color:var(--text2)"></div>
-      <div id="pending-grammar-container"><div class="empty-state">加载中...</div></div>
+      <div class="admin-section-body">
+        <div id="admin-stats-container"><div class="empty-state">加载中...</div></div>
+      </div>
     </div>
 
-    <div class="admin-section">
-      <div class="admin-section-header">
-        <span class="admin-section-title">⚠ 用户报错 <span id="report-count-badge" style="font-size:12px;color:var(--red);font-weight:600"></span></span>
-        <button class="btn-sm" onclick="loadAdminReports()">刷新</button>
+    <div class="admin-section collapsed" id="admin-section-words">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-words')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>📚 词库管理</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="event.stopPropagation();openAddWordModal()">+ 添加词汇</button>
+        </div>
       </div>
-      <div id="reports-container"><div class="empty-state">加载中...</div></div>
+      <div class="admin-section-body">
+        <div style="padding:12px 14px;font-size:13px;color:var(--text2)">
+          没有人工音标的词会进入待校对列表。优先补全音标，再用于正式背诵。
+        </div>
+        <div id="missing-ipa-container"><div class="empty-state">加载中...</div></div>
+      </div>
     </div>
-    <div class="admin-section">
-      <div class="admin-section-header">
-        <span class="admin-section-title">👤 用户管理</span>
-        <button class="btn-sm" onclick="loadAdminUsers()">刷新</button>
+
+    <div class="admin-section collapsed" id="admin-section-grammar">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-grammar')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>🧾 语法待核对</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();applyStressGrammarPatch()">应用补全</button>
+          <button class="btn-sm" onclick="event.stopPropagation();renderPendingGrammarPanel()">刷新</button>
+        </div>
       </div>
-      <div id="users-container"><div class="empty-state">加载中...</div></div>
+      <div class="admin-section-body">
+        <div id="grammar-patch-status" style="padding:0 14px 8px;font-size:12px;color:var(--text2)"></div>
+        <div id="pending-grammar-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+
+    <div class="admin-section collapsed" id="admin-section-reports">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-reports')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>⚠ 用户报错 <span id="report-count-badge" style="font-size:12px;color:var(--red);font-weight:600"></span></span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminReports()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div id="reports-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+    <div class="admin-section collapsed" id="admin-section-users">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-users')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>👤 用户管理</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminUsers()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div id="users-container"><div class="empty-state">加载中...</div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -636,13 +672,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="form-group"><label>重音标记（大写或 ˈ 标重读）</label><input type="text" id="em-ipa"></div>
     <div class="form-group"><label>语法信息（词性 / 复数 / 变位）</label><input type="text" id="em-hint" placeholder="例：名词 · 复数: mere / 动词 · -esc"></div>
     <div class="form-group"><label>分类</label><input type="text" id="em-cat"></div>
-    <div class="form-group"><label>难度</label>
-      <select id="em-difficulty">
-        <option value="beginner">Beginner</option>
-        <option value="intermediate">Intermediate</option>
-        <option value="advanced">Advanced</option>
-      </select>
-    </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeEditModal()">取消</button>
       <button class="btn-save" id="em-submit" onclick="saveEdit()">保存修改</button>
@@ -672,20 +701,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <input type="text" id="aw-cat" placeholder="例：蔬果" list="cat-list">
         <datalist id="cat-list"></datalist>
       </div>
-      <div class="form-group"><label>难度</label>
-        <select id="aw-difficulty">
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
-      </div>
     </div>
 
     <!-- 批量粘贴 -->
     <div id="aw-bulk" style="display:none">
       <div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--blue-text)">
         每行一个词，用 <strong>|</strong> 分隔：<br>
-        <code style="font-size:12px">中文|罗语|重音标记|语法信息|分类|难度</code><br>
+        <code style="font-size:12px">中文|罗语|重音标记|语法信息|分类</code><br>
         <span style="opacity:0.8">重音标记可暂时省略，但会进入“待校对音标”；语法信息建议填词性、复数或变位法</span>
       </div>
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
@@ -711,6 +733,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="api.js"></script>
 <script src="auth.js"></script>
 <script src="stress_grammar_patch.js"></script>
-<script src="app.js?v=20260502-6"></script>
+<script src="app.js?v=20260503-1"></script>
 </body>
 </html>
