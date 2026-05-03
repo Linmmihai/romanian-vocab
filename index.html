@@ -87,9 +87,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-hint-txt{font-size:12px;color:var(--text3);margin-bottom:8px}
 .card-zh{font-size:32px;font-weight:600}
 .card-ro{font-size:24px;font-weight:600;margin-bottom:8px}
-.ph-box{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;margin-bottom:6px}
-.ph-ipa{font-size:15px;font-family:monospace;letter-spacing:0.5px}
-.ph-hint{font-size:12px;color:var(--text2);margin-top:3px}
+.ph-box{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;margin-bottom:6px;min-width:128px}
+.ph-ipa{font-size:16px;font-weight:650;letter-spacing:0}
+.stress-mark{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.ph-hint{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.4}
 .spk-row{display:flex;gap:8px;margin-top:8px}
 .spk{padding:5px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text2);font-size:13px;cursor:pointer}
 .spk.slow{border-color:var(--blue);color:var(--blue-text)}
@@ -188,7 +189,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .report-note{font-size:13px;background:var(--bg2);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:8px}
 .report-actions{display:flex;gap:8px;flex-wrap:wrap}
 .issue-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--yellow-bg);color:var(--yellow-text);border:1px solid var(--yellow-border);margin-right:6px}
-.admin-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.admin-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
 .admin-stat{background:var(--bg2);border-radius:var(--radius-sm);padding:10px}
 .admin-stat-n{font-size:20px;font-weight:800}
 .admin-stat-l{font-size:11px;color:var(--text2);margin-top:2px}
@@ -536,7 +537,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="guide-card">
       <div class="guide-title">重音规则</div>
-      <p style="font-size:13px;color:#6b7280;line-height:1.8">音标中<strong>大写字母</strong>或 IPA 的 <strong>ˈ</strong> 为重读标记。<br>没有人工音标的词会先显示自动重音。<br>重音有很多例外，建议结合"慢速"功能逐音节核对。</p>
+      <p style="font-size:13px;color:#6b7280;line-height:1.8">词条中用<strong>下划线</strong>标出重音音节。<br>编辑时可用大写或 IPA 的 <strong>ˈ</strong> 标重音，页面会自动转成下划线。<br>没有人工音标的词会先显示自动重音，建议逐音节核对。</p>
     </div>
   </div>
 
@@ -565,6 +566,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         没有人工音标的词会进入待校对列表。优先补全音标，再用于正式背诵。
       </div>
       <div id="missing-ipa-container"><div class="empty-state">加载中...</div></div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-header">
+        <span class="admin-section-title">🧾 语法待核对</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" onclick="applyStressGrammarPatch()">应用补全</button>
+          <button class="btn-sm" onclick="renderPendingGrammarPanel()">刷新</button>
+        </div>
+      </div>
+      <div id="grammar-patch-status" style="padding:0 14px 8px;font-size:12px;color:var(--text2)"></div>
+      <div id="pending-grammar-container"><div class="empty-state">加载中...</div></div>
     </div>
 
     <div class="admin-section">
@@ -620,8 +633,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="modal-title">✏️ 编辑词汇 <button class="modal-close" onclick="closeEditModal()">✕</button></div>
     <div class="form-group"><label>中文</label><input type="text" id="em-zh"></div>
     <div class="form-group"><label>罗马尼亚语</label><input type="text" id="em-ro"></div>
-    <div class="form-group"><label>音标/发音（大写或 ˈ 标重读）</label><input type="text" id="em-ipa"></div>
-    <div class="form-group"><label>发音提示</label><input type="text" id="em-hint"></div>
+    <div class="form-group"><label>重音标记（大写或 ˈ 标重读）</label><input type="text" id="em-ipa"></div>
+    <div class="form-group"><label>语法信息（词性 / 复数 / 变位）</label><input type="text" id="em-hint" placeholder="例：名词 · 复数: mere / 动词 · -esc"></div>
     <div class="form-group"><label>分类</label><input type="text" id="em-cat"></div>
     <div class="form-group"><label>难度</label>
       <select id="em-difficulty">
@@ -653,8 +666,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="aw-single">
       <div class="form-group"><label>中文 <span style="color:var(--red)">*</span></label><input type="text" id="aw-zh" placeholder="例：苹果"></div>
       <div class="form-group"><label>罗马尼亚语 <span style="color:var(--red)">*</span></label><input type="text" id="aw-ro" placeholder="例：Măr"></div>
-      <div class="form-group"><label>音标/发音（大写或 ˈ 标重读，可选）</label><input type="text" id="aw-ipa" placeholder="例：/ˈmər/ 或 MĂR"></div>
-      <div class="form-group"><label>发音提示（可选）</label><input type="text" id="aw-hint" placeholder="例：ă发'呃'音"></div>
+      <div class="form-group"><label>重音标记（大写或 ˈ 标重读，可选）</label><input type="text" id="aw-ipa" placeholder="例：mĂr 或 /ˈmər/"></div>
+      <div class="form-group"><label>语法信息（词性 / 复数 / 变位，可选）</label><input type="text" id="aw-hint" placeholder="例：名词 · 复数: mere"></div>
       <div class="form-group"><label>分类</label>
         <input type="text" id="aw-cat" placeholder="例：蔬果" list="cat-list">
         <datalist id="cat-list"></datalist>
@@ -672,17 +685,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="aw-bulk" style="display:none">
       <div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--blue-text)">
         每行一个词，用 <strong>|</strong> 分隔：<br>
-        <code style="font-size:12px">中文|罗语|音标|发音提示|分类|难度</code><br>
-        <span style="opacity:0.8">音标可暂时省略，但会进入“待校对音标”；难度可填 beginner / intermediate / advanced，省略时默认为 Beginner</span>
+        <code style="font-size:12px">中文|罗语|重音标记|语法信息|分类|难度</code><br>
+        <span style="opacity:0.8">重音标记可暂时省略，但会进入“待校对音标”；语法信息建议填词性、复数或变位法</span>
       </div>
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
-        苹果|Măr|mər|ă发呃|蔬果<br>
-        香蕉|Banană|ba-NA-nə||蔬果<br>
-        跑步|Alergare|a-ler-GA-re||运动
+        苹果|măr|mĂr|名词 · 复数: mere|蔬果<br>
+        香蕉|banană|ba-NAnă|名词 · 复数: banane|蔬果<br>
+        跑步|alerga|aler-GA|动词 · 零变位|运动
       </div>
       <div class="form-group">
         <label>粘贴词汇（每行一个）</label>
-        <textarea id="aw-bulk-text" placeholder="苹果|Măr|mər|ă发呃|蔬果&#10;香蕉|Banană|ba-NA-nə||蔬果" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
+        <textarea id="aw-bulk-text" placeholder="苹果|măr|mĂr|名词 · 复数: mere|蔬果&#10;跑步|alerga|aler-GA|动词 · 零变位|运动" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
       </div>
     </div>
 
@@ -697,6 +710,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
 <script src="api.js"></script>
 <script src="auth.js"></script>
-<script src="app.js?v=20260502-1"></script>
+<script src="stress_grammar_patch.js"></script>
+<script src="app.js?v=20260502-6"></script>
 </body>
 </html>
