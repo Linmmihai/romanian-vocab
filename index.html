@@ -589,6 +589,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-words')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>📚 词库管理</span>
         <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();applyCategoryNormalization()">应用分类规则</button>
+          <button class="btn-sm" onclick="event.stopPropagation();applyVocabularyResetSeed()">应用200词重置</button>
           <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="event.stopPropagation();openAddWordModal()">+ 添加词汇</button>
         </div>
       </div>
@@ -677,7 +679,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="form-group"><label>罗马尼亚语</label><input type="text" id="em-ro"></div>
     <div class="form-group"><label>重音标记（大写或 ˈ 标重读）</label><input type="text" id="em-ipa"></div>
     <div class="form-group"><label>语法信息（词性 / 复数 / 变位）</label><input type="text" id="em-hint" placeholder="例：名词 · 复数: mere / 动词 · -esc"></div>
-    <div class="form-group"><label>分类</label><input type="text" id="em-cat"></div>
+    <div class="form-group"><label>分类</label><input type="text" id="em-cat" list="edit-cat-list" placeholder="Daily Life / Philosophy / Economics ..."><datalist id="edit-cat-list"></datalist></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeEditModal()">取消</button>
       <button class="btn-save" id="em-submit" onclick="saveEdit()">保存修改</button>
@@ -704,7 +706,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="form-group"><label>重音标记（大写或 ˈ 标重读，可选）</label><input type="text" id="aw-ipa" placeholder="例：mĂr 或 /ˈmər/"></div>
       <div class="form-group"><label>语法信息（词性 / 复数 / 变位，可选）</label><input type="text" id="aw-hint" placeholder="例：名词 · 复数: mere"></div>
       <div class="form-group"><label>分类</label>
-        <input type="text" id="aw-cat" placeholder="例：蔬果" list="cat-list">
+        <input type="text" id="aw-cat" placeholder="例：Daily Life" list="cat-list">
         <datalist id="cat-list"></datalist>
       </div>
     </div>
@@ -717,13 +719,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span style="opacity:0.8">重音标记可暂时省略，但会进入“待校对音标”；语法信息建议填词性、复数或变位法</span>
       </div>
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
-        苹果|măr|mĂr|名词 · 复数: mere|蔬果<br>
-        香蕉|banană|ba-NAnă|名词 · 复数: banane|蔬果<br>
-        跑步|alerga|aler-GA|动词 · 零变位|运动
+        桌子|masă|mAsă|名词 · 复数: mese|Daily Life<br>
+        法律|lege|lege|名词 · 复数: legi|Law<br>
+        跑步|alerga|aler-GA|动词 · 零变位|verb
       </div>
       <div class="form-group">
         <label>粘贴词汇（每行一个）</label>
-        <textarea id="aw-bulk-text" placeholder="苹果|măr|mĂr|名词 · 复数: mere|蔬果&#10;跑步|alerga|aler-GA|动词 · 零变位|运动" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
+        <textarea id="aw-bulk-text" placeholder="桌子|masă|mAsă|名词 · 复数: mese|Daily Life&#10;法律|lege|lege|名词 · 复数: legi|Law&#10;跑步|alerga|aler-GA|动词 · 零变位|verb" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
       </div>
     </div>
 
@@ -739,6 +741,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="api.js"></script>
 <script src="auth.js"></script>
 <script src="stress_grammar_patch.js"></script>
+<script src="vocab_reset_seed.js"></script>
 <script src="app.js?v=20260503-1"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
