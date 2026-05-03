@@ -180,7 +180,7 @@ function isDifficultyUnlocked(difficulty) {
 function applyFilters() {
   const base = W.filter(w => getWordDifficulty(w) === curDifficulty);
   const scoped = curCat === '全部' ? base : base.filter(w => w.cat === curCat);
-  filtered = sortByReviewPriority(scoped);
+  filtered = sortByReviewPriority(scoped).filter(w => getReviewBucket(w) !== 2);
   idx = Math.min(idx, Math.max(filtered.length - 1, 0));
   renderReviewPanel();
 }
@@ -297,6 +297,84 @@ function getStressDisplay(w) {
   return { text: autoStressWord(w?.ro || ''), auto: true };
 }
 
+function normalizeStressText(value) {
+  return String(value || '')
+    .replace(/^\/|\/$/g, '')
+    .replace(/[ˌ']/g, '')
+    .trim();
+}
+
+function lowerRo(value) {
+  return String(value || '').toLocaleLowerCase('ro');
+}
+
+function underlineTokenByUppercase(token) {
+  const chars = [...token];
+  const upperIndexes = chars
+    .map((ch, i) => (/[A-ZĂÂÎȘȚ]/.test(ch) ? i : -1))
+    .filter(i => i >= 0);
+  if (!upperIndexes.length) return escapeHtml(lowerRo(token));
+
+  const start = upperIndexes[0];
+  const end = upperIndexes[upperIndexes.length - 1] + 1;
+  return `${escapeHtml(lowerRo(chars.slice(0, start).join('')))}<span class="stress-mark">${escapeHtml(lowerRo(chars.slice(start, end).join('')))}</span>${escapeHtml(lowerRo(chars.slice(end).join('')))}`;
+}
+
+function underlineTokenByStressMark(token) {
+  const idx = token.indexOf('ˈ');
+  if (idx < 0) return underlineTokenByUppercase(token);
+  const clean = token.replace('ˈ', '');
+  const chars = [...clean];
+  const start = [...token.slice(0, idx)].length;
+  let end = chars.length;
+  for (let i = start + 1; i < chars.length; i++) {
+    if (/[-.\s/]/.test(chars[i])) { end = i; break; }
+  }
+  return `${escapeHtml(lowerRo(chars.slice(0, start).join('')))}<span class="stress-mark">${escapeHtml(lowerRo(chars.slice(start, end).join('')))}</span>${escapeHtml(lowerRo(chars.slice(end).join('')))}`;
+}
+
+function stressToHtml(text) {
+  const normalized = normalizeStressText(text);
+  if (!normalized) return '';
+  return normalized
+    .split(/(\s+)/)
+    .map(part => (/^\s+$/.test(part) ? part : underlineTokenByStressMark(part)))
+    .join('');
+}
+
+function setStressHtml(id, w) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = stressToHtml(getStressDisplay(w).text);
+}
+
+function inferGrammarInfo(w) {
+  const cat = String(w?.cat || '');
+  const ro = String(w?.ro || '').toLocaleLowerCase('ro');
+  if (cat.includes('动词')) return '动词 · 变位待补充';
+  if (cat.includes('形容词')) return '形容词';
+  if (cat.includes('副词')) return '副词';
+  if (cat.includes('介词')) return '介词';
+  if (cat.includes('连词') || cat.includes('连接词')) return '连词';
+  if (cat.includes('代词')) return '代词';
+  if (cat.includes('数词')) return '数词';
+  if (cat.includes('感叹')) return '感叹词';
+  if (/(a|ea|e|i|î)$/.test(ro) && cat.includes('动')) return '动词 · 变位待补充';
+  return '名词 · 复数待补充';
+}
+
+function getGrammarInfo(w) {
+  return String(w?.grammar_note || w?.grammar || w?.forms || w?.hint || '').trim() || inferGrammarInfo(w);
+}
+
+function setGrammarText(id, w, stress = null) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const grammar = getGrammarInfo(w);
+  const autoNote = (stress || getStressDisplay(w)).auto ? ' · 自动重音待校对' : '';
+  el.textContent = `${grammar}${autoNote}`;
+}
+
 function getCurrentScopeWords() {
   const base = W.filter(w => getWordDifficulty(w) === curDifficulty);
   return curCat === '全部' ? base : base.filter(w => w.cat === curCat);
@@ -311,14 +389,18 @@ function renderReviewPanel() {
     const p = progressMap[w.ro];
     return !p || (!p.qt && !p.known);
   }).length;
+  const waiting = scoped.length - due - fresh;
   const current = filtered[idx];
   const p = current ? progressMap[current.ro] : null;
   setText('review-due-count', due);
   setText('review-new-count', fresh);
   setText('review-stage-label', p?.reviewStage || 0);
+  const currentStage = Number(p?.reviewStage || 0);
+  const nextInterval = REVIEW_INTERVALS[Math.min(currentStage, REVIEW_INTERVALS.length - 1)] || REVIEW_INTERVALS[0];
+  const nextLabel = nextInterval?.label || '';
   setText('review-note', current
-    ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。答错会回到第0阶段，答对进入下一间隔。`
-    : '按艾宾浩斯曲线优先复习到期词。');
+    ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。答对后进入 ${nextLabel} 间隔，答错回到第0阶段。`
+    : `当前筛选下暂无可学词；${waiting > 0 ? `${waiting} 个词还没到复习时间。` : '可以切换分类或等级。'}`);
 }
 
 // ── 统计 ─────────────────────────────────────────────────
@@ -521,8 +603,8 @@ function renderCard() {
   document.getElementById('fc-cat2').textContent = `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`;
   document.getElementById('fc-zh').textContent = w.zh;
   document.getElementById('fc-ro').textContent = w.ro;
-  document.getElementById('fc-ipa').textContent = stress.text;
-  document.getElementById('fc-phint').textContent = w.hint || (stress.auto ? '自动重音，建议核对' : '');
+  setStressHtml('fc-ipa', w);
+  setGrammarText('fc-phint', w, stress);
   document.getElementById('fc-count').textContent = (idx + 1) + ' / ' + filtered.length;
   // 显示熟练度
   const p = progressMap[w.ro] || {};
@@ -590,17 +672,18 @@ function updateTodayCalendarCell() {
 }
 
 // 「认识了」/「不认识」
-function markCard(yes) {
+async function markCard(yes) {
   if (!filtered.length) return;
   recordDailyWord();
   const w = filtered[idx];
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (yes ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
+  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
   // 跳下一张，重置为中文面
   applyFilters();
-  idx = filtered.length ? (idx + 1) % filtered.length : 0;
+  const nextIdx = filtered.findIndex(item => item.ro !== w.ro);
+  idx = nextIdx >= 0 ? nextIdx : 0;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
   renderCard();
@@ -673,8 +756,8 @@ function renderReviewCard() {
   setText('rv-count', `${reviewIdx + 1} / ${reviewQueue.length}`);
   setText('rv-zh', w.zh);
   setText('rv-ro', w.ro);
-  setText('rv-ipa', stress.text);
-  setText('rv-hint', w.hint || (stress.auto ? '自动重音，建议核对' : ''));
+  setStressHtml('rv-ipa', w);
+  setGrammarText('rv-hint', w, stress);
   setText('rv-cat', `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`);
   setText('rv-cat2', `${DIFFICULTY_CN[getWordDifficulty(w)]} · ${w.cat || ''}`);
   setText('rv-interval', `当前阶段 ${stage} · 答对后进入 ${nextInterval.label}`);
@@ -797,8 +880,8 @@ function renderWrongbookCard() {
   document.getElementById('wb-cat2').textContent = w.cat || '';
   document.getElementById('wb-zh').textContent = w.zh;
   document.getElementById('wb-ro').textContent = w.ro;
-  document.getElementById('wb-ipa').textContent = stress.text;
-  document.getElementById('wb-phint').textContent = w.hint || (stress.auto ? '自动重音，建议核对' : '');
+  setStressHtml('wb-ipa', w);
+  setGrammarText('wb-phint', w, stress);
   document.getElementById('wb-count').textContent = (wbIdx + 1) + ' / ' + wbList.length;
   document.getElementById('wb-wrong-count').textContent = `答错 ${wrongCount} 次`;
   document.getElementById('wb-streak').textContent = streak > 0 ? `连续答对 ${streak}/${WB_GRADUATE}` : '';
@@ -1216,11 +1299,12 @@ function renderList() {
     const p = progressMap[w.ro] || {};
     const lv = calcLevel(p.qr, p.qt);
     const stress = getStressDisplay(w);
+    const grammar = getGrammarInfo(w);
     return `<div class="word-row">
       <div style="flex:1;min-width:0">
         <div class="word-zh">${w.zh}</div>
         <div class="word-ro">${w.ro}</div>
-        <div class="word-ipa">[${stress.text}]${w.hint ? ' · ' + w.hint : (stress.auto ? ' · 自动重音' : '')}</div>
+        <div class="word-ipa">${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${stress.auto ? ' · 自动重音' : ''}</div>
       </div>
       <div style="display:flex;align-items:center;flex-shrink:0;gap:4px">
         <div class="word-cat" style="background:var(--bg2);color:var(--text2)">${DIFFICULTY_CN[getWordDifficulty(w)]}</div>
@@ -1235,6 +1319,12 @@ function renderList() {
 function getMissingIpaWords() {
   return W
     .filter(w => !String(w.ipa || '').trim())
+    .sort((a, b) => String(a.ro).localeCompare(String(b.ro), 'ro'));
+}
+
+function getPendingGrammarWords() {
+  return W
+    .filter(w => /待核对|待补充/.test(getGrammarInfo(w)))
     .sort((a, b) => String(a.ro).localeCompare(String(b.ro), 'ro'));
 }
 
@@ -1451,6 +1541,7 @@ async function loadAdminStats() {
     const reportStats = getAdminReportStats(reports);
     const wrongStats = getAdminWrongStats(allProgress);
     const missingIpaWords = getMissingIpaWords();
+    const pendingGrammarWords = getPendingGrammarWords();
     const pendingReports = reports.filter(r => r.status === 'pending').length;
     const totalAnswers = allProgress.reduce((sum, r) => sum + (r.quiz_total || 0), 0);
 
@@ -1460,6 +1551,7 @@ async function loadAdminStats() {
         <div class="admin-stat"><div class="admin-stat-n">${categoryStats.length}</div><div class="admin-stat-l">分类数量</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${pendingReports}</div><div class="admin-stat-l">待处理报错</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${missingIpaWords.length}</div><div class="admin-stat-l">待校对音标</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${pendingGrammarWords.length}</div><div class="admin-stat-l">语法待核对</div></div>
       </div>
       <div class="admin-chart">
         <div class="admin-chart-title">各等级词汇数量</div>
@@ -1478,9 +1570,11 @@ async function loadAdminStats() {
         ${progressResult.status === 'fulfilled' ? renderAdminWrongRows(wrongStats) : `<div class="empty-state">答题记录无法读取：${escapeHtml(progressResult.reason.message)}</div>`}
       </div>`;
     renderMissingIpaPanel();
+    renderPendingGrammarPanel();
   } catch (e) {
     el.innerHTML = `<div class="empty-state">词库统计加载失败：${escapeHtml(e.message || '未知错误')}</div>`;
     renderMissingIpaPanel();
+    renderPendingGrammarPanel();
   }
 }
 
@@ -1500,7 +1594,7 @@ function renderMissingIpaPanel() {
         return `<div class="admin-word-row">
           <div>
             <div class="admin-word-name">${escapeHtml(w.zh || w.ro)}</div>
-            <div class="admin-word-meta">${escapeHtml(w.ro)} · 自动推测：${escapeHtml(stress.text)}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
+            <div class="admin-word-meta">${escapeHtml(w.ro)} · 自动推测：${stressToHtml(stress.text)} · ${escapeHtml(getGrammarInfo(w))}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
           </div>
           <div class="admin-word-actions">
             <button class="admin-btn edit" onclick='openEditModal(${JSON.stringify(w)})'>补音标</button>
@@ -1508,6 +1602,79 @@ function renderMissingIpaPanel() {
         </div>`;
       }).join('')}
     </div>`;
+}
+
+function renderPendingGrammarPanel() {
+  const el = document.getElementById('pending-grammar-container');
+  if (!el) return;
+  const rows = getPendingGrammarWords();
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty-state">暂无语法待核对词</div>';
+    return;
+  }
+  const nouns = rows.filter(w => getGrammarInfo(w).startsWith('名词'));
+  const verbs = rows.filter(w => getGrammarInfo(w).startsWith('动词'));
+  const adjectives = rows.filter(w => getGrammarInfo(w).startsWith('形容词'));
+  el.innerHTML = `
+    <div class="admin-chart">
+      <div class="admin-chart-title">待核对队列 <span style="font-weight:400;color:var(--text2)">名词 ${nouns.length} · 动词 ${verbs.length} · 形容词 ${adjectives.length} · 共 ${rows.length}</span></div>
+      ${rows.slice(0, 30).map(w => {
+        const grammar = getGrammarInfo(w);
+        const stress = getStressDisplay(w);
+        return `<div class="admin-word-row">
+          <div>
+            <div class="admin-word-name">${escapeHtml(w.zh || w.ro)}</div>
+            <div class="admin-word-meta">${escapeHtml(w.ro)} · ${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
+          </div>
+          <div class="admin-word-actions">
+            <button class="admin-btn edit" onclick='openEditModal(${JSON.stringify(w)})'>核对</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${rows.length > 30 ? `<div class="empty-state" style="padding:12px">当前显示前 30 个，保存一个后列表会继续向后补。</div>` : ''}
+    </div>`;
+}
+
+async function applyStressGrammarPatch() {
+  if (userRole !== 'admin') { showToast('只有管理员可以执行补全'); return; }
+  const rows = Array.isArray(window.STRESS_GRAMMAR_PATCH) ? window.STRESS_GRAMMAR_PATCH : [];
+  const status = document.getElementById('grammar-patch-status');
+  if (!rows.length) {
+    if (status) status.textContent = '没有找到补全数据文件 stress_grammar_patch.js';
+    return;
+  }
+  const patchById = new Map(rows.map(row => [row.id, row]));
+  const pendingRows = W
+    .filter(w => patchById.has(w.id))
+    .filter(w => {
+      const patch = patchById.get(w.id);
+      return w.ipa !== patch.ipa || w.hint !== patch.hint;
+    })
+    .map(w => patchById.get(w.id));
+
+  if (!pendingRows.length) {
+    if (status) status.textContent = '补全数据已经全部应用。';
+    showToast('补全数据已经全部应用');
+    return;
+  }
+
+  if (status) status.textContent = `准备写入 ${pendingRows.length} 条...`;
+  try {
+    const done = await apiApplyStressGrammarPatch(pendingRows, (n, total) => {
+      if (status) status.textContent = `正在写入 ${n} / ${total} 条...`;
+    });
+    const byId = new Map(pendingRows.map(row => [row.id, row]));
+    W = W.map(w => byId.has(w.id) ? { ...w, ipa: byId.get(w.id).ipa, hint: byId.get(w.id).hint } : w);
+    applyFilters();
+    renderCard();
+    renderList();
+    loadAdminStats();
+    if (status) status.textContent = `已写入 ${done} 条。现在可以逐条核对“待核对”项。`;
+    showToast(`已写入 ${done} 条补全数据`);
+  } catch (e) {
+    if (status) status.textContent = `写入失败：${e.message}`;
+    showToast('写入失败：' + e.message);
+  }
 }
 
 function getAdminCategoryStats() {
