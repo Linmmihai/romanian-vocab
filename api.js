@@ -38,6 +38,25 @@ async function apiUpdateWord(wordId, updates) {
 }
 
 /**
+ * 批量更新重音和语法信息。使用当前登录用户会话，遵守 Supabase RLS。
+ */
+async function apiApplyStressGrammarPatch(rows, onProgress) {
+  let done = 0;
+  const concurrency = 6;
+  async function worker(queue) {
+    while (queue.length) {
+      const row = queue.shift();
+      await apiUpdateWord(row.id, { ipa: row.ipa, hint: row.hint });
+      done++;
+      if (onProgress) onProgress(done, rows.length);
+    }
+  }
+  const queue = [...rows];
+  await Promise.all(Array.from({ length: concurrency }, () => worker(queue)));
+  return done;
+}
+
+/**
  * 批量插入词汇，跳过重复（以 ro 字段为唯一键）
  * @param {Array} words - [{ zh, ro, ipa, hint, cat, difficulty }]
  * @returns {{ inserted: number, skipped: number }}
