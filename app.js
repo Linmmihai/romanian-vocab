@@ -15,7 +15,7 @@ let flipped = false;
 let curCat = '全部';
 let reviewQueue = [];
 let reviewIdx = 0;
-let flashMode = 'today'; // today | review | difficult
+let flashMode = 'today'; // today | review
 let todayQueue = [];
 let todayQueueCompleted = new Set();
 let todayQueueRecord = null;
@@ -122,6 +122,7 @@ async function loadTodayLog() {
 }
 
 async function loadDailyQueue() {
+  const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
   if (saved?.word_ro?.length) {
     todayQueueRecord = saved;
@@ -137,8 +138,13 @@ async function loadDailyQueue() {
       completed: false
     });
   }
-  todayNewWords = todayQueueCompleted.size;
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
+  if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
+    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  }
+  if (todayQueueRecord?.local) {
+    showToast('每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步');
+  }
   applyFilters();
   renderCard();
   renderDailyGoal();
@@ -218,14 +224,13 @@ function applyFilters() {
     filtered = todayQueue
       .map(ro => W.find(w => w.ro === ro))
       .filter(Boolean)
+      .filter(w => curCat === '全部' || w.cat === curCat)
       .filter(w => !todayQueueCompleted.has(w.ro));
   } else if (flashMode === 'review') {
-    filtered = sortByReviewPriority(scoped).filter(w => {
+    filtered = sortReviewDueWithWeakPriority(scoped).filter(w => {
       const p = progressMap[w.ro];
       return p && (p.qt || p.known) && isReviewDue(p);
     });
-  } else if (flashMode === 'difficult') {
-    filtered = getDifficultWords(scoped);
   } else {
     filtered = sortByReviewPriority(scoped).filter(w => getReviewBucket(w) !== 2);
   }
@@ -302,8 +307,27 @@ function getDifficultWords(words = W) {
     });
 }
 
+function sortReviewDueWithWeakPriority(words) {
+  return [...words].sort((a, b) => {
+    const ba = getReviewBucket(a);
+    const bb = getReviewBucket(b);
+    if (ba !== bb) return ba - bb;
+    const pa = progressMap[a.ro] || {};
+    const pb = progressMap[b.ro] || {};
+    const sa = getDifficultScore(a);
+    const sb = getDifficultScore(b);
+    const da = pa.nextReviewAt ? new Date(pa.nextReviewAt).getTime() : 0;
+    const db = pb.nextReviewAt ? new Date(pb.nextReviewAt).getTime() : 0;
+    return sb.rate - sa.rate ||
+      sb.streak - sa.streak ||
+      sb.lastWrong - sa.lastWrong ||
+      da - db ||
+      String(a.ro).localeCompare(String(b.ro), 'ro');
+  });
+}
+
 function getFlashModeLabel() {
-  return { today: '今日新词', review: '到期复习', difficult: '弱项优先' }[flashMode] || '卡片记忆';
+  return { today: '今日新词', review: '到期复习' }[flashMode] || '卡片记忆';
 }
 
 function getNextReview(progress, success) {
@@ -480,9 +504,13 @@ function renderReviewPanel() {
   const scoped = getCurrentScopeWords();
   const due = scoped.filter(w => isReviewDue(progressMap[w.ro])).length;
   const difficult = getDifficultWords(scoped).length;
-  const queueDone = todayQueueCompleted.size;
-  const queueTotal = todayQueue.length || dailyGoal;
-  const waiting = scoped.length - due - difficult;
+  const scopedQueue = todayQueue
+    .map(ro => W.find(w => w.ro === ro))
+    .filter(Boolean)
+    .filter(w => curCat === '全部' || w.cat === curCat);
+  const queueDone = scopedQueue.filter(w => todayQueueCompleted.has(w.ro)).length;
+  const queueTotal = curCat === '全部' ? (todayQueue.length || dailyGoal) : scopedQueue.length;
+  const waiting = scoped.length - due;
   const current = filtered[idx];
   const p = current ? progressMap[current.ro] : null;
   setText('review-due-count', due);
@@ -494,11 +522,8 @@ function renderReviewPanel() {
   const modeNote = {
     today: `今日队列固定为 ${queueTotal} 个词，已完成 ${queueDone} 个。答完后自动打勾，不再继续滚动词库。`,
     review: current
-      ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。答对后进入 ${nextLabel} 间隔，答错立即回到待复习。`
-      : '当前没有到期复习词，可以切换到今日新词。',
-    difficult: current
-      ? '弱项按错误率、连续错误、最近遗忘时间排序。'
-      : '当前没有弱项记录，测验或卡片答错后会自动进入这里。'
+      ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。到期复习会自动优先安排错误率高、连续答错或最近遗忘的词。`
+      : '当前没有到期复习词，可以切换到今日新词。'
   };
   setText('review-note', current
     ? modeNote[flashMode]
@@ -731,12 +756,10 @@ function renderCard() {
     const emptyText = {
       today: todayQueue.length && todayQueueCompleted.size >= todayQueue.length ? '今日队列已完成' : '今日暂无新词',
       review: '当前没有到期复习词',
-      difficult: '当前没有弱项词'
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
       today: '可以切换到复习或测验',
-      review: '先完成今日新词，系统会安排复习',
-      difficult: '答错的词会自动进入弱项优先'
+      review: '先完成今日新词，系统会安排复习'
     }[flashMode] || 'No words';
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
