@@ -78,19 +78,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .review-l{font-size:11px;color:var(--text2);margin-top:2px}
 .review-note{font-size:12px;color:var(--text2);margin-top:8px}
 .card-wrap{perspective:1000px;margin-bottom:1rem}
-.card{width:100%;min-height:260px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow)}
+.card{width:100%;min-height:360px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow)}
 .card.flipped{transform:rotateY(180deg)}
 .card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
-.card-back{transform:rotateY(180deg);background:var(--bg2)}
+.card-back{transform:rotateY(180deg);background:var(--bg2);padding:0;overflow:hidden;justify-content:stretch}
+.card-back-top{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px 20px 14px;min-height:142px}
+.card-back-grammar{width:100%;background:white;border-top:1px solid var(--border);padding:14px 18px 16px;text-align:left;min-height:92px}
+.card-back-grammar-label{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px}
+.card-back-grammar .ph-hint{font-size:15px;color:var(--text);font-weight:650;margin:0}
 .card-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:3px 10px;border-radius:99px;margin-bottom:12px}
 .card-hint-txt{font-size:12px;color:var(--text3);margin-bottom:8px}
 .card-zh{font-size:32px;font-weight:600}
 .card-ro{font-size:24px;font-weight:600;margin-bottom:8px}
+.card-back-top .card-ro{display:none}
+.card-stress-word{font-size:34px;font-weight:750;letter-spacing:0;color:var(--text);line-height:1.2}
 .ph-box{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;margin-bottom:6px;min-width:128px}
 .ph-ipa{font-size:16px;font-weight:650;letter-spacing:0}
 .stress-mark{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 .ph-hint{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.4}
-.spk-row{display:flex;gap:8px;margin-top:8px}
+.spk-row{display:flex;gap:8px;margin:18px 0 0}
 .spk{padding:5px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text2);font-size:13px;cursor:pointer}
 .spk.slow{border-color:var(--blue);color:var(--blue-text)}
 .report-btn{margin-top:8px;padding:4px 12px;border:1px solid var(--yellow-border);border-radius:99px;background:var(--yellow-bg);color:var(--yellow-text);font-size:12px;cursor:pointer;font-weight:500}
@@ -99,9 +105,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-btn:hover{background:var(--bg2)}
 .counter{font-size:13px;color:var(--text2)}
 .know-btns{display:flex;gap:10px}
+.card-answer-row{display:flex;gap:16px;width:100%;padding:16px 18px 18px;background:var(--bg2)}
 .know-yes{flex:1;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer}
 .know-no{flex:1;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer}
 .know-yes:hover{background:var(--green-bg)}.know-no:hover{background:var(--red-bg)}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:420px}
+.calendar-weekday{text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding-bottom:2px}
+.calendar-cell{height:42px;border-radius:10px;background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--text3);font-weight:600;border:1px solid transparent}
+.calendar-cell.started{background:#bbf7d0;color:var(--green-text)}
+.calendar-cell.completed{background:var(--green);color:white}
+.calendar-cell.today{border:2px solid var(--blue);color:var(--green-text)}
+.calendar-cell.calendar-empty{visibility:hidden}
+.calendar-date{line-height:1}
+.cal-sub{font-size:10px;margin-top:3px;line-height:1}
 /* QUIZ */
 .qmode-bar{display:flex;gap:8px;margin-bottom:1rem}
 .qmode-btn{flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:500}
@@ -343,11 +359,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
 
-    <!-- 14天打卡日历 -->
-    <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px">📅 最近14天打卡</div>
-      <div id="calendar-container"></div>
-    </div>
     <div id="flash-loading" class="loading-screen">
       <div class="loading-spinner"></div>
       <div class="loading-text">正在加载词库...</div>
@@ -365,10 +376,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="card-zh" id="fc-zh"></div>
           </div>
           <div class="card-face card-back">
-            <div class="card-cat" id="fc-cat2"></div>
-            <div class="card-ro" id="fc-ro"></div>
-            <div class="ph-box">
-              <div class="ph-ipa" id="fc-ipa"></div>
+            <div class="card-back-top">
+              <div class="card-cat" id="fc-cat2"></div>
+              <div class="card-ro" id="fc-ro"></div>
+              <div class="card-stress-word" id="fc-ipa"></div>
+            </div>
+            <div class="card-back-grammar">
+              <div class="card-back-grammar-label">语法信息</div>
               <div class="ph-hint" id="fc-phint"></div>
             </div>
             <div class="spk-row">
@@ -377,7 +391,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
               <button class="report-btn" style="margin-top:0" onclick="event.stopPropagation();openReportModal()">⚠ 报错</button>
             </div>
             <!-- 作答按钮放在卡片内部罗语面 -->
-            <div style="display:flex;gap:10px;margin-top:14px;width:100%">
+            <div class="card-answer-row">
               <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识</button>
               <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识了</button>
             </div>
@@ -527,6 +541,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="daily-chart"></div>
     </div>
     <div class="panel">
+      <div class="panel-title"><span>最近14天打卡</span><span style="font-size:12px;color:var(--text2)">按周一至周日排列</span></div>
+      <div id="calendar-container"></div>
+    </div>
+    <div class="panel">
       <div class="panel-title"><span>分类掌握率</span><span style="font-size:12px;color:var(--text2)">按已掌握词汇计算</span></div>
       <div id="cat-mastery"></div>
     </div>
@@ -590,7 +608,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>📚 词库管理</span>
         <div class="admin-section-actions">
           <button class="btn-sm" onclick="event.stopPropagation();applyCategoryNormalization()">应用分类规则</button>
-          <button class="btn-sm" onclick="event.stopPropagation();applyVocabularyResetSeed()">应用200词重置</button>
+          <button class="btn-sm" onclick="event.stopPropagation();clearVocabularyForManualInput()">清空词库</button>
           <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="event.stopPropagation();openAddWordModal()">+ 添加词汇</button>
         </div>
       </div>
@@ -741,7 +759,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="api.js"></script>
 <script src="auth.js"></script>
 <script src="stress_grammar_patch.js"></script>
-<script src="vocab_reset_seed.js"></script>
 <script src="app.js?v=20260503-1"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
