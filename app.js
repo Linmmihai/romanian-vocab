@@ -153,6 +153,34 @@ const CATEGORY_ALIASES = {
   '其他': 'Daily Life'
 };
 
+const DEXONLINE_VERB_FALLBACK_WORDS = [
+  { zh: '去', ro: 'a merge', ipa: 'a merge', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '来', ro: 'a veni', ipa: 'a venI', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '做', ro: 'a face', ipa: 'a face', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '说', ro: 'a spune', ipa: 'a spune', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '看', ro: 'a vedea', ipa: 'a vedea', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '听', ro: 'a auzi', ipa: 'a auzi', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '吃', ro: 'a mânca', ipa: 'a mâncA', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '喝', ro: 'a bea', ipa: 'a beA', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '读', ro: 'a citi', ipa: 'a citi', hint: '动词 · -esc 变位 · dexonline', cat: 'verb' },
+  { zh: '写', ro: 'a scrie', ipa: 'a scrie', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '学习', ro: 'a învăța', ipa: 'a învăța', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '工作', ro: 'a lucra', ipa: 'a lucrA', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '买', ro: 'a cumpăra', ipa: 'a cumpăra', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '卖', ro: 'a vinde', ipa: 'a vinde', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '打开', ro: 'a deschide', ipa: 'a deschide', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '关闭', ro: 'a închide', ipa: 'a închide', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '等待', ro: 'a aștepta', ipa: 'a aștepta', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '需要', ro: 'a trebui', ipa: 'a trebui', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '想要', ro: 'a vrea', ipa: 'a vreA', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '能够', ro: 'a putea', ipa: 'a putea', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '知道', ro: 'a ști', ipa: 'a ști', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '理解', ro: 'a înțelege', ipa: 'a înțelege', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '帮助', ro: 'a ajuta', ipa: 'a ajuta', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '开始', ro: 'a începe', ipa: 'a începe', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
+  { zh: '结束', ro: 'a termina', ipa: 'a termina', hint: '动词 · 零变位 · dexonline', cat: 'verb' }
+];
+
 // 熟练度规则
 // unknown  → 从未答题
 // learning → 答题次数 ≥ 1，正确率 < 80%
@@ -887,6 +915,7 @@ async function renderCalendar() {
 
 function buildCats() {
   const present = new Set(W.map(w => normalizeCategory(w.cat)).filter(Boolean));
+  if (DEXONLINE_VERB_FALLBACK_WORDS.length) present.add('verb');
   const cats = CATEGORY_ORDER
     .filter(c => c === '全部' || present.has(c))
     .concat([...present].filter(c => !CATEGORY_ORDER.includes(c)).sort((a, b) => a.localeCompare(b, 'en')));
@@ -1396,14 +1425,24 @@ function buildReviewPriorityPool(words) {
 
 function parseNounPlural(w) {
   if (isGrammarUnverified(w)) return null;
-  const m = getGrammarInfo(w).match(/名词\s*·\s*复数\s*:\s*([^·]+)/);
-  return m ? m[1].trim() : null;
+  const grammar = getGrammarInfo(w);
+  const appMatch = grammar.match(/名词\s*·\s*复数\s*:\s*([^·]+)/);
+  if (appMatch) return appMatch[1].trim();
+
+  const dexMatch = grammar.match(/^s\.(?:m|f|n)(?:\.pl)?\.\s*:\s*(.+)$/i);
+  if (!dexMatch) return null;
+  const plural = dexMatch[1]
+    .replace(/\([^)]*fără plural[^)]*\)/gi, '')
+    .split(/[;,]/)[0]
+    .trim();
+  return plural || null;
 }
 
 function parseVerbClass(w) {
   if (isGrammarUnverified(w)) return null;
-  const m = getGrammarInfo(w).match(/动词\s*·\s*(.+)$/);
-  return m ? m[1].trim() : null;
+  const grammar = getGrammarInfo(w);
+  const m = grammar.match(/动词\s*·\s*(.+)$/);
+  return m ? m[1].replace(/\s*·\s*dexonline\s*$/i, '').trim() : null;
 }
 
 function getStressGroupsForWord(ro) {
@@ -1462,7 +1501,14 @@ function buildExercisePool() {
     })).filter(x => x.options.length >= 2);
   }
   if (qExerciseMode === 'verbConj') {
-    const verified = scoped.map(w => ({ w, answer: parseVerbClass(w) })).filter(x => x.answer);
+    const verbScoped = curCat === '全部' || curCat === 'verb'
+      ? [
+          ...scoped,
+          ...DEXONLINE_VERB_FALLBACK_WORDS.filter(fallback =>
+            !scoped.some(w => lowerRo(w.ro).replace(/^a\s+/, '') === lowerRo(fallback.ro).replace(/^a\s+/, '')))
+        ]
+      : scoped;
+    const verified = verbScoped.map(w => ({ w, answer: parseVerbClass(w) })).filter(x => x.answer);
     const answers = [...new Set(verified.map(x => x.answer))];
     return verified.map(({ w, answer }) => ({
       word: w,
