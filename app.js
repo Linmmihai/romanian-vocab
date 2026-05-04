@@ -702,14 +702,24 @@ function setSyncBadge(txt, cls) {
   el.className = 'sync-badge ' + (cls || '');
 }
 
-async function syncProgress(wordRo, known, qr, qt, success = known) {
+async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
   setSyncBadge('同步中...', '');
   const level = calcLevel(qr, qt);
   const prev = progressMap[wordRo] || {};
   const review = getNextReview(prev, success);
-  const wrongCount = (prev.wrongCount || 0) + (success ? 0 : 1);
-  const errorStreak = success ? 0 : (prev.errorStreak || 0) + 1;
-  const lastWrongAt = success ? (prev.lastWrongAt || null) : new Date().toISOString();
+  const shouldTrackWrongbook = options.trackWrongbook === true;
+  const shouldClearWrongbook = options.clearWrongbook === true;
+  const wrongCount = shouldClearWrongbook
+    ? 0
+    : (prev.wrongCount || 0) + (shouldTrackWrongbook && !success ? 1 : 0);
+  const errorStreak = shouldClearWrongbook
+    ? 0
+    : (shouldTrackWrongbook
+        ? (success ? 0 : (prev.errorStreak || 0) + 1)
+        : (prev.errorStreak || 0));
+  const lastWrongAt = shouldClearWrongbook
+    ? null
+    : (shouldTrackWrongbook && !success ? new Date().toISOString() : (prev.lastWrongAt || null));
   const memory = { wrongCount, errorStreak, lastWrongAt };
   progressMap[wordRo] = { ...prev, known, qr, qt, level, ...review, ...memory };
   try {
@@ -1145,13 +1155,11 @@ function showReviewComplete() {
 // ── 错题本 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否是错题：答错过至少1次，且答错次数 >= 答对次数
+ * 判断一个词是否是错题：只统计测验模式中答错过的词。
  */
 function isWrongWord(wordRo) {
   const p = progressMap[wordRo];
-  if (!p || !p.qt) return false;
-  const wrong = (p.qt || 0) - (p.qr || 0);
-  return wrong >= 1 && wrong >= (p.qr || 0);
+  return !!p && (p.wrongCount || 0) > 0;
 }
 
 /**
@@ -1198,7 +1206,7 @@ function renderWrongbookCard() {
   const w = wbList[wbIdx];
   const stress = getStressDisplay(w);
   const p = progressMap[w.ro] || {};
-  const wrongCount = (p.qt || 0) - (p.qr || 0);
+  const wrongCount = p.wrongCount || 0;
   const streak = wbStreaks[w.ro] || 0;
 
   document.getElementById('wb-cat').textContent = w.cat || '';
@@ -1266,6 +1274,7 @@ async function answerWb(correct) {
     if (wbStreaks[w.ro] >= WB_GRADUATE) {
       // 毕业！移出错题本
       wbGraduated++;
+      await syncProgress(w.ro, true, newQr, newQt, true, { clearWrongbook: true });
       showToast(`🎓 "${w.zh}" 已从错题本移出！`);
       wbList.splice(wbIdx, 1);
       if (wbList.length === 0) { renderWrongbookCard(); renderWrongbookStats(); return; }
@@ -1538,7 +1547,7 @@ function answerQ(btn, ok, ro, zh) {
   const newQr = (prev.qr || 0) + (ok ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
   progressMap[w.ro] = { ...prev, known: ok || prev.known, qr: newQr, qt: newQt };
-  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok);
+  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok, { trackWrongbook: true });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -1567,7 +1576,7 @@ function answerExerciseQ(btn, ok) {
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (ok ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok);
+  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok, { trackWrongbook: true });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
