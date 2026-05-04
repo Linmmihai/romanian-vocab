@@ -12,6 +12,8 @@ let W = [];           // 全部词汇（从数据库加载）
 let filtered = [];    // 当前分类筛选后的词汇
 let idx = 0;          // 卡片当前索引
 let flipped = false;
+let flashHistory = [];
+let flashOverrideRo = null;
 let curCat = '全部';
 let reviewQueue = [];
 let reviewIdx = 0;
@@ -39,6 +41,7 @@ let wbIdx = 0;
 let wbFlipped = false;
 let wbStreaks = {};
 let wbGraduated = 0;
+let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
 
 // 每日目标状态
@@ -664,6 +667,8 @@ function setFlashMode(mode) {
   flashMode = mode;
   idx = 0;
   flipped = false;
+  flashHistory = [];
+  flashOverrideRo = null;
   const card = document.getElementById('main-card');
   if (card) card.classList.remove('flipped');
   applyFilters();
@@ -892,6 +897,8 @@ function buildCats() {
 
 function setCat(c) {
   curCat = c;
+  flashHistory = [];
+  flashOverrideRo = null;
   applyFilters();
   idx = 0; flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
@@ -899,8 +906,19 @@ function setCat(c) {
   renderCard();
 }
 
+function getWordByRo(wordRo) {
+  return W.find(w => w.ro === wordRo) || null;
+}
+
+function getCurrentFlashWord() {
+  return flashOverrideRo ? getWordByRo(flashOverrideRo) : filtered[idx];
+}
+
 function renderCard() {
-  if (!filtered.length) {
+  const overrideWord = flashOverrideRo ? getWordByRo(flashOverrideRo) : null;
+  if (flashOverrideRo && !overrideWord) flashOverrideRo = null;
+
+  if (!filtered.length && !overrideWord) {
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
     const emptyText = {
@@ -922,8 +940,8 @@ function renderCard() {
     return;
   }
   bindFlashcardButtons();
-  idx = (idx + filtered.length) % filtered.length;
-  const w = filtered[idx];
+  if (filtered.length) idx = (idx + filtered.length) % filtered.length;
+  const w = overrideWord || filtered[idx];
   const stress = getStressDisplay(w);
   document.getElementById('fc-cat').textContent = w.cat || '';
   document.getElementById('fc-cat2').textContent = w.cat || '';
@@ -936,7 +954,10 @@ function renderCard() {
   }
   setStressHtml('fc-ipa', w);
   setGrammarText('fc-phint', w, stress);
-  document.getElementById('fc-count').textContent = `${getFlashModeLabel()} ${idx + 1} / ${flashMode === 'today' ? (todayQueue.length || dailyGoal) : filtered.length}`;
+  const displayIdx = filtered.findIndex(item => item.ro === w.ro);
+  const displayTotal = flashMode === 'today' ? (todayQueue.length || dailyGoal) : filtered.length;
+  const displayCount = displayIdx >= 0 ? `${displayIdx + 1} / ${displayTotal}` : `回看 / ${displayTotal}`;
+  document.getElementById('fc-count').textContent = `${getFlashModeLabel()} ${displayCount}`;
   // 显示熟练度
   const p = progressMap[w.ro] || {};
   const lv = getProgressLevel(w.ro);
@@ -976,8 +997,8 @@ function bindFlashcardButtons() {
  * 记录当前词为「今日已学」
  */
 async function recordDailyWord() {
-  if (!filtered.length) return;
-  const w = filtered[idx];
+  const w = getCurrentFlashWord();
+  if (!w) return;
   if (flashMode === 'today') {
     await completeTodayQueueWord(w.ro);
     return;
@@ -1008,14 +1029,17 @@ function updateTodayCalendarCell() {
 
 // 「认识了」/「不认识」
 async function markCard(yes) {
-  if (!filtered.length) return;
-  const w = filtered[idx];
+  const w = getCurrentFlashWord();
+  if (!w) return;
+  const wasReviewingHistory = !!flashOverrideRo;
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (yes ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
   await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
   if (flashMode === 'today') await completeTodayQueueWord(w.ro);
   // 跳下一张，重置为中文面
+  if (!wasReviewingHistory) flashHistory.push(w.ro);
+  flashOverrideRo = null;
   applyFilters();
   const nextIdx = filtered.findIndex(item => item.ro !== w.ro);
   idx = nextIdx >= 0 ? nextIdx : 0;
@@ -1026,7 +1050,18 @@ async function markCard(yes) {
 
 // 「上一个」— 回到上一张的罗语面
 function prevCard() {
+  const previousRo = flashHistory.pop();
+  if (previousRo) {
+    const previousIdx = filtered.findIndex(item => item.ro === previousRo);
+    if (previousIdx >= 0) idx = previousIdx;
+    flashOverrideRo = previousRo;
+    flipped = true;
+    document.getElementById('main-card').classList.add('flipped');
+    renderCard();
+    return;
+  }
   if (!filtered.length) return;
+  flashOverrideRo = null;
   idx = (idx - 1 + filtered.length) % filtered.length;
   flipped = true;
   document.getElementById('main-card').classList.add('flipped');
@@ -1034,8 +1069,8 @@ function prevCard() {
 }
 
 function speak(rate) {
-  if (!filtered.length) return;
-  const w = filtered[idx];
+  const w = getCurrentFlashWord();
+  if (!w) return;
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(w.ro);
@@ -1173,6 +1208,10 @@ function getWrongWords() {
  * 初始化/刷新错题本
  */
 function initWrongbook() {
+  if (wbAutoAdvanceTimer) {
+    clearTimeout(wbAutoAdvanceTimer);
+    wbAutoAdvanceTimer = null;
+  }
   wbList = getWrongWords();
   wbIdx = 0;
   wbFlipped = false;
@@ -1231,6 +1270,11 @@ function flipWbCard() {
 }
 
 function nextWbCard() {
+  if (wbAutoAdvanceTimer) {
+    clearTimeout(wbAutoAdvanceTimer);
+    wbAutoAdvanceTimer = null;
+  }
+  if (!wbList.length) return;
   wbIdx = (wbIdx + 1) % wbList.length;
   wbFlipped = false;
   document.getElementById('wb-card').classList.remove('flipped');
@@ -1238,6 +1282,11 @@ function nextWbCard() {
 }
 
 function prevWbCard() {
+  if (wbAutoAdvanceTimer) {
+    clearTimeout(wbAutoAdvanceTimer);
+    wbAutoAdvanceTimer = null;
+  }
+  if (!wbList.length) return;
   wbIdx = (wbIdx - 1 + wbList.length) % wbList.length;
   wbFlipped = false;
   document.getElementById('wb-card').classList.remove('flipped');
@@ -1293,7 +1342,15 @@ async function answerWb(correct) {
 
   renderWrongbookStats();
   // 自动跳下一张
-  setTimeout(() => nextWbCard(), 800);
+  if (wbAutoAdvanceTimer) clearTimeout(wbAutoAdvanceTimer);
+  wbAutoAdvanceTimer = setTimeout(() => {
+    wbAutoAdvanceTimer = null;
+    if (!wbList.length) return;
+    wbIdx = (wbIdx + 1) % wbList.length;
+    wbFlipped = false;
+    document.getElementById('wb-card').classList.remove('flipped');
+    renderWrongbookCard();
+  }, 800);
 }
 
 // ── 测验模式 ──────────────────────────────────────────────
@@ -1828,7 +1885,8 @@ function getPendingGrammarWords() {
 // ── 报错弹窗（用户） ──────────────────────────────────────
 
 function openReportModal() {
-  const w = filtered[idx];
+  const w = getCurrentFlashWord();
+  if (!w) return;
   document.getElementById('rm-word-zh').textContent = w.zh;
   document.getElementById('rm-word-ro').textContent = w.ro;
   document.getElementById('rm-note').value = '';
@@ -1841,7 +1899,8 @@ function closeReportModal() {
 }
 
 async function submitReport() {
-  const w = filtered[idx];
+  const w = getCurrentFlashWord();
+  if (!w) return;
   const btn = document.getElementById('rm-submit');
   btn.disabled = true; btn.textContent = '提交中...';
   try {
