@@ -127,7 +127,7 @@ async function apiLoadProgress(userId) {
       lastReviewedAt: r.last_reviewed_at || null,
       reviewCount: reviewStage,
       nextReview: r.next_review || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
-      wrongCount: r.wrong_count || Math.max(0, (r.quiz_total || 0) - (r.quiz_right || 0)),
+      wrongCount: r.wrong_count ?? 0,
       errorStreak: r.error_streak || 0,
       lastWrongAt: r.last_wrong_at || null
     };
