@@ -831,13 +831,22 @@ async function renderCalendar() {
   const logMap = {};
   logs.forEach(l => { logMap[l.log_date] = l; });
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(today.getDate() - 13);
   const days = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+  const weekLabels = ['一', '二', '三', '四', '五', '六', '日'];
+  const leadingBlanks = (start.getDay() + 6) % 7;
+  for (let i = 0; i < leadingBlanks; i++) {
+    days.push('<div class="calendar-cell calendar-empty"></div>');
+  }
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
     const log = logMap[dateStr];
-    const isToday = i === 0;
+    const isToday = d.getTime() === today.getTime();
     const label = isToday ? '今' : (d.getMonth() + 1) + '/' + d.getDate();
 
     // 今天用实时数据，历史用数据库
@@ -845,17 +854,18 @@ async function renderCalendar() {
     const goal = isToday ? dailyGoal : (log?.goal || dailyGoal);
     const completed = isToday ? (todayNewWords >= dailyGoal) : (log?.completed || false);
 
-    let bg = 'var(--bg3)', tc = 'var(--text3)';
-    if (completed) { bg = 'var(--green)'; tc = 'white'; }
-    else if (newWords > 0) { bg = '#bbf7d0'; tc = 'var(--green-text)'; }
-
+    const stateClass = completed ? 'completed' : newWords > 0 ? 'started' : '';
     const todayAttr = isToday ? 'data-today="1"' : '';
-    days.push(`<div ${todayAttr} title="${label}: ${newWords}词 / 目标${goal}词" style="width:36px;height:36px;border-radius:8px;background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:${tc};font-weight:${isToday ? '700' : '400'};border:${isToday ? '2px solid var(--blue)' : 'none'};cursor:default">
-      <span>${label}</span>
-      <span class="cal-sub" style="font-size:9px">${newWords > 0 ? newWords : ''}</span>
+    days.push(`<div ${todayAttr} class="calendar-cell ${stateClass}${isToday ? ' today' : ''}" title="${label}: ${newWords}词 / 目标${goal}词">
+      <span class="calendar-date">${label}</span>
+      <span class="cal-sub">${newWords > 0 ? newWords : ''}</span>
     </div>`);
   }
-  el.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">${days.join('')}</div>`;
+  el.innerHTML = `
+    <div class="calendar-grid">
+      ${weekLabels.map(d => `<div class="calendar-weekday">${d}</div>`).join('')}
+      ${days.join('')}
+    </div>`;
 }
 
 // ── 卡片记忆 ──────────────────────────────────────────────
@@ -1640,6 +1650,7 @@ async function renderStatsPage() {
     setText('stat-30days', learned30);
     setText('stat-accuracy', summary.accuracy + '%');
     renderDailyChart(filled14);
+    await renderCalendar();
     renderCategoryMastery();
   } catch (e) {
     dailyEl.innerHTML = '<div class="empty-state">学习记录暂时无法读取</div>';
@@ -1980,42 +1991,45 @@ async function submitAddWord() {
   btn.disabled = false; btn.textContent = '保存';
 }
 
-async function applyVocabularyResetSeed() {
-  if (userRole !== 'admin') { showToast('只有管理员可以重置词库'); return; }
-  const rows = Array.isArray(window.VOCAB_RESET_SEED) ? window.VOCAB_RESET_SEED : [];
-  if (rows.length !== 200) {
-    showToast('没有找到完整的200词重置数据');
-    return;
-  }
-  const ok = confirm('这会清空词库、学习进度、今日队列、学习日志和报错记录，并导入200个 Dexonline 核对词。确定继续吗？');
+async function clearVocabularyForManualInput() {
+  if (userRole !== 'admin') { showToast('只有管理员可以清空词库'); return; }
+  const ok = confirm('这会清空词库、学习进度、今日队列、学习日志和报错记录。清空后需要在管理员页面重新导入词汇。确定继续吗？');
   if (!ok) return;
 
   const btn = [...document.querySelectorAll('button')]
-    .find(b => b.textContent.trim() === '应用200词重置');
-  if (btn) { btn.disabled = true; btn.textContent = '重置中...'; }
+    .find(b => b.textContent.trim() === '清空词库');
+  if (btn) { btn.disabled = true; btn.textContent = '清空中...'; }
 
   try {
-    const result = await apiResetVocabularySeed(rows);
-    W = (await apiLoadWords()).map(normalizeWordCategory);
+    await apiClearVocabularyData();
+    W = [];
+    filtered = [];
     progressMap = {};
     todayQueue = [];
     todayQueueCompleted = new Set();
+    todayQueueRecord = null;
     todayNewWords = 0;
     todaySeenWords = new Set();
+    todayLog = null;
+    idx = 0;
+    flipped = false;
+    curCat = '全部';
+    const card = document.getElementById('main-card');
+    if (card) card.classList.remove('flipped');
     applyFilters();
     buildCats();
     renderCard();
     renderList();
-    renderGoal();
+    renderDailyGoal();
     renderCalendar();
     loadAdminStats();
-    document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
-    showToast(`已重置词库，导入 ${result.inserted} 个词`);
+    setText('s-total', 0);
+    setText('topbar-badge', '0词 · A1-A2');
+    showToast('词库已清空，可以开始重新导入');
   } catch (e) {
-    showToast('重置失败：' + e.message);
+    showToast('清空失败：' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '应用200词重置'; }
+    if (btn) { btn.disabled = false; btn.textContent = '清空词库'; }
   }
 }
 
