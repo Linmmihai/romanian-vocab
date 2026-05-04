@@ -78,17 +78,7 @@ async function apiInsertWords(words) {
   return { inserted: data?.length || 0, skipped: words.length - (data?.length || 0) };
 }
 
-async function apiResetVocabularySeed(words) {
-  const payload = words.map(w => ({
-    zh: w.zh,
-    ro: w.ro,
-    ipa: w.ipa || '',
-    hint: w.hint || '',
-    cat: w.cat || 'Daily Life',
-    level: 'A1-A2',
-    difficulty: w.difficulty || 'beginner'
-  }));
-
+async function apiClearVocabularyData() {
   const steps = [
     () => sb.from('word_reports').delete().gte('id', 0),
     () => sb.from('daily_queue').delete().gte('queue_date', '1900-01-01'),
@@ -102,17 +92,7 @@ async function apiResetVocabularySeed(words) {
     if (error) throw new Error(error.message);
   }
 
-  const chunkSize = 100;
-  let inserted = 0;
-  for (let i = 0; i < payload.length; i += chunkSize) {
-    const { data, error } = await sb.from('words')
-      .insert(payload.slice(i, i + chunkSize))
-      .select();
-    if (error) throw new Error(error.message);
-    inserted += data?.length || 0;
-  }
-
-  return { inserted };
+  return { cleared: true };
 }
 
 /**
