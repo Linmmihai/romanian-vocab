@@ -34,6 +34,7 @@ let qRoundTotal = 0;  // 本轮答题
 let editingWordId = null;
 let editingReportId = null;
 let flashcardButtonsBound = false;
+let cardGesturesBound = false;
 
 // 错题本状态
 let wbList = [];
@@ -1001,6 +1002,17 @@ function flipCard() {
   document.getElementById('main-card').classList.toggle('flipped', flipped);
 }
 
+function nextCard() {
+  if (!filtered.length) return;
+  const current = getCurrentFlashWord();
+  if (current && !flashOverrideRo) flashHistory.push(current.ro);
+  flashOverrideRo = null;
+  idx = (idx + 1) % filtered.length;
+  flipped = false;
+  document.getElementById('main-card').classList.remove('flipped');
+  renderCard();
+}
+
 function bindFlashcardButtons() {
   if (flashcardButtonsBound) return;
   const knownBtn = document.getElementById('mark-known-btn');
@@ -1095,6 +1107,93 @@ function prevCard() {
   flipped = true;
   document.getElementById('main-card').classList.add('flipped');
   renderCard();
+}
+
+function prevReviewCard() {
+  if (!reviewQueue.length) return;
+  reviewIdx = (reviewIdx - 1 + reviewQueue.length) % reviewQueue.length;
+  renderReviewCard();
+}
+
+function nextReviewCard() {
+  if (!reviewQueue.length) return;
+  reviewIdx = (reviewIdx + 1) % reviewQueue.length;
+  renderReviewCard();
+}
+
+function bindCardGesture(cardId, handlers) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  const threshold = 42;
+  const axisBias = 1.2;
+  let startX = 0;
+  let startY = 0;
+  let pointerId = null;
+  let swiped = false;
+
+  card.addEventListener('pointerdown', (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    if (event.target.closest('button,a,input,textarea,select')) return;
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    swiped = false;
+    card.setPointerCapture?.(event.pointerId);
+  });
+
+  card.addEventListener('pointerup', (event) => {
+    if (pointerId !== event.pointerId) return;
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    pointerId = null;
+    card.releasePointerCapture?.(event.pointerId);
+
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    if (absX < threshold && absY < threshold) return;
+
+    if (absX > absY * axisBias) {
+      swiped = true;
+      if (dx < 0) handlers.next?.();
+      else handlers.prev?.();
+    } else if (absY > absX * axisBias) {
+      swiped = true;
+      handlers.flip?.();
+    }
+  });
+
+  card.addEventListener('pointercancel', (event) => {
+    if (pointerId !== event.pointerId) return;
+    pointerId = null;
+  });
+
+  card.addEventListener('click', (event) => {
+    if (!swiped) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    swiped = false;
+  }, true);
+}
+
+function bindCardGestures() {
+  if (cardGesturesBound) return;
+  bindCardGesture('main-card', {
+    prev: prevCard,
+    next: nextCard,
+    flip: flipCard
+  });
+  bindCardGesture('rv-card', {
+    prev: prevReviewCard,
+    next: nextReviewCard,
+    flip: flipReviewCard
+  });
+  bindCardGesture('wb-card', {
+    prev: prevWbCard,
+    next: nextWbCard,
+    flip: flipWbCard
+  });
+  cardGesturesBound = true;
 }
 
 function speak(rate) {
@@ -2526,4 +2625,5 @@ function showToast(msg) {
 
 // ── 启动 ─────────────────────────────────────────────────
 if (window.speechSynthesis) { speechSynthesis.onvoiceschanged = () => {}; }
+bindCardGestures();
 init();
