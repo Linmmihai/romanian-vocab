@@ -4,24 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#3b82f6">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="罗语词汇">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>罗马尼亚语词汇学习</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ============================================================
    styles — 如需修改样式，只改这里
    ============================================================ */
-:root{--bg:#f9fafb;--bg2:#f3f4f6;--bg3:#e5e7eb;--text:#111827;--text2:#6b7280;--text3:#9ca3af;--border:#e5e7eb;--border2:#d1d5db;--blue:#3b82f6;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--red:#ef4444;--red-bg:#fef2f2;--red-text:#991b1b;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--yellow-border:#fbbf24;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(0,0,0,0.08)}
+:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#94a3b8;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--red:#dc2626;--red-bg:#fef2f2;--red-text:#991b1b;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--yellow-border:#fbbf24;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,0.08)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 /* AUTH */
 #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
-.auth-card{background:white;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:2rem;width:100%;max-width:400px}
+.auth-card{background:white;border-radius:16px;box-shadow:0 4px 24px rgba(23,32,51,0.08);padding:2rem;width:100%;max-width:400px;position:relative;overflow:hidden}
+.auth-card::before,.topbar::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#002b7f 0 33.33%,#fcd116 33.33% 66.66%,#ce1126 66.66% 100%)}
 .auth-logo{text-align:center;margin-bottom:1.5rem}
 .auth-logo .flag{font-size:40px}
 .auth-logo h1{font-size:20px;font-weight:700;margin-top:8px}
@@ -54,13 +58,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .user-chip{font-size:13px;color:var(--text2)}
 .btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
 .btn-sm:hover{background:var(--bg2)}
-.nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow-x:auto;scrollbar-width:none}
+.nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow:visible;scrollbar-width:none;position:relative;flex-wrap:wrap}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tab{white-space:nowrap;padding:8px 16px;border:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;position:relative}
 .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
 .nav-tab .badge{position:absolute;top:4px;right:6px;background:var(--red);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:99px;min-width:16px;text-align:center}
+.nav-more{position:relative;flex-shrink:0}
+.nav-more-btn{border:none;background:transparent}
+.nav-menu{position:absolute;left:1rem;right:1rem;top:calc(100% + 6px);background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 10px 28px rgba(23,32,51,0.14);padding:6px;z-index:1000;display:none}
+.nav-more.open{position:static}
+.nav-more.open .nav-menu{display:flex;gap:4px;flex-wrap:wrap}
+.nav-menu .nav-tab{border-radius:var(--radius-sm);text-align:left;border-bottom:none;padding:9px 10px;width:auto}
 .page{display:none;padding:1rem;max-width:680px;margin:0 auto}
 .page.active{display:block}
+#page-flash.active{display:flex;flex-direction:column}
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
 .stat{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow)}
@@ -79,6 +90,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .review-note{font-size:12px;color:var(--text2);margin-top:8px}
 .card-wrap{perspective:1000px;margin-bottom:1rem}
 .card{width:100%;min-height:360px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow);touch-action:none;user-select:none}
+.daily-goal-panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)}
 .card.flipped{transform:rotateY(180deg)}
 .card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
 .card-back{transform:rotateY(180deg);background:var(--bg2);padding:0;overflow:hidden;justify-content:stretch}
@@ -184,19 +196,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
 .manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
-@media(max-width:560px){.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:560px){.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,1fr)}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-logo{font-size:16px}.user-chip{display:none}.nav-tabs{padding:8px 10px 0}.nav-tab{padding:8px 11px;font-size:13px}.page{padding:10px}.stats-grid{order:0;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{order:3;margin-top:2px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-bar{order:4;margin-bottom:0}.daily-goal-panel{order:5;margin-bottom:0}.flash-study{order:1}.card-wrap{margin-bottom:10px}.card{min-height:330px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
 /* LIST */
 .search-bar{margin-bottom:1rem}
 .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;outline:none;background:white}
 .search-bar input:focus{border-color:var(--blue)}
 .word-list{display:grid;gap:6px}
-.word-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
+.word-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
 .word-zh{font-size:15px;font-weight:600}
 .word-ro{font-size:13px;color:var(--text2)}
 .word-ipa{font-size:11px;color:var(--text3);font-family:monospace}
 .word-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:2px 8px;border-radius:99px;white-space:nowrap;margin-left:8px}
 .word-known{width:8px;height:8px;border-radius:50%;background:var(--bg3);margin-left:8px;flex-shrink:0}
 .word-known.yes{background:var(--green)}
+.word-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.word-actions{position:relative}
+.word-actions summary{list-style:none;width:26px;height:26px;border:1px solid var(--border2);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);background:white}
+.word-actions summary::-webkit-details-marker{display:none}
+.word-action-menu{position:absolute;right:0;top:30px;z-index:30;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(23,32,51,0.14);display:grid;gap:4px;padding:6px}
+@media(max-width:560px){.word-row{grid-template-columns:1fr;gap:8px;align-items:start}.word-meta{justify-content:space-between;width:100%;flex-wrap:wrap}.word-cat{margin-left:0}}
 /* ADMIN */
 .admin-section{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:1.2rem}
 .admin-section-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg2);cursor:pointer;gap:12px}
@@ -278,23 +296,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="auth-logo">
       <div class="flag">🇷🇴</div>
       <h1>罗马尼亚语词汇</h1>
-      <p>A1-A2</p>
+      <p>A1-B2</p>
     </div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="showAuthTab('login')">登录</button>
       <button class="auth-tab" onclick="showAuthTab('signup')">注册</button>
     </div>
-    <div id="login-form">
-      <div class="form-group"><label>邮箱</label><input type="email" id="login-email" placeholder="your@email.com"></div>
-      <div class="form-group"><label>密码</label><input type="password" id="login-pass" placeholder="••••••••"></div>
-      <button class="btn-primary" onclick="doLogin()">登录</button>
-    </div>
-    <div id="signup-form" style="display:none">
-      <div class="form-group"><label>昵称</label><input type="text" id="signup-name" placeholder="你的名字"></div>
-      <div class="form-group"><label>邮箱</label><input type="email" id="signup-email" placeholder="your@email.com"></div>
-      <div class="form-group"><label>密码（至少6位）</label><input type="password" id="signup-pass" placeholder="••••••••"></div>
-      <button class="btn-primary" onclick="doSignup()">注册账号</button>
-    </div>
+    <form id="login-form" onsubmit="event.preventDefault();doLogin()">
+      <div class="form-group"><label for="login-email">邮箱</label><input type="email" id="login-email" placeholder="your@email.com" autocomplete="email"></div>
+      <div class="form-group"><label for="login-pass">密码</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button type="submit" class="btn-primary">登录</button>
+    </form>
+    <form id="signup-form" style="display:none" onsubmit="event.preventDefault();doSignup()">
+      <div class="form-group"><label for="signup-name">昵称</label><input type="text" id="signup-name" placeholder="你的名字" autocomplete="nickname"></div>
+      <div class="form-group"><label for="signup-email">邮箱</label><input type="email" id="signup-email" placeholder="your@email.com" autocomplete="email"></div>
+      <div class="form-group"><label for="signup-pass">密码（至少6位）</label><input type="password" id="signup-pass" placeholder="••••••••" autocomplete="new-password"></div>
+      <button type="submit" class="btn-primary">注册账号</button>
+    </form>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
   <div id="pending-card" style="display:none;padding:1rem;max-width:400px;margin:0 auto">
@@ -321,15 +339,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchPage('flash')">卡片记忆 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
-    <button class="nav-tab" onclick="switchPage('list')">词汇表</button>
+    <button class="nav-tab active" data-page="flash" onclick="switchPage('flash')">学习 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab" data-page="quiz" onclick="switchPage('quiz')">测验</button>
+    <button class="nav-tab" data-page="list" onclick="switchPage('list')">词汇</button>
+    <button class="nav-tab" data-page="stats" onclick="switchPage('stats')">统计</button>
     <button class="nav-tab hidden-tab" onclick="switchPage('review')">复习</button>
-    <button class="nav-tab" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
-    <button class="nav-tab" onclick="switchPage('quiz')">测验模式</button>
-    <button class="nav-tab" onclick="switchPage('stats')">学习统计</button>
-    <button class="nav-tab" onclick="switchPage('leaderboard')">排行榜</button>
-    <button class="nav-tab" onclick="switchPage('guide')">指南</button>
-    <button class="nav-tab" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
+    <div class="nav-more" id="nav-more">
+      <button class="nav-tab nav-more-btn" onclick="toggleNavMenu(event)">更多</button>
+      <div class="nav-menu">
+        <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+        <button class="nav-tab" data-page="leaderboard" onclick="switchPage('leaderboard')">排行榜</button>
+        <button class="nav-tab" data-page="guide" onclick="switchPage('guide')">指南</button>
+        <button class="nav-tab" data-page="admin" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
+      </div>
+    </div>
   </div>
 
   <!-- 卡片记忆 -->
@@ -351,7 +374,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="review-grid">
         <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">今日应复习</div></div>
-        <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日队列</div></div>
+        <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日进度</div></div>
         <div class="review-metric"><div class="review-n" id="review-stage-label">0</div><div class="review-l">弱项参考</div></div>
       </div>
       <div class="review-note" id="review-note">按艾宾浩斯曲线优先复习到期词。</div>
@@ -359,7 +382,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="cat-bar" id="cat-bar"></div>
 
     <!-- 每日目标进度 -->
-    <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)">
+    <div class="daily-goal-panel">
       <div id="daily-goal-bar"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
         <span style="font-size:13px;color:var(--text2)">每日目标：</span>
@@ -373,7 +396,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="loading-spinner"></div>
       <div class="loading-text">正在加载词库...</div>
     </div>
-    <div id="flash-content" style="display:none">
+    <div id="flash-content" class="flash-study" style="display:none">
       <div class="card-wrap">
         <div class="card" id="main-card" onclick="flipCard()">
           <div class="card-face">
@@ -410,7 +433,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="card-nav">
         <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
-        <span class="counter" id="fc-count"></span>
       </div>
     </div>
   </div>
@@ -835,7 +857,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="api.js"></script>
 <script src="auth.js"></script>
 <script src="stress_grammar_patch.js"></script>
-<script src="app.js?v=20260503-1"></script>
+<script src="app.js?v=20260505-2"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => {
