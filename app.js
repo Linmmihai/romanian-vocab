@@ -772,7 +772,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
 
 function switchPage(p) {
   if (p === 'review') { flashMode = 'review'; p = 'flash'; }
-  const pages = ['flash', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'list', 'admin'];
+  const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'admin'];
   pages.forEach((s, i) => {
     const tab = document.querySelectorAll('.nav-tab:not(.hidden-tab)')[i];
     if (tab) tab.classList.toggle('active', s === p);
