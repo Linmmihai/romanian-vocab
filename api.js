@@ -208,7 +208,14 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
 // ── 每日学习队列 ──────────────────────────────────────────
 
 function getQueueDateKey() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateKey();
+}
+
+function getLocalDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function getLocalQueueKey(userId, date = getQueueDateKey()) {
@@ -373,7 +380,7 @@ async function apiUpdateNickname(userId, nickname) {
  * 获取今日的学习记录，没有则创建
  */
 async function apiGetTodayLog(userId, goal) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateKey();
   const { data } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
   if (data) return data;
   // 创建今日记录
@@ -385,7 +392,7 @@ async function apiGetTodayLog(userId, goal) {
  * 更新今日新词数
  */
 async function apiUpdateTodayLog(userId, newWords, goal) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateKey();
   const completed = newWords >= goal;
   const { error } = await sb.from('daily_log').upsert(
     { user_id: userId, log_date: today, new_words: newWords, goal, completed },
@@ -411,7 +418,7 @@ async function apiGetRecentLogs(userId, days = 14) {
 async function apiGetClassRecentLogs(days = 30) {
   const since = new Date();
   since.setDate(since.getDate() - days + 1);
-  const sinceStr = since.toISOString().slice(0, 10);
+  const sinceStr = getLocalDateKey(since);
   const { data, error } = await sb.from('daily_log').select('*')
     .gte('log_date', sinceStr)
     .order('log_date', { ascending: false });
