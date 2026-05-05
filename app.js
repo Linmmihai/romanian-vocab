@@ -888,7 +888,7 @@ async function renderCalendar() {
   for (let i = 0; i < 14; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = getDateKeyFor(d);
     const log = logMap[dateStr];
     const isToday = d.getTime() === today.getTime();
     const label = isToday ? '今' : (d.getMonth() + 1) + '/' + d.getDate();
@@ -896,7 +896,7 @@ async function renderCalendar() {
     // 今天用实时数据，历史用数据库
     const newWords = isToday ? todayNewWords : (log?.new_words || 0);
     const goal = isToday ? dailyGoal : (log?.goal || dailyGoal);
-    const completed = isToday ? (todayNewWords >= dailyGoal) : (log?.completed || false);
+    const completed = isToday ? (todayNewWords >= dailyGoal) : isDailyLogCompleted({ ...log, new_words: newWords, goal });
 
     const stateClass = completed ? 'completed' : newWords > 0 ? 'started' : '';
     const todayAttr = isToday ? 'data-today="1"' : '';
@@ -1061,8 +1061,8 @@ function updateTodayCalendarCell() {
   const cells = document.querySelectorAll('#calendar-container [data-today]');
   cells.forEach(cell => {
     const done = todayNewWords >= dailyGoal;
-    cell.style.background = done ? 'var(--green)' : '#bbf7d0';
-    cell.style.color = done ? 'white' : 'var(--green-text)';
+    cell.classList.toggle('completed', done);
+    cell.classList.toggle('started', !done && todayNewWords > 0);
     const sub = cell.querySelector('.cal-sub');
     if (sub) sub.textContent = todayNewWords;
   });
@@ -1802,10 +1802,24 @@ function showResult() {
 
 // ── 学习统计 / 排行榜 ─────────────────────────────────────
 
+function getDateKeyFor(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function getDateKey(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
+  return getDateKeyFor(d);
+}
+
+function isDailyLogCompleted(log) {
+  if (!log) return false;
+  const newWords = Number(log.new_words || 0);
+  const goal = Number(log.goal || dailyGoal || 20);
+  return !!log.completed || (goal > 0 && newWords >= goal);
 }
 
 function buildRecentDays(days) {
@@ -1817,16 +1831,20 @@ function buildRecentDays(days) {
 function fillDailyLogs(logs, days) {
   const map = {};
   (logs || []).forEach(l => { map[l.log_date] = l; });
-  return buildRecentDays(days).map(date => ({
-    log_date: date,
-    new_words: map[date]?.new_words || 0,
-    goal: map[date]?.goal || dailyGoal,
-    completed: map[date]?.completed || false
-  }));
+  return buildRecentDays(days).map(date => {
+    const log = map[date];
+    const filled = {
+      log_date: date,
+      new_words: log?.new_words || 0,
+      goal: log?.goal || dailyGoal,
+      completed: log?.completed || false
+    };
+    return { ...filled, completed: isDailyLogCompleted(filled) };
+  });
 }
 
 function calcStreak(logs) {
-  const learned = new Set((logs || []).filter(l => (l.new_words || 0) > 0).map(l => l.log_date));
+  const learned = new Set((logs || []).filter(isDailyLogCompleted).map(l => l.log_date));
   let streak = 0;
   for (let i = 0; i < 365; i++) {
     if (!learned.has(getDateKey(-i))) break;
