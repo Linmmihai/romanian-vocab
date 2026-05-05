@@ -7,7 +7,7 @@
  * 切换登录/注册标签
  */
 function showAuthTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((b, i) =>
+  document.querySelectorAll('#auth-card .auth-tabs .auth-tab').forEach((b, i) =>
     b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'signup'))
   );
   document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
