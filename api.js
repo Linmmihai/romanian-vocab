@@ -67,7 +67,7 @@ async function apiInsertWords(words) {
     ipa: w.ipa || '',
     hint: w.hint || '',
     cat: w.cat || '其他',
-    level: 'A1-A2',
+    level: 'A1-B2',
     // Kept only for database compatibility; the app no longer uses difficulty.
     difficulty: w.difficulty || 'beginner'
   }));
