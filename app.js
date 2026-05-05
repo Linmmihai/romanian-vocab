@@ -229,7 +229,7 @@ async function loadWords() {
   applyFilters();
 
   document.getElementById('s-total').textContent = W.length;
-  document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
+  document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
 
   populateCategoryDatalist();
   buildCats();
@@ -274,6 +274,7 @@ async function loadDailyQueue() {
       completed: false
     });
   }
+  todaySeenWords = new Set(todayQueueCompleted);
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
   if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
@@ -310,16 +311,28 @@ async function saveTodayQueue() {
   });
 }
 
-async function completeTodayQueueWord(wordRo) {
-  if (!wordRo || todayQueueCompleted.has(wordRo)) return;
-  todayQueueCompleted.add(wordRo);
-  todayNewWords = todayQueueCompleted.size;
-  await saveTodayQueue();
+async function recordTodayWord(wordRo) {
+  if (!wordRo || todaySeenWords.has(wordRo)) return;
+  const wasGoalDone = todayNewWords >= dailyGoal;
+  const isQueuedWord = todayQueue.includes(wordRo);
+
+  todaySeenWords.add(wordRo);
+  if (isQueuedWord && !todayQueueCompleted.has(wordRo)) {
+    todayQueueCompleted.add(wordRo);
+    await saveTodayQueue();
+  }
+
+  todayNewWords += 1;
+  todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
   renderDailyGoal();
   updateTodayCalendarCell();
   renderReviewPanel();
-  if (todayQueue.length && todayQueueCompleted.size >= todayQueue.length) showToast('今日学习队列已完成');
+  if (!wasGoalDone && todayNewWords >= dailyGoal) showToast('今日目标已完成，可以继续学习');
+}
+
+async function completeTodayQueueWord(wordRo) {
+  await recordTodayWord(wordRo);
 }
 
 // ── 熟练度计算 ────────────────────────────────────────────
@@ -357,11 +370,30 @@ const REVIEW_INTERVALS = [
 function applyFilters() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (flashMode === 'today') {
-    filtered = todayQueue
+    const queueWords = todayQueue
       .map(ro => W.find(w => w.ro === ro))
       .filter(Boolean)
-      .filter(w => curCat === '全部' || w.cat === curCat)
-      .filter(w => !todayQueueCompleted.has(w.ro));
+      .filter(w => curCat === '全部' || w.cat === curCat);
+    const openQueue = queueWords.filter(w => !todayQueueCompleted.has(w.ro));
+    if (openQueue.length) {
+      filtered = openQueue;
+    } else {
+      const learnedToday = new Set([...todaySeenWords, ...todayQueueCompleted]);
+      const queued = new Set(todayQueue);
+      const unknown = scoped.filter(w => {
+        const p = progressMap[w.ro];
+        return !learnedToday.has(w.ro) && !queued.has(w.ro) && (!p || (!p.qt && !p.known));
+      });
+      const learning = scoped.filter(w => {
+        const p = progressMap[w.ro];
+        return !learnedToday.has(w.ro) &&
+          !queued.has(w.ro) &&
+          p &&
+          getProgressLevel(w.ro) !== 'mastered' &&
+          !unknown.some(u => u.ro === w.ro);
+      });
+      filtered = [...unknown, ...sortByReviewPriority(learning)];
+    }
   } else if (flashMode === 'review') {
     filtered = sortReviewDueWithWeakPriority(scoped).filter(w => {
       const p = progressMap[w.ro];
@@ -664,23 +696,16 @@ function renderReviewPanel() {
   const scoped = getCurrentScopeWords();
   const due = scoped.filter(w => isReviewDue(progressMap[w.ro])).length;
   const difficult = getDifficultWords(scoped).length;
-  const scopedQueue = todayQueue
-    .map(ro => W.find(w => w.ro === ro))
-    .filter(Boolean)
-    .filter(w => curCat === '全部' || w.cat === curCat);
-  const queueDone = scopedQueue.filter(w => todayQueueCompleted.has(w.ro)).length;
-  const queueTotal = curCat === '全部' ? (todayQueue.length || dailyGoal) : scopedQueue.length;
   const waiting = scoped.length - due;
   const current = filtered[idx];
   const p = current ? progressMap[current.ro] : null;
   setText('review-due-count', due);
-  setText('review-new-count', `${queueDone}/${queueTotal}`);
+  setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
   setText('review-stage-label', difficult);
-  const currentStage = Number(p?.reviewStage || 0);
-  const nextInterval = REVIEW_INTERVALS[Math.min(currentStage, REVIEW_INTERVALS.length - 1)] || REVIEW_INTERVALS[0];
-  const nextLabel = nextInterval?.label || '';
   const modeNote = {
-    today: `今日队列固定为 ${queueTotal} 个词，已完成 ${queueDone} 个。答完后自动打勾，不再继续滚动词库。`,
+    today: todayNewWords >= dailyGoal
+      ? `今日目标已完成：${todayNewWords}/${dailyGoal} 词。可以继续学习，额外词汇也会计入今日记录。`
+      : `今日目标是 ${dailyGoal} 词，已完成 ${todayNewWords} 词。先按今日队列学习，完成后可以继续扩展新词。`,
     review: current
       ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。到期复习会自动优先安排错误率高、连续答错或最近遗忘的词。`
       : '当前没有到期复习词，可以切换到今日新词。'
@@ -773,12 +798,12 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
 function switchPage(p) {
   if (p === 'review') { flashMode = 'review'; p = 'flash'; }
   const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'admin'];
-  pages.forEach((s, i) => {
-    const tab = document.querySelectorAll('.nav-tab:not(.hidden-tab)')[i];
-    if (tab) tab.classList.toggle('active', s === p);
+  pages.forEach((s) => {
+    document.querySelectorAll(`.nav-tab[data-page="${s}"]`).forEach(tab => tab.classList.toggle('active', s === p));
     const page = document.getElementById('page-' + s);
     if (page) page.classList.toggle('active', s === p);
   });
+  document.getElementById('nav-more')?.classList.remove('open');
   const reviewPage = document.getElementById('page-review');
   if (reviewPage) reviewPage.classList.remove('active');
   if (p === 'flash') { applyFilters(); renderCard(); renderDailyGoal(); renderCalendar(); }
@@ -789,6 +814,18 @@ function switchPage(p) {
   if (p === 'wrongbook') initWrongbook();
   if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminReports(); loadAdminUsers(); }
 }
+
+function toggleNavMenu(event) {
+  event?.stopPropagation();
+  const menu = document.getElementById('nav-more');
+  if (!menu) return;
+  menu.classList.toggle('open');
+}
+
+document.addEventListener('click', (event) => {
+  const menu = document.getElementById('nav-more');
+  if (menu && !menu.contains(event.target)) menu.classList.remove('open');
+});
 
 function toggleAdminSection(id) {
   const section = document.getElementById(id);
@@ -921,7 +958,7 @@ function buildCats() {
     .filter(c => c === '全部' || present.has(c))
     .concat([...present].filter(c => !CATEGORY_ORDER.includes(c)).sort((a, b) => a.localeCompare(b, 'en')));
   document.getElementById('cat-bar').innerHTML = cats.map(c =>
-    `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat('${c.replace(/'/g, "\\'")}')">${c}</button>`
+    `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat(decodeURIComponent('${encodedArg(c)}'))">${escapeHtml(c)}</button>`
   ).join('');
 }
 
@@ -952,18 +989,17 @@ function renderCard() {
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
     const emptyText = {
-      today: todayQueue.length && todayQueueCompleted.size >= todayQueue.length ? '今日队列已完成' : '今日暂无新词',
+      today: todayNewWords >= dailyGoal ? '今日目标已完成' : '今日暂无新词',
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
-      today: '可以切换到复习或测验',
+      today: todayNewWords >= dailyGoal ? '可以继续复习、测验，或明天再学新词' : '可以切换分类或先去复习',
       review: '先完成今日新词，系统会安排复习'
     }[flashMode] || 'No words';
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
     setText('fc-ipa', '');
     setText('fc-phint', '');
-    setText('fc-count', '0 / 0');
     setText('fc-level', '');
     const verifyEl = document.getElementById('fc-verify');
     if (verifyEl) verifyEl.style.display = 'none';
@@ -984,10 +1020,6 @@ function renderCard() {
   }
   setStressHtml('fc-ipa', w);
   setGrammarText('fc-phint', w, stress);
-  const displayIdx = filtered.findIndex(item => item.ro === w.ro);
-  const displayTotal = flashMode === 'today' ? (todayQueue.length || dailyGoal) : filtered.length;
-  const displayCount = displayIdx >= 0 ? `${displayIdx + 1} / ${displayTotal}` : `回看 / ${displayTotal}`;
-  document.getElementById('fc-count').textContent = `${getFlashModeLabel()} ${displayCount}`;
   // 显示熟练度
   const p = progressMap[w.ro] || {};
   const lv = getProgressLevel(w.ro);
@@ -1040,18 +1072,7 @@ function bindFlashcardButtons() {
 async function recordDailyWord() {
   const w = getCurrentFlashWord();
   if (!w) return;
-  if (flashMode === 'today') {
-    await completeTodayQueueWord(w.ro);
-    return;
-  }
-  if (!todaySeenWords.has(w.ro)) {
-    todaySeenWords.add(w.ro);
-    todayNewWords++;
-    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
-    renderDailyGoal();
-    updateTodayCalendarCell();
-    if (todayNewWords === dailyGoal) showToast('🎉 恭喜！今日目标达成！');
-  }
+  await recordTodayWord(w.ro);
 }
 
 /**
@@ -1713,12 +1734,12 @@ function renderQuiz() {
     <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
     </div>
-    <div class="quiz-q">${qText}</div>
+    <div class="quiz-q">${escapeHtml(qText)}</div>
     <div class="quiz-sub">${qMode === 'zh' ? '选择对应的罗马尼亚语' : '选择对应的中文'}</div>
     <div class="opts">${opts.map(o => {
       const label = qMode === 'zh' ? o.ro : o.zh;
       const ok = o.ro === w.ro;
-      return `<button class="opt" onclick="answerQ(this,${ok},'${w.ro.replace(/'/g, "\\'")}','${w.zh.replace(/'/g, "\\'")}')">${label}</button>`;
+      return `<button class="opt" onclick="answerQ(this,${ok},decodeURIComponent('${encodedArg(w.ro)}'),decodeURIComponent('${encodedArg(w.zh)}'))">${escapeHtml(label)}</button>`;
     }).join('')}</div>
     <div class="quiz-fb" id="qfb"></div>
     <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
@@ -2003,6 +2024,22 @@ function escapeHtml(s) {
   }[ch]));
 }
 
+function encodedArg(s) {
+  return encodeURIComponent(String(s || ''));
+}
+
+function openEditById(id) {
+  const word = W.find(w => String(w.id) === String(id));
+  if (!word) { showToast('找不到该词条'); return; }
+  openEditModal(word);
+}
+
+function deleteWordById(id) {
+  const word = W.find(w => String(w.id) === String(id));
+  if (!word) { showToast('找不到该词条'); return; }
+  deleteWord(word.id, word.zh || word.ro || '');
+}
+
 // ── 词汇表 ────────────────────────────────────────────────
 
 function renderList() {
@@ -2010,22 +2047,26 @@ function renderList() {
   const q = (document.getElementById('search-input') || { value: '' }).value.toLowerCase();
   const f = W.filter(w => !q || w.zh.includes(q) || w.ro.toLowerCase().includes(q) || (w.cat || '').includes(q));
   const editBtns = (w) => userRole === 'admin'
-    ? `<button class="admin-btn edit" style="margin-left:4px;padding:3px 8px;font-size:11px" onclick='openEditModal(${JSON.stringify(w)})'>编辑</button>
-       <button class="admin-btn revoke" style="margin-left:2px;padding:3px 8px;font-size:11px" onclick='deleteWord(${w.id},"${w.zh.replace(/"/g, '&quot;')}")'>删除</button>`
+    ? `<details class="word-actions">
+         <summary aria-label="词条操作">⋯</summary>
+         <div class="word-action-menu">
+           <button class="admin-btn edit" onclick="openEditById(${Number(w.id)})">编辑</button>
+           <button class="admin-btn revoke" onclick="deleteWordById(${Number(w.id)})">删除</button>
+         </div>
+       </details>`
     : '';
   document.getElementById('word-list').innerHTML = f.slice(0, 200).map(w => {
-    const p = progressMap[w.ro] || {};
     const lv = getProgressLevel(w.ro);
     const stress = getStressDisplay(w);
     const grammar = getGrammarInfo(w);
     return `<div class="word-row">
-      <div style="flex:1;min-width:0">
-        <div class="word-zh">${w.zh}</div>
-        <div class="word-ro">${w.ro}</div>
+      <div style="min-width:0">
+        <div class="word-zh">${escapeHtml(w.zh)}</div>
+        <div class="word-ro">${escapeHtml(w.ro)}</div>
         <div class="word-ipa${isWordUnverified(w) ? ' unverified-text' : ''}">${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${stress.auto ? ' · 自动重音' : ''} ${unverifiedBadgeHtml(w)}</div>
       </div>
-      <div style="display:flex;align-items:center;flex-shrink:0;gap:4px">
-        <div class="word-cat">${w.cat || ''}</div>
+      <div class="word-meta">
+        <div class="word-cat">${escapeHtml(w.cat || '')}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${LEVEL_BG[lv]};color:${LEVEL_TC[lv]};white-space:nowrap">${getLevelLabel(w.ro)}</span>
         ${editBtns(w)}
       </div>
@@ -2198,7 +2239,7 @@ async function submitAddWord() {
     W = (await apiLoadWords()).map(normalizeWordCategory);
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
     buildCats(); renderCard(); renderList();
 
     const msg = `✅ 成功添加 ${inserted} 个词${skipped > 0 ? `，跳过重复 ${skipped} 个` : ''}`;
@@ -2255,7 +2296,7 @@ async function clearVocabularyForManualInput() {
     renderCalendar();
     loadAdminStats();
     setText('s-total', 0);
-    setText('topbar-badge', '0词 · A1-A2');
+    setText('topbar-badge', '0词 · A1-B2');
     showToast('词库已清空，可以开始重新导入');
   } catch (e) {
     showToast('清空失败：' + e.message);
@@ -2310,7 +2351,7 @@ async function deleteWord(wordId, wordZh) {
     W = W.filter(w => w.id !== wordId);
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-A2';
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
     buildCats(); renderCard(); renderList(); loadAdminStats();
     showToast(`✅ 已删除「${wordZh}」`);
   } catch (e) {
@@ -2388,7 +2429,7 @@ function renderMissingIpaPanel() {
             <div class="admin-word-meta">${escapeHtml(w.ro)} · 自动推测：${stressToHtml(stress.text)} · ${escapeHtml(getGrammarInfo(w))}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
           </div>
           <div class="admin-word-actions">
-            <button class="admin-btn edit" onclick='openEditModal(${JSON.stringify(w)})'>补音标</button>
+            <button class="admin-btn edit" onclick="openEditById(${Number(w.id)})">补音标</button>
           </div>
         </div>`;
       }).join('')}
@@ -2418,7 +2459,7 @@ function renderPendingGrammarPanel() {
             <div class="admin-word-meta">${escapeHtml(w.ro)} · ${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
           </div>
           <div class="admin-word-actions">
-            <button class="admin-btn edit" onclick='openEditModal(${JSON.stringify(w)})'>核对</button>
+            <button class="admin-btn edit" onclick="openEditById(${Number(w.id)})">核对</button>
           </div>
         </div>`;
       }).join('')}
@@ -2577,14 +2618,14 @@ async function loadAdminReports() {
     }
     document.getElementById('reports-container').innerHTML = [...pending, ...resolved].map(r => `
       <div class="report-row" style="${r.status === 'resolved' ? 'opacity:0.5' : ''}">
-        <div class="report-word">${r.word_zh} → ${r.word_ro}
-          <span class="issue-tag">${ISSUE_LABELS[r.issue_type] || r.issue_type}</span>
+        <div class="report-word">${escapeHtml(r.word_zh)} → ${escapeHtml(r.word_ro)}
+          <span class="issue-tag">${escapeHtml(ISSUE_LABELS[r.issue_type] || r.issue_type)}</span>
           ${r.status === 'resolved' ? '<span style="font-size:11px;color:var(--green-text);font-weight:600">✓ 已解决</span>' : ''}
         </div>
-        <div class="report-meta">来自：${r.reporter_email || '未知'} · ${new Date(r.created_at).toLocaleDateString('zh')}</div>
-        ${r.note ? `<div class="report-note">"${r.note}"</div>` : ''}
+        <div class="report-meta">来自：${escapeHtml(r.reporter_email || '未知')} · ${new Date(r.created_at).toLocaleDateString('zh')}</div>
+        ${r.note ? `<div class="report-note">"${escapeHtml(r.note)}"</div>` : ''}
         <div class="report-actions">
-          <button class="admin-btn edit" onclick="openEditFromReport(${r.id},'${r.word_ro.replace(/'/g, "\\'")}')">✏️ 编辑词条</button>
+          <button class="admin-btn edit" onclick="openEditFromReport(${Number(r.id)},decodeURIComponent('${encodedArg(r.word_ro)}'))">✏️ 编辑词条</button>
           ${r.status === 'pending' ? `<button class="admin-btn resolve" onclick="resolveReport(${r.id})">✓ 标记已解决</button>` : ''}
         </div>
       </div>`).join('');
@@ -2615,12 +2656,12 @@ async function loadAdminUsers() {
     document.getElementById('users-container').innerHTML = data.map(u => `
       <div class="user-row">
         <div style="flex:1;min-width:0">
-          <div class="user-email">${u.email || ''}</div>
-          <div class="user-nickname">${u.nickname || '未设昵称'} · ${new Date(u.created_at).toLocaleDateString('zh')}</div>
+          <div class="user-email">${escapeHtml(u.email || '')}</div>
+          <div class="user-nickname">${escapeHtml(u.nickname || '未设昵称')} · ${new Date(u.created_at).toLocaleDateString('zh')}</div>
         </div>
-        <span class="role-badge role-${u.role}">${{ admin: '管理员', user: '已通过', pending: '待审批' }[u.role] || u.role}</span>
-        ${u.role === 'pending' ? `<button class="admin-btn approve" onclick="setUserRole('${u.id}','user')">✓ 通过</button>` : ''}
-        ${u.role === 'user' ? `<button class="admin-btn revoke" onclick="setUserRole('${u.id}','pending')">撤销</button>` : ''}
+        <span class="role-badge role-${escapeHtml(u.role)}">${escapeHtml({ admin: '管理员', user: '已通过', pending: '待审批' }[u.role] || u.role)}</span>
+        ${u.role === 'pending' ? `<button class="admin-btn approve" onclick="setUserRole(decodeURIComponent('${encodedArg(u.id)}'),'user')">✓ 通过</button>` : ''}
+        ${u.role === 'user' ? `<button class="admin-btn revoke" onclick="setUserRole(decodeURIComponent('${encodedArg(u.id)}'),'pending')">撤销</button>` : ''}
       </div>`).join('');
   } catch (e) {
     document.getElementById('users-container').innerHTML = '<div class="empty-state">加载失败</div>';
