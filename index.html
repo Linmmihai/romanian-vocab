@@ -170,11 +170,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rank-score strong{display:block;font-size:20px;color:var(--text);line-height:1.1}
 /* GUIDE */
 .guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
-.guide-title{font-size:14px;font-weight:600;margin-bottom:10px}
-.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.ph-item{background:var(--bg2);border-radius:var(--radius-sm);padding:8px;text-align:center}
-.ph-letter{font-size:16px;font-weight:600;font-family:monospace}
-.ph-sound{font-size:11px;color:var(--text2);margin-top:3px}
+.guide-title{font-size:16px;font-weight:800;margin-bottom:6px}
+.guide-subtitle{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5}
+.alphabet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px;margin-bottom:14px}
+.alphabet-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 4px;text-align:center;color:var(--text);min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.alphabet-letter{font-size:20px;font-weight:800;line-height:1}
+.alphabet-read{font-size:11px;color:var(--text2);font-weight:700;margin-top:6px;line-height:1.1}
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ph-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center}
+.ph-letter{font-size:20px;font-weight:800;font-family:monospace;color:var(--text)}
+.ph-sound{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4}
+.manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
+.manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
+.manual-text{font-size:12px;color:var(--text2);line-height:1.55}
+@media(max-width:560px){.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,1fr)}}
 /* LIST */
 .search-bar{margin-bottom:1rem}
 .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;outline:none;background:white}
@@ -312,13 +322,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="switchPage('flash')">卡片记忆 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab" onclick="switchPage('list')">词汇表</button>
     <button class="nav-tab hidden-tab" onclick="switchPage('review')">复习</button>
     <button class="nav-tab" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
     <button class="nav-tab" onclick="switchPage('quiz')">测验模式</button>
     <button class="nav-tab" onclick="switchPage('stats')">学习统计</button>
     <button class="nav-tab" onclick="switchPage('leaderboard')">排行榜</button>
-    <button class="nav-tab" onclick="switchPage('guide')">发音指南</button>
-    <button class="nav-tab" onclick="switchPage('list')">词汇表</button>
+    <button class="nav-tab" onclick="switchPage('guide')">指南</button>
     <button class="nav-tab" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
   </div>
 
@@ -567,10 +577,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
-  <!-- 发音指南 -->
+  <!-- 指南 -->
   <div class="page" id="page-guide">
     <div class="guide-card">
-      <div class="guide-title">特殊字母发音</div>
+      <div class="guide-title">字母表</div>
+      <div class="guide-subtitle">罗马尼亚语使用拉丁字母。先熟悉完整字母，再重点记住下面的特殊读音。</div>
+      <div class="alphabet-grid">
+        <div class="alphabet-item"><div class="alphabet-letter">A</div><div class="alphabet-read">a</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Ă</div><div class="alphabet-read">ă</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Â</div><div class="alphabet-read">â din a</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">B</div><div class="alphabet-read">be</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">C</div><div class="alphabet-read">ce</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">D</div><div class="alphabet-read">de</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">E</div><div class="alphabet-read">e</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">F</div><div class="alphabet-read">ef</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">G</div><div class="alphabet-read">ge</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">H</div><div class="alphabet-read">haș</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">I</div><div class="alphabet-read">i</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Î</div><div class="alphabet-read">î din i</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">J</div><div class="alphabet-read">jî</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">K</div><div class="alphabet-read">ca</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">L</div><div class="alphabet-read">el</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">M</div><div class="alphabet-read">em</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">N</div><div class="alphabet-read">en</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">O</div><div class="alphabet-read">o</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">P</div><div class="alphabet-read">pe</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Q</div><div class="alphabet-read">chiu</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">R</div><div class="alphabet-read">er</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">S</div><div class="alphabet-read">es</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Ș</div><div class="alphabet-read">șe</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">T</div><div class="alphabet-read">te</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Ț</div><div class="alphabet-read">țe</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">U</div><div class="alphabet-read">u</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">V</div><div class="alphabet-read">ve</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">W</div><div class="alphabet-read">dublu ve</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">X</div><div class="alphabet-read">ics</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Y</div><div class="alphabet-read">igrec</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Z</div><div class="alphabet-read">zet</div></div>
+      </div>
       <div class="ph-grid">
         <div class="ph-item"><div class="ph-letter">ă</div><div class="ph-sound">类似"呃"，短促</div></div>
         <div class="ph-item"><div class="ph-letter">â / î</div><div class="ph-sound">类似"嗯"，舌后</div></div>
@@ -584,8 +628,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="guide-card">
-      <div class="guide-title">重音规则</div>
-      <p style="font-size:13px;color:#6b7280;line-height:1.8">词条中用<strong>下划线</strong>标出重音音节。<br>编辑时可用大写或 IPA 的 <strong>ˈ</strong> 标重音，页面会自动转成下划线。<br>没有人工音标的词会先显示自动重音，建议逐音节核对。</p>
+      <div class="guide-title">使用手册</div>
+      <div class="guide-subtitle">建议按“卡片记忆 → 测验模式 → 错题本 → 学习统计”的节奏学习。</div>
+      <div class="manual-grid">
+        <div class="manual-item">
+          <div class="manual-title">卡片记忆</div>
+          <div class="manual-text">每日先完成今日新词。点卡片或上下滑动翻面，左右滑动切换卡片。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">词汇表</div>
+          <div class="manual-text">快速搜索中文、罗语或分类。管理员可在这里检查和维护词条。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">测验模式</div>
+          <div class="manual-text">用翻译、名词复数、动词变位和重音题检查记忆，答错会进入错题本。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">错题本</div>
+          <div class="manual-text">集中练习薄弱词。连续答对 3 次后，词条会从错题本移出。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">学习统计</div>
+          <div class="manual-text">查看打卡、近 14 天学习量、分类掌握率和整体正确率。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">重音标记</div>
+          <div class="manual-text">词条中用下划线标出重音音节。编辑时可用大写或 IPA 的 ˈ 标重音。</div>
+        </div>
+      </div>
     </div>
   </div>
 
