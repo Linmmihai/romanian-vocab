@@ -262,8 +262,12 @@ async function loadDailyQueue() {
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
   if (saved?.word_ro?.length) {
     todayQueueRecord = saved;
-    todayQueue = saved.word_ro.filter(ro => W.some(w => w.ro === ro));
-    todayQueueCompleted = new Set((saved.completed_word_ro || []).filter(ro => todayQueue.includes(ro)));
+    const savedCompleted = new Set(saved.completed_word_ro || []);
+    todayQueue = saved.word_ro.filter(ro => {
+      const word = W.find(w => w.ro === ro);
+      return word && (savedCompleted.has(ro) || isUnseenWord(word));
+    });
+    todayQueueCompleted = new Set([...savedCompleted].filter(ro => todayQueue.includes(ro)));
   } else {
     todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
     todayQueueCompleted = new Set();
@@ -276,6 +280,17 @@ async function loadDailyQueue() {
   }
   todaySeenWords = new Set(todayQueueCompleted);
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
+  if (todayNewWords < dailyGoal && todayQueue.length < dailyGoal) {
+    const existing = new Set(todayQueue);
+    const extra = buildDailyQueueWords(dailyGoal)
+      .map(w => w.ro)
+      .filter(ro => !existing.has(ro))
+      .slice(0, dailyGoal - todayQueue.length);
+    if (extra.length) {
+      todayQueue = [...todayQueue, ...extra];
+      await saveTodayQueue();
+    }
+  }
   if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
   }
@@ -291,15 +306,7 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  const unknown = W.filter(w => {
-    const p = progressMap[w.ro];
-    return !p || (!p.qt && !p.known);
-  });
-  const learning = W.filter(w => {
-    const p = progressMap[w.ro];
-    return p && getProgressLevel(w.ro) !== 'mastered' && !unknown.some(u => u.ro === w.ro);
-  });
-  return [...unknown, ...sortByReviewPriority(learning)].slice(0, cap);
+  return getUnseenWords(W).slice(0, cap);
 }
 
 async function saveTodayQueue() {
@@ -328,7 +335,7 @@ async function recordTodayWord(wordRo) {
   renderDailyGoal();
   updateTodayCalendarCell();
   renderReviewPanel();
-  if (!wasGoalDone && todayNewWords >= dailyGoal) showToast('今日目标已完成，可以继续学习');
+  if (!wasGoalDone && todayNewWords >= dailyGoal) showToast('今日目标已完成，可以切换到复习');
 }
 
 async function completeTodayQueueWord(wordRo) {
@@ -378,21 +385,8 @@ function applyFilters() {
     if (openQueue.length) {
       filtered = openQueue;
     } else {
-      const learnedToday = new Set([...todaySeenWords, ...todayQueueCompleted]);
-      const queued = new Set(todayQueue);
-      const unknown = scoped.filter(w => {
-        const p = progressMap[w.ro];
-        return !learnedToday.has(w.ro) && !queued.has(w.ro) && (!p || (!p.qt && !p.known));
-      });
-      const learning = scoped.filter(w => {
-        const p = progressMap[w.ro];
-        return !learnedToday.has(w.ro) &&
-          !queued.has(w.ro) &&
-          p &&
-          getProgressLevel(w.ro) !== 'mastered' &&
-          !unknown.some(u => u.ro === w.ro);
-      });
-      filtered = [...unknown, ...sortByReviewPriority(learning)];
+      const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue]);
+      filtered = getUnseenWords(scoped).filter(w => !blocked.has(w.ro));
     }
   } else if (flashMode === 'review') {
     filtered = sortReviewDueWithWeakPriority(scoped).filter(w => {
@@ -404,6 +398,46 @@ function applyFilters() {
   }
   idx = Math.min(idx, Math.max(filtered.length - 1, 0));
   renderReviewPanel();
+}
+
+function isUnseenWord(w) {
+  const p = progressMap[w.ro];
+  return !p || (!p.qt && !p.known);
+}
+
+function getUnseenWords(words = W) {
+  return words
+    .filter(isUnseenWord)
+    .sort((a, b) => String(a.ro).localeCompare(String(b.ro), 'ro'));
+}
+
+async function addWordToTodayQueue(wordRo) {
+  const w = getWordByRo(wordRo);
+  if (!w) { showToast('找不到该词条'); return; }
+  if (!isUnseenWord(w)) { showToast('这个词已经学过，请到到期复习中练习'); return; }
+  if (todayQueue.includes(wordRo) && !todayQueueCompleted.has(wordRo)) {
+    showToast('这个词已在今日队列中');
+    switchPage('flash');
+    return;
+  }
+
+  const completed = todayQueue.filter(ro => todayQueueCompleted.has(ro));
+  const open = todayQueue.filter(ro => !todayQueueCompleted.has(ro) && ro !== wordRo);
+  todayQueue = [...completed, wordRo, ...open];
+  todayQueueCompleted.delete(wordRo);
+  await saveTodayQueue();
+  flashMode = 'today';
+  curCat = '全部';
+  idx = completed.length;
+  flipped = false;
+  flashHistory = [];
+  flashOverrideRo = null;
+  applyFilters();
+  buildCats();
+  renderDailyGoal();
+  renderList();
+  switchPage('flash');
+  showToast(`已加入今日队列：${w.zh || w.ro}`);
 }
 
 function normalizeCategory(cat) {
@@ -695,17 +729,17 @@ function renderReviewPanel() {
   if (!dueEl) return;
   const scoped = getCurrentScopeWords();
   const due = scoped.filter(w => isReviewDue(progressMap[w.ro])).length;
-  const difficult = getDifficultWords(scoped).length;
+  const unseenRemaining = getUnseenWords(scoped).filter(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro)).length;
   const waiting = scoped.length - due;
   const current = filtered[idx];
   const p = current ? progressMap[current.ro] : null;
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
-  setText('review-stage-label', difficult);
+  setText('review-new-remaining', unseenRemaining);
   const modeNote = {
     today: todayNewWords >= dailyGoal
-      ? `今日目标已完成：${todayNewWords}/${dailyGoal} 词。可以继续学习，额外词汇也会计入今日记录。`
-      : `今日目标是 ${dailyGoal} 词，已完成 ${todayNewWords} 词。先按今日队列学习，完成后可以继续扩展新词。`,
+      ? `今日目标已完成：${todayNewWords}/${dailyGoal} 词。今日新词只显示未学词；需要复习请切换到到期复习。`
+      : `今日目标是 ${dailyGoal} 词，已完成 ${todayNewWords} 词。今日新词只从未学词中生成，不混入复习词。`,
     review: current
       ? `当前词下次复习：${formatReviewDue(p?.nextReviewAt)}。到期复习会自动优先安排错误率高、连续答错或最近遗忘的词。`
       : '当前没有到期复习词，可以切换到今日新词。'
@@ -734,7 +768,7 @@ function setFlashMode(mode) {
 function upStats() {
   const vals = Object.values(progressMap);
   const mastered = vals.filter(p => calcLevel(p.qr, p.qt) === 'mastered').length;
-  const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning').length;
+  const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning' && !isReviewDue(p)).length;
   const wbCount = getWrongWords().length;
 
   setText('s-mastered', mastered);
@@ -993,7 +1027,7 @@ function renderCard() {
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
-      today: todayNewWords >= dailyGoal ? '可以继续复习、测验，或明天再学新词' : '可以切换分类或先去复习',
+      today: todayNewWords >= dailyGoal ? '请切换到到期复习，或明天再学新词' : '当前分类没有未学词，可以切换分类或先去复习',
       review: '先完成今日新词，系统会安排复习'
     }[flashMode] || 'No words';
     setText('fc-zh', emptyText);
@@ -2042,6 +2076,14 @@ function deleteWordById(id) {
 
 // ── 词汇表 ────────────────────────────────────────────────
 
+function listQueueAction(w) {
+  if (!isUnseenWord(w)) return '';
+  if (todayQueue.includes(w.ro) && !todayQueueCompleted.has(w.ro)) {
+    return '<span class="word-queued">已在队列</span>';
+  }
+  return `<button class="queue-btn" onclick="addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入学习</button>`;
+}
+
 function renderList() {
   if (!W.length) return;
   const q = (document.getElementById('search-input') || { value: '' }).value.toLowerCase();
@@ -2068,6 +2110,7 @@ function renderList() {
       <div class="word-meta">
         <div class="word-cat">${escapeHtml(w.cat || '')}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${LEVEL_BG[lv]};color:${LEVEL_TC[lv]};white-space:nowrap">${getLevelLabel(w.ro)}</span>
+        ${listQueueAction(w)}
         ${editBtns(w)}
       </div>
     </div>`;
