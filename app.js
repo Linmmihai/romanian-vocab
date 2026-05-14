@@ -190,8 +190,22 @@ const DEXONLINE_VERB_FALLBACK_WORDS = [
 // ── 入口 ─────────────────────────────────────────────────
 
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) await onLogin(session.user);
+  if (localStorage.getItem('offline-mode') === '1') {
+    await doOfflineLogin();
+    return;
+  }
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      await onLogin(session.user);
+      return;
+    }
+    if (typeof isFileApp === 'function' && isFileApp()) {
+      showAuthMsg('当前是从本地文件打开的页面。请用 http://127.0.0.1:4173/ 打开应用后再登录。', 'error');
+    }
+  } catch (error) {
+    showAuthMsg('初始化登录状态失败：' + authErrorMessage(error), 'error');
+  }
 }
 
 async function onLogin(user) {
@@ -217,6 +231,7 @@ async function onLogin(user) {
   await loadDailyQueue();
 
   if (userRole === 'admin') refreshAdminBadge();
+  if (isOfflineMode()) setSyncBadge('本机保存', 'saved');
 }
 
 // ── 词库加载 ──────────────────────────────────────────────
@@ -357,6 +372,16 @@ function calcLevel(qr, qt) {
   return 'learning';
 }
 
+function getStoredLevel(progress) {
+  if (!progress) return 'unknown';
+  return progress.level || calcLevel(progress.qr, progress.qt);
+}
+
+function isStartedNotMastered(progress) {
+  if (!progress || (!progress.qt && !progress.known)) return false;
+  return getStoredLevel(progress) !== 'mastered';
+}
+
 const LEVEL_LABEL = { unknown: '未学', learning: '学习中', mastered: '已掌握' };
 const DUE_MASTERED_LABEL = '已掌握 · 待复习';
 const LEVEL_COLOR = { unknown: 'var(--text3)', learning: 'var(--yellow)', mastered: 'var(--green)' };
@@ -490,7 +515,7 @@ function sortByReviewPriority(words) {
 
 function getProgressLevel(wordRo) {
   const p = progressMap[wordRo] || {};
-  return p.level || calcLevel(p.qr, p.qt);
+  return getStoredLevel(p);
 }
 
 function getLevelLabel(wordRo) {
@@ -767,8 +792,8 @@ function setFlashMode(mode) {
 
 function upStats() {
   const vals = Object.values(progressMap);
-  const mastered = vals.filter(p => calcLevel(p.qr, p.qt) === 'mastered').length;
-  const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning' && !isReviewDue(p)).length;
+  const mastered = vals.filter(p => getStoredLevel(p) === 'mastered').length;
+  const learning = vals.filter(isStartedNotMastered).length;
   const wbCount = getWrongWords().length;
 
   setText('s-mastered', mastered);
@@ -796,9 +821,12 @@ function setSyncBadge(txt, cls) {
 }
 
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
-  setSyncBadge('同步中...', '');
-  const level = calcLevel(qr, qt);
+  setSyncBadge(isOfflineMode() ? '保存中...' : '同步中...', '');
   const prev = progressMap[wordRo] || {};
+  const calculatedLevel = calcLevel(qr, qt);
+  const level = options.preserveLearningLevel && (prev.qt || prev.known)
+    ? getStoredLevel(prev)
+    : calculatedLevel;
   const review = getNextReview(prev, success);
   const shouldTrackWrongbook = options.trackWrongbook === true;
   const shouldClearWrongbook = options.clearWrongbook === true;
@@ -817,7 +845,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   progressMap[wordRo] = { ...prev, known, qr, qt, level, ...review, ...memory };
   try {
     await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
-    setSyncBadge('已保存', 'saved');
+    setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
   } catch {
     setSyncBadge('同步失败', '');
   }
@@ -1131,7 +1159,9 @@ async function markCard(yes) {
   const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (yes ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
+  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes, {
+    preserveLearningLevel: flashMode === 'review'
+  });
   if (flashMode === 'today') await completeTodayQueueWord(w.ro);
   // 跳下一张，重置为中文面
   if (!wasReviewingHistory) flashHistory.push(w.ro);
@@ -1347,7 +1377,7 @@ async function markReview(yes) {
   const prev = progressMap[w.ro] || { known: true, qr: 0, qt: 0 };
   const newQr = (prev.qr || 0) + (yes ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes);
+  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes, { preserveLearningLevel: true });
 
   reviewIdx++;
   if (reviewIdx >= reviewQueue.length) {
@@ -1498,7 +1528,10 @@ async function answerWb(correct) {
   // 更新进度
   const newQr = (prev.qr || 0) + (correct ? 1 : 0);
   const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, correct || prev.known, newQr, newQt, correct);
+  await syncProgress(w.ro, correct || prev.known, newQr, newQt, correct, {
+    preserveLearningLevel: true,
+    trackWrongbook: !correct
+  });
 
   if (correct) {
     // 连击+1
@@ -1910,8 +1943,8 @@ function calcStreak(logs) {
 
 function calcProgressSummary(map) {
   const vals = Object.values(map || {});
-  const mastered = vals.filter(p => calcLevel(p.qr, p.qt) === 'mastered').length;
-  const learning = vals.filter(p => calcLevel(p.qr, p.qt) === 'learning').length;
+  const mastered = vals.filter(p => getStoredLevel(p) === 'mastered').length;
+  const learning = vals.filter(isStartedNotMastered).length;
   const known = vals.filter(p => p.known).length;
   const qr = vals.reduce((sum, p) => sum + (p.qr || 0), 0);
   const qt = vals.reduce((sum, p) => sum + (p.qt || 0), 0);
@@ -1965,7 +1998,7 @@ function renderCategoryMastery() {
     const cat = normalizeCategory(w.cat);
     if (!groups[cat]) groups[cat] = { total: 0, mastered: 0, learning: 0 };
     groups[cat].total++;
-    const lv = calcLevel(progressMap[w.ro]?.qr, progressMap[w.ro]?.qt);
+    const lv = getStoredLevel(progressMap[w.ro]);
     if (lv === 'mastered') groups[cat].mastered++;
     if (lv === 'learning') groups[cat].learning++;
   });
@@ -2261,7 +2294,7 @@ async function submitAddWord() {
         cat: normalizeCategory(document.getElementById('aw-cat').value)
       }];
     } else {
-      // 批量模式：每行 中文|罗语|重音标记|语法信息|分类
+      // 批量模式：每行 中文|罗马尼亚语|重音标记|语法信息|分类
       const lines = document.getElementById('aw-bulk-text').value.trim().split('\n').filter(l => l.trim());
       words = lines.map(line => {
         const parts = line.split('|').map(s => s.trim());
@@ -2304,86 +2337,6 @@ async function submitAddWord() {
     document.getElementById('aw-result').style.color = 'var(--red-text)';
   }
   btn.disabled = false; btn.textContent = '保存';
-}
-
-async function clearVocabularyForManualInput() {
-  if (userRole !== 'admin') { showToast('只有管理员可以清空词库'); return; }
-  const ok = confirm('这会清空词库、学习进度、今日队列、学习日志和报错记录。清空后需要在管理员页面重新导入词汇。确定继续吗？');
-  if (!ok) return;
-
-  const btn = [...document.querySelectorAll('button')]
-    .find(b => b.textContent.trim() === '清空词库');
-  if (btn) { btn.disabled = true; btn.textContent = '清空中...'; }
-
-  try {
-    await apiClearVocabularyData();
-    W = [];
-    filtered = [];
-    progressMap = {};
-    todayQueue = [];
-    todayQueueCompleted = new Set();
-    todayQueueRecord = null;
-    todayNewWords = 0;
-    todaySeenWords = new Set();
-    todayLog = null;
-    idx = 0;
-    flipped = false;
-    curCat = '全部';
-    const card = document.getElementById('main-card');
-    if (card) card.classList.remove('flipped');
-    applyFilters();
-    buildCats();
-    renderCard();
-    renderList();
-    renderDailyGoal();
-    renderCalendar();
-    loadAdminStats();
-    setText('s-total', 0);
-    setText('topbar-badge', '0词 · A1-B2');
-    showToast('词库已清空，可以开始重新导入');
-  } catch (e) {
-    showToast('清空失败：' + e.message);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '清空词库'; }
-  }
-}
-
-async function applyCategoryNormalization() {
-  if (userRole !== 'admin') { showToast('只有管理员可以应用分类规则'); return; }
-  const changes = W
-    .map(w => ({ ...w, nextCat: normalizeCategory(w.rawCat ?? w.cat) }))
-    .filter(w => String((w.rawCat ?? w.cat) || '').trim() !== w.nextCat);
-  if (!changes.length) {
-    showToast('分类已经是新规则');
-    return;
-  }
-  const ok = confirm(`将 ${changes.length} 个旧分类改为新分类，只修改分类字段。确定继续吗？`);
-  if (!ok) return;
-
-  const btn = [...document.querySelectorAll('button')]
-    .find(b => b.textContent.trim() === '应用分类规则');
-  if (btn) { btn.disabled = true; btn.textContent = '分类更新中...'; }
-
-  try {
-    let done = 0;
-    for (const w of changes) {
-      await apiUpdateWord(w.id, { cat: w.nextCat });
-      done++;
-      if (done % 50 === 0 && btn) btn.textContent = `${done}/${changes.length}`;
-    }
-    W = (await apiLoadWords()).map(normalizeWordCategory);
-    applyFilters();
-    buildCats();
-    renderCard();
-    renderList();
-    renderStatsPage();
-    loadAdminStats();
-    showToast(`已更新 ${done} 个分类`);
-  } catch (e) {
-    showToast('分类更新失败：' + e.message);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '应用分类规则'; }
-  }
 }
 
 // 从词汇表删除词条（管理员）
