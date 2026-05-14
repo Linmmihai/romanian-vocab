@@ -6,8 +6,95 @@
 const SUPA_URL = 'https://wuiblzpyhcjxevotwcqz.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1aWJsenB5aGNqeGV2b3R3Y3F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMjg3NTksImV4cCI6MjA5MjcwNDc1OX0.ImJ1yH8v0op6_5G2P4fI--uJG8LOXIPt-JujPCzeN54';
 
-// 初始化 Supabase 客户端（由 index.html 的 CDN script 提供 supabase 全局变量）
+// 初始化 Supabase 客户端（APK 内会打包本地 supabase 脚本）
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const OFFLINE_USER_ID = 'local-offline-user';
+const OFFLINE_PROFILE = {
+  id: OFFLINE_USER_ID,
+  email: 'offline@local.app',
+  nickname: '本机学习',
+  role: 'user',
+  daily_goal: 20,
+  offline: true
+};
+
+function isOfflineMode() {
+  return currentUser?.id === OFFLINE_USER_ID || localStorage.getItem('offline-mode') === '1';
+}
+
+function localKey(userId, name) {
+  return `${name}:${userId || OFFLINE_USER_ID}`;
+}
+
+function readJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  return value;
+}
+
+function progressMemoryKey(userId) {
+  return localKey(userId, 'progress_memory');
+}
+
+function readProgressMemoryBackup(userId) {
+  return readJson(progressMemoryKey(userId), {});
+}
+
+function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
+  if (!wordRo) return;
+  const existing = readProgressMemoryBackup(userId);
+  existing[wordRo] = {
+    wrongCount: Number(memory.wrongCount || 0),
+    errorStreak: Number(memory.errorStreak || 0),
+    lastWrongAt: memory.lastWrongAt || null,
+    backedUpAt: new Date().toISOString()
+  };
+  writeJson(progressMemoryKey(userId), existing);
+}
+
+async function loadBundledWords() {
+  const response = await fetch('./data/vocab.json', { cache: 'no-store' });
+  if (!response.ok) throw new Error('本地词库读取失败');
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : (payload.words || []);
+}
+
+function rowToProgress(r) {
+  const legacyNextReviewAt = r.next_review ? new Date(`${r.next_review}T00:00:00`).toISOString() : null;
+  const reviewStage = r.review_stage ?? r.review_count ?? r.reviewStage ?? 0;
+  return {
+    known: r.known,
+    qr: r.quiz_right ?? r.qr ?? 0,
+    qt: r.quiz_total ?? r.qt ?? 0,
+    level: r.level || 'unknown',
+    reviewStage,
+    nextReviewAt: r.next_review_at || r.nextReviewAt || legacyNextReviewAt,
+    lastReviewedAt: r.last_reviewed_at || r.lastReviewedAt || null,
+    reviewCount: reviewStage,
+    nextReview: r.next_review || r.nextReview || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
+    wrongCount: r.wrong_count ?? r.wrongCount,
+    errorStreak: r.error_streak ?? r.errorStreak,
+    lastWrongAt: r.last_wrong_at || r.lastWrongAt || null
+  };
+}
+
+function mergeProgressMemory(progress, backup = {}) {
+  return {
+    ...progress,
+    wrongCount: progress.wrongCount ?? backup.wrongCount ?? 0,
+    errorStreak: progress.errorStreak ?? backup.errorStreak ?? 0,
+    lastWrongAt: progress.lastWrongAt || backup.lastWrongAt || null
+  };
+}
 
 // ── 词库 ──────────────────────────────────────────────────
 
@@ -16,15 +103,20 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
  * @returns {Promise<Array>} 词汇数组
  */
 async function apiLoadWords() {
+  if (isOfflineMode()) return loadBundledWords();
   let all = [], from = 0;
-  while (true) {
-    const { data, error } = await sb.from('words').select('*').order('id').range(from, from + 999);
-    if (error || !data || !data.length) break;
-    all = all.concat(data);
-    if (data.length < 1000) break;
-    from += 1000;
+  try {
+    while (true) {
+      const { data, error } = await sb.from('words').select('*').order('id').range(from, from + 999);
+      if (error || !data || !data.length) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    return all.length ? all : loadBundledWords();
+  } catch {
+    return loadBundledWords();
   }
-  return all;
 }
 
 /**
@@ -33,6 +125,7 @@ async function apiLoadWords() {
  * @param {object} updates - { zh, ro, ipa, hint, cat }
  */
 async function apiUpdateWord(wordId, updates) {
+  if (isOfflineMode()) throw new Error('离线模式下不能修改共享词库');
   const { error } = await sb.from('words').update(updates).eq('id', wordId);
   if (error) throw new Error(error.message);
 }
@@ -62,6 +155,7 @@ async function apiApplyStressGrammarPatch(rows, onProgress) {
  * @returns {{ inserted: number, skipped: number }}
  */
 async function apiInsertWords(words) {
+  if (isOfflineMode()) throw new Error('离线模式下不能添加到共享词库');
   const payload = words.map(w => ({
     zh: w.zh, ro: w.ro,
     ipa: w.ipa || '',
@@ -78,28 +172,12 @@ async function apiInsertWords(words) {
   return { inserted: data?.length || 0, skipped: words.length - (data?.length || 0) };
 }
 
-async function apiClearVocabularyData() {
-  const steps = [
-    () => sb.from('word_reports').delete().gte('id', 0),
-    () => sb.from('daily_queue').delete().gte('queue_date', '1900-01-01'),
-    () => sb.from('daily_log').delete().gte('log_date', '1900-01-01'),
-    () => sb.from('progress').delete().neq('word_ro', '__never_matches__'),
-    () => sb.from('words').delete().gte('id', 0)
-  ];
-
-  for (const step of steps) {
-    const { error } = await step();
-    if (error) throw new Error(error.message);
-  }
-
-  return { cleared: true };
-}
-
 /**
  * 删除一个词条
  * @param {number} wordId
  */
 async function apiDeleteWord(wordId) {
+  if (isOfflineMode()) throw new Error('离线模式下不能删除共享词库');
   const { error } = await sb.from('words').delete().eq('id', wordId);
   if (error) throw new Error(error.message);
 }
@@ -112,25 +190,13 @@ async function apiDeleteWord(wordId) {
  * @returns {Promise<object>} { word_ro: { known, qr, qt } }
  */
 async function apiLoadProgress(userId) {
+  if (isOfflineMode()) return readJson(localKey(userId, 'progress'), {});
   const { data } = await sb.from('progress').select('*').eq('user_id', userId);
+  const memoryBackup = readProgressMemoryBackup(userId);
   const map = {};
   (data || []).forEach(r => {
-    const legacyNextReviewAt = r.next_review ? new Date(`${r.next_review}T00:00:00`).toISOString() : null;
-    const reviewStage = r.review_stage ?? r.review_count ?? 0;
-    map[r.word_ro] = {
-      known: r.known,
-      qr: r.quiz_right,
-      qt: r.quiz_total,
-      level: r.level || 'unknown',
-      reviewStage,
-      nextReviewAt: r.next_review_at || legacyNextReviewAt,
-      lastReviewedAt: r.last_reviewed_at || null,
-      reviewCount: reviewStage,
-      nextReview: r.next_review || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
-      wrongCount: r.wrong_count ?? 0,
-      errorStreak: r.error_streak || 0,
-      lastWrongAt: r.last_wrong_at || null
-    };
+    const progress = rowToProgress(r);
+    map[r.word_ro] = mergeProgressMemory(progress, memoryBackup[r.word_ro]);
   });
   return map;
 }
@@ -139,6 +205,7 @@ async function apiLoadProgress(userId) {
  * 加载全班学习进度（排行榜用）
  */
 async function apiLoadAllProgress() {
+  if (isOfflineMode()) return [];
   const { data, error } = await sb.from('progress').select('*');
   if (error) throw new Error(error.message);
   return data || [];
@@ -156,6 +223,7 @@ async function apiLoadAllProgress() {
  * 保存/更新一个词的学习进度（含熟练度 level）
  */
 async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}) {
+  writeProgressMemoryBackup(userId, wordRo, memory);
   const normalized = typeof review === 'string'
     ? {
         nextReviewAt: new Date(`${review}T00:00:00`).toISOString(),
@@ -193,6 +261,13 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     review_count: normalized.reviewStage || 0,
     next_review: (normalized.nextReviewAt || now).slice(0, 10)
   };
+
+  if (isOfflineMode()) {
+    const map = readJson(localKey(userId, 'progress'), {});
+    map[wordRo] = rowToProgress({ word_ro: wordRo, ...modernPayload });
+    writeJson(localKey(userId, 'progress'), map);
+    return;
+  }
 
   let { error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' });
   if (!error) return;
@@ -254,6 +329,7 @@ function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
 
 async function apiGetDailyQueue(userId, goal) {
   const today = getQueueDateKey();
+  if (isOfflineMode()) return readLocalQueue(userId, goal, today);
   try {
     const { data, error } = await sb.from('daily_queue')
       .select('*')
@@ -282,6 +358,7 @@ async function apiSaveDailyQueue(userId, queue) {
     completed: !!queue.completed,
     updated_at: new Date().toISOString()
   };
+  if (isOfflineMode()) return writeLocalQueue(userId, payload, today);
   try {
     const { error } = await sb.from('daily_queue').upsert(payload, { onConflict: 'user_id,queue_date' });
     if (!error) return payload;
@@ -295,6 +372,7 @@ async function apiSaveDailyQueue(userId, queue) {
  * 提交一条用户报错
  */
 async function apiSubmitReport({ wordId, wordRo, wordZh, reporterId, reporterEmail, issueType, note }) {
+  if (isOfflineMode()) throw new Error('离线模式下无法提交到服务器');
   const { error } = await sb.from('word_reports').insert({
     word_id: wordId, word_ro: wordRo, word_zh: wordZh,
     reporter_id: reporterId, reporter_email: reporterEmail,
@@ -307,6 +385,7 @@ async function apiSubmitReport({ wordId, wordRo, wordZh, reporterId, reporterEma
  * 加载所有报错记录（管理员用）
  */
 async function apiLoadReports() {
+  if (isOfflineMode()) return [];
   const { data, error } = await sb.from('word_reports').select('*').order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data || [];
@@ -316,6 +395,7 @@ async function apiLoadReports() {
  * 标记一条报错为已解决
  */
 async function apiResolveReport(reportId) {
+  if (isOfflineMode()) throw new Error('离线模式下无法修改服务器记录');
   const { error } = await sb.from('word_reports').update({ status: 'resolved' }).eq('id', reportId);
   if (error) throw new Error(error.message);
 }
@@ -324,6 +404,7 @@ async function apiResolveReport(reportId) {
  * 获取待处理报错数量
  */
 async function apiPendingReportCount() {
+  if (isOfflineMode()) return 0;
   const { count } = await sb.from('word_reports').select('*', { count: 'exact', head: true }).eq('status', 'pending');
   return count || 0;
 }
@@ -334,6 +415,7 @@ async function apiPendingReportCount() {
  * 加载所有用户资料（管理员用）
  */
 async function apiLoadUsers() {
+  if (isOfflineMode()) return [OFFLINE_PROFILE];
   const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data || [];
@@ -343,6 +425,7 @@ async function apiLoadUsers() {
  * 加载排行榜用户资料
  */
 async function apiLoadLeaderboardUsers() {
+  if (isOfflineMode()) return [OFFLINE_PROFILE];
   const { data, error } = await sb.from('profiles')
     .select('id,nickname,email,role')
     .in('role', ['user', 'admin']);
@@ -354,6 +437,9 @@ async function apiLoadLeaderboardUsers() {
  * 获取单个用户的 profile
  */
 async function apiGetProfile(userId) {
+  if (userId === OFFLINE_USER_ID || isOfflineMode()) {
+    return { ...OFFLINE_PROFILE, daily_goal: apiGetLocalDailyGoal(userId) };
+  }
   const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
   return data;
 }
@@ -362,6 +448,7 @@ async function apiGetProfile(userId) {
  * 设置用户角色
  */
 async function apiSetUserRole(userId, role) {
+  if (isOfflineMode()) throw new Error('离线模式下无法修改用户角色');
   const { error } = await sb.from('profiles').update({ role }).eq('id', userId);
   if (error) throw new Error(error.message);
 }
@@ -370,6 +457,10 @@ async function apiSetUserRole(userId, role) {
  * 更新用户昵称
  */
 async function apiUpdateNickname(userId, nickname) {
+  if (isOfflineMode()) {
+    localStorage.setItem(localKey(userId, 'nickname'), nickname);
+    return;
+  }
   const { error } = await sb.from('profiles').update({ nickname }).eq('id', userId);
   if (error) throw new Error(error.message);
 }
@@ -381,6 +472,14 @@ async function apiUpdateNickname(userId, nickname) {
  */
 async function apiGetTodayLog(userId, goal) {
   const today = getLocalDateKey();
+  if (isOfflineMode()) {
+    const logs = readJson(localKey(userId, 'daily_log'), {});
+    if (!logs[today]) {
+      logs[today] = { user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false, local: true };
+      writeJson(localKey(userId, 'daily_log'), logs);
+    }
+    return logs[today];
+  }
   const { data } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
   if (data) return data;
   // 创建今日记录
@@ -394,6 +493,12 @@ async function apiGetTodayLog(userId, goal) {
 async function apiUpdateTodayLog(userId, newWords, goal) {
   const today = getLocalDateKey();
   const completed = newWords >= goal;
+  if (isOfflineMode()) {
+    const logs = readJson(localKey(userId, 'daily_log'), {});
+    logs[today] = { user_id: userId, log_date: today, new_words: newWords, goal, completed, local: true };
+    writeJson(localKey(userId, 'daily_log'), logs);
+    return;
+  }
   const { error } = await sb.from('daily_log').upsert(
     { user_id: userId, log_date: today, new_words: newWords, goal, completed },
     { onConflict: 'user_id,log_date' }
@@ -405,6 +510,12 @@ async function apiUpdateTodayLog(userId, newWords, goal) {
  * 获取最近N天的学习记录
  */
 async function apiGetRecentLogs(userId, days = 14) {
+  if (isOfflineMode()) {
+    const logs = Object.values(readJson(localKey(userId, 'daily_log'), {}));
+    return logs
+      .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))
+      .slice(0, days);
+  }
   const { data } = await sb.from('daily_log').select('*')
     .eq('user_id', userId)
     .order('log_date', { ascending: false })
@@ -416,6 +527,7 @@ async function apiGetRecentLogs(userId, days = 14) {
  * 加载最近N天的全班学习记录（排行榜连 streak 用）
  */
 async function apiGetClassRecentLogs(days = 30) {
+  if (isOfflineMode()) return apiGetRecentLogs(OFFLINE_USER_ID, days);
   const since = new Date();
   since.setDate(since.getDate() - days + 1);
   const sinceStr = getLocalDateKey(since);
@@ -430,6 +542,7 @@ async function apiGetClassRecentLogs(days = 30) {
  * 获取用户设置的每日目标（存在 profiles 的 metadata 里）
  */
 async function apiGetDailyGoal(userId) {
+  if (isOfflineMode()) return apiGetLocalDailyGoal(userId);
   const { data } = await sb.from('profiles').select('daily_goal').eq('id', userId).single();
   return data?.daily_goal || 20;
 }
@@ -438,6 +551,14 @@ async function apiGetDailyGoal(userId) {
  * 保存每日目标
  */
 async function apiSetDailyGoal(userId, goal) {
+  if (isOfflineMode()) {
+    localStorage.setItem(localKey(userId, 'daily_goal'), String(goal));
+    return;
+  }
   const { error } = await sb.from('profiles').update({ daily_goal: goal }).eq('id', userId);
   if (error) throw new Error(error.message);
+}
+
+function apiGetLocalDailyGoal(userId = OFFLINE_USER_ID) {
+  return Number(localStorage.getItem(localKey(userId, 'daily_goal'))) || 20;
 }
