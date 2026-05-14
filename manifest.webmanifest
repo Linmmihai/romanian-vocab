@@ -1,7 +1,7 @@
 {
   "name": "罗马尼亚语词汇学习",
   "short_name": "罗语词汇",
-  "description": "罗马尼亚语 A1-A2 词汇学习、复习和测验工具。",
+  "description": "罗马尼亚语 A1-B2 词汇学习、复习和测验工具。",
   "lang": "zh-CN",
   "start_url": "./index.html",
   "scope": "./",
