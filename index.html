@@ -41,6 +41,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-primary{width:100%;padding:11px;border:none;border-radius:var(--radius-sm);background:var(--blue);color:white;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
 .btn-primary:hover{opacity:0.9}
 .btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-secondary{width:100%;padding:11px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px}
+.btn-secondary:hover{background:var(--bg2)}
 .auth-msg{margin-top:1rem;padding:10px 12px;border-radius:var(--radius-sm);font-size:14px;text-align:center;display:none}
 .auth-msg.success{background:var(--green-bg);color:var(--green-text);display:block}
 .auth-msg.error{background:var(--red-bg);color:var(--red-text);display:block}
@@ -309,6 +311,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="form-group"><label for="login-email">邮箱</label><input type="email" id="login-email" placeholder="your@email.com" autocomplete="email"></div>
       <div class="form-group"><label for="login-pass">密码</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
       <button type="submit" class="btn-primary">登录</button>
+      <button type="button" class="btn-secondary" onclick="doOfflineLogin()">离线使用本机词库</button>
     </form>
     <form id="signup-form" style="display:none" onsubmit="event.preventDefault();doSignup()">
       <div class="form-group"><label for="signup-name">昵称</label><input type="text" id="signup-name" placeholder="你的名字" autocomplete="nickname"></div>
@@ -363,7 +366,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stats-grid">
       <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
       <div class="stat"><div class="stat-n" id="s-mastered" style="color:var(--green-text)">0</div><div class="stat-l">已掌握</div></div>
-      <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">学习中</div></div>
+      <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">待掌握</div></div>
       <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">错题数</div></div>
     </div>
     <div class="review-panel">
@@ -708,8 +711,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-words')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>📚 词库管理</span>
         <div class="admin-section-actions">
-          <button class="btn-sm" onclick="event.stopPropagation();applyCategoryNormalization()">应用分类规则</button>
-          <button class="btn-sm" onclick="event.stopPropagation();clearVocabularyForManualInput()">清空词库</button>
           <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="event.stopPropagation();openAddWordModal()">+ 添加词汇</button>
         </div>
       </div>
@@ -725,7 +726,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-grammar')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>🧾 语法待核对</span>
         <div class="admin-section-actions">
-          <button class="btn-sm" onclick="event.stopPropagation();applyStressGrammarPatch()">应用补全</button>
           <button class="btn-sm" onclick="event.stopPropagation();renderPendingGrammarPanel()">刷新</button>
         </div>
       </div>
@@ -833,18 +833,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <!-- 批量粘贴 -->
     <div id="aw-bulk" style="display:none">
       <div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--blue-text)">
-        每行一个词，用 <strong>|</strong> 分隔：<br>
-        <code style="font-size:12px">中文|罗语|重音标记|语法信息|分类</code><br>
-        <span style="opacity:0.8">重音标记可暂时省略，但会进入“待校对音标”；语法信息建议填词性、复数或变位法</span>
+        每行一个词，字段顺序与“逐条添加”一致，用 <strong>|</strong> 分隔：<br>
+        <code style="font-size:12px">中文|罗马尼亚语|重音标记|语法信息|分类</code><br>
+        <span style="opacity:0.8">重音标记和语法信息可留空；分类建议使用 Daily Life、Philosophy、Economics 等标准分类</span>
       </div>
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
-        桌子|masă|mAsă|名词 · 复数: mese|Daily Life<br>
-        法律|lege|lege|名词 · 复数: legi|Law<br>
-        跑步|alerga|aler-GA|动词 · 零变位|verb
+        现象|fenomen|fenomen|s.n.: fenomene|Philosophy<br>
+        绝对|absolut|absolut|adj.: absolută / absoluți / absolute|Philosophy<br>
+        股票|acțiune|acțIune|s.f.: acțiuni|Economics
       </div>
       <div class="form-group">
         <label>粘贴词汇（每行一个）</label>
-        <textarea id="aw-bulk-text" placeholder="桌子|masă|mAsă|名词 · 复数: mese|Daily Life&#10;法律|lege|lege|名词 · 复数: legi|Law&#10;跑步|alerga|aler-GA|动词 · 零变位|verb" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
+        <textarea id="aw-bulk-text" placeholder="现象|fenomen|fenomen|s.n.: fenomene|Philosophy&#10;绝对|absolut|absolut|adj.: absolută / absoluți / absolute|Philosophy&#10;股票|acțiune|acțIune|s.f.: acțiuni|Economics" style="min-height:160px;font-family:monospace;font-size:13px"></textarea>
       </div>
     </div>
 
@@ -857,15 +857,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
-<script src="api.js"></script>
-<script src="auth.js"></script>
-<script src="stress_grammar_patch.js"></script>
-<script src="app.js?v=20260508-1"></script>
+<script src="api.js?v=20260510-admin-clean"></script>
+<script src="auth.js?v=20260510-admin-clean"></script>
+<script src="stress_grammar_patch.js?v=20260510-admin-clean"></script>
+<script src="app.js?v=20260510-admin-clean"></script>
 <script>
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
+}
+if ('serviceWorker' in navigator && isLocalDevHost) {
+  navigator.serviceWorker.getRegistrations()
+    .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+    .catch(() => {});
+}
+if ('caches' in window && isLocalDevHost) {
+  caches.keys()
+    .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+    .catch(() => {});
 }
 </script>
 </body>
