@@ -80,7 +80,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stat-n{font-size:22px;font-weight:700}
 .stat-l{font-size:11px;color:var(--text3);margin-top:2px}
 /* CARDS */
-.cat-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1rem;scrollbar-width:none}
+.cat-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1rem;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 .cat-bar::-webkit-scrollbar{display:none}
 .cat-chip{white-space:nowrap;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;transition:all .15s}
 .cat-chip.active{background:var(--text);color:white;border-color:var(--text)}
@@ -173,6 +173,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-row{display:grid;grid-template-columns:minmax(72px,1fr) 2fr 54px;gap:10px;align-items:center;margin-bottom:10px;font-size:13px}
 .cat-meter{height:10px;background:var(--bg3);border-radius:99px;overflow:hidden}
 .cat-fill{height:100%;background:var(--green);border-radius:99px}
+.hard-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.hard-row:last-child{border-bottom:none}
+.hard-main{min-width:0}
+.hard-word{font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hard-meta{font-size:12px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hard-score{text-align:right;color:var(--red-text);font-size:12px;font-weight:700;white-space:nowrap}
 .rank-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .rank-row:last-child{border-bottom:none}
 .rank-row.me{background:var(--blue-bg);margin:0 -8px;padding:12px 8px;border-radius:var(--radius-sm);border-bottom:none}
@@ -591,6 +597,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="panel">
       <div class="panel-title"><span>分类掌握率</span><span style="font-size:12px;color:var(--text2)">按已掌握词汇计算</span></div>
       <div id="cat-mastery"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>高频错词</span><span style="font-size:12px;color:var(--text2)">按错误率和连错排序</span></div>
+      <div id="hardest-words"></div>
     </div>
   </div>
 
