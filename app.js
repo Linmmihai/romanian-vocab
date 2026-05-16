@@ -51,6 +51,24 @@ let todayNewWords = 0;      // 今日新学词数（首次翻到背面算学过�
 let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
 let todayLog = null;
 
+function wrongbookStreakKey() {
+  return `wrongbook_streaks:${currentUser?.id || 'local'}`;
+}
+
+function loadWrongbookStreaks() {
+  try {
+    return JSON.parse(localStorage.getItem(wrongbookStreakKey()) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWrongbookStreaks() {
+  try {
+    localStorage.setItem(wrongbookStreakKey(), JSON.stringify(wbStreaks));
+  } catch {}
+}
+
 const SUBJECT_CATEGORIES = [
   'Daily Life',
   'Philosophy',
@@ -325,13 +343,13 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return getDailyWordList(W, { limit: cap, includeFallback: true });
+  return getDailyWordList(W, { limit: cap, includeFallback: true, ignoreCategory: true });
 }
 
 function getDailyWordList(words = W, options = {}) {
   const includeFallback = options.includeFallback !== false;
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
-  const scoped = curCat === '全部'
+  const scoped = options.ignoreCategory || curCat === '全部'
     ? words
     : words.filter(w => w.cat === curCat);
   const queueWords = todayQueue
@@ -854,11 +872,17 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
     ? null
     : (shouldTrackWrongbook && !success ? new Date().toISOString() : (prev.lastWrongAt || null));
   const memory = { wrongCount, errorStreak, lastWrongAt };
-  progressMap[wordRo] = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
+  const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
+  progressMap[wordRo] = nextProgress;
   try {
     await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
     setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
   } catch {
+    if (Object.keys(prev).length) {
+      progressMap[wordRo] = prev;
+    } else {
+      delete progressMap[wordRo];
+    }
     setSyncBadge('同步失败', '');
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
@@ -964,6 +988,10 @@ async function recordInteraction(wordRo, interactionType) {
 
 function switchPage(p) {
   if (p === 'review') { flashMode = 'review'; p = 'flash'; }
+  if (p !== 'wrongbook' && wbAutoAdvanceTimer) {
+    clearTimeout(wbAutoAdvanceTimer);
+    wbAutoAdvanceTimer = null;
+  }
   const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'admin'];
   pages.forEach((s) => {
     document.querySelectorAll(`.nav-tab[data-page="${s}"]`).forEach(tab => tab.classList.toggle('active', s === p));
@@ -1386,7 +1414,7 @@ function bindCardGestures() {
 
 function speak(rate) {
   const w = getCurrentFlashWord();
-  if (!w) return;
+  if (!w || !String(w.ro || '').trim()) return;
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(w.ro);
@@ -1528,7 +1556,7 @@ function initWrongbook() {
   wbList = getWrongWords();
   wbIdx = 0;
   wbFlipped = false;
-  wbStreaks = {};
+  wbStreaks = loadWrongbookStreaks();
   wbGraduated = 0;
   renderWrongbookStats();
   renderWrongbookCard();
@@ -1608,6 +1636,7 @@ function prevWbCard() {
 
 function speakWb(rate) {
   const w = wbList[wbIdx];
+  if (!w || !String(w.ro || '').trim()) return;
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(w.ro);
@@ -1632,6 +1661,8 @@ async function answerWb(correct) {
       // 毕业！移出错题本
       wbGraduated++;
       await recordInteraction(w.ro, 'wrongbook_clear');
+      delete wbStreaks[w.ro];
+      saveWrongbookStreaks();
       showToast(`🎓 "${w.zh}" 已从错题本移出！`);
       wbList.splice(wbIdx, 1);
       if (wbList.length === 0) { renderWrongbookCard(); renderWrongbookStats(); return; }
@@ -1640,11 +1671,13 @@ async function answerWb(correct) {
       renderWrongbookCard();
       return;
     } else {
+      saveWrongbookStreaks();
       showToast(`✓ 正确！连续答对 ${wbStreaks[w.ro]}/${WB_GRADUATE}`);
     }
   } else {
     // 答错重置连击
     wbStreaks[w.ro] = 0;
+    saveWrongbookStreaks();
     showToast('✗ 再来一次，加油！');
   }
 
@@ -1884,6 +1917,14 @@ function renderQuiz() {
   const fallbackPool = W.filter(x => x.ro !== w.ro && !optionPool.some(o => o.ro === x.ro));
   const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
   const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
+  if (opts.length < 2) {
+    document.getElementById('quiz-area').innerHTML = `
+      <div class="result-box">
+        <div class="result-label">当前词库太少，至少需要 2 个词才能测验</div>
+        <button class="restart-btn" onclick="switchPage('flash')">返回学习</button>
+      </div>`;
+    return;
+  }
   const qText = qMode === 'zh' ? w.zh : w.ro;
   document.getElementById('quiz-area').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;color:var(--text2)">
@@ -2200,7 +2241,7 @@ function escapeHtml(s) {
 }
 
 function encodedArg(s) {
-  return encodeURIComponent(String(s || ''));
+  return encodeURIComponent(String(s || '')).replace(/'/g, '%27');
 }
 
 function openEditById(id) {
