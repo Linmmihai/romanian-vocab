@@ -21,6 +21,7 @@ let flashMode = 'today'; // today | review
 let todayQueue = [];
 let todayQueueCompleted = new Set();
 let todayQueueRecord = null;
+let dailyQueueLoaded = false;
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qExerciseMode = 'translation'; // translation | nounPlural | verbConj | stress
@@ -291,18 +292,25 @@ async function loadTodayLog() {
 }
 
 async function loadDailyQueue() {
+  dailyQueueLoaded = false;
   const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
   let queueChanged = false;
-  if (saved?.word_ro?.length) {
+  if (saved?.word_ro?.length || saved?.completed_word_ro?.length) {
     todayQueueRecord = saved;
     const savedCompleted = new Set(saved.completed_word_ro || []);
     const originalQueueLength = saved.word_ro.length;
-    todayQueue = saved.word_ro.filter(ro => {
+    const uniqueSavedQueue = [...new Set(saved.word_ro)];
+    todayQueueCompleted = new Set([...savedCompleted].filter(ro => W.some(w => w.ro === ro)));
+    todayQueue = uniqueSavedQueue.filter(ro => {
       const word = W.find(w => w.ro === ro);
-      return word && (savedCompleted.has(ro) || isUnseenWord(word));
+      if (!word) return false;
+      if (!isUnseenWord(word)) {
+        todayQueueCompleted.add(ro);
+        return false;
+      }
+      return !todayQueueCompleted.has(ro);
     });
-    todayQueueCompleted = new Set([...savedCompleted].filter(ro => todayQueue.includes(ro)));
     queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
     todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
@@ -316,12 +324,13 @@ async function loadDailyQueue() {
   }
   todaySeenWords = new Set(todayQueueCompleted);
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
-  if (todayNewWords < dailyGoal && todayQueue.length < dailyGoal) {
+  const neededOpenWords = Math.max(0, dailyGoal - todayQueueCompleted.size);
+  if (todayNewWords < dailyGoal && todayQueue.length < neededOpenWords) {
     const existing = new Set(todayQueue);
     const extra = buildDailyQueueWords(dailyGoal)
       .map(w => w.ro)
       .filter(ro => !existing.has(ro))
-      .slice(0, dailyGoal - todayQueue.length);
+      .slice(0, neededOpenWords - todayQueue.length);
     if (extra.length) {
       todayQueue = [...todayQueue, ...extra];
       queueChanged = true;
@@ -334,6 +343,7 @@ async function loadDailyQueue() {
   if (todayQueueRecord?.local) {
     showToast('每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步');
   }
+  dailyQueueLoaded = true;
   applyFilters();
   renderCard();
   renderDailyGoal();
@@ -343,10 +353,16 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return getDailyWordList(W, { limit: cap, includeFallback: true, ignoreCategory: true });
+  return getDailyWordList(W, {
+    limit: cap,
+    includeFallback: true,
+    ignoreCategory: true,
+    allowBeforeQueueLoaded: true
+  });
 }
 
 function getDailyWordList(words = W, options = {}) {
+  if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) return [];
   const includeFallback = options.includeFallback !== false;
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
   const scoped = options.ignoreCategory || curCat === '全部'
@@ -369,7 +385,7 @@ async function saveTodayQueue() {
     goal: dailyGoal,
     word_ro: todayQueue,
     completed_word_ro: [...todayQueueCompleted],
-    completed: todayQueue.length > 0 && todayQueueCompleted.size >= todayQueue.length
+    completed: todayNewWords >= dailyGoal
   });
 }
 
@@ -379,13 +395,17 @@ async function recordTodayWord(wordRo) {
   const isQueuedWord = todayQueue.includes(wordRo);
 
   todaySeenWords.add(wordRo);
-  if (isQueuedWord && !todayQueueCompleted.has(wordRo)) {
-    todayQueueCompleted.add(wordRo);
-    await saveTodayQueue();
-  }
-
   todayNewWords += 1;
   todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
+  if (!todayQueueCompleted.has(wordRo)) {
+    todayQueueCompleted.add(wordRo);
+  }
+  if (isQueuedWord) {
+    todayQueue = todayQueue.filter(ro => ro !== wordRo);
+    todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
+  }
+  await saveTodayQueue();
+
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
   renderDailyGoal();
   updateTodayCalendarCell();
@@ -784,7 +804,9 @@ function renderReviewPanel() {
   if (!dueEl) return;
   const scoped = getCurrentScopeWords();
   const due = scoped.filter(w => isReviewDue(progressMap[w.ro])).length;
-  const unseenRemaining = getUnseenWords(scoped).filter(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro)).length;
+  const rawUnseenRemaining = getUnseenWords(scoped).filter(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro)).length;
+  const unsavedTodayCount = Math.max(0, todayNewWords - todayQueueCompleted.size);
+  const unseenRemaining = Math.max(0, rawUnseenRemaining - unsavedTodayCount);
   const waiting = scoped.length - due;
   const current = filtered[idx];
   const p = current ? progressMap[current.ro] : null;
@@ -1078,18 +1100,16 @@ async function saveGoalSetting() {
   if (!val || val < 1 || val > 100) { showToast('请输入1-100之间的数字'); return; }
   dailyGoal = val;
   await apiSetDailyGoal(currentUser.id, val);
-  if (todayQueue.length < dailyGoal) {
+  const neededOpenWords = Math.max(0, dailyGoal - todayQueueCompleted.size);
+  if (todayQueue.length < neededOpenWords) {
     const existing = new Set(todayQueue);
     const extra = buildDailyQueueWords(dailyGoal)
       .map(w => w.ro)
       .filter(ro => !existing.has(ro))
-      .slice(0, dailyGoal - todayQueue.length);
+      .slice(0, neededOpenWords - todayQueue.length);
     todayQueue = [...todayQueue, ...extra];
-  } else if (todayQueue.length > dailyGoal) {
-    const keepCompleted = todayQueue.filter(ro => todayQueueCompleted.has(ro));
-    const keepOpen = todayQueue.filter(ro => !todayQueueCompleted.has(ro));
-    todayQueue = [...keepCompleted, ...keepOpen].slice(0, dailyGoal);
-    todayQueueCompleted = new Set([...todayQueueCompleted].filter(ro => todayQueue.includes(ro)));
+  } else if (todayQueue.length > neededOpenWords) {
+    todayQueue = todayQueue.slice(0, neededOpenWords);
   }
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
@@ -2222,7 +2242,7 @@ async function renderLeaderboard() {
         <div class="rank-no">${i + 1}</div>
         <div>
           <div class="rank-name">${escapeHtml(u.name)}${u.id === currentUser.id ? ' · 我' : ''}</div>
-          <div class="rank-meta">正确率 ${u.accuracy}% · 连续 ${u.streak} 天 · 测验 ${u.qt} 题</div>
+          <div class="rank-meta">正确率 ${u.accuracy}% · 连续 ${u.streak} 天 · 练习 ${u.qt} 次</div>
         </div>
         <div class="rank-score"><strong>${u.mastered}</strong>已掌握</div>
       </div>`).join('') : '<div class="empty-state">暂时没有排行榜数据</div>';
@@ -2543,7 +2563,7 @@ async function loadAdminStats() {
         ${reportsResult.status === 'fulfilled' ? renderAdminReportRows(reportStats) : `<div class="empty-state">报错记录无法读取：${escapeHtml(reportsResult.reason.message)}</div>`}
       </div>
       <div class="admin-chart">
-        <div class="admin-chart-title">答错率最高的词 <span style="font-weight:400;color:var(--text2)">共 ${totalAnswers} 次测验记录</span></div>
+        <div class="admin-chart-title">答错率最高的词 <span style="font-weight:400;color:var(--text2)">共 ${totalAnswers} 次练习记录</span></div>
         ${progressResult.status === 'fulfilled' ? renderAdminWrongRows(wrongStats) : `<div class="empty-state">答题记录无法读取：${escapeHtml(progressResult.reason.message)}</div>`}
       </div>`;
     renderMissingIpaPanel();
