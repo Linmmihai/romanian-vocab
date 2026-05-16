@@ -486,6 +486,19 @@ const REVIEW_INTERVALS = [
   { label: '30天', ms: 30 * 24 * 60 * 60 * 1000 },
   { label: '90天', ms: 90 * 24 * 60 * 60 * 1000 },
 ];
+const EXAMPLE_CACHE_PREFIX = 'corpus_example:v2:';
+const CORPUS_EXAMPLES = {
+  'scară': {
+    ro: 'Ți-ai lovit capul căzând de pe scară?',
+    zh: '你从梯子上摔下来时撞到头了吗？',
+    source: 'Tatoeba'
+  },
+  'scara': {
+    ro: 'Ți-ai lovit capul căzând de pe scară?',
+    zh: '你从梯子上摔下来时撞到头了吗？',
+    source: 'Tatoeba'
+  }
+};
 
 function applyFilters() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
@@ -1234,7 +1247,7 @@ function renderCard() {
     setText('fc-ro', actionText);
     setText('fc-ipa', '');
     setText('fc-phint', '');
-    setText('fc-example', '');
+    renderExampleBlock('fc-example', null);
     setText('fc-level', '');
     const verifyEl = document.getElementById('fc-verify');
     if (verifyEl) verifyEl.style.display = 'none';
@@ -1257,7 +1270,8 @@ function renderCard() {
   setStressHtml('fc-ipa', w);
   setGrammarText('fc-phint', w, stress);
   const example = buildExampleSentence(w);
-  setText('fc-example', `${example.ro} / ${example.zh}`);
+  renderExampleBlock('fc-example', example);
+  hydrateCorpusExample('fc-example', w, () => getCurrentFlashWord()?.ro === w.ro);
   // 显示熟练度
   const p = progressMap[w.ro] || {};
   const lv = getProgressLevel(w.ro);
@@ -2581,7 +2595,7 @@ function renderWordDetail(w) {
     </div>
     <div class="detail-chip">
       <div class="detail-label">例句</div>
-      <div class="detail-value">${escapeHtml(example.ro)}<br>${escapeHtml(example.zh)}</div>
+      <div class="detail-value" id="detail-example">${exampleHtml(example)}</div>
     </div>
     <div class="detail-actions">
       <button class="btn-sm" onclick="speakDetailWord(1)">正常播放</button>
@@ -2589,6 +2603,7 @@ function renderWordDetail(w) {
       ${canQueue ? `<button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="closeWordDetail();addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入今日</button>` : ''}
       <button class="btn-sm" onclick="closeWordDetail();switchPage('quiz')">去测验</button>
     </div>`;
+  hydrateCorpusExample('detail-example', w, () => detailWordRo === w.ro);
 }
 
 function buildExampleSentence(w) {
@@ -2602,50 +2617,379 @@ function buildExampleSentence(w) {
   const cat = normalizeCategory(w?.cat);
   const pos = inferPartOfSpeech(w, grammar);
   const verb = getVerbInfinitiveForSentence(ro);
-  const nounScene = getNounScene(cat, ro, zh);
+  const nounScene = getNounScene(cat, ro, zh, grammar);
 
   if (pos === 'verb' && verb) {
-    if (verb.reflexive) {
-      return {
-        ro: `Mihai a promis că se va ${verb.text} mâine înainte de curs.`,
-        zh: `Mihai答应明天上课前会${zh || ro}。`
-      };
-    }
-    return {
-      ro: `Mihai a promis că va ${verb.text} documentele mâine la birou.`,
-      zh: `Mihai答应明天会在办公室${zh || ro}文件。`
-    };
+    const choices = verb.reflexive ? [
+      {
+        ro: `Mihai se poate ${verb.text} mâine înainte de curs.`,
+        zh: `Mihai明天上课前可以${zh || ro}。`
+      },
+      {
+        ro: `După o zi lungă, Elena se poate ${verb.text} înainte de cină.`,
+        zh: `忙了一整天后，Elena可以在晚饭前${zh || ro}。`
+      },
+      {
+        ro: `Radu se poate ${verb.text} câteva minute lângă fereastră.`,
+        zh: `Radu可以在窗边${zh || ro}几分钟。`
+      }
+    ] : [
+      {
+        ro: `Mihai poate ${verb.text} mâine, dacă profesorul îi aprobă cererea.`,
+        zh: `如果老师批准申请，Mihai明天可以${zh || ro}。`
+      },
+      {
+        ro: `Elena nu poate ${verb.text} astăzi, pentru că programul s-a schimbat.`,
+        zh: `因为日程变了，Elena今天不能${zh || ro}。`
+      },
+      {
+        ro: `Radu poate ${verb.text} doar după ce anunță echipa.`,
+        zh: `Radu只有通知团队后才可以${zh || ro}。`
+      }
+    ];
+    return pickExampleTemplate(choices, ro);
   }
 
   if (pos === 'adjective') {
-    return {
-      ro: `Elena a ales un ton ${ro} după discuția tensionată de ieri.`,
-      zh: `Elena在昨天紧张的谈话后选择了${zh || ro}的语气。`
-    };
+    return pickExampleTemplate([
+      {
+        ro: `Elena a ales un ton ${ro} după discuția tensionată de ieri.`,
+        zh: `Elena在昨天紧张的谈话后选择了${zh || ro}的语气。`
+      },
+      {
+        ro: `Raportul părea ${ro}, dar profesorul a cerut încă două exemple.`,
+        zh: `报告看起来${zh || ro}，但老师又要求补两个例子。`
+      },
+      {
+        ro: `Mihai a descris filmul drept ${ro} când a vorbit cu prietenii lui.`,
+        zh: `Mihai和朋友聊天时把那部电影描述为${zh || ro}。`
+      }
+    ], ro);
   }
 
   if (pos === 'adverb') {
-    return {
-      ro: `Radu a răspuns ${ro} când profesorul l-a întrebat despre temă.`,
-      zh: `老师问作业时，Radu${zh || ro}地回答了。`
-    };
+    return pickExampleTemplate([
+      {
+        ro: `Radu a răspuns ${ro} când profesorul l-a întrebat despre temă.`,
+        zh: `老师问作业时，Radu${zh || ro}地回答了。`
+      },
+      {
+        ro: `Elena a închis ușa ${ro}, ca să nu trezească pe nimeni.`,
+        zh: `Elena${zh || ro}地关上门，免得吵醒别人。`
+      },
+      {
+        ro: `Mihai a citit mesajul ${ro} înainte să răspundă.`,
+        zh: `Mihai在回复前${zh || ro}地读了那条消息。`
+      }
+    ], ro);
   }
 
   if (pos === 'preposition') {
-    return {
-      ro: `Ana a pus biletul ${ro} caiet înainte să plece.`,
-      zh: `Ana离开前把纸条放在本子${zh || ro}。`
-    };
+    return pickExampleTemplate([
+      {
+        ro: `Ana a pus biletul ${ro} caiet înainte să plece.`,
+        zh: `Ana离开前把纸条放在本子${zh || ro}。`
+      },
+      {
+        ro: `Cheile erau ${ro} cană, nu pe masa de la intrare.`,
+        zh: `钥匙在杯子${zh || ro}，不在门口的桌上。`
+      },
+      {
+        ro: `Radu a tras scaunul ${ro} birou ca să facă loc.`,
+        zh: `Radu把椅子拉到桌子${zh || ro}，腾出空间。`
+      }
+    ], ro);
   }
 
   if (pos === 'pronoun') {
-    return {
-      ro: `Elena a repetat ${ro} când Radu nu a auzit întrebarea.`,
-      zh: `Radu没听清问题时，Elena重复了“${zh || ro}”。`
-    };
+    return pickExampleTemplate([
+      {
+        ro: `Elena a repetat ${ro} când Radu nu a auzit întrebarea.`,
+        zh: `Radu没听清问题时，Elena重复了“${zh || ro}”。`
+      },
+      {
+        ro: `Mihai a scris ${ro} pe prima linie a formularului.`,
+        zh: `Mihai把“${zh || ro}”写在表格第一行。`
+      },
+      {
+        ro: `Ana a folosit ${ro} pentru că nu voia să repete numele.`,
+        zh: `Ana用了“${zh || ro}”，因为她不想重复名字。`
+      }
+    ], ro);
   }
 
   return nounScene;
+}
+
+function pickExampleTemplate(templates, seed) {
+  if (!Array.isArray(templates) || !templates.length) return null;
+  return templates[Math.abs(hashText(seed)) % templates.length];
+}
+
+function hashText(value) {
+  return [...String(value || '')].reduce((hash, ch) => ((hash << 5) - hash + ch.charCodeAt(0)) | 0, 0);
+}
+
+function nounPhraseForExample(ro, grammar = '') {
+  const value = String(ro || '').trim();
+  const lowerGrammar = String(grammar || '').toLocaleLowerCase('ro');
+  if (!value) return '';
+  if (/^(un|o|niște|niste|acest|această|aceasta|aceste)\s+/i.test(value)) return value;
+  if (/\bs\.f\.pl\.|\bf\.pl\.|plural|pl\./i.test(lowerGrammar)) return `niște ${value}`;
+  if (/\bs\.m\.pl\.|\bm\.pl\./i.test(lowerGrammar)) return `niște ${value}`;
+  if (/\bs\.f\.|\bfeminin|fem\./i.test(lowerGrammar)) return `o ${value}`;
+  if (/\bs\.m\.|\bmasculin|masc\./i.test(lowerGrammar)) return `un ${value}`;
+  if (/\bs\.n\.|\bneutru|neut\./i.test(lowerGrammar)) return `un ${value}`;
+  return value;
+}
+
+function getNounScene(cat, ro, zh, grammar = '') {
+  const phrase = nounPhraseForExample(ro, grammar);
+  const meaning = zh || ro;
+  const daily = [
+    {
+      ro: `Am sprijinit ${phrase} de perete înainte să schimb becul din hol.`,
+      zh: `我换走廊灯泡前，把${meaning}靠在墙边。`
+    },
+    {
+      ro: `Ana a găsit ${phrase} în debara când făcea curățenie sâmbătă.`,
+      zh: `Ana周六打扫时在储物间找到了${meaning}。`
+    },
+    {
+      ro: `Vecinul a împrumutat ${phrase} pentru reparația de la balcon.`,
+      zh: `邻居借了${meaning}去修阳台。`
+    }
+  ];
+  const scenes = {
+    'Daily Life': daily,
+    Philosophy: [
+      {
+        ro: `Mihai a discutat despre ${ro} după seminarul lung de vineri.`,
+        zh: `Mihai在周五漫长的研讨课后讨论了${meaning}。`
+      },
+      {
+        ro: `Profesorul a folosit ${ro} ca exemplu într-o dezbatere despre valori.`,
+        zh: `老师在一场关于价值观的辩论中用${meaning}作例子。`
+      }
+    ],
+    Economics: [
+      {
+        ro: `Elena a analizat ${ro} înainte să trimită raportul investitorilor.`,
+        zh: `Elena在把报告发给投资者前分析了${meaning}。`
+      },
+      {
+        ro: `Graficul arăta clar cum influențează ${ro} prețurile din piață.`,
+        zh: `图表清楚显示${meaning}如何影响市场价格。`
+      }
+    ],
+    Law: [
+      {
+        ro: `Radu a invocat ${ro} când avocatul a contestat decizia.`,
+        zh: `律师质疑决定时，Radu援引了${meaning}。`
+      },
+      {
+        ro: `Judecătoarea a cerut o definiție precisă pentru ${ro}.`,
+        zh: `法官要求对${meaning}给出准确定义。`
+      }
+    ],
+    Education: [
+      {
+        ro: `Ana a pregătit ${ro} pentru elevi înainte de ora de dimineață.`,
+        zh: `Ana在早课前为学生准备了${meaning}。`
+      },
+      {
+        ro: `Elevii au notat ${ro} în caiete după explicația profesoarei.`,
+        zh: `老师讲解后，学生们把${meaning}记在本子里。`
+      }
+    ],
+    Literature: [
+      {
+        ro: `Elena a subliniat ${ro} în romanul citit aseară la club.`,
+        zh: `Elena在昨晚读书会读的小说里标出了${meaning}。`
+      },
+      {
+        ro: `Criticul a legat ${ro} de ultima scenă a povestirii.`,
+        zh: `评论家把${meaning}和故事最后一幕联系起来。`
+      }
+    ],
+    History: [
+      {
+        ro: `Radu a cercetat ${ro} pentru articolul publicat duminică.`,
+        zh: `Radu为周日发表的文章研究了${meaning}。`
+      },
+      {
+        ro: `Muzeul a inclus ${ro} într-o expoziție despre secolul trecut.`,
+        zh: `博物馆把${meaning}纳入一个关于上世纪的展览。`
+      }
+    ],
+    Science: [
+      {
+        ro: `Mihai a observat ${ro} în laborator, după experimentul de seară.`,
+        zh: `Mihai在晚间实验后于实验室观察到${meaning}。`
+      },
+      {
+        ro: `Cercetătorii au măsurat ${ro} de trei ori pentru rezultate stabile.`,
+        zh: `研究人员把${meaning}测量了三次，以获得稳定结果。`
+      }
+    ],
+    Engineering: [
+      {
+        ro: `Ana a reparat ${ro} în atelier înainte de prezentarea tehnică.`,
+        zh: `Ana在技术展示前在车间修好了${meaning}。`
+      },
+      {
+        ro: `Echipa a testat ${ro} înainte să pornească prototipul.`,
+        zh: `团队在启动原型前测试了${meaning}。`
+      }
+    ],
+    Agriculture: [
+      {
+        ro: `Radu a verificat ${ro} pe câmp înainte să înceapă ploaia.`,
+        zh: `Radu在下雨前到田里检查了${meaning}。`
+      },
+      {
+        ro: `Fermierii au mutat ${ro} lângă hambar după recoltă.`,
+        zh: `农民们收割后把${meaning}移到谷仓旁边。`
+      }
+    ],
+    Medicine: [
+      {
+        ro: `Elena a notat ${ro} în fișa pacientului după consultație.`,
+        zh: `Elena会诊后把${meaning}记进了病历。`
+      },
+      {
+        ro: `Medicul a explicat ${ro} familiei înainte de tratament.`,
+        zh: `医生在治疗前向家属解释了${meaning}。`
+      }
+    ],
+    'Military Science': [
+      {
+        ro: `Mihai a explicat ${ro} soldaților înainte de exercițiul nocturn.`,
+        zh: `Mihai在夜间演练前向士兵解释了${meaning}。`
+      },
+      {
+        ro: `Comandantul a verificat ${ro} înainte de plecarea patrulei.`,
+        zh: `指挥官在巡逻队出发前检查了${meaning}。`
+      }
+    ],
+    Management: [
+      {
+        ro: `Ana a discutat ${ro} cu echipa înainte de ședința lunară.`,
+        zh: `Ana在月会前和团队讨论了${meaning}。`
+      },
+      {
+        ro: `Managerul a pus ${ro} pe agenda întâlnirii de luni.`,
+        zh: `经理把${meaning}放进了周一会议议程。`
+      }
+    ],
+    Art: [
+      {
+        ro: `Elena a fotografiat ${ro} la muzeu, înainte de închiderea sălii.`,
+        zh: `Elena在展厅关闭前于博物馆拍下了${meaning}。`
+      },
+      {
+        ro: `Artistul a integrat ${ro} în schița pregătită pentru expoziție.`,
+        zh: `艺术家把${meaning}融入为展览准备的草图。`
+      }
+    ]
+  };
+  return pickExampleTemplate(scenes[cat] || daily, ro);
+}
+
+function renderExampleBlock(id, example) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = example ? exampleHtml(example) : '';
+}
+
+function exampleHtml(example) {
+  if (!example) return '';
+  const source = example.source ? `<div class="example-source">来源：${escapeHtml(example.source)}</div>` : '';
+  return `<div class="example-ro">${escapeHtml(example.ro || '')}</div>
+    <div class="example-zh">${escapeHtml(example.zh || '')}</div>
+    ${source}`;
+}
+
+async function hydrateCorpusExample(id, w, stillCurrent) {
+  const example = await getCorpusExample(w);
+  if (!example || (stillCurrent && !stillCurrent())) return;
+  renderExampleBlock(id, example);
+}
+
+async function getCorpusExample(w) {
+  const ro = String(w?.ro || '').trim();
+  if (!ro) return null;
+  const direct = CORPUS_EXAMPLES[lowerRo(ro)];
+  if (direct) return direct;
+  const key = EXAMPLE_CACHE_PREFIX + lowerRo(ro);
+  const cached = readCachedExample(key);
+  if (cached) return cached;
+  const fetched = await fetchTatoebaExample(ro, w?.zh);
+  if (fetched) {
+    try { localStorage.setItem(key, JSON.stringify(fetched)); } catch {}
+    return fetched;
+  }
+  return null;
+}
+
+function readCachedExample(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.ro ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTatoebaExample(wordRo, zh) {
+  if (!/^https?:|^file:/.test(location.protocol)) return null;
+  try {
+    const query = encodeURIComponent(wordRo.replace(/^a\s+/i, '').trim());
+    const response = await fetch(`https://tatoeba.org/en/api_v0/search?from=ron&query=${query}`, {
+      headers: { accept: 'application/json' }
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const rows = Array.isArray(payload?.results) ? payload.results : [];
+    const selected = rows
+      .map(row => ({ row, score: scoreCorpusSentence(row?.text, wordRo) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.row;
+    if (!selected?.text) return null;
+    return {
+      ro: selected.text,
+      zh: getChineseCorpusTranslation(selected) || `语料例句，句中使用“${zh || wordRo}”。`,
+      source: `Tatoeba #${selected.id || ''}`.trim()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function scoreCorpusSentence(text, wordRo) {
+  const sentence = String(text || '').trim();
+  if (!sentence) return 0;
+  const words = sentence.split(/\s+/).length;
+  const lower = lowerRo(sentence);
+  const needle = lowerRo(wordRo).replace(/^a\s+/, '').trim();
+  if (!needle || !lower.includes(needle)) return 0;
+  if (/^(aceasta|acesta|este|sunt)\b/i.test(sentence)) return 0;
+  let score = 10;
+  if (words >= 6 && words <= 15) score += 5;
+  if (/[?!]$/.test(sentence)) score += 2;
+  if (/\b(Ana|Mihai|Radu|Elena|Maria|Marika|noi|voi|ei|ele)\b/i.test(sentence)) score += 3;
+  return score;
+}
+
+function getChineseCorpusTranslation(row) {
+  const groups = Array.isArray(row?.translations) ? row.translations : [];
+  for (const group of groups) {
+    const direct = (group || []).find(t => ['cmn', 'zho'].includes(t.lang));
+    if (direct?.text) return direct.text;
+  }
+  return '';
 }
 
 function inferPartOfSpeech(w, grammar = '') {
@@ -2664,71 +3008,6 @@ function getVerbInfinitiveForSentence(ro) {
   const reflexive = /^a\s+se\s+/i.test(value);
   const text = value.replace(/^a\s+se\s+/i, '').replace(/^a\s+/i, '').trim();
   return text ? { text, reflexive } : null;
-}
-
-function getNounScene(cat, ro, zh) {
-  const scenes = {
-    'Daily Life': {
-      ro: `Ana a cumpărat ${ro} aseară, după ce a ieșit de la serviciu.`,
-      zh: `Ana昨晚下班后买了${zh || ro}。`
-    },
-    Philosophy: {
-      ro: `Mihai a discutat despre ${ro} după seminarul lung de vineri.`,
-      zh: `Mihai在周五漫长的研讨课后讨论了${zh || ro}。`
-    },
-    Economics: {
-      ro: `Elena a analizat ${ro} înainte să trimită raportul investitorilor.`,
-      zh: `Elena在把报告发给投资者前分析了${zh || ro}。`
-    },
-    Law: {
-      ro: `Radu a invocat ${ro} când avocatul a contestat decizia.`,
-      zh: `律师质疑决定时，Radu援引了${zh || ro}。`
-    },
-    Education: {
-      ro: `Ana a pregătit ${ro} pentru elevi înainte de ora de dimineață.`,
-      zh: `Ana在早课前为学生准备了${zh || ro}。`
-    },
-    Literature: {
-      ro: `Elena a subliniat ${ro} în romanul citit aseară la club.`,
-      zh: `Elena在昨晚读书会读的小说里标出了${zh || ro}。`
-    },
-    History: {
-      ro: `Radu a cercetat ${ro} pentru articolul publicat duminică.`,
-      zh: `Radu为周日发表的文章研究了${zh || ro}。`
-    },
-    Science: {
-      ro: `Mihai a observat ${ro} în laborator, după experimentul de seară.`,
-      zh: `Mihai在晚间实验后于实验室观察到${zh || ro}。`
-    },
-    Engineering: {
-      ro: `Ana a reparat ${ro} în atelier înainte de prezentarea tehnică.`,
-      zh: `Ana在技术展示前在车间修好了${zh || ro}。`
-    },
-    Agriculture: {
-      ro: `Radu a verificat ${ro} pe câmp înainte să înceapă ploaia.`,
-      zh: `Radu在下雨前到田里检查了${zh || ro}。`
-    },
-    Medicine: {
-      ro: `Elena a notat ${ro} în fișa pacientului după consultație.`,
-      zh: `Elena会诊后把${zh || ro}记进了病历。`
-    },
-    'Military Science': {
-      ro: `Mihai a explicat ${ro} soldaților înainte de exercițiul nocturn.`,
-      zh: `Mihai在夜间演练前向士兵解释了${zh || ro}。`
-    },
-    Management: {
-      ro: `Ana a discutat ${ro} cu echipa înainte de ședința lunară.`,
-      zh: `Ana在月会前和团队讨论了${zh || ro}。`
-    },
-    Art: {
-      ro: `Elena a fotografiat ${ro} la muzeu, înainte de închiderea sălii.`,
-      zh: `Elena在展厅关闭前于博物馆拍下了${zh || ro}。`
-    }
-  };
-  return scenes[cat] || {
-    ro: `Ana a folosit ${ro} aseară într-o conversație cu Mihai.`,
-    zh: `Ana昨晚和Mihai聊天时用了${zh || ro}。`
-  };
 }
 
 function speakDetailWord(rate) {
