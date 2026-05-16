@@ -100,6 +100,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-back-grammar{width:100%;background:white;border-top:1px solid var(--border);padding:14px 18px 16px;text-align:left;min-height:92px}
 .card-back-grammar-label{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px}
 .card-back-grammar .ph-hint{font-size:15px;color:var(--text);font-weight:650;margin:0}
+.card-example{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.card-example-label{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:5px}
+.card-example-text{font-size:13px;color:var(--text2);line-height:1.45}
 .card-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:3px 10px;border-radius:99px;margin-bottom:12px}
 .card-hint-txt{font-size:12px;color:var(--text3);margin-bottom:8px}
 .card-zh{font-size:32px;font-weight:600}
@@ -284,6 +287,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-save{flex:2;padding:10px;border:none;border-radius:var(--radius-sm);background:var(--blue);color:white;font-size:14px;font-weight:600;cursor:pointer}
 .btn-save:hover{opacity:0.9}
 .btn-save:disabled{opacity:0.5;cursor:not-allowed}
+.detail-head{display:grid;gap:6px;margin-bottom:14px}
+.detail-zh{font-size:28px;font-weight:800}
+.detail-ro{font-size:22px;font-weight:700;color:var(--blue-text)}
+.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.detail-chip{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px}
+.detail-label{font-size:11px;color:var(--text3);font-weight:800;margin-bottom:4px}
+.detail-value{font-size:13px;color:var(--text);line-height:1.45}
+.detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media(max-width:560px){.detail-grid{grid-template-columns:1fr}}
 /* MISC */
 .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
 .loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite}
@@ -377,17 +389,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="review-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:15px;font-weight:800" id="flash-mode-title">今日新词</div>
-        <div style="font-size:12px;color:var(--text2)">每日队列 · 到期复习</div>
-      </div>
-      <div class="study-mode-bar">
-        <button class="study-mode-btn active" data-mode="today" onclick="setFlashMode('today')">今日新词</button>
-        <button class="study-mode-btn" data-mode="review" onclick="setFlashMode('review')">到期复习</button>
+        <div style="font-size:15px;font-weight:800" id="flash-mode-title">今日任务</div>
+        <div style="font-size:12px;color:var(--text2)">智能每日队列</div>
       </div>
       <div class="review-grid">
         <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">今日应复习</div></div>
         <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日进度</div></div>
-        <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">剩余新词</div></div>
+        <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">可学新词</div></div>
       </div>
       <div class="review-note" id="review-note">按艾宾浩斯曲线优先复习到期词。</div>
     </div>
@@ -429,10 +437,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="card-back-grammar">
               <div class="card-back-grammar-label">语法信息</div>
               <div class="ph-hint" id="fc-phint"></div>
+              <div class="card-example">
+                <div class="card-example-label">例句</div>
+                <div class="card-example-text" id="fc-example"></div>
+              </div>
             </div>
             <div class="spk-row">
               <button class="spk" onclick="event.stopPropagation();speak(1)">▶ 正常</button>
               <button class="spk slow" onclick="event.stopPropagation();speak(0.45)">▶ 慢速</button>
+              <button class="spk" onclick="event.stopPropagation();openCurrentWordDetail()">详情</button>
               <button class="report-btn" style="margin-top:0" onclick="event.stopPropagation();openReportModal()">⚠ 报错</button>
             </div>
             <!-- 作答按钮放在卡片内部罗语面 -->
@@ -568,9 +581,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="page" id="page-quiz">
     <div class="exercise-bar">
       <button class="exercise-btn active" data-exercise="translation" onclick="setExerciseMode('translation')">翻译</button>
+      <button class="exercise-btn" data-exercise="listening" onclick="setExerciseMode('listening')">听力</button>
       <button class="exercise-btn" data-exercise="nounPlural" onclick="setExerciseMode('nounPlural')">名词复数</button>
       <button class="exercise-btn" data-exercise="verbConj" onclick="setExerciseMode('verbConj')">动词变位</button>
       <button class="exercise-btn" data-exercise="stress" onclick="setExerciseMode('stress')">重音选择</button>
+    </div>
+    <div class="study-mode-bar" id="quiz-scope-bar">
+      <button class="study-mode-btn active" data-scope="smart" onclick="setPracticeScope('smart')">智能</button>
+      <button class="study-mode-btn" data-scope="today" onclick="setPracticeScope('today')">今日</button>
+      <button class="study-mode-btn" data-scope="wrong" onclick="setPracticeScope('wrong')">错题</button>
+      <button class="study-mode-btn" data-scope="due" onclick="setPracticeScope('due')">到期</button>
+      <button class="study-mode-btn" data-scope="new" onclick="setPracticeScope('new')">新词</button>
+      <button class="study-mode-btn" data-scope="all" onclick="setPracticeScope('all')">全部</button>
     </div>
     <div class="qmode-bar">
       <button class="qmode-btn active" id="m-zh" onclick="setQMode('zh')">中文 → 罗语</button>
@@ -587,6 +609,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="metric"><div class="metric-n" id="stat-accuracy">0%</div><div class="metric-l">测验正确率</div></div>
     </div>
     <div class="panel">
+      <div class="panel-title"><span>下一步建议</span><span style="font-size:12px;color:var(--text2)">按当前记录生成</span></div>
+      <div id="study-coach"></div>
+    </div>
+    <div class="panel">
       <div class="panel-title"><span>每日学习量</span><span style="font-size:12px;color:var(--text2)">近14天</span></div>
       <div id="daily-chart"></div>
     </div>
@@ -601,6 +627,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="panel">
       <div class="panel-title"><span>高频错词</span><span style="font-size:12px;color:var(--text2)">按错误率和连错排序</span></div>
       <div id="hardest-words"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>里程碑</span><span style="font-size:12px;color:var(--text2)">学习状态</span></div>
+      <div id="achievement-list"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>进度备份</span><span style="font-size:12px;color:var(--text2)">本机文件</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="exportProgressBackup()">导出进度</button>
+        <label class="btn-sm" style="cursor:pointer">导入进度<input type="file" accept="application/json" style="display:none" onchange="importProgressBackup(this.files[0]);this.value=''"></label>
+      </div>
     </div>
   </div>
 
@@ -770,6 +807,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ── 词条详情 ──────────────────────────────────────── -->
+<div class="modal-overlay" id="word-detail-modal" style="display:none" onclick="if(event.target===this)closeWordDetail()">
+  <div class="modal">
+    <div class="modal-title">词条详情 <button class="modal-close" onclick="closeWordDetail()">✕</button></div>
+    <div id="word-detail-body"></div>
+  </div>
+</div>
+
 <!-- ── 报错弹窗（用户） ──────────────────────────────── -->
 <div class="modal-overlay" id="report-modal" style="display:none" onclick="if(event.target===this)closeReportModal()">
   <div class="modal">
@@ -870,7 +915,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="api.js?v=20260516-memory3"></script>
 <script src="auth.js?v=20260516-memory3"></script>
 <script src="stress_grammar_patch.js?v=20260516-memory3"></script>
-<script src="app.js?v=20260516-memory4"></script>
+<script src="app.js?v=20260516-examples1"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
