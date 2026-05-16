@@ -37,7 +37,12 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn('Local storage write failed', key, error);
+    throw error;
+  }
   return value;
 }
 
@@ -52,13 +57,24 @@ function readProgressMemoryBackup(userId) {
 function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
   if (!wordRo) return;
   const existing = readProgressMemoryBackup(userId);
+  const wrongCount = Number(memory.wrongCount || 0);
+  const errorStreak = Number(memory.errorStreak || 0);
+  const lastWrongAt = memory.lastWrongAt || null;
+  if (!wrongCount && !errorStreak && !lastWrongAt) {
+    delete existing[wordRo];
+    try { writeJson(progressMemoryKey(userId), existing); } catch {}
+    return;
+  }
   existing[wordRo] = {
-    wrongCount: Number(memory.wrongCount || 0),
-    errorStreak: Number(memory.errorStreak || 0),
-    lastWrongAt: memory.lastWrongAt || null,
+    wrongCount,
+    errorStreak,
+    lastWrongAt,
     backedUpAt: new Date().toISOString()
   };
-  writeJson(progressMemoryKey(userId), existing);
+  const pruned = Object.fromEntries(Object.entries(existing)
+    .sort((a, b) => String(b[1]?.backedUpAt || '').localeCompare(String(a[1]?.backedUpAt || '')))
+    .slice(0, 500));
+  try { writeJson(progressMemoryKey(userId), pruned); } catch {}
 }
 
 async function loadBundledWords() {
@@ -226,7 +242,6 @@ async function apiLoadAllProgress() {
  * 保存/更新一个词的学习进度（含熟练度 level）
  */
 async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}) {
-  writeProgressMemoryBackup(userId, wordRo, memory);
   const normalized = typeof review === 'string'
     ? {
         nextReviewAt: new Date(`${review}T00:00:00`).toISOString(),
@@ -269,18 +284,26 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     const map = readJson(localKey(userId, 'progress'), {});
     map[wordRo] = rowToProgress({ word_ro: wordRo, ...modernPayload });
     writeJson(localKey(userId, 'progress'), map);
+    writeProgressMemoryBackup(userId, wordRo, memory);
     return;
   }
 
   let { error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' });
-  if (!error) return;
+  if (!error) {
+    writeProgressMemoryBackup(userId, wordRo, memory);
+    return;
+  }
 
   const modernError = error;
   ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_ro' }));
-  if (!error) return;
+  if (!error) {
+    writeProgressMemoryBackup(userId, wordRo, memory);
+    return;
+  }
 
   ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
   if (error) throw new Error(`${modernError.message}; ${error.message}`);
+  writeProgressMemoryBackup(userId, wordRo, memory);
 }
 
 // ── 每日学习队列 ──────────────────────────────────────────
