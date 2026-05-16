@@ -71,10 +71,13 @@ async function loadBundledWords() {
 function rowToProgress(r) {
   const legacyNextReviewAt = r.next_review ? new Date(`${r.next_review}T00:00:00`).toISOString() : null;
   const reviewStage = r.review_stage ?? r.review_count ?? r.reviewStage ?? 0;
+  const qr = r.quiz_right ?? r.qr ?? 0;
+  const qt = r.quiz_total ?? r.qt ?? 0;
   return {
+    seen: r.seen ?? !!(r.known || qr || qt),
     known: r.known,
-    qr: r.quiz_right ?? r.qr ?? 0,
-    qt: r.quiz_total ?? r.qt ?? 0,
+    qr,
+    qt,
     level: r.level || 'unknown',
     reviewStage,
     nextReviewAt: r.next_review_at || r.nextReviewAt || legacyNextReviewAt,
