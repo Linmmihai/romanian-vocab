@@ -275,14 +275,17 @@ async function loadTodayLog() {
 async function loadDailyQueue() {
   const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
+  let queueChanged = false;
   if (saved?.word_ro?.length) {
     todayQueueRecord = saved;
     const savedCompleted = new Set(saved.completed_word_ro || []);
+    const originalQueueLength = saved.word_ro.length;
     todayQueue = saved.word_ro.filter(ro => {
       const word = W.find(w => w.ro === ro);
       return word && (savedCompleted.has(ro) || isUnseenWord(word));
     });
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => todayQueue.includes(ro)));
+    queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
     todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
     todayQueueCompleted = new Set();
@@ -303,9 +306,10 @@ async function loadDailyQueue() {
       .slice(0, dailyGoal - todayQueue.length);
     if (extra.length) {
       todayQueue = [...todayQueue, ...extra];
-      await saveTodayQueue();
+      queueChanged = true;
     }
   }
+  if (queueChanged) await saveTodayQueue();
   if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
   }
@@ -435,7 +439,7 @@ function applyFilters() {
 
 function isUnseenWord(w) {
   const p = progressMap[w.ro];
-  return !p || (!p.qt && !p.known);
+  return !p || (!p.seen && !p.qt && !p.known);
 }
 
 function getUnseenWords(words = W) {
@@ -831,7 +835,7 @@ function setSyncBadge(txt, cls) {
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
   setSyncBadge(isOfflineMode() ? '保存中...' : '同步中...', '');
   const prev = progressMap[wordRo] || {};
-  const calculatedLevel = calcLevel(qr, qt);
+  const calculatedLevel = calcLevel(qr, qt, known);
   const level = options.preserveLearningLevel && (prev.qt || prev.known)
     ? getStoredLevel(prev)
     : calculatedLevel;
@@ -850,7 +854,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
     ? null
     : (shouldTrackWrongbook && !success ? new Date().toISOString() : (prev.lastWrongAt || null));
   const memory = { wrongCount, errorStreak, lastWrongAt };
-  progressMap[wordRo] = { ...prev, known, qr, qt, level, ...review, ...memory };
+  progressMap[wordRo] = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
   try {
     await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
     setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
