@@ -321,7 +321,25 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return getUnseenWords(W).slice(0, cap);
+  return getDailyWordList(W, { limit: cap, includeFallback: true });
+}
+
+function getDailyWordList(words = W, options = {}) {
+  const includeFallback = options.includeFallback !== false;
+  const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
+  const scoped = curCat === '全部'
+    ? words
+    : words.filter(w => w.cat === curCat);
+  const queueWords = todayQueue
+    .map(ro => scoped.find(w => w.ro === ro))
+    .filter(Boolean)
+    .filter(w => !todayQueueCompleted.has(w.ro));
+  if (queueWords.length || !includeFallback) return queueWords.slice(0, limit);
+
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue]);
+  return getUnseenWords(scoped)
+    .filter(w => !blocked.has(w.ro))
+    .slice(0, limit);
 }
 
 async function saveTodayQueue() {
@@ -365,8 +383,8 @@ async function completeTodayQueueWord(wordRo) {
  * learning → 答过但正确率 < 80% 或答题次数 < 3
  * mastered → 答题次数 ≥ 3 且正确率 ≥ 80%
  */
-function calcLevel(qr, qt) {
-  if (!qt) return 'unknown';
+function calcLevel(qr, qt, known = false) {
+  if (!qt) return known ? 'learning' : 'unknown';
   const pct = qr / qt;
   if (qt >= 3 && pct >= 0.8) return 'mastered';
   return 'learning';
@@ -374,7 +392,7 @@ function calcLevel(qr, qt) {
 
 function getStoredLevel(progress) {
   if (!progress) return 'unknown';
-  return progress.level || calcLevel(progress.qr, progress.qt);
+  return calcLevel(progress.qr, progress.qt, progress.known);
 }
 
 function isStartedNotMastered(progress) {
@@ -402,17 +420,7 @@ const REVIEW_INTERVALS = [
 function applyFilters() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (flashMode === 'today') {
-    const queueWords = todayQueue
-      .map(ro => W.find(w => w.ro === ro))
-      .filter(Boolean)
-      .filter(w => curCat === '全部' || w.cat === curCat);
-    const openQueue = queueWords.filter(w => !todayQueueCompleted.has(w.ro));
-    if (openQueue.length) {
-      filtered = openQueue;
-    } else {
-      const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue]);
-      filtered = getUnseenWords(scoped).filter(w => !blocked.has(w.ro));
-    }
+    filtered = getDailyWordList(scoped, { includeFallback: true });
   } else if (flashMode === 'review') {
     filtered = sortReviewDueWithWeakPriority(scoped).filter(w => {
       const p = progressMap[w.ro];
@@ -855,6 +863,99 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   updateReviewBadge();
 }
 
+const INTERACTION_RULES = {
+  flashcard_known(prev) {
+    return {
+      known: true,
+      qr: (prev.qr || 0) + 1,
+      qt: (prev.qt || 0) + 1,
+      success: true,
+      options: {}
+    };
+  },
+  flashcard_unknown(prev) {
+    return {
+      known: !!prev.known,
+      qr: prev.qr || 0,
+      qt: (prev.qt || 0) + 1,
+      success: false,
+      options: {}
+    };
+  },
+  review_correct(prev) {
+    return {
+      known: true,
+      qr: (prev.qr || 0) + 1,
+      qt: (prev.qt || 0) + 1,
+      success: true,
+      options: { preserveLearningLevel: true }
+    };
+  },
+  review_wrong(prev) {
+    return {
+      known: !!prev.known,
+      qr: prev.qr || 0,
+      qt: (prev.qt || 0) + 1,
+      success: false,
+      options: { preserveLearningLevel: true, trackWrongbook: true }
+    };
+  },
+  quiz_correct(prev) {
+    return {
+      known: true,
+      qr: (prev.qr || 0) + 1,
+      qt: (prev.qt || 0) + 1,
+      success: true,
+      options: { trackWrongbook: true }
+    };
+  },
+  quiz_wrong(prev) {
+    return {
+      known: !!prev.known,
+      qr: prev.qr || 0,
+      qt: (prev.qt || 0) + 1,
+      success: false,
+      options: { trackWrongbook: true }
+    };
+  },
+  wrongbook_correct(prev) {
+    return {
+      known: true,
+      qr: (prev.qr || 0) + 1,
+      qt: (prev.qt || 0) + 1,
+      success: true,
+      options: { preserveLearningLevel: true }
+    };
+  },
+  wrongbook_wrong(prev) {
+    return {
+      known: !!prev.known,
+      qr: prev.qr || 0,
+      qt: (prev.qt || 0) + 1,
+      success: false,
+      options: { preserveLearningLevel: true, trackWrongbook: true }
+    };
+  },
+  wrongbook_clear(prev) {
+    return {
+      known: true,
+      qr: prev.qr || 0,
+      qt: prev.qt || 0,
+      success: true,
+      options: { preserveLearningLevel: true, clearWrongbook: true }
+    };
+  }
+};
+
+async function recordInteraction(wordRo, interactionType) {
+  const rule = INTERACTION_RULES[interactionType];
+  if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
+  const prev = progressMap[wordRo] || { known: false, qr: 0, qt: 0 };
+  const next = rule(prev);
+  await syncProgress(wordRo, next.known, next.qr, next.qt, next.success, next.options);
+  return progressMap[wordRo] || {};
+}
+
 // ── 导航 ─────────────────────────────────────────────────
 
 function switchPage(p) {
@@ -1156,12 +1257,10 @@ async function markCard(yes) {
   const w = getCurrentFlashWord();
   if (!w) return;
   const wasReviewingHistory = !!flashOverrideRo;
-  const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
-  const newQr = (prev.qr || 0) + (yes ? 1 : 0);
-  const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes, {
-    preserveLearningLevel: flashMode === 'review'
-  });
+  const interaction = flashMode === 'review'
+    ? (yes ? 'review_correct' : 'review_wrong')
+    : (yes ? 'flashcard_known' : 'flashcard_unknown');
+  await recordInteraction(w.ro, interaction);
   if (flashMode === 'today') await completeTodayQueueWord(w.ro);
   // 跳下一张，重置为中文面
   if (!wasReviewingHistory) flashHistory.push(w.ro);
@@ -1374,10 +1473,7 @@ function speakReview(rate) {
 async function markReview(yes) {
   if (!reviewQueue.length || reviewIdx >= reviewQueue.length) return;
   const w = reviewQueue[reviewIdx];
-  const prev = progressMap[w.ro] || { known: true, qr: 0, qt: 0 };
-  const newQr = (prev.qr || 0) + (yes ? 1 : 0);
-  const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, yes || prev.known, newQr, newQt, yes, { preserveLearningLevel: true });
+  await recordInteraction(w.ro, yes ? 'review_correct' : 'review_wrong');
 
   reviewIdx++;
   if (reviewIdx >= reviewQueue.length) {
@@ -1523,15 +1619,7 @@ function speakWb(rate) {
  */
 async function answerWb(correct) {
   const w = wbList[wbIdx];
-  const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
-
-  // 更新进度
-  const newQr = (prev.qr || 0) + (correct ? 1 : 0);
-  const newQt = (prev.qt || 0) + 1;
-  await syncProgress(w.ro, correct || prev.known, newQr, newQt, correct, {
-    preserveLearningLevel: true,
-    trackWrongbook: !correct
-  });
+  await recordInteraction(w.ro, correct ? 'wrongbook_correct' : 'wrongbook_wrong');
 
   if (correct) {
     // 连击+1
@@ -1539,7 +1627,7 @@ async function answerWb(correct) {
     if (wbStreaks[w.ro] >= WB_GRADUATE) {
       // 毕业！移出错题本
       wbGraduated++;
-      await syncProgress(w.ro, true, newQr, newQt, true, { clearWrongbook: true });
+      await recordInteraction(w.ro, 'wrongbook_clear');
       showToast(`🎓 "${w.zh}" 已从错题本移出！`);
       wbList.splice(wbIdx, 1);
       if (wbList.length === 0) { renderWrongbookCard(); renderWrongbookStats(); return; }
@@ -1812,7 +1900,7 @@ function renderQuiz() {
     <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
 }
 
-function answerQ(btn, ok, ro, zh) {
+async function answerQ(btn, ok, ro, zh) {
   btn.parentElement.querySelectorAll('.opt').forEach(b => b.style.pointerEvents = 'none');
   qTotal++;
   qRoundTotal++;
@@ -1833,16 +1921,12 @@ function answerQ(btn, ok, ro, zh) {
     document.getElementById('qfb').textContent = '错误，答案已标出';
   }
   const w = qList[qIdx];
-  const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
-  const newQr = (prev.qr || 0) + (ok ? 1 : 0);
-  const newQt = (prev.qt || 0) + 1;
-  progressMap[w.ro] = { ...prev, known: ok || prev.known, qr: newQr, qt: newQt };
-  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok, { trackWrongbook: true });
+  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong');
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
 
-function answerExerciseQ(btn, ok) {
+async function answerExerciseQ(btn, ok) {
   btn.parentElement.querySelectorAll('.opt').forEach(b => b.style.pointerEvents = 'none');
   qTotal++;
   qRoundTotal++;
@@ -1863,10 +1947,7 @@ function answerExerciseQ(btn, ok) {
   }
   const ex = qList[qIdx];
   const w = ex.word;
-  const prev = progressMap[w.ro] || { known: false, qr: 0, qt: 0 };
-  const newQr = (prev.qr || 0) + (ok ? 1 : 0);
-  const newQt = (prev.qt || 0) + 1;
-  syncProgress(w.ro, ok || prev.known, newQr, newQt, ok, { trackWrongbook: true });
+  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong');
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -1954,8 +2035,10 @@ function calcProgressSummary(map) {
 async function renderStatsPage() {
   const dailyEl = document.getElementById('daily-chart');
   const catEl = document.getElementById('cat-mastery');
+  const hardEl = document.getElementById('hardest-words');
   dailyEl.innerHTML = '<div class="empty-state">加载中...</div>';
   catEl.innerHTML = '<div class="empty-state">加载中...</div>';
+  if (hardEl) hardEl.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
     const logs = await apiGetRecentLogs(currentUser.id, 30);
@@ -1969,9 +2052,11 @@ async function renderStatsPage() {
     renderDailyChart(filled14);
     await renderCalendar();
     renderCategoryMastery();
+    renderHardestWords();
   } catch (e) {
     dailyEl.innerHTML = '<div class="empty-state">学习记录暂时无法读取</div>';
     catEl.innerHTML = '<div class="empty-state">分类统计暂时无法读取</div>';
+    if (hardEl) hardEl.innerHTML = '<div class="empty-state">错词统计暂时无法读取</div>';
   }
 }
 
@@ -2014,6 +2099,25 @@ function renderCategoryMastery() {
       <div class="cat-meter"><div class="cat-fill" style="width:${r.pct}%"></div></div>
       <div style="text-align:right;color:var(--text2)">${r.pct}%</div>
     </div>`).join('') : '<div class="empty-state">还没有分类数据</div>';
+}
+
+function renderHardestWords() {
+  const el = document.getElementById('hardest-words');
+  if (!el) return;
+  const rows = getDifficultWords(W).slice(0, 8);
+  el.innerHTML = rows.length ? rows.map(w => {
+    const s = getDifficultScore(w);
+    const rate = Math.round(s.rate * 100);
+    const p = progressMap[w.ro] || {};
+    const stage = Number(p.reviewStage || p.reviewCount || 0);
+    return `<div class="hard-row">
+      <div class="hard-main">
+        <div class="hard-word">${escapeHtml(w.zh || '')} · ${escapeHtml(w.ro || '')}</div>
+        <div class="hard-meta">${escapeHtml(w.cat || '')} · 复习阶段 ${stage} · 连错 ${s.streak}</div>
+      </div>
+      <div class="hard-score">${s.wrong}错 · ${rate}%</div>
+    </div>`;
+  }).join('') : '<div class="empty-state">还没有错题记录</div>';
 }
 
 async function renderLeaderboard() {
