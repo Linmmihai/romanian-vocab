@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#3b82f6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="罗语词汇">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>罗马尼亚语词汇学习</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ============================================================
+   styles — 如需修改样式，只改这里
+   ============================================================ */
+:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#94a3b8;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--red:#dc2626;--red-bg:#fef2f2;--red-text:#991b1b;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--yellow-border:#fbbf24;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,0.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+/* AUTH */
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.auth-card{background:white;border-radius:16px;box-shadow:0 4px 24px rgba(23,32,51,0.08);padding:2rem;width:100%;max-width:400px;position:relative;overflow:hidden}
+.auth-card::before,.topbar::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#002b7f 0 33.33%,#fcd116 33.33% 66.66%,#ce1126 66.66% 100%)}
+.auth-logo{text-align:center;margin-bottom:1.5rem}
+.auth-logo .flag{font-size:40px}
+.auth-logo h1{font-size:20px;font-weight:700;margin-top:8px}
+.auth-logo p{font-size:14px;color:var(--text2);margin-top:4px}
+.auth-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--radius-sm);padding:4px;margin-bottom:1.5rem}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:var(--radius-sm);background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);transition:all .15s}
+.auth-tab.active{background:white;color:var(--text);box-shadow:var(--shadow)}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;background:white;color:var(--text);outline:none;transition:border .15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.form-group textarea{resize:vertical;min-height:72px}
+.btn-primary{width:100%;padding:11px;border:none;border-radius:var(--radius-sm);background:var(--blue);color:white;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:0.9}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-secondary{width:100%;padding:11px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px}
+.btn-secondary:hover{background:var(--bg2)}
+.auth-msg{margin-top:1rem;padding:10px 12px;border-radius:var(--radius-sm);font-size:14px;text-align:center;display:none}
+.auth-msg.success{background:var(--green-bg);color:var(--green-text);display:block}
+.auth-msg.error{background:var(--red-bg);color:var(--red-text);display:block}
+.pending-notice{background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:var(--radius);padding:1.5rem;text-align:center}
+.pending-notice h3{font-size:16px;color:var(--yellow-text);margin-bottom:8px}
+.pending-notice p{font-size:14px;color:var(--yellow-text);opacity:0.8}
+.logout-link{display:block;margin-top:1rem;text-align:center;font-size:13px;color:var(--text3);cursor:pointer}
+/* LAYOUT */
+#app-screen{display:none}
+.topbar{background:white;border-bottom:1px solid var(--border);padding:0 1rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{font-size:18px;font-weight:700}
+.topbar-badge{font-size:11px;background:var(--blue-bg);color:var(--blue-text);padding:2px 8px;border-radius:99px;font-weight:500}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.user-chip{font-size:13px;color:var(--text2)}
+.btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
+.btn-sm:hover{background:var(--bg2)}
+.nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow:visible;scrollbar-width:none;position:relative;flex-wrap:wrap}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{white-space:nowrap;padding:8px 16px;border:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;position:relative}
+.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.nav-tab .badge{position:absolute;top:4px;right:6px;background:var(--red);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:99px;min-width:16px;text-align:center}
+.nav-more{position:relative;flex-shrink:0}
+.nav-more-btn{border:none;background:transparent}
+.nav-menu{position:absolute;left:1rem;right:1rem;top:calc(100% + 6px);background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 10px 28px rgba(23,32,51,0.14);padding:6px;z-index:1000;display:none}
+.nav-more.open{position:static}
+.nav-more.open .nav-menu{display:flex;gap:4px;flex-wrap:wrap}
+.nav-menu .nav-tab{border-radius:var(--radius-sm);text-align:left;border-bottom:none;padding:9px 10px;width:auto}
+.page{display:none;padding:1rem;max-width:680px;margin:0 auto}
+.page.active{display:block}
+#page-flash.active{display:flex;flex-direction:column}
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.stat{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow)}
+.stat-n{font-size:22px;font-weight:700}
+.stat-l{font-size:11px;color:var(--text3);margin-top:2px}
+/* CARDS */
+.cat-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1rem;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.cat-bar::-webkit-scrollbar{display:none}
+.cat-chip{white-space:nowrap;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;transition:all .15s}
+.cat-chip.active{background:var(--text);color:white;border-color:var(--text)}
+.review-panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)}
+.review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.review-metric{background:var(--bg2);border-radius:var(--radius-sm);padding:9px}
+.review-n{font-size:18px;font-weight:800}
+.review-l{font-size:11px;color:var(--text2);margin-top:2px}
+.review-note{font-size:12px;color:var(--text2);margin-top:8px}
+.card-wrap{perspective:1000px;margin-bottom:1rem}
+.card{width:100%;min-height:540px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow);touch-action:none;user-select:none}
+.daily-goal-panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)}
+.card.flipped{transform:rotateY(180deg)}
+.card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
+.card-back{transform:rotateY(180deg);background:var(--bg2);padding:0;overflow:hidden;justify-content:stretch}
+.card-back-top{flex:0 0 auto;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px 16px;min-height:156px}
+.card-back-grammar{width:100%;background:white;border-top:1px solid var(--border);padding:18px 22px 24px;text-align:left;min-height:220px;flex:1 1 auto}
+.card-back-grammar-label{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px}
+.card-back-grammar .ph-hint{font-size:15px;color:var(--text);font-weight:650;margin:0}
+.card-example{margin-top:18px;border-top:1px solid var(--border);padding-top:14px;padding-bottom:8px}
+.card-example-label{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:7px}
+.card-example-text{font-size:14px;color:var(--text2);line-height:1.6}
+.example-ro{color:var(--text);font-weight:650;margin-bottom:6px}
+.example-zh{color:var(--text2)}
+.example-source{font-size:11px;color:var(--text3);margin-top:5px}
+.card-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:3px 10px;border-radius:99px;margin-bottom:12px}
+.card-hint-txt{font-size:12px;color:var(--text3);margin-bottom:8px}
+.card-zh{font-size:32px;font-weight:600}
+.card-ro{font-size:24px;font-weight:600;margin-bottom:8px}
+.card-back-top .card-ro{display:none}
+.card-stress-word{font-size:34px;font-weight:750;letter-spacing:0;color:var(--text);line-height:1.2}
+.ph-box{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;margin-bottom:6px;min-width:128px}
+.ph-ipa{font-size:16px;font-weight:650;letter-spacing:0}
+.stress-mark{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.ph-hint{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.4}
+.spk-row{display:flex;gap:8px;margin:14px 0 12px;flex-wrap:wrap;justify-content:center;flex:0 0 auto}
+.spk{padding:5px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text2);font-size:13px;cursor:pointer}
+.spk.slow{border-color:var(--blue);color:var(--blue-text)}
+.report-btn{margin-top:8px;padding:4px 12px;border:1px solid var(--yellow-border);border-radius:99px;background:var(--yellow-bg);color:var(--yellow-text);font-size:12px;cursor:pointer;font-weight:500}
+.card-nav{display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:1rem}
+.nav-btn{padding:8px 20px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;box-shadow:var(--shadow)}
+.nav-btn:hover{background:var(--bg2)}
+.counter{font-size:13px;color:var(--text2)}
+.know-btns{display:flex;gap:10px}
+.card-answer-row{display:flex;gap:16px;width:100%;padding:16px 18px 18px;background:var(--bg2)}
+.know-yes{flex:1;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer}
+.know-no{flex:1;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer}
+.know-yes:hover{background:var(--green-bg)}.know-no:hover{background:var(--red-bg)}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:420px}
+.calendar-weekday{text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding-bottom:2px}
+.calendar-cell{height:42px;border-radius:10px;background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--text3);font-weight:600;border:1px solid transparent}
+.calendar-cell.started{background:#bbf7d0;color:var(--green-text)}
+.calendar-cell.completed{background:var(--green);color:white}
+.calendar-cell.today{border:2px solid var(--blue);color:var(--green-text)}
+.calendar-cell.calendar-empty{visibility:hidden}
+.calendar-date{line-height:1}
+.cal-sub{font-size:10px;margin-top:3px;line-height:1}
+/* QUIZ */
+.qmode-bar{display:flex;gap:8px;margin-bottom:1rem}
+.qmode-btn{flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:500}
+.qmode-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue)}
+.study-mode-bar,.exercise-bar{display:flex;gap:8px;margin-bottom:1rem;overflow-x:auto;scrollbar-width:none}
+.study-mode-bar::-webkit-scrollbar,.exercise-bar::-webkit-scrollbar{display:none}
+.study-mode-btn,.exercise-btn{flex:1;min-width:max-content;padding:9px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:600}
+.study-mode-btn.active,.exercise-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue)}
+.hidden-tab{display:none!important}
+.unverified-badge{font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border2);padding:2px 8px;border-radius:99px}
+.unverified-text{color:var(--text3)!important}
+.qsize-btn{padding:8px 18px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;cursor:pointer;background:white;color:var(--text2);font-weight:500;transition:all .15s}
+.qsize-btn.active{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue);font-weight:600}
+.qsize-btn:hover{background:var(--bg2)}
+.quiz-q{font-size:28px;font-weight:600;text-align:center;margin:1.5rem 0 6px}
+.quiz-sub{font-size:13px;text-align:center;color:var(--text2);margin-bottom:1.5rem}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.opt{padding:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:15px;cursor:pointer;text-align:center;box-shadow:var(--shadow);transition:all .15s}
+.opt:hover{background:var(--bg2)}
+.opt.correct{border-color:var(--green);background:var(--green-bg);color:var(--green-text)}
+.opt.wrong{border-color:var(--red);background:var(--red-bg);color:var(--red-text)}
+.quiz-fb{text-align:center;font-size:14px;min-height:22px;margin-bottom:1rem;font-weight:600}
+.next-btn{display:block;width:100%;padding:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg2);font-size:14px;font-weight:600;cursor:pointer}
+.result-box{text-align:center;padding:2.5rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.result-score{font-size:52px;font-weight:700}
+.result-label{font-size:16px;color:var(--text2);margin:8px 0 20px}
+.restart-btn{padding:10px 28px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;font-weight:500}
+/* STATS + LEADERBOARD */
+.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.metric{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+.metric-n{font-size:24px;font-weight:700}
+.metric-l{font-size:12px;color:var(--text2);margin-top:3px}
+.panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:1rem;box-shadow:var(--shadow)}
+.panel-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.bar-chart{display:flex;align-items:end;gap:6px;height:150px;border-bottom:1px solid var(--border);padding-top:8px}
+.day-bar{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:end;height:100%;gap:5px}
+.day-fill{width:100%;max-width:24px;border-radius:5px 5px 0 0;background:var(--blue);min-height:3px}
+.day-label{font-size:10px;color:var(--text3);white-space:nowrap}
+.cat-row{display:grid;grid-template-columns:minmax(72px,1fr) 2fr 54px;gap:10px;align-items:center;margin-bottom:10px;font-size:13px}
+.cat-meter{height:10px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.cat-fill{height:100%;background:var(--green);border-radius:99px}
+.hard-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.hard-row:last-child{border-bottom:none}
+.hard-main{min-width:0}
+.hard-word{font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hard-meta{font-size:12px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hard-score{text-align:right;color:var(--red-text);font-size:12px;font-weight:700;white-space:nowrap}
+.rank-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.rank-row:last-child{border-bottom:none}
+.rank-row.me{background:var(--blue-bg);margin:0 -8px;padding:12px 8px;border-radius:var(--radius-sm);border-bottom:none}
+.rank-no{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg2);font-size:13px;font-weight:700;color:var(--text2)}
+.rank-row:nth-child(1) .rank-no{background:#fef3c7;color:#92400e}
+.rank-name{font-size:14px;font-weight:700}
+.rank-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.rank-score{text-align:right;font-size:13px;color:var(--text2)}
+.rank-score strong{display:block;font-size:20px;color:var(--text);line-height:1.1}
+/* GUIDE */
+.guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+.guide-title{font-size:16px;font-weight:800;margin-bottom:6px}
+.guide-subtitle{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5}
+.alphabet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px;margin-bottom:14px}
+.alphabet-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 4px;text-align:center;color:var(--text);min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.alphabet-letter{font-size:20px;font-weight:800;line-height:1}
+.alphabet-read{font-size:11px;color:var(--text2);font-weight:700;margin-top:6px;line-height:1.1}
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ph-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center}
+.ph-letter{font-size:20px;font-weight:800;font-family:monospace;color:var(--text)}
+.ph-sound{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4}
+.manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
+.manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
+.manual-text{font-size:12px;color:var(--text2);line-height:1.55}
+@media(max-width:560px){.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,1fr)}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-logo{font-size:16px}.user-chip{display:none}.nav-tabs{padding:8px 10px 0}.nav-tab{padding:8px 11px;font-size:13px}.page{padding:10px}.stats-grid{order:0;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{order:3;margin-top:2px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-bar{order:4;margin-bottom:0}.daily-goal-panel{order:5;margin-bottom:0}.flash-study{order:1}.card-wrap{margin-bottom:10px}.card{min-height:540px}.card-back-top{min-height:145px}.card-back-grammar{min-height:220px;padding:15px 18px 22px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
+/* LIST */
+.search-bar{margin-bottom:1rem}
+.search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;outline:none;background:white}
+.search-bar input:focus{border-color:var(--blue)}
+.word-list{display:grid;gap:6px}
+.word-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
+.word-zh{font-size:15px;font-weight:600}
+.word-ro{font-size:13px;color:var(--text2)}
+.word-ipa{font-size:11px;color:var(--text3);font-family:monospace}
+.word-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:2px 8px;border-radius:99px;white-space:nowrap;margin-left:8px}
+.word-known{width:8px;height:8px;border-radius:50%;background:var(--bg3);margin-left:8px;flex-shrink:0}
+.word-known.yes{background:var(--green)}
+.word-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.queue-btn{padding:4px 9px;border:1px solid var(--blue);border-radius:var(--radius-sm);background:white;color:var(--blue-text);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.queue-btn:hover{background:var(--blue-bg)}
+.word-queued{font-size:11px;color:var(--green-text);background:var(--green-bg);padding:3px 8px;border-radius:99px;white-space:nowrap}
+.word-actions{position:relative}
+.word-actions summary{list-style:none;width:26px;height:26px;border:1px solid var(--border2);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);background:white}
+.word-actions summary::-webkit-details-marker{display:none}
+.word-action-menu{position:absolute;right:0;top:30px;z-index:30;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(23,32,51,0.14);display:grid;gap:4px;padding:6px}
+@media(max-width:560px){.word-row{grid-template-columns:1fr;gap:8px;align-items:start}.word-meta{justify-content:space-between;width:100%;flex-wrap:wrap}.word-cat{margin-left:0}}
+/* ADMIN */
+.admin-section{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:1.2rem}
+.admin-section-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg2);cursor:pointer;gap:12px}
+.admin-section-header:hover{background:#eef2f7}
+.admin-section-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;min-width:0}
+.admin-toggle{width:22px;height:22px;border:1px solid var(--border2);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:white;color:var(--text2);font-size:13px;line-height:1;transition:transform .15s,background .15s}
+.admin-section.collapsed .admin-toggle{transform:rotate(-90deg)}
+.admin-section-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.admin-section-body{display:block}
+.admin-section.collapsed .admin-section-body{display:none}
+.admin-section.collapsed .admin-section-header{border-bottom:none}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.user-row:last-child{border-bottom:none}
+.user-email{font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis}
+.user-nickname{font-size:12px;color:var(--text2)}
+.role-badge{font-size:11px;padding:3px 8px;border-radius:99px;font-weight:600;white-space:nowrap}
+.role-admin{background:#fef3c7;color:#92400e}
+.role-user{background:var(--green-bg);color:var(--green-text)}
+.role-pending{background:var(--red-bg);color:var(--red-text)}
+.admin-btn{padding:5px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:white;font-weight:500;white-space:nowrap}
+.admin-btn.approve{border-color:var(--green);color:var(--green-text)}
+.admin-btn.revoke{border-color:var(--red);color:var(--red-text)}
+.admin-btn.edit{border-color:var(--blue);color:var(--blue-text)}
+.admin-btn.resolve{border-color:var(--green);color:var(--green-text)}
+.report-row{padding:12px 14px;border-bottom:1px solid var(--border)}
+.report-row:last-child{border-bottom:none}
+.report-word{font-size:14px;font-weight:600;margin-bottom:4px}
+.report-meta{font-size:12px;color:var(--text2);margin-bottom:4px}
+.report-note{font-size:13px;background:var(--bg2);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:8px}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap}
+.issue-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--yellow-bg);color:var(--yellow-text);border:1px solid var(--yellow-border);margin-right:6px}
+.admin-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.admin-stat{background:var(--bg2);border-radius:var(--radius-sm);padding:10px}
+.admin-stat-n{font-size:20px;font-weight:800}
+.admin-stat-l{font-size:11px;color:var(--text2);margin-top:2px}
+.admin-chart{padding:12px 14px;border-bottom:1px solid var(--border)}
+.admin-chart:last-child{border-bottom:none}
+.admin-chart-title{font-size:13px;font-weight:700;margin-bottom:10px}
+.admin-mini-row{display:grid;grid-template-columns:minmax(72px,1fr) 2fr auto;gap:10px;align-items:center;margin-bottom:9px;font-size:13px}
+.admin-mini-meter{height:9px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.admin-mini-fill{height:100%;border-radius:99px;background:var(--blue)}
+.admin-word-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.admin-word-row:last-child{border-bottom:none}
+.admin-word-name{font-size:13px;font-weight:700}
+.admin-word-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.admin-word-score{text-align:right;font-size:13px;font-weight:800;color:var(--red-text)}
+.admin-word-actions{display:flex;align-items:center;gap:8px}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:white;border-radius:14px;padding:1.5rem;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);padding:0 4px}
+.modal-close:hover{color:var(--text)}
+.modal-footer{display:flex;gap:8px;margin-top:1.2rem}
+.btn-cancel{flex:1;padding:10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;color:var(--text2)}
+.btn-save{flex:2;padding:10px;border:none;border-radius:var(--radius-sm);background:var(--blue);color:white;font-size:14px;font-weight:600;cursor:pointer}
+.btn-save:hover{opacity:0.9}
+.btn-save:disabled{opacity:0.5;cursor:not-allowed}
+.detail-head{display:grid;gap:6px;margin-bottom:14px}
+.detail-zh{font-size:28px;font-weight:800}
+.detail-ro{font-size:22px;font-weight:700;color:var(--blue-text)}
+.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.detail-chip{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px}
+.detail-label{font-size:11px;color:var(--text3);font-weight:800;margin-bottom:4px}
+.detail-value{font-size:13px;color:var(--text);line-height:1.45}
+.detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media(max-width:560px){.detail-grid{grid-template-columns:1fr}}
+/* MISC */
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2)}
+.sync-badge{font-size:11px;color:var(--text3)}
+.sync-badge.saved{color:var(--green-text)}
+.empty-state{text-align:center;padding:2rem;color:var(--text3);font-size:14px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 20px;border-radius:99px;font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ── AUTH ──────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-card" id="auth-card">
+    <div class="auth-logo">
+      <div class="flag">🇷🇴</div>
+      <h1>罗马尼亚语词汇</h1>
+      <p>A1-B2</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">登录</button>
+      <button class="auth-tab" onclick="showAuthTab('signup')">注册</button>
+    </div>
+    <form id="login-form" onsubmit="event.preventDefault();doLogin()">
+      <div class="form-group"><label for="login-email">邮箱</label><input type="email" id="login-email" placeholder="your@email.com" autocomplete="email"></div>
+      <div class="form-group"><label for="login-pass">密码</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button type="submit" class="btn-primary">登录</button>
+      <button type="button" class="btn-secondary" onclick="doOfflineLogin()">离线使用本机词库</button>
+    </form>
+    <form id="signup-form" style="display:none" onsubmit="event.preventDefault();doSignup()">
+      <div class="form-group"><label for="signup-name">昵称</label><input type="text" id="signup-name" placeholder="你的名字" autocomplete="nickname"></div>
+      <div class="form-group"><label for="signup-email">邮箱</label><input type="email" id="signup-email" placeholder="your@email.com" autocomplete="email"></div>
+      <div class="form-group"><label for="signup-pass">密码（至少6位）</label><input type="password" id="signup-pass" placeholder="••••••••" autocomplete="new-password"></div>
+      <button type="submit" class="btn-primary">注册账号</button>
+    </form>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+  <div id="pending-card" style="display:none;padding:1rem;max-width:400px;margin:0 auto">
+    <div class="pending-notice">
+      <h3>⏳ 等待管理员审批</h3>
+      <p>你的账号已注册成功，管理员审批后即可使用。</p>
+      <p style="margin-top:8px">请联系：linmihai2004@gmail.com</p>
+    </div>
+    <span class="logout-link" onclick="doLogout()">退出登录</span>
+  </div>
+</div>
+
+<!-- ── APP ───────────────────────────────────────────── -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">🇷🇴 罗语词汇</span>
+      <span class="topbar-badge" id="topbar-badge">加载中</span>
+    </div>
+    <div class="topbar-right">
+      <span class="user-chip" id="user-chip"></span>
+      <span class="sync-badge" id="sync-badge"></span>
+      <button class="btn-sm" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="flash" onclick="switchPage('flash')">学习 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab" data-page="quiz" onclick="switchPage('quiz')">测验</button>
+    <button class="nav-tab" data-page="list" onclick="switchPage('list')">词汇</button>
+    <button class="nav-tab" data-page="stats" onclick="switchPage('stats')">统计</button>
+    <button class="nav-tab hidden-tab" onclick="switchPage('review')">复习</button>
+    <div class="nav-more" id="nav-more">
+      <button class="nav-tab nav-more-btn" onclick="toggleNavMenu(event)">更多</button>
+      <div class="nav-menu">
+        <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+        <button class="nav-tab" data-page="leaderboard" onclick="switchPage('leaderboard')">排行榜</button>
+        <button class="nav-tab" data-page="guide" onclick="switchPage('guide')">指南</button>
+        <button class="nav-tab" data-page="admin" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 卡片记忆 -->
+  <div class="page active" id="page-flash">
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
+      <div class="stat"><div class="stat-n" id="s-mastered" style="color:var(--green-text)">0</div><div class="stat-l">已掌握</div></div>
+      <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">待掌握</div></div>
+      <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">错题数</div></div>
+    </div>
+    <div class="review-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:15px;font-weight:800" id="flash-mode-title">今日任务</div>
+        <div style="font-size:12px;color:var(--text2)">智能每日队列</div>
+      </div>
+      <div class="review-grid">
+        <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">今日应复习</div></div>
+        <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日进度</div></div>
+        <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">可学新词</div></div>
+      </div>
+      <div class="review-note" id="review-note">按艾宾浩斯曲线优先复习到期词。</div>
+    </div>
+    <div class="cat-bar" id="cat-bar"></div>
+
+    <!-- 每日目标进度 -->
+    <div class="daily-goal-panel">
+      <div id="daily-goal-bar"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <span style="font-size:13px;color:var(--text2)">每日目标：</span>
+        <input type="number" id="goal-input" min="1" max="100" style="width:60px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="20">
+        <span style="font-size:13px;color:var(--text2)">词</span>
+        <button class="btn-sm" onclick="saveGoalSetting()">保存</button>
+      </div>
+    </div>
+
+    <div id="flash-loading" class="loading-screen">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载词库...</div>
+    </div>
+    <div id="flash-content" class="flash-study" style="display:none">
+      <div class="card-wrap">
+        <div class="card" id="main-card" onclick="flipCard()">
+          <div class="card-face">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div class="card-cat" id="fc-cat" style="margin-bottom:0"></div>
+              <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
+              <span id="fc-verify" class="unverified-badge" style="display:none"></span>
+            </div>
+            <div class="card-hint-txt">点击卡片查看罗马尼亚语 👆</div>
+            <div class="card-zh" id="fc-zh"></div>
+          </div>
+          <div class="card-face card-back">
+            <div class="card-back-top">
+              <div class="card-cat" id="fc-cat2"></div>
+              <div class="card-ro" id="fc-ro"></div>
+              <div class="card-stress-word" id="fc-ipa"></div>
+            </div>
+            <div class="card-back-grammar">
+              <div class="card-back-grammar-label">语法信息</div>
+              <div class="ph-hint" id="fc-phint"></div>
+              <div class="card-example">
+                <div class="card-example-label">例句</div>
+                <div class="card-example-text" id="fc-example"></div>
+              </div>
+            </div>
+            <div class="spk-row">
+              <button class="spk" onclick="event.stopPropagation();speak(1)">▶ 正常</button>
+              <button class="spk slow" onclick="event.stopPropagation();speak(0.45)">▶ 慢速</button>
+              <button class="spk" onclick="event.stopPropagation();openCurrentWordDetail()">详情</button>
+              <button class="report-btn" style="margin-top:0" onclick="event.stopPropagation();openReportModal()">⚠ 报错</button>
+            </div>
+            <!-- 作答按钮放在卡片内部罗语面 -->
+            <div class="card-answer-row">
+              <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识</button>
+              <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识了</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 复习 -->
+  <div class="page" id="page-review">
+    <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">艾宾浩斯复习</div>
+      <div style="font-size:13px;color:var(--text2)">到期词优先复习；答对进入下一间隔，答错回到当前复习队列。</div>
+    </div>
+
+    <div id="review-empty" class="loading-screen" style="display:none">
+      <div style="font-size:48px">😴</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text)">今日没有待复习词汇</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">先去学新词，系统会按复习间隔安排下一次复习</div>
+      <button class="btn-sm" style="margin-top:12px" onclick="switchPage('flash')">去学新词</button>
+    </div>
+
+    <div id="review-wrap" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--blue-text)">复习进度</span>
+        <span style="font-size:13px;color:var(--text2)" id="rv-count"></span>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;text-align:right" id="rv-interval"></div>
+      <div class="card-wrap">
+        <div class="card" id="rv-card" onclick="flipReviewCard()">
+          <div class="card-face">
+            <div class="card-cat" id="rv-cat"></div>
+            <div class="card-hint-txt">点击卡片查看罗马尼亚语</div>
+            <div class="card-zh" id="rv-zh"></div>
+          </div>
+          <div class="card-face card-back">
+            <div class="card-back-top">
+              <div class="card-cat" id="rv-cat2"></div>
+              <div class="card-ro" id="rv-ro"></div>
+              <div class="card-stress-word" id="rv-ipa"></div>
+            </div>
+            <div class="card-back-grammar">
+              <div class="card-back-grammar-label">语法信息</div>
+              <div class="ph-hint" id="rv-hint"></div>
+            </div>
+            <div class="spk-row">
+              <button class="spk" onclick="event.stopPropagation();speakReview(1)">▶ 正常</button>
+              <button class="spk slow" onclick="event.stopPropagation();speakReview(0.45)">▶ 慢速</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="rv-btns" style="display:none;justify-content:center;gap:16px;margin-top:4px">
+        <button class="know-no" style="width:140px;padding:14px;font-size:15px" onclick="markReview(false)">✕ 忘了</button>
+        <button class="know-yes" style="width:140px;padding:14px;font-size:15px" onclick="markReview(true)">✓ 记住了</button>
+      </div>
+      <div id="rv-flip-hint" style="text-align:center;padding:14px 0;font-size:13px;color:var(--text3)">
+        点击卡片翻面查看答案，再作答
+      </div>
+    </div>
+  </div>
+
+  <!-- 错题本 -->
+  <div class="page" id="page-wrongbook">
+    <!-- 统计栏 -->
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat"><div class="stat-n" id="wb-total">0</div><div class="stat-l">错题数</div></div>
+      <div class="stat"><div class="stat-n" style="font-size:14px;padding-top:4px">连对3次</div><div class="stat-l">移出条件</div></div>
+      <div class="stat"><div class="stat-n" id="wb-graduated" style="color:var(--green-text)">0</div><div class="stat-l">已毕业</div></div>
+    </div>
+
+    <!-- 空状态 -->
+    <div id="wb-empty" class="loading-screen" style="display:none">
+      <div style="font-size:48px">🎉</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text)">错题本是空的！</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">去测验模式做题，答错的词会自动出现在这里</div>
+      <button class="btn-sm" style="margin-top:8px" onclick="switchPage('quiz')">去测验 →</button>
+    </div>
+
+    <!-- 卡片内容 -->
+    <div id="wb-content" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;color:var(--red-text);font-weight:600" id="wb-wrong-count"></span>
+        <span style="font-size:13px;font-weight:600" id="wb-streak"></span>
+      </div>
+      <div class="card-wrap">
+        <div class="card" id="wb-card" onclick="flipWbCard()">
+          <div class="card-face">
+            <div class="card-cat" id="wb-cat"></div>
+            <div class="card-hint-txt">点击翻转 · 记住后再作答</div>
+            <div class="card-zh" id="wb-zh"></div>
+          </div>
+          <div class="card-face card-back">
+            <div class="card-back-top">
+              <div class="card-cat" id="wb-cat2"></div>
+              <div class="card-ro" id="wb-ro"></div>
+              <div class="card-stress-word" id="wb-ipa"></div>
+            </div>
+            <div class="card-back-grammar">
+              <div class="card-back-grammar-label">语法信息</div>
+              <div class="ph-hint" id="wb-phint"></div>
+            </div>
+            <div class="spk-row">
+              <button class="spk" onclick="event.stopPropagation();speakWb(1)">▶ 正常</button>
+              <button class="spk slow" onclick="event.stopPropagation();speakWb(0.45)">▶ 慢速</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav">
+        <button class="nav-btn" onclick="prevWbCard()">◀ 上一个</button>
+        <span class="counter" id="wb-count"></span>
+        <button class="nav-btn" onclick="nextWbCard()">下一个 ▶</button>
+      </div>
+      <!-- 作答按钮 -->
+      <div style="margin-bottom:10px;text-align:center;font-size:13px;color:var(--text2)">翻看答案后作答：</div>
+      <div class="know-btns">
+        <button class="know-no" onclick="answerWb(false)">✕ 还不会</button>
+        <button class="know-yes" onclick="answerWb(true)">✓ 记住了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测验模式 -->
+  <div class="page" id="page-quiz">
+    <div class="exercise-bar">
+      <button class="exercise-btn active" data-exercise="translation" onclick="setExerciseMode('translation')">翻译</button>
+      <button class="exercise-btn" data-exercise="listening" onclick="setExerciseMode('listening')">听力</button>
+      <button class="exercise-btn" data-exercise="nounPlural" onclick="setExerciseMode('nounPlural')">名词复数</button>
+      <button class="exercise-btn" data-exercise="verbConj" onclick="setExerciseMode('verbConj')">动词变位</button>
+      <button class="exercise-btn" data-exercise="stress" onclick="setExerciseMode('stress')">重音选择</button>
+    </div>
+    <div class="study-mode-bar" id="quiz-scope-bar">
+      <button class="study-mode-btn active" data-scope="smart" onclick="setPracticeScope('smart')">智能</button>
+      <button class="study-mode-btn" data-scope="today" onclick="setPracticeScope('today')">今日</button>
+      <button class="study-mode-btn" data-scope="wrong" onclick="setPracticeScope('wrong')">错题</button>
+      <button class="study-mode-btn" data-scope="due" onclick="setPracticeScope('due')">到期</button>
+      <button class="study-mode-btn" data-scope="new" onclick="setPracticeScope('new')">新词</button>
+      <button class="study-mode-btn" data-scope="all" onclick="setPracticeScope('all')">全部</button>
+    </div>
+    <div class="qmode-bar">
+      <button class="qmode-btn active" id="m-zh" onclick="setQMode('zh')">中文 → 罗语</button>
+      <button class="qmode-btn" id="m-ro" onclick="setQMode('ro')">罗语 → 中文</button>
+    </div>
+    <div id="quiz-area"></div>
+  </div>
+
+  <!-- 学习统计 -->
+  <div class="page" id="page-stats">
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-n" id="stat-streak">0</div><div class="metric-l">连续学习天数</div></div>
+      <div class="metric"><div class="metric-n" id="stat-30days">0</div><div class="metric-l">近30天新学</div></div>
+      <div class="metric"><div class="metric-n" id="stat-accuracy">0%</div><div class="metric-l">测验正确率</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>下一步建议</span><span style="font-size:12px;color:var(--text2)">按当前记录生成</span></div>
+      <div id="study-coach"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>每日学习量</span><span style="font-size:12px;color:var(--text2)">近14天</span></div>
+      <div id="daily-chart"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>最近14天打卡</span><span style="font-size:12px;color:var(--text2)">按周一至周日排列</span></div>
+      <div id="calendar-container"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>分类掌握率</span><span style="font-size:12px;color:var(--text2)">按已掌握词汇计算</span></div>
+      <div id="cat-mastery"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>高频错词</span><span style="font-size:12px;color:var(--text2)">按错误率和连错排序</span></div>
+      <div id="hardest-words"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>里程碑</span><span style="font-size:12px;color:var(--text2)">学习状态</span></div>
+      <div id="achievement-list"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>进度备份</span><span style="font-size:12px;color:var(--text2)">本机文件</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="exportProgressBackup()">导出进度</button>
+        <label class="btn-sm" style="cursor:pointer">导入进度<input type="file" accept="application/json" style="display:none" onchange="importProgressBackup(this.files[0]);this.value=''"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 排行榜 -->
+  <div class="page" id="page-leaderboard">
+    <div class="panel">
+      <div class="panel-title">
+        <span>班级排行榜</span>
+        <button class="btn-sm" onclick="renderLeaderboard()">刷新</button>
+      </div>
+      <div id="leaderboard-list"><div class="empty-state">加载中...</div></div>
+    </div>
+  </div>
+
+  <!-- 指南 -->
+  <div class="page" id="page-guide">
+    <div class="guide-card">
+      <div class="guide-title">字母表</div>
+      <div class="guide-subtitle">罗马尼亚语使用拉丁字母。先熟悉完整字母，再重点记住下面的特殊读音。</div>
+      <div class="alphabet-grid">
+        <div class="alphabet-item"><div class="alphabet-letter">A</div><div class="alphabet-read">a</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Ă</div><div class="alphabet-read">ă</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Â</div><div class="alphabet-read">â din a</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">B</div><div class="alphabet-read">be</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">C</div><div class="alphabet-read">ce</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">D</div><div class="alphabet-read">de</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">E</div><div class="alphabet-read">e</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">F</div><div class="alphabet-read">ef</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">G</div><div class="alphabet-read">ge</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">H</div><div class="alphabet-read">haș</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">I</div><div class="alphabet-read">i</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Î</div><div class="alphabet-read">î din i</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">J</div><div class="alphabet-read">jî</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">K</div><div class="alphabet-read">ca</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">L</div><div class="alphabet-read">el</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">M</div><div class="alphabet-read">em</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">N</div><div class="alphabet-read">en</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">O</div><div class="alphabet-read">o</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">P</div><div class="alphabet-read">pe</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Q</div><div class="alphabet-read">chiu</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">R</div><div class="alphabet-read">er</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">S</div><div class="alphabet-read">es</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Ș</div><div class="alphabet-read">șe</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">T</div><div class="alphabet-read">te</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Ț</div><div class="alphabet-read">țe</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">U</div><div class="alphabet-read">u</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">V</div><div class="alphabet-read">ve</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">W</div><div class="alphabet-read">dublu ve</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">X</div><div class="alphabet-read">ics</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Y</div><div class="alphabet-read">igrec</div></div>
+        <div class="alphabet-item"><div class="alphabet-letter">Z</div><div class="alphabet-read">zet</div></div>
+      </div>
+      <div class="ph-grid">
+        <div class="ph-item"><div class="ph-letter">ă</div><div class="ph-sound">类似"呃"，短促</div></div>
+        <div class="ph-item"><div class="ph-letter">â / î</div><div class="ph-sound">类似"嗯"，舌后</div></div>
+        <div class="ph-item"><div class="ph-letter">ș</div><div class="ph-sound">类似"sh"（师）</div></div>
+        <div class="ph-item"><div class="ph-letter">ț</div><div class="ph-sound">类似"ts"（次）</div></div>
+        <div class="ph-item"><div class="ph-letter">ce/ci</div><div class="ph-sound">类似"ch"（吃）</div></div>
+        <div class="ph-item"><div class="ph-letter">ge/gi</div><div class="ph-sound">类似"j"（日）</div></div>
+        <div class="ph-item"><div class="ph-letter">ch</div><div class="ph-sound">类似"k"（克）</div></div>
+        <div class="ph-item"><div class="ph-letter">gh</div><div class="ph-sound">类似"g"（哥）</div></div>
+        <div class="ph-item"><div class="ph-letter">oa</div><div class="ph-sound">类似"wa"</div></div>
+      </div>
+    </div>
+    <div class="guide-card">
+      <div class="guide-title">使用手册</div>
+      <div class="guide-subtitle">建议按“卡片记忆 → 测验模式 → 错题本 → 学习统计”的节奏学习。</div>
+      <div class="manual-grid">
+        <div class="manual-item">
+          <div class="manual-title">卡片记忆</div>
+          <div class="manual-text">每日先完成今日新词。点卡片或上下滑动翻面，左右滑动切换卡片。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">词汇表</div>
+          <div class="manual-text">快速搜索中文、罗语或分类。管理员可在这里检查和维护词条。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">测验模式</div>
+          <div class="manual-text">用翻译、名词复数、动词变位和重音题检查记忆，答错会进入错题本。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">错题本</div>
+          <div class="manual-text">集中练习薄弱词。连续答对 3 次后，词条会从错题本移出。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">学习统计</div>
+          <div class="manual-text">查看打卡、近 14 天学习量、分类掌握率和整体正确率。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">重音标记</div>
+          <div class="manual-text">词条中用下划线标出重音音节。编辑时可用大写或 IPA 的 ˈ 标重音。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 词汇表 -->
+  <div class="page" id="page-list">
+    <div class="search-bar"><input id="search-input" placeholder="搜索中文、罗语或分类..." oninput="renderList()"></div>
+    <div class="word-list" id="word-list"></div>
+  </div>
+
+  <!-- 管理员 -->
+  <div class="page" id="page-admin">
+    <div class="admin-section" id="admin-section-stats">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-stats')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>📊 词库统计</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminStats()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div id="admin-stats-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+
+    <div class="admin-section collapsed" id="admin-section-words">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-words')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>📚 词库管理</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="event.stopPropagation();openAddWordModal()">+ 添加词汇</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div style="padding:12px 14px;font-size:13px;color:var(--text2)">
+          没有人工音标的词会进入待校对列表。优先补全音标，再用于正式背诵。
+        </div>
+        <div id="missing-ipa-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+
+    <div class="admin-section collapsed" id="admin-section-grammar">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-grammar')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>🧾 语法待核对</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();renderPendingGrammarPanel()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div id="grammar-patch-status" style="padding:0 14px 8px;font-size:12px;color:var(--text2)"></div>
+        <div id="pending-grammar-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+
+    <div class="admin-section collapsed" id="admin-section-reports">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-reports')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>⚠ 用户报错 <span id="report-count-badge" style="font-size:12px;color:var(--red);font-weight:600"></span></span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminReports()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div id="reports-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+    <div class="admin-section collapsed" id="admin-section-users">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-users')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>👤 用户管理</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminUsers()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div id="users-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 词条详情 ──────────────────────────────────────── -->
+<div class="modal-overlay" id="word-detail-modal" style="display:none" onclick="if(event.target===this)closeWordDetail()">
+  <div class="modal">
+    <div class="modal-title">词条详情 <button class="modal-close" onclick="closeWordDetail()">✕</button></div>
+    <div id="word-detail-body"></div>
+  </div>
+</div>
+
+<!-- ── 报错弹窗（用户） ──────────────────────────────── -->
+<div class="modal-overlay" id="report-modal" style="display:none" onclick="if(event.target===this)closeReportModal()">
+  <div class="modal">
+    <div class="modal-title">⚠ 报告错误 <button class="modal-close" onclick="closeReportModal()">✕</button></div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px">
+      <div style="font-weight:600" id="rm-word-zh"></div>
+      <div style="color:var(--text2)" id="rm-word-ro"></div>
+    </div>
+    <div class="form-group">
+      <label>错误类型</label>
+      <select id="rm-type">
+        <option value="wrong_zh">中文翻译有误</option>
+        <option value="wrong_ro">罗马尼亚语拼写有误</option>
+        <option value="wrong_ipa">音标有误</option>
+        <option value="wrong_hint">发音提示有误</option>
+        <option value="wrong_cat">分类有误</option>
+        <option value="other">其他问题</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>补充说明（可选）</label>
+      <textarea id="rm-note" placeholder="请描述正确的内容是什么..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeReportModal()">取消</button>
+      <button class="btn-save" id="rm-submit" onclick="submitReport()">提交报错</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 编辑弹窗（管理员） ────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal" style="display:none" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <div class="modal-title">✏️ 编辑词汇 <button class="modal-close" onclick="closeEditModal()">✕</button></div>
+    <div class="form-group"><label>中文</label><input type="text" id="em-zh"></div>
+    <div class="form-group"><label>罗马尼亚语</label><input type="text" id="em-ro"></div>
+    <div class="form-group"><label>重音标记（大写或 ˈ 标重读）</label><input type="text" id="em-ipa"></div>
+    <div class="form-group"><label>语法信息（词性 / 复数 / 变位）</label><input type="text" id="em-hint" placeholder="例：名词 · 复数: mere / 动词 · -esc"></div>
+    <div class="form-group"><label>分类</label><input type="text" id="em-cat" list="edit-cat-list" placeholder="Daily Life / Philosophy / Economics ..."><datalist id="edit-cat-list"></datalist></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+      <button class="btn-save" id="em-submit" onclick="saveEdit()">保存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 添加词汇弹窗（管理员） ────────────────────────────── -->
+<div class="modal-overlay" id="add-word-modal" style="display:none" onclick="if(event.target===this)closeAddWordModal()">
+  <div class="modal">
+    <div class="modal-title">📚 添加词汇 <button class="modal-close" onclick="closeAddWordModal()">✕</button></div>
+
+    <!-- 模式切换 -->
+    <div class="auth-tabs" style="margin-bottom:1.2rem">
+      <button class="aw-tab auth-tab active" onclick="switchAddMode('single')">逐条添加</button>
+      <button class="aw-tab auth-tab" onclick="switchAddMode('bulk')">批量粘贴</button>
+    </div>
+    <input type="hidden" id="aw-mode" value="single">
+
+    <!-- 单条添加 -->
+    <div id="aw-single">
+      <div class="form-group"><label>中文（新词必填；只补例句可留空）</label><input type="text" id="aw-zh" placeholder="例：苹果"></div>
+      <div class="form-group"><label>罗马尼亚语 <span style="color:var(--red)">*</span></label><input type="text" id="aw-ro" placeholder="例：măr"></div>
+      <div class="form-group"><label>重音标记（大写或 ˈ 标重读，可选）</label><input type="text" id="aw-ipa" placeholder="例：mĂr 或 /ˈmər/"></div>
+      <div class="form-group"><label>语法信息（词性 / 复数 / 变位，可选）</label><input type="text" id="aw-hint" placeholder="例：名词 · 复数: mere"></div>
+      <div class="form-group"><label>分类</label>
+        <input type="text" id="aw-cat" placeholder="例：Daily Life" list="cat-list">
+        <datalist id="cat-list"></datalist>
+      </div>
+      <div class="form-group"><label>罗语例句（可选；已有词可只填罗语和例句）</label><textarea id="aw-example-ro" placeholder="例：Am cumpărat mere proaspete din piață." style="min-height:70px"></textarea></div>
+      <div class="form-group"><label>中文例句（可选）</label><textarea id="aw-example-zh" placeholder="例：我从市场买了新鲜苹果。" style="min-height:70px"></textarea></div>
+    </div>
+
+    <!-- 批量粘贴 -->
+    <div id="aw-bulk" style="display:none">
+      <div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--blue-text)">
+        每行一个词，字段顺序与“逐条添加”一致，用 <strong>|</strong> 分隔：<br>
+        <code style="font-size:12px">中文|罗马尼亚语|重音标记|语法信息|分类|罗语例句|中文例句</code><br>
+        <span style="opacity:0.8">只给已有词补例句时，可写：<code>criză|||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。</code></span>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
+        现象|fenomen|fenomen|s.n.: fenomene|Philosophy|Fenomenul a fost observat de cercetători.|研究人员观察到了这一现象。<br>
+        绝对|absolut|absolut|adj.: absolută / absoluți / absolute|Philosophy||<br>
+        criză|||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。
+      </div>
+      <div class="form-group">
+        <label>粘贴词汇（每行一个）</label>
+        <textarea id="aw-bulk-text" placeholder="现象|fenomen|fenomen|s.n.: fenomene|Philosophy|Fenomenul a fost observat de cercetători.|研究人员观察到了这一现象。&#10;绝对|absolut|absolut|adj.: absolută / absoluți / absolute|Philosophy||&#10;criză|||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。" style="min-height:180px;font-family:monospace;font-size:13px"></textarea>
+      </div>
+    </div>
+
+    <div id="aw-result" style="font-size:13px;font-weight:500;min-height:20px;margin-bottom:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddWordModal()">关闭</button>
+      <button class="btn-save" id="aw-submit" onclick="submitAddWord()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
+<script src="api.js?v=20260517-user-example2"></script>
+<script src="auth.js?v=20260516-memory3"></script>
+<script src="stress_grammar_patch.js?v=20260516-memory3"></script>
+<script src="app.js?v=20260517-user-example2"></script>
+<script>
+const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+if ('serviceWorker' in navigator && isLocalDevHost) {
+  navigator.serviceWorker.getRegistrations()
+    .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+    .catch(() => {});
+}
+if ('caches' in window && isLocalDevHost) {
+  caches.keys()
+    .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+    .catch(() => {});
+}
+</script>
+</body>
+</html>
