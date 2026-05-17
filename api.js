@@ -395,9 +395,19 @@ async function apiLoadProgress(userId) {
  */
 async function apiLoadAllProgress() {
   if (isOfflineMode()) return [];
-  const { data, error } = await sb.from('progress').select('*');
-  if (error) throw new Error(error.message);
-  return data || [];
+  let all = [], from = 0;
+  while (true) {
+    const { data, error } = await sb.from('progress')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .range(from, from + 999);
+    if (error) throw new Error(error.message);
+    if (!data || !data.length) break;
+    all = all.concat(data);
+    if (data.length < 1000) break;
+    from += 1000;
+  }
+  return all;
 }
 
 /**

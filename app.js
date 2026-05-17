@@ -2551,6 +2551,9 @@ async function renderLeaderboard() {
         </div>
         <div class="rank-score"><strong>${u.mastered}</strong>已掌握</div>
       </div>`).join('') : '<div class="empty-state">暂时没有排行榜数据</div>';
+    if (leaderboard.length) {
+      el.innerHTML += `<div class="empty-state" style="padding:10px;font-size:12px">已刷新：${new Date().toLocaleTimeString('zh', { hour: '2-digit', minute: '2-digit' })} · 读取 ${rows.length} 条练习记录</div>`;
+    }
     if (logsResult.status === 'rejected') {
       el.innerHTML += `<div class="empty-state">连续学习天数暂时无法读取：${escapeHtml(logsResult.reason.message)}</div>`;
     }
