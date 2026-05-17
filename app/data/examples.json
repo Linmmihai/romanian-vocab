@@ -1,0 +1,835 @@
+{
+  "generatedAt": "2026-05-17T02:37:13.231Z",
+  "source": "tools/content_original/srt",
+  "wordCount": 2985,
+  "sentenceCount": 563,
+  "matchedWordCount": 73,
+  "examples": {
+    "criză": [
+      {
+        "ro": "Acum trei zile aproape că a murit de la o criză.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0026.srt"
+      }
+    ],
+    "suflet": [
+      {
+        "ro": "Am ceva pe suflet, e despre Mettew și Timothy.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0027.srt"
+      }
+    ],
+    "sentință": [
+      {
+        "ro": "Asta e practic o sentință la moarte.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0050.srt"
+      }
+    ],
+    "istorie": [
+      {
+        "ro": "Asta va rămâne în istorie.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      }
+    ],
+    "tratat": [
+      {
+        "ro": "Colegul meu l-a tratat acum câteva zile.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0026.srt"
+      },
+      {
+        "ro": "Deci Timmy s-a îmbolnăvit din cauza mea, iar eu l-am tratat ca un rahat.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0026.srt"
+      }
+    ],
+    "fizică": [
+      {
+        "ro": "A trecut cu brio fiecare cerință fizică.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0003.srt"
+      },
+      {
+        "ro": "Pentru că alergatul nu ține doar de condiția fizică.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0003.srt"
+      }
+    ],
+    "mașină": [
+      {
+        "ro": "Dacă vrei o mașină, poți să-ți iau alta.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0010.srt"
+      },
+      {
+        "ro": "E din cauză că nu i-ați luat și lui o mașină.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0010.srt"
+      }
+    ],
+    "pod": [
+      {
+        "ro": "Timothy v-a lăsat un bilet în pod.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0034.srt"
+      },
+      {
+        "ro": "Te poți muta în pod temporar.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0011.srt"
+      }
+    ],
+    "operație": [
+      {
+        "ro": "E prima operație pentru ochi cibernetici.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      }
+    ],
+    "spațiu": [
+      {
+        "ro": "Dacă ați ști că eu sunt cel care zboară în spațiu.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0014.srt"
+      },
+      {
+        "ro": "Numai dacă ar fi în spațiu nu le-ar vedea.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0031.srt"
+      },
+      {
+        "ro": "Deci voi spuneți că fiul meu este singur în spațiu?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0050.srt"
+      }
+    ],
+    "venit": [
+      {
+        "ro": "Acum trei ani, când ați venit la orfelinat, să vă căutați fiul pierdut.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0042.srt"
+      }
+    ],
+    "cheltuială": [
+      {
+        "ro": "Fiecare cheltuială va fi acoperită de grupul Snyder.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0007.srt"
+      }
+    ],
+    "laborator": [
+      {
+        "ro": "Întregul laborator va fi ruinat.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      }
+    ],
+    "fotografie": [
+      {
+        "ro": "Da, domnișoară Giana, mai doriți să faceți acea fotografie de familie?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0019.srt"
+      }
+    ],
+    "genetică": [
+      {
+        "ro": "Voluntarul trebuie să aibă o trăsătură genetică care se întâlnește o dată la un milion.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      }
+    ],
+    "sărbătoare": [
+      {
+        "ro": "E o sărbătoare de familie.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0008.srt"
+      }
+    ],
+    "cadou": [
+      {
+        "ro": "Cred că-i un cadou de la surori.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0009.srt"
+      },
+      {
+        "ro": "Doar voiam să-ți dau un cadou.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0015.srt"
+      }
+    ],
+    "vacanță": [
+      {
+        "ro": "Cel puțin ar trebui să ne anunți din timp dacă plănuiești o vacanță.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0008.srt"
+      }
+    ],
+    "întâlnire": [
+      {
+        "ro": "Tu ai o întâlnire importantă?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0002.srt"
+      }
+    ],
+    "bine": [
+      {
+        "ro": "Familia Schneider este mai bine ca niciodată.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      },
+      {
+        "ro": "Bine, fetelor, nu vă atingeți de plăcintă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0006.srt"
+      },
+      {
+        "ro": "Bine, ai mai multă grijă de ochii tăi.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0014.srt"
+      },
+      {
+        "ro": "Dacă te simți mai bine, pregătește-te pentru petrecere.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0014.srt"
+      },
+      {
+        "ro": "Bine, dacă vreți să rup legătura, nu te mai întoarce.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0018.srt"
+      },
+      {
+        "ro": "Bine, îmi cer scuze, nu am vrut.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0021.srt"
+      }
+    ],
+    "rău": [
+      {
+        "ro": "Îmi pare rău, chiar am crezut că e doar gunoi.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0011.srt"
+      },
+      {
+        "ro": "Oh, deja i-ai făcut rău o dată.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0017.srt"
+      },
+      {
+        "ro": "Îmi pare atât de rău Timothy.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0052.srt"
+      },
+      {
+        "ro": "Încă îți pare rău pentru el?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0007.srt"
+      }
+    ],
+    "frumos": [
+      {
+        "ro": "Sper că e frumos acolo.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0052.srt"
+      }
+    ],
+    "tort": [
+      {
+        "ro": "Tort de ciocolată l-am făcut chiar eu.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0019.srt"
+      }
+    ],
+    "ciocolată": [
+      {
+        "ro": "Tort de ciocolată l-am făcut chiar eu.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0019.srt"
+      }
+    ],
+    "bun": [
+      {
+        "ro": "Fiecare lucru bun care ți s-a întâmplat ar fi trebuit să fie al meu.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0016.srt"
+      },
+      {
+        "ro": "Ești cel mai bun frate din lume.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0020.srt"
+      },
+      {
+        "ro": "Bun, bine, încă câteva minute, fiule.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0003.srt"
+      }
+    ],
+    "greșit": [
+      {
+        "ro": "Ce dracu e greșit cu tine, băi băiatule?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0010.srt"
+      },
+      {
+        "ro": "Ce dracu e greșit la tine?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0039.srt"
+      },
+      {
+        "ro": "Ce dracu e greșit cu tine?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0039.srt"
+      }
+    ],
+    "important": [
+      {
+        "ro": "Ceva important s-a întâmplat astăzi, trebuie să sărbătorim.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0008.srt"
+      },
+      {
+        "ro": "Chiar era atât de important?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0012.srt"
+      }
+    ],
+    "adevărat": [
+      {
+        "ro": "A, pentru că eram fiul vostru adevărat.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0045.srt"
+      },
+      {
+        "ro": "Matt e fratele tău adevărat.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0007.srt"
+      },
+      {
+        "ro": "Eu sunt fiul vostru adevărat.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0029.srt"
+      }
+    ],
+    "același": [
+      {
+        "ro": "Știi, dacă nu aveam același sânge, aș fi ucis un psihopat ca tine.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0029.srt"
+      }
+    ],
+    "simplu": [
+      {
+        "ro": "Nu poți să îl faci așa, pur și simplu.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0017.srt"
+      },
+      {
+        "ro": "Pur și simplu nu așa funcționează.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0022.srt"
+      }
+    ],
+    "posibil": [
+      {
+        "ro": "Știți că asta nu e posibil.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0051.srt"
+      }
+    ],
+    "clasă": [
+      {
+        "ro": "Normal că nu știu că deja am terminat primul din clasă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0002.srt"
+      }
+    ],
+    "final": [
+      {
+        "ro": "Acești 12 ani au fost uimitori și o să prețuiesc aceste amintiri până la final.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0037.srt"
+      }
+    ],
+    "pagină": [
+      {
+        "ro": "Domnișoară Gena Schneider, Proiectul Ave maria a fost pe prima pagină în toată lumea.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      }
+    ],
+    "trecut": [
+      {
+        "ro": "A trecut cu brio fiecare cerință fizică.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0003.srt"
+      }
+    ],
+    "cui": [
+      {
+        "ro": "Cui îi pasă ce face el cu viața lui?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0002.srt"
+      },
+      {
+        "ro": "Cui îi pasă ce face cu viața lui?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0003.srt"
+      }
+    ],
+    "a bandaja": [
+      {
+        "ro": "Hai în casă să te bandaja!",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0010.srt"
+      }
+    ],
+    "a crede": [
+      {
+        "ro": "Nu m-ar crede, chiar dacă i-aș spune.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0012.srt"
+      }
+    ],
+    "a alege": [
+      {
+        "ro": "Dacă aș putea alege din nou, nu am mai fi o familie.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0000.srt"
+      },
+      {
+        "ro": "Dacă aș putea alege din nou.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0022.srt"
+      }
+    ],
+    "oraș": [
+      {
+        "ro": "Cu siguranță am umplut fiecare colțișor din oraș.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0031.srt"
+      }
+    ],
+    "casă": [
+      {
+        "ro": "A crescut în orfelinat, n-a avut casă și credem că asta va aduce liniște.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0031.srt"
+      },
+      {
+        "ro": "Hai în casă să te bandaja!",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0010.srt"
+      }
+    ],
+    "spital": [
+      {
+        "ro": "Dacă nu se trezește curând, trebuie să-l ducem la spital.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0013.srt"
+      }
+    ],
+    "a sugera": [
+      {
+        "ro": "V-aș sugera să mergeți sus.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0034.srt"
+      }
+    ],
+    "a începe": [
+      {
+        "ro": "Mâine, departamentul va începe pregătirile pentru lansarea din trei zile.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      },
+      {
+        "ro": "Vom începe pregătirea pentru lansare.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      },
+      {
+        "ro": "Apoi putem începe de la zero.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0030.srt"
+      }
+    ],
+    "a scrie": [
+      {
+        "ro": "Îi voi scrie o scrisoare de mulțumire.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      }
+    ],
+    "înainte": [
+      {
+        "ro": "Mai am de făcut ceva înainte de lansare.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0018.srt"
+      },
+      {
+        "ro": "A înregistrat asta înainte de evenimentul de lansare.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0036.srt"
+      },
+      {
+        "ro": "Mi-aș dori să nu te fi alungat înainte să pleci.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0052.srt"
+      },
+      {
+        "ro": "Înainte erați atât de apropiați.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0006.srt"
+      }
+    ],
+    "surpriză": [
+      {
+        "ro": "Te așteaptă acasă cu o surpriză imensă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0030.srt"
+      }
+    ],
+    "îndoială": [
+      {
+        "ro": "Așa vă arătați voi dragostea, punându-l la îndoială, neglijând, frângând inima.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0046.srt"
+      }
+    ],
+    "motiv": [
+      {
+        "ro": "Acum că el nu mai e, nu mai am niciun motiv să stau.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0047.srt"
+      },
+      {
+        "ro": "Luându-și voluntarul, ce alt motiv ar avea să fie aici?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0019.srt"
+      }
+    ],
+    "sfârșit": [
+      {
+        "ro": "După aproape cinci ani de căutări, în sfârșit l-am găsit.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      },
+      {
+        "ro": "Timmy în sfârșit o să pot vedea.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0024.srt"
+      },
+      {
+        "ro": "Oh, scumpo, În sfârșit poți vedea.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      }
+    ],
+    "naștere": [
+      {
+        "ro": "Nu ți-ai putut sărbători ziua de naștere cu familia ta, Timothy.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0031.srt"
+      }
+    ],
+    "moarte": [
+      {
+        "ro": "Asta e practic o sentință la moarte.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0050.srt"
+      },
+      {
+        "ro": "Eu l-am împins la moarte?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0044.srt"
+      }
+    ],
+    "familie": [
+      {
+        "ro": "Dacă aș putea alege din nou, nu am mai fi o familie.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0000.srt"
+      },
+      {
+        "ro": "El e copilul favorit și eu vreau o familie așa.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0006.srt"
+      },
+      {
+        "ro": "Dacă facem o poză de familie, ar trebui să-l așteptăm și pe Timmy.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0021.srt"
+      },
+      {
+        "ro": "Mett, pe tine te răsfață mai mult, dar și Timmy face parte din familie.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0021.srt"
+      },
+      {
+        "ro": "Întotdeauna a vrut o poză de familie, dar mereu a intervenit ceva.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0021.srt"
+      },
+      {
+        "ro": "Dacă ar trebui să aleg din nou, n-aș mai avea această familie.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0037.srt"
+      }
+    ],
+    "inventator": [
+      {
+        "ro": "Îi suntem datori acestui inventator.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      }
+    ],
+    "planetă": [
+      {
+        "ro": "O să-l ajute să supraviețuiască pe o nouă planetă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0003.srt"
+      },
+      {
+        "ro": "Am trimis un om către o nouă planetă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0051.srt"
+      },
+      {
+        "ro": "Abilitățile lui vor crește șansele de supraviețuire pe noua planetă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0051.srt"
+      },
+      {
+        "ro": "Deja a pregătit o bază pe noua planetă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0054.srt"
+      },
+      {
+        "ro": "Având în vedere starea Pământului, trebuie să găsim o altă planetă pentru a asigura supraviețuirea umanității.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      },
+      {
+        "ro": "Dacă trăiești destul cât să ajungi pe o nouă planetă Artemis, îi vei testa condițiile.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0022.srt"
+      }
+    ],
+    "bună": [
+      {
+        "ro": "Am avut cea mai bună viață pe care aș fi putut s-o am.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0022.srt"
+      },
+      {
+        "ro": "Ar fi trebuit să fiu o soră mai mare, mai bună.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0023.srt"
+      },
+      {
+        "ro": "Mi-aș fi dorit să fi fost mai bună.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0052.srt"
+      },
+      {
+        "ro": "Va fi o zi bună.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0055.srt"
+      }
+    ],
+    "la revedere": [
+      {
+        "ro": "Nu vrei să-ți anunți apropiații ca să-ți iei la revedere?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0013.srt"
+      },
+      {
+        "ro": "Ca să-ți poți lua la revedere.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      }
+    ],
+    "mulțumesc": [
+      {
+        "ro": "Mulțumesc pentru că ai fost ochii mei, Timmy.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0020.srt"
+      },
+      {
+        "ro": "Mamă, tată, vă mulțumesc pentru că m-ați lăsat să fiu fiul vostru.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0037.srt"
+      },
+      {
+        "ro": "Mulțumesc că ai ținut minte, Miriam!",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0019.srt"
+      }
+    ],
+    "îmi pare rău": [
+      {
+        "ro": "Îmi pare rău, chiar am crezut că e doar gunoi.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0011.srt"
+      }
+    ],
+    "vă rog": [
+      {
+        "ro": "Vă rog să nu fi supărat pe el.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0010.srt"
+      },
+      {
+        "ro": "Vă rog să nu vă mai epuizați așa bine?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0005.srt"
+      },
+      {
+        "ro": "Vă rog, spuneți-mi unde sunt lucrurile de pe birou?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0011.srt"
+      }
+    ],
+    "poate": [
+      {
+        "ro": "Poate că sunt oarbă, dar nu sunt proastă.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0016.srt"
+      },
+      {
+        "ro": "Poate de asta s-a comportat așa azi.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0021.srt"
+      },
+      {
+        "ro": "Poate când se întoarce și o vede, o să se răzgândească.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0023.srt"
+      },
+      {
+        "ro": "Poate cineva să îmi spună ce se întâmplă aici, acum?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0029.srt"
+      },
+      {
+        "ro": "Poate să o aibă, dar aveam niște prototipuri foarte importante pe birou și acum nu mai sunt.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0011.srt"
+      },
+      {
+        "ro": "Prea mult stres îl poate omorî.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0026.srt"
+      }
+    ],
+    "nu înțeleg": [
+      {
+        "ro": "Doamne, Arya, încă nu înțelegi?",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0049.srt"
+      }
+    ],
+    "fericire": [
+      {
+        "ro": "Din fericire, a găsit pe cineva care a recuperat drive-ul.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0027.srt"
+      }
+    ],
+    "suferință": [
+      {
+        "ro": "Familia Snyder mi-a oferit iubire, dar și suferință.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0001.srt"
+      }
+    ],
+    "iertare": [
+      {
+        "ro": "Ah, Timothy, îmi cer iertare.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0009.srt"
+      }
+    ],
+    "comparație": [
+      {
+        "ro": "E clar că în comparație cu Matthew, eu nu însemn nimic.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0004.srt"
+      }
+    ],
+    "a repara": [
+      {
+        "ro": "Nici măcar nu știu dacă-l pot repara în timp.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0012.srt"
+      },
+      {
+        "ro": "Când se întoarce, vom repara totul.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0026.srt"
+      }
+    ],
+    "liniște": [
+      {
+        "ro": "A crescut în orfelinat, n-a avut casă și credem că asta va aduce liniște.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0031.srt"
+      }
+    ],
+    "mulțumire": [
+      {
+        "ro": "Îi voi scrie o scrisoare de mulțumire.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      },
+      {
+        "ro": "Asta e scrisoarea de mulțumire pe care am scris-o inventatorului.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0032.srt"
+      }
+    ],
+    "rușine": [
+      {
+        "ro": "Tu ești o rușine pentru noi.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0017.srt"
+      },
+      {
+        "ro": "Tu ești o rușine pentru noi!",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0030.srt"
+      }
+    ],
+    "siguranță": [
+      {
+        "ro": "Cu siguranță am umplut fiecare colțișor din oraș.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0031.srt"
+      }
+    ],
+    "a scrie o scrisoare": [
+      {
+        "ro": "Îi voi scrie o scrisoare de mulțumire.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0025.srt"
+      }
+    ],
+    "a ierta": [
+      {
+        "ro": "Dacă i se întâmplă ceva, nu mă voi ierta niciodată.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0026.srt"
+      },
+      {
+        "ro": "L-am rănit pe Timothy și nu mă voi ierta niciodată.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0046.srt"
+      },
+      {
+        "ro": "Când vine acasă o să discutăm despre asta și sunt sigură că ne va ierta.",
+        "zh": "",
+        "source": "subtitle corpus:210001000000000398_0030.srt"
+      }
+    ]
+  }
+}

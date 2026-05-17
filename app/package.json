@@ -1,0 +1,22 @@
+{
+  "name": "romanian-vocab-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android wrapper for the Romanian vocabulary web app.",
+  "scripts": {
+    "export:vocab": "node scripts/export-vocab.mjs",
+    "build:examples": "node scripts/build-examples.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "cap:sync": "npm run build:examples && npm run build:web && npx cap sync android",
+    "apk:debug": "npm run cap:sync && cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ANDROID_HOME=$HOME/Library/Android/sdk ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
+    "@supabase/supabase-js": "^2.49.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0",
+    "esbuild": "^0.25.4"
+  }
+}

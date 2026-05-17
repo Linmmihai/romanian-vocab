@@ -1,0 +1,9 @@
+{
+  "appId": "com.romanianvocab.learn",
+  "appName": "罗语词汇",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

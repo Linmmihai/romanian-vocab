@@ -1,0 +1,273 @@
+# SRT 字幕质检工具说明
+
+## 推荐日常流程
+
+最推荐使用一键流程：
+
+```bash
+python3 tools/srt/srt_workflow.py tools/content_original/srt
+```
+
+运行后会生成：
+
+- `srt_workflow_output/reports/qc_report.csv`
+- `srt_workflow_output/reports/manual_review.csv`
+- `srt_workflow_output/reports/summary.txt`
+
+其中最重要的是：
+
+```bash
+srt_workflow_output/reports/manual_review.csv
+```
+
+这个文件是“人工重点检查清单”。它会按照优先级排序，把最值得你看视频核对的时间点排在前面，例如：
+
+- 时间轴重叠
+- 单行超过 45 个字符
+- 一个字幕块里有多行文本
+- 可能缺少句号
+- 可能大小写错误
+- 标点或空格问题
+
+这样你不用一开始就从头到尾盲看，可以先检查高风险位置。
+
+## 快速命令表
+
+| 目的 | 命令 | 主要输出 |
+| --- | --- | --- |
+| 一键质检字幕 | `python3 tools/srt/srt_workflow.py tools/content_original/srt` | `srt_workflow_output/reports/manual_review.csv` |
+| 一键质检并安全修复格式 | `python3 tools/srt/srt_workflow.py tools/content_original/srt --fix` | `srt_workflow_output/fixed_srt/` |
+| 加入阅读速度检查 | `python3 tools/srt/srt_workflow.py tools/content_original/srt --include-speed` | 更详细的质检报告 |
+| 单独质检 | `python3 tools/srt/srt_qc.py tools/content_original/srt --out qc_report.csv` | `qc_report.csv` |
+| 严格检查（有问题就返回失败） | `python3 tools/srt/srt_workflow.py tools/content_original/srt --strict` | 适合自动化检查 |
+| 搜索字幕文字 | `python3 tools/srt/subtitle_find.py "Exact" tools/content_original/srt --literal` | 终端中的匹配位置 |
+| 批量替换字幕文字（预览） | `python3 tools/srt/subtitle_change.py Ivan Evan tools/content_original/srt --dry-run` | 替换预览，不改文件 |
+| 批量替换字幕文字（正式替换） | `python3 tools/srt/subtitle_change.py Ivan Evan tools/content_original/srt --apply` | 直接改文件，并自动备份 |
+| 单个视频和字幕对比 | `python3 tools/srt/srt_audio_compare.py video.mp4 subtitle.srt --model base --language ro` | `srt_audio_output/audio_review.csv` |
+| 批量音视频字幕对比 | `python3 tools/srt/srt_audio_batch.py tools/content_original/video tools/content_original/srt --model base --language ro` | `srt_audio_batch_output/audio_review.csv` |
+| 统计视频总时长 | `python3 tools/srt/subtitle_duration.py /path/to/video_folder` | 终端中的时长统计 |
+
+## 工具目录地图
+
+```text
+tools/srt/
+├── Readme_md                           # 当前说明文档
+├── requirements_transcription.txt      # 本地转写依赖
+├── preview.py                          # 预览辅助脚本
+├── srt_workflow.py                     # 主入口：质检 + 修复
+├── srt_qc.py                           # 单独质检
+├── srt_audio_compare.py                # 音视频对比（单文件）
+├── srt_audio_batch.py                  # 音视频对比（批量）
+├── subtitle_find.py                    # 搜索字幕
+├── subtitle_change.py                  # 批量替换
+├── subtitle_comparison_axle_unchange.py # 对比修改前后（字幕数量不变）
+├── subtitle_comparison_axle_change.py  # 对比修改前后（字幕数量可能变化）
+└── subtitle_duration.py                # 统计视频时长
+```
+
+## 自动修复安全格式问题
+
+如果想生成修复后的 SRT 文件，运行：
+
+```bash
+python3 tools/srt/srt_workflow.py tools/content_original/srt --fix
+```
+
+修复后的文件会放在：
+
+```bash
+srt_workflow_output/fixed_srt/
+```
+
+`--fix` 会自动处理比较安全的格式问题：
+
+- 一个字幕块只保留一行文本
+- 超过 45 个字符的字幕拆成多个字幕块
+- 修正常见标点空格问题
+- 重新整理字幕序号
+
+注意：语言判断类问题默认不会自动改，比如“可能缺少句号”或“可能大小写错误”。这些会出现在 `manual_review.csv` 里，建议人工确认。
+
+如果你确认想自动修语言类问题，可以运行：
+
+```bash
+python3 tools/srt/srt_workflow.py tools/content_original/srt --fix --fix-language
+```
+
+这个选项要谨慎使用，因为有些字幕本来就是一句话被拆成多段，自动加句号可能误改。
+
+## 可选：加入阅读速度检查
+
+如果想检查字幕是否太快或太慢，可以加：
+
+```bash
+python3 tools/srt/srt_workflow.py tools/content_original/srt --include-speed
+```
+
+这个选项会增加更多检查项，适合最后精修时使用。
+
+## 可选：本地转写视频并对比 SRT
+
+这个功能用于减少你看视频的时间。它会先把 MP4 转成音频，再用本地 Whisper 模型转写，然后把同一时间段的转写文本和 SRT 文本做比较。
+
+它不会自动修改字幕，只会生成一个“可能需要看视频确认”的报告。
+
+先安装本地转写依赖，推荐：
+
+```bash
+python3 -m pip install -r tools/srt/requirements_transcription.txt
+```
+
+如果电脑没有系统版 `ffmpeg`，脚本会优先尝试使用 Python 里的 `imageio-ffmpeg`。当前环境已经有 `imageio-ffmpeg`。
+
+运行方式：
+
+```bash
+python3 tools/srt/srt_audio_compare.py video.mp4 subtitle.srt --language ro
+```
+
+输出文件会在：
+
+```bash
+srt_audio_output/
+```
+
+主要看这个文件：
+
+```bash
+srt_audio_output/audio_review.csv
+```
+
+它会标出：
+
+- SRT 有字幕，但附近没有转写语音
+- 转写有语音，但附近没有字幕
+- SRT 文本和转写文本相似度低
+
+第一次建议用 `base` 模型，速度和准确率比较平衡：
+
+```bash
+python3 tools/srt/srt_audio_compare.py video.mp4 subtitle.srt --model base --language ro
+```
+
+如果某些短字幕误报较多，可以调小或调大时间容差：
+
+```bash
+python3 tools/srt/srt_audio_compare.py video.mp4 subtitle.srt --model base --language ro --padding-ms 150
+```
+
+如果想更快，可以用：
+
+```bash
+python3 tools/srt/srt_audio_compare.py video.mp4 subtitle.srt --model tiny --language ro
+```
+
+如果想更准，可以用：
+
+```bash
+python3 tools/srt/srt_audio_compare.py video.mp4 subtitle.srt --model small --language ro
+```
+
+注意：转写结果只能帮你找可疑位置，不能代替人工确认。最后仍然要结合视频和字幕软件检查。
+
+如果要批量跑整个文件夹，可以用：
+
+```bash
+python3 tools/srt/srt_audio_batch.py tools/content_original/video tools/content_original/srt --model base --language ro
+```
+
+批量输出会在：
+
+```bash
+srt_audio_batch_output/audio_review.csv
+```
+
+第一次建议先小范围测试，例如只跑第 1 个：
+
+```bash
+python3 tools/srt/srt_audio_batch.py tools/content_original/video tools/content_original/srt --model base --language ro --limit 1
+```
+
+或者只跑第 45 个：
+
+```bash
+python3 tools/srt/srt_audio_batch.py tools/content_original/video tools/content_original/srt --model base --language ro --start 45 --end 45
+```
+
+## 单独运行 QC 检查
+
+只生成普通检查报告：
+
+```bash
+python3 tools/srt/srt_qc.py tools/content_original/srt --out qc_report.csv
+```
+
+单独运行安全修复：
+
+```bash
+python3 tools/srt/srt_qc.py tools/content_original/srt --fix --out-dir fixed_srt --out qc_report.csv
+```
+
+## 搜索字幕内容
+
+按普通文本搜索：
+
+```bash
+python3 tools/srt/subtitle_find.py "Exact" tools/content_original/srt --literal
+```
+
+按正则搜索，不区分大小写：
+
+```bash
+python3 tools/srt/subtitle_find.py "\bExact\b" tools/content_original/srt -i
+```
+
+## 批量替换字幕文本
+
+建议先预览，不直接改文件：
+
+```bash
+python3 tools/srt/subtitle_change.py Ivan Evan tools/content_original/srt --dry-run
+```
+
+确认没问题后再真正替换：
+
+```bash
+python3 tools/srt/subtitle_change.py Ivan Evan tools/content_original/srt --apply
+```
+
+不加 `--dry-run` 时也会正式替换；`--apply` 只是让命令含义更明确。
+
+正式替换时会自动创建备份文件夹。
+
+## 对比修改前后字幕
+
+如果修改前后字幕数量和顺序基本一致：
+
+```bash
+python3 tools/srt/subtitle_comparison_axle_unchange.py original_srt fixed_srt -o changes_report.txt
+```
+
+如果修复后字幕数量可能变化，比如长句被拆成多个字幕块：
+
+```bash
+python3 tools/srt/subtitle_comparison_axle_change.py original_srt fixed_srt -o changes_report.txt
+```
+
+## 统计视频总时长
+
+需要电脑里有 `ffprobe`。
+
+```bash
+python3 tools/srt/subtitle_duration.py /path/to/video_folder
+```
+
+## 建议工作习惯
+
+推荐顺序：
+
+1. 先运行 `srt_workflow.py`。
+2. 打开 `manual_review.csv`，优先检查高风险时间点。
+3. 如果需要格式修复，再运行 `--fix`。
+4. 用字幕软件结合视频确认台词是否和字幕一致。
+5. 最后把修复后的 SRT 再跑一次检查。
