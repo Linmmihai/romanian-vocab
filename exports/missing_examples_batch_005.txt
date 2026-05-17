@@ -1,0 +1,504 @@
+Words missing example sentence (example_ro is empty)
+Batch: 5
+Rows: 500
+Format: row|id|zh|ro|ipa|hint|cat|example_ro|example_zh
+2001|5622|大蒜|usturoi|usturOi|s.m.: usturoi|Agriculture||
+2002|5623|胡萝卜|morcov|mOrcov|s.m.: morcovi|Agriculture||
+2003|5624|辣椒|ardei|ardEi|s.m.: ardei|Agriculture||
+2004|5625|南瓜|dovleac|dovlEac|s.m.: dovleci|Agriculture||
+2005|5626|菠菜|spanac|spanAc|s.n.: (fără plural)|Agriculture||
+2006|5627|莴苣|salată verde|salAtă vErde|s.f.: salate verzi|Agriculture||
+2007|5628|豆子|fasole|fasOle|s.f.: fasole|Agriculture||
+2008|5629|豌豆|mazăre|mazAre|s.f.: (fără plural)|Agriculture||
+2009|5631|向日葵|floarea-soarelui|flOarea-sOarelui|s.f.: flori-soarelui|Agriculture||
+2010|5632|草莓|căpșună|căpșUnă|s.f.: căpșuni|Agriculture||
+2011|5634|诊所|cabinet medical|cabinEt medicAl|s.n.: cabinete medicale|Medicine||
+2012|5636|候诊室|sala de așteptare|sAla de așteptAre|s.f.: săli de așteptare|Medicine||
+2013|5637|挂号|programare|programAre|s.f.: programări|Medicine||
+2014|5638|检查|consultație|consultAție|s.f.: consultații|Medicine||
+2015|5639|治疗|tratament|tratamEnt|s.n.: tratamente|Medicine||
+2016|5640|手术室|sală de operații|sAlă de operAții|s.f.: săli de operații|Medicine||
+2017|5642|血液检查|analiză de sânge|analIză de sÂnge|s.f.: analize de sânge|Medicine||
+2018|5643|X光|radiografie|radiografIe|s.f.: radiografii|Medicine||
+2019|5644|超声波|ecografie|ecografIe|s.f.: ecografii|Medicine||
+2020|5646|缝合|sutură|sutUră|s.f.: suturi|Medicine||
+2021|5647|石膏|ghips|ghIps|s.n.: ghipsuri|Medicine||
+2022|5648|保卫|a apăra|a apărA|verb: conj. I (apăr/aperi/apără)|Military Science||
+2023|5649|攻击|a ataca|a atacA|verb: conj. I (atac/ataci/atacă)|Military Science||
+2024|5650|撤退|a se retrage|a se retrAge|verb: conj. III (mă retrag/te retragi/se retrage)|Military Science||
+2025|5651|保护|a proteja|a protejA|verb: conj. I (protejez/protejezi/protejează)|Military Science||
+2026|5652|战斗|a lupta|a luptA|verb: conj. I (lupt/lupți/luptă)|Military Science||
+2027|5653|守卫|a păzi|a păzI|verb: conj. IV (păzesc/păzești/păzește)|Military Science||
+2028|5654|侦察|a recunoaște|a recunoAște|verb: conj. III (recunosc/recunoști/recunoaște)|Military Science||
+2029|5655|行军|a mărșălui|a mărșăluI|verb: conj. IV (mărșăluiesc/mărșăluiești/mărșăluiește)|Military Science||
+2030|5656|投降|a se preda|a se predA|verb: conj. I (mă predau/te predai/se predă)|Military Science||
+2031|5657|逃跑|a fugi|a fugI|verb: conj. IV (fug/fugi/fuge)|Military Science||
+2032|5658|枪|pușcă|pUșcă|s.f.: pușcă|Military Science||
+2033|5659|刀|cuțit|cuțIt|s.n.: cuțite|Military Science||
+2034|5660|大炮|tun|tUn|s.n.: tunuri|Military Science||
+2035|5663|打招呼|a saluta|a salutA|verb: conj. I (salut/saluți/salută)|Management||
+2036|5664|介绍|a prezenta|a prezentA|verb: conj. I (prezint/prezinți/prezintă)|Management||
+2037|5666|解释|a explica|a explicA|verb: conj. I (explic/explici/explică)|Management||
+2038|5667|提问|a pune întrebări|a pUne întrebAri|verb: conj. III (pun/pui/pune)|Management||
+2039|5668|回答|a răspunde|a răspUnde|verb: conj. III (răspund/răspunzi/răspunde)|Management||
+2040|5669|同意|a fi de acord|a fI de acOrd|verb: conj. nreg. (sunt/ești/este de acord)|Management||
+2041|5670|拒绝|a refuza|a refuzA|verb: conj. I (refuz/refuzi/refuză)|Management||
+2042|5672|推迟|a amâna|a amânA|verb: conj. I (amân/amâni/amână)|Management||
+2043|5674|完成|a finaliza|a finalizA|verb: conj. I (finalizez/finalizezi/finalizează)|Management||
+2044|5675|开始|a începe|a începE|verb: conj. III (încep/începi/începe)|Management||
+2045|5676|继续|a continua|a continuA|verb: conj. I (continui/continui/continuă)|Management||
+2046|5677|停止|a opri|a oprI|verb: conj. IV (opresc/oprești/oprește)|Management||
+2047|5678|唱歌|a cânta|a cântA|verb: conj. I (cânt/cânți/cântă)|Art||
+2048|5679|跳舞|a dansa|a dansA|verb: conj. I (dansez/dansezi/dansează)|Art||
+2049|5680|画画|a desena|a desenA|verb: conj. I (desenez/desenezi/desenează)|Art||
+2050|5681|拍照|a fotografia|a fotografiA|verb: conj. I (fotografiez/fotografiezi/fotografiază)|Art||
+2051|5682|演奏|a cânta la instrument|a cântA la instrumEnt|verb: conj. I (cânt/cânți/cântă)|Art||
+2052|5683|表演|a activa|a activA|verb: conj. I (activez/ activezi/ activează )|Art||
+2053|5684|写作|a scrie|a scrIe|verb: conj. III (scriu/scrii/scrie)|Art||
+2054|5685|雕刻|a sculpta|a sculptA|verb: conj. I (sculptez/sculptezi/sculptează)|Art||
+2055|5686|编织|a tricota|a tricotA|verb: conj. I (tricotez/tricotezi/tricotează)|Art||
+2056|5687|设计|a proiecta|a proiectA|verb: conj. I (proiectez/proiectezi/proiectează)|Art||
+2057|5689|画框|ramă|rAmă|s.f.: rame|Art||
+2058|5690|音符|notă muzicală|nOtă muzicAlă|s.f.: note muzicale|Art||
+2059|5693|天气|vreme|vrEme|s.f.: (fără plural)|Daily Life||
+2060|5694|晴天|timp frumos|tImp frumOs|s.n.: (fără plural)|Daily Life||
+2061|5695|阴天|timp noros|tImp noros|s.n.: (fără plural)|Daily Life||
+2062|5698|刮风|a bate vântul|a bAte vÂntul|verb: conj. III (bate - impersonal)|Daily Life||
+2063|5699|打雷|a tuna|a tunA|verb: conj. I (tună - impersonal)|Daily Life||
+2064|5700|闪电|fulger|fUlger|s.n.: fulgere|Daily Life||
+2065|5701|彩虹|curcubeu|curcubEu|s.n.: curcubeie|Daily Life||
+2066|5702|雾|ceață|cEață|s.f.: cețuri|Daily Life||
+2067|5703|霜|brumă|brUmă|s.f.: brume|Daily Life||
+2068|5704|冰|gheață|ghEață|s.f.: ghețuri|Daily Life||
+2069|5708|暖和|călduros|căldurOs|adj: călduroasă / călduroși / călduroase|Daily Life||
+2070|5709|潮湿|umed|Umed|adj: umedă / umezi / umede|Daily Life||
+2071|5710|干燥|uscat|uscAt|adj: uscată / uscați / uscate|Daily Life||
+2072|5711|预报|prognoză|prognOză|s.f.: prognoze|Daily Life||
+2073|5712|季节|anotimp|anotImp|s.n.: anotimpuri|Daily Life||
+2074|5713|春天|primăvară|primăvAră|s.f.: primăveri|Daily Life||
+2075|5714|夏天|vară|vAră|s.f.: veri|Daily Life||
+2076|5715|秋天|toamnă|tOamnă|s.f.: toamne|Daily Life||
+2077|5716|冬天|iarnă|iArnă|s.f.: ierni|Daily Life||
+2078|5717|方向|direcție|dirEcție|s.f.: direcții|Daily Life||
+2079|5718|北|nord|nOrd|s.n.: (fără plural)|Daily Life||
+2080|5719|南|sud|sUd|s.n.: (fără plural)|Daily Life||
+2081|5720|东|est|Est|s.n.: (fără plural)|Daily Life||
+2082|5721|西|vest|vEst|s.n.: (fără plural)|Daily Life||
+2083|5722|直走|înainte|înAinte|adverb|adverb||
+2084|5723|左转|la stânga|la stÂnga|adverb|adverb||
+2085|5724|右转|la dreapta|la drEapta|adverb|adverb||
+2086|5726|路口|intersecție|intersEcție|s.f.: intersecții|Daily Life||
+2087|5727|人行道|trotuar|trotuAr|s.n.: trotuare|Daily Life||
+2088|5960|好奇心|curiozitate|curiozitAte|s.f.: curiozități|Philosophy||
+2089|5961|惊讶|surpriză|surprIză|s.f.: surprize|Philosophy||
+2090|5962|疑问|îndoială|îndoIală|s.f.: îndoieli|Philosophy||
+2091|5963|清楚|claritate|claritAte|s.f.: clarități|Philosophy||
+2092|5964|混乱|confuzie|confUzie|s.f.: confuzii|Philosophy||
+2093|5965|简单|simplitate|simplitAte|s.f.: simplicități|Philosophy||
+2094|5966|复杂|complexitate|complexitAte|s.f.: complexități|Philosophy||
+2095|5967|重要性|importanță|importAnță|s.f.: importanțe|Philosophy||
+2096|5968|意义|sens|sEns|s.n.: sensuri|Philosophy||
+2097|5970|原因|motiv|motIv|s.n.: motive|Philosophy||
+2098|5976|奖金|bonus|bOnus|s.n.: bonusuri|Economics||
+2099|5980|水电费|utilități|utilitAți|s.f.pl.: utilități|Economics||
+2100|5981|网费|abonament internet|abonamEnt internEt|s.n.: abonamente internet|Economics||
+2101|5982|电话费|abonament telefonic|abonAmEnt telefOnic|s.n.: abonamente telefonice|Economics||
+2102|5987|花费|cheltuieli|cheltuIeli|s.f.pl.: cheltuieli|Economics||
+2103|5992|警察局|secție de poliție|sEcție de polIție|s.f.: secții de poliție|Law||
+2104|5996|证明文件|act doveditor|Act doveditOr|s.n.: acte doveditoare|Law||
+2105|5997|身份|identitate|identitAte|s.f.: identități|Law||
+2106|5998|国籍|naționalitate|naționalitAte|s.f.: naționalități|Law||
+2107|5999|居住地|domiciliu|domicIliu|s.n.: domicilii|Law||
+2108|6000|出生证明|certificat de naștere|certificAt de nAștere|s.n.: certificate de naștere|Law||
+2109|6001|结婚证|certificat de căsătorie|certificAt de căsătorIe|s.n.: certificate de căsătorie|Law||
+2110|6002|离婚证|certificat de divorț|certificAt de divOrț|s.n.: certificate de divorț|Law||
+2111|6005|入学注册|înscriere la școală|înscrIere la șcOală|s.f.: înscrieri la școală|Education||
+2112|6006|学年|an școlar|An școlAr|s.n.: ani școlari|Education||
+2113|6010|上课|a face ore|a fAce Ore|verb: conj. III (fac/faci/face)|Education||
+2114|6011|下课|a termina orele|a terminA Orele|verb: conj. I (termin/termini/termină)|Education||
+2115|6012|上学|a merge la școală|a mErge la șcOală|verb: conj. III (merg/mergi/merge)|Education||
+2116|6013|放学|a termina școala|a terminA șcOala|verb: conj. I (termin/termini/termină)|Education||
+2117|6014|缺课|a absenta|a absentA|verb: conj. I (absentez/absentezi/absentează)|Education||
+2118|6015|请假|a cere învoire|a cEre învoIre|verb: conj. III (cer/ceri/cere)|Education||
+2119|6016|迟到|a întârzia|a întârziA|verb: conj. I (întârzii/întârzii/întârzie)|Education||
+2120|6017|交作业|a preda tema|a predA tEma|verb: conj. I (predau/predai/predă)|Education||
+2121|6018|抄作业|a copia tema|a copiA tEma|verb: conj. I (copiez/copiezi/copiază)|Education||
+2122|6019|复习|a recapitula|a recapitulA|verb: conj. I (recapitulez/recapitulezi/recapitulează)|Education||
+2123|6020|读书|a citi o carte|a citI o cArte|verb: conj. IV (citesc/citești/citește)|Literature||
+2124|6021|借书|a împrumuta o carte|a împrumutA o cArte|verb: conj. I (împrumut/împrumuți/împrumută)|Literature||
+2125|6022|还书|a returna o carte|a returnA o cArte|verb: conj. I (returnez/returnezi/returnează)|Literature||
+2126|6023|推荐书|a recomanda o carte|a recomandA o cArte|verb: conj. I (recomand/recomanzi/recomandă)|Literature||
+2127|6024|写故事|a scrie o poveste|a scrIe o povEste|verb: conj. III (scriu/scrii/scrie)|Literature||
+2128|6025|讲故事|a povesti|a povestI|verb: conj. IV (povestesc/povestești/povestește)|Literature||
+2129|6026|读诗|a citi poezie|a citI poezIe|verb: conj. IV (citesc/citești/citește)|Literature||
+2130|6027|背诗|a memora o poezie|a memorA o poezIe|verb: conj. I (memorez/memorezi/memorează)|Literature||
+2131|6028|理解故事|a înțelege povestea|a înțelEge povEstea|verb: conj. III (înțeleg/înțelegi/înțelege)|Literature||
+2132|6029|描写人物|a descrie un personaj|a descriE un personAj|verb: conj. III (descriu/descrii/descrie)|Literature||
+2133|6030|剧情|fir narativ|fIr naratIv|s.n.: fire narative|Literature||
+2134|6031|主人公|protagonist|protagonIst|s.m.: protagoniști|Literature||
+2135|6032|配角|personaj secundar|personAj secundAr|s.n.: personaje secundare|Literature||
+2136|6034|结尾|sfârșit|sfÂrșit|s.n.: sfârșituri|Literature||
+2137|6035|出生|naștere|nAștere|s.f.: nașteri|History||
+2138|6036|死亡|moarte|mOarte|s.f.: morți|History||
+2139|6038|家庭|familie|famIlIe|s.f.: familii|History||
+2140|6039|祖先|strămoș|strAmOș|s.m.: strămoși|History||
+2141|6040|后代|urmași|urmAși|s.m.pl.: urmași|History||
+2142|6042|故乡|locul natal|locUl natAl|s.n.: locuri natale|History||
+2143|6043|移民|emigrant|emigrAnt|s.m.: emigranți|History||
+2144|6044|难民|refugiat|refugiAt|s.m.: refugiați|History||
+2145|6046|探险家|explorator|exploratOr|s.m.: exploratori|History||
+2146|6047|发明家|inventator|inventatOr|s.m.: inventatori|History||
+2147|6048|科学家|om de știință|Om de știInță|s.m.: oameni de știință|History||
+2148|6049|艺术家|artist|artIst|s.m.: artiști|History||
+2149|6050|太阳系|sistemul solar|sistEmul solAr|s.n.: (fără plural)|Science||
+2150|6051|行星|planetă|planEtă|s.f.: planete|Science||
+2151|6053|彗星|cometă|comEtă|s.f.: comete|Science||
+2152|6054|流星|meteorit|meteoriT|s.m.: meteoriti|Science||
+2153|6056|大气层|atmosferă|atmosfEră|s.f.: atmosfere|Science||
+2154|6057|氧气|oxigen|oxigEn|s.n.: (fără plural)|Science||
+2155|6058|二氧化碳|dioxid de carbon|dioxId de cArbon|s.n.: (fără plural)|Science||
+2156|6059|氢气|hidrogen|hidrogEn|s.n.: (fără plural)|Science||
+2157|6060|氮气|azot|azOt|s.n.: (fără plural)|Science||
+2158|6061|水蒸气|vapori de apă|vapOri de Apă|s.m.pl.: vapori de apă|Science||
+2159|6062|沸点|punct de fierbere|pUnct de fiErbere|s.n.: puncte de fierbere|Science||
+2160|6063|冰点|punct de îngheț|pUnct de înghEț|s.n.: puncte de îngheț|Science||
+2161|6064|化学反应|reacție chimică|reAcție chimică|s.f.: reacții chimice|Science||
+2162|6066|客厅|sufragerie|sufraerIe|s.f.: sufragerii|Engineering||
+2163|6067|卧室|dormitor|dormitOr|s.n.: dormitoare|Engineering||
+2164|6069|厕所|toaletă|toAletă|s.f.: toalete|Engineering||
+2165|6070|水管|conductă de apă|condUctă de Apă|s.f.: conducte de apă|Engineering||
+2166|6071|水龙头|robinet|robinEt|s.n.: robinete|Engineering||
+2167|6073|洗碗机|mașină de spălat vase|mașInă de spălAt vAse|s.f.: mașini de spălat vase|Engineering||
+2168|6074|烤箱|cuptor|cuptOr|s.n.: cuptoare|Engineering||
+2169|6075|炉子|aragaz|aragAz|s.n.: aragazuri|Engineering||
+2170|6078|吸尘器|aspirator|aspiratOr|s.n.: aspiratoare|Engineering||
+2171|6080|西瓜|pepene verde|pepEne vErde|s.m.: pepeni verzi|Agriculture||
+2172|6081|甜瓜|pepene galben|pepEne gAlben|s.m.: pepeni galbeni|Agriculture||
+2173|6082|梨|pară|pAră|s.f.: pere|Agriculture||
+2174|6083|桃子|piersică|piErsică|s.f.: piersici|Agriculture||
+2175|6084|李子|prună|prUnă|s.f.: prune|Agriculture||
+2176|6085|樱桃|cireașă|cirEașă|s.f.: cireșe|Agriculture||
+2177|6086|杏子|caisă|cAisă|s.f.: caise|Agriculture||
+2178|6087|蓝莓|afină|afInă|s.f.: afine|Agriculture||
+2179|6088|覆盆子|zmeură|zmEură|s.f.: zmeure|Agriculture||
+2180|6089|橙子|portocală|portocAlă|s.f.: portocale|Agriculture||
+2181|6090|柠檬|lămâie|lămÂie|s.f.: lămâi|Agriculture||
+2182|6092|菠萝|ananas|ananAs|s.m.: ananași|Agriculture||
+2183|6093|芒果|mango|mAngo|s.n.: mangouri|Agriculture||
+2184|6094|椰子|nucă de cocos|nUcă de cocOs|s.f.: nuci de cocos|Agriculture||
+2185|6095|感冒|răceală|răceAlă|s.f.: răceli|Medicine||
+2186|6096|流感|gripă|grIpă|s.f.: gripe|Medicine||
+2187|6097|发烧|febră|fEbră|s.f.: febre|Medicine||
+2188|6098|咳嗽|tuse|tUse|s.f.: tuse|Medicine||
+2189|6099|打喷嚏|a strănuta|a strAnutA|verb: conj. I (strănut/strănutați/strănută)|Medicine||
+2190|6100|流鼻涕|nas care curge|nAs cAre cUrge|s.n.: (fără plural)|Medicine||
+2191|6101|喉咙痛|durere în gât|durEre în gÂt|s.f.: dureri în gât|Medicine||
+2192|6102|耳朵痛|durere de urechi|durEre de urEchi|s.f.: dureri de urechi|Medicine||
+2193|6103|眼睛痛|durere de ochi|durEre de Ochi|s.f.: dureri de ochi|Medicine||
+2194|6104|腰疼|durere de spate|durEre de spAte|s.f.: dureri de spate|Medicine||
+2195|6105|关节疼|durere de articulații|durEre de articulAții|s.f.: dureri de articulații|Medicine||
+2196|6106|肌肉疼|durere musculară|durEre musculAră|s.f.: dureri musculare|Medicine||
+2197|6107|消化不良|indigestie|indigestIe|s.f.: indigestii|Medicine||
+2198|6108|晕车|rău de mișcare|rĂu de mișcAre|s.n.: (fără plural)|Medicine||
+2199|6109|晒伤|arsură solară|arsUră solAră|s.f.: arsuri solare|Medicine||
+2200|6110|训练|antrenament|antrenamEnt|s.n.: antrenamente|Military Science||
+2201|6111|纪律|disciplină|discIplInă|s.f.: discipline|Military Science||
+2202|6113|忠诚|loialitate|loialitAte|s.f.: loialități|Military Science||
+2203|6117|军衔|grad|grAd|s.n.: grade|Military Science||
+2204|6118|军营|cazarmă|cazArmă|s.f.: cazărmi|Military Science||
+2205|6121|指南针|busolă|busOlă|s.f.: busole|Military Science||
+2206|6122|无线电|radio|rAdio|s.n.: radiouri|Military Science||
+2207|6123|信号|semnal|semnAl|s.n.: semnale|Military Science||
+2208|6124|任务|misiune|misiUne|s.f.: misiuni|Military Science||
+2209|6125|公司|companie|companIe|s.f.: companii|Management||
+2210|6126|部门|departament|departamEnt|s.n.: departamente|Management||
+2211|6130|工作时间|program de lucru|progrAm de lUcru|s.n.: programe de lucru|Management||
+2212|6131|工作场所|loc de muncă|lOc de mUncă|s.n.: locuri de muncă|Management||
+2213|6132|工资单|fluturaș de salariu|fluturAș de salAriu|s.n.: fluturași de salariu|Management||
+2214|6133|面试|interviu|intervIu|s.n.: interviuri|Management||
+2215|6134|申请工作|cerere de angajare|cErere de angajAre|s.f.: cereri de angajare|Management||
+2216|6135|简历|curriculum vitae|currIculum vItae|s.n.: curriculum vitae|Management||
+2217|6136|推荐信|scrisoare de recomandare|scrisoAre de recomandAre|s.f.: scrisori de recomandare|Management||
+2218|6137|晋升|promovare|promovAre|s.f.: promovări|Management||
+2219|6138|加薪|mărire de salariu|mărIre de salAriu|s.f.: măriri de salariu|Management||
+2220|6139|辞职|demisie|demIsie|s.f.: demisii|Management||
+2221|6140|音乐会|concert|concErt|s.n.: concerte|Art||
+2222|6141|画展|expoziție de pictură|expozIție de pictUră|s.f.: expoziții de pictură|Art||
+2223|6142|电影院|cinematograf|cinematogRAf|s.n.: cinematografe|Art||
+2224|6149|音乐节|festival de muzică|festIvAl de mUzică|s.n.: festivaluri de muzică|Art||
+2225|6150|电影节|festival de film|festIvAl de fIlm|s.n.: festivaluri de film|Art||
+2226|6151|演唱会|recital|recitAl|s.n.: recitaluri|Art||
+2227|6155|早上好|bună dimineața|bUnă dimineAța|expr.: (invariabil)|Daily Life||
+2228|6156|下午好|bună ziua|bUnă zIua|expr.: (invariabil)|Daily Life||
+2229|6157|晚上好|bună seara|bUnă sEara|expr.: (invariabil)|Daily Life||
+2230|6158|晚安|noapte bună|nOapte bUnă|expr.: (invariabil)|Daily Life||
+2231|6159|你好|bună|bUnă|expr.: (invariabil)|Daily Life||
+2232|6160|再见|la revedere|la revedEre|expr.: (invariabil)|Daily Life||
+2233|6161|谢谢|mulțumesc|mulțumEsc|verb: conj. IV|Daily Life||
+2234|6162|不客气|cu plăcere|cu plăcEre|expr.: (invariabil)|Daily Life||
+2235|6163|对不起|îmi pare rău|Îmi pAre rĂu|expr.: (invariabil)|Daily Life||
+2236|6164|没关系|nu-i nimic|nu-i nimIc|expr.: (invariabil)|Daily Life||
+2237|6165|请|vă rog|vă rOg|expr.: (invariabil)|Daily Life||
+2238|6167|不|nu|nU|adverb|adverb||
+2239|6168|也许|poate|pOate|adverb|adverb||
+2240|6169|当然|bineînțeles|bineînțelEs|adverb|adverb||
+2241|6170|明白了|am înțeles|Am înțelEs|expr.: (invariabil)|Daily Life||
+2242|6171|我不明白|nu înțeleg|nu înțelEg|expr.: (invariabil)|Daily Life||
+2243|6172|能再说一遍吗|puteți repeta|putEți repetA|expr.: (invariabil)|Daily Life||
+2244|6173|说慢点|vorbiți mai încet|vorbIți mAi încEt|expr.: (invariabil)|Daily Life||
+2245|6174|怎么说|cum se spune|cUm se spUne|expr.: (invariabil)|Daily Life||
+2246|6175|用罗马尼亚语怎么说|cum se zice în română|cUm se zIce în romAnă|expr.: (invariabil)|Daily Life||
+2247|6176|我不会说罗马尼亚语|nu vorbesc română|nu vorbEsc romAnă|expr.: (invariabil)|Daily Life||
+2248|6177|你会说英语吗|vorbiți engleza|vorbIți englEza|expr.: (invariabil)|Daily Life||
+2249|6178|我叫|mă numesc|mă numEsc|expr.: (invariabil)|Daily Life||
+2250|6179|你叫什么名字|cum vă numiți|cUm vă numIți|expr.: (invariabil)|Daily Life||
+2251|6180|我来自|vin din|vIn dIn|expr.: (invariabil)|Daily Life||
+2252|6181|你来自哪里|de unde veniți|de Unde venIți|expr.: (invariabil)|Daily Life||
+2253|6182|多大了|câți ani aveți|câți Ani avEți|expr.: (invariabil)|Daily Life||
+2254|6183|我今年|am … ani|Am … Ani|expr.: (invariabil)|Daily Life||
+2255|6184|很高兴认识你|încântat de cunoștință|încântAt de cunoștInță|= îmi pare bine|Daily Life||
+2256|6185|住在哪里|unde locuiți|Unde locuIți|expr.: (invariabil)|Daily Life||
+2257|6186|我住在|locuiesc în|locuIesc În|expr.: (invariabil)|Daily Life||
+2258|6187|喜欢|a-i plăcea|a-i plăcEa|verb: conj. II (îmi place/îți place/îi place)|Daily Life||
+2259|6188|不喜欢|a nu-i plăcea|a nu-i plăcEa|verb: conj. II (nu-mi place/nu-ți place/nu-i place)|Daily Life||
+2260|6190|顶端的小突起|moț|mOț|s.n: moțuri / moațe|Daily Life||
+2261|6191|汉字|Română|Accent|Informație gramaticală|Clasificare||
+2262|6192|幸福|fericire|fericIre|s.f.: (fără plural)|Philosophy||
+2263|6193|痛苦|suferință|suferInță|s.f.: suferințe|Philosophy||
+2264|6194|希望|speranță|speRAnță|s.f.: speranțe|Philosophy||
+2265|6195|恐惧|frică|frIcă|s.f.: frici|Philosophy||
+2266|6197|耐心|răbdare|răbdAre|s.f.: (fără plural)|Philosophy||
+2267|6198|诚实|onestitate|onestitAte|s.f.: (fără plural)|Philosophy||
+2268|6199|谦逊|modestie|modEstIe|s.f.: (fără plural)|Philosophy||
+2269|6200|骄傲|mândrie|mândrIe|s.f.: mândrii|Philosophy||
+2270|6201|嫉妒|invidie|invIdIe|s.f.: invidii|Philosophy||
+2271|6202|感激|recunoștință|recunoștInță|s.f.: (fără plural)|Philosophy||
+2272|6203|宽恕|iertare|iertAre|s.f.: iertări|Philosophy||
+2273|6205|信任|încredere|încredEre|s.f.: încrederi|Philosophy||
+2274|6206|友谊|prietenie|priEtenIe|s.f.: prietenii|Philosophy||
+2275|6207|职业|profesie|profesIe|s.f.: profesii|Economics||
+2276|6208|工人|muncitor|muncitOr|s.m.: muncitori|Economics||
+2277|6209|医生|medic|mEdic|s.m.: medici|Economics||
+2278|6210|护士|asistentă medicală|asistEntă medicAlă|s.f.: asistente medicale|Economics||
+2279|6211|老师|profesor|profEsor|s.m.: profesori|Economics||
+2280|6212|工程师|inginer|ingInEr|s.m.: ingineri|Economics||
+2281|6213|建筑师|arhitect|ArhitEct|s.m.: arhitecți|Economics||
+2282|6215|会计师|contabil|contAbil|s.m.: contabili|Economics||
+2283|6216|厨师|bucătar|bucătAr|s.m.: bucătari|Economics||
+2284|6217|司机|șofer|șofEr|s.m.: șoferi|Economics||
+2285|6218|农民|agricultor|agricultOr|s.m.: agricultori|Economics||
+2286|6219|理发师|frizer|frizEr|s.m.: frizeri|Economics||
+2287|6220|售货员|vânzător|vânzătOr|s.m.: vânzători|Economics||
+2288|6221|消防员|pompier|pompiEr|s.m.: pompieri|Economics||
+2289|6222|护照检查|control de pașapoarte|contrOl de pașapoArte|s.n.: controale de pașapoarte|Law||
+2290|6223|海关|vamă|vAmă|s.f.: vămi|Law||
+2291|6224|边境|frontieră|frontiEră|s.f.: frontiere|Law||
+2292|6225|入境|intrare în țară|intrAre în țAră|s.f.: intrări în țară|Law||
+2293|6226|出境|ieșire din țară|iEșire din țAră|s.f.: ieșiri din țară|Law||
+2294|6227|申报|a declara|a declarA|verb: conj. I (declar/declari/declară)|Law||
+2295|6228|禁止入境|interzicere a intrării|interzicEre a intrArii|s.f.: interziceri ale intrării|Law||
+2296|6229|驱逐出境|expulzare|expulzAre|s.f.: expulzări|Law||
+2297|6230|庇护申请|cerere de azil|cErere de azIl|s.f.: cereri de azil|Law||
+2298|6231|工作许可|permis de muncă|permIs de mUncă|s.n.: permise de muncă|Law||
+2299|6232|居留证|permis de rezidență|permIs de rezidEnță|s.n.: permise de rezidență|Law||
+2300|6233|罚单|proces-verbal|procEs-verbAl|s.n.: procese-verbale|Law||
+2301|6234|警告|avertisment|avertismEnt|s.n.: avertismente|Law||
+2302|6236|假释|eliberare condiționată|eliberAre condiționAtă|s.f.: eliberări condiționate|Law||
+2303|6237|字母表|alfabet|alfabEt|s.n.: alfabete|Education||
+2304|6238|大写字母|literă mare|lIteră mAre|s.f.: litere mari|Education||
+2305|6239|小写字母|literă mică|lIteră mIcă|s.f.: litere mici|Education||
+2306|6240|数字|cifră|cIfră|s.f.: cifre|Education||
+2307|6241|加法|adunare|adunAre|s.f.: adunări|Education||
+2308|6242|减法|scădere|scădEre|s.f.: scăderi|Education||
+2309|6243|乘法|înmulțire|înmulțIre|s.f.: înmulțiri|Education||
+2310|6244|除法|împărțire|împărțIre|s.f.: împărțiri|Education||
+2311|6245|等于|egal|egAl|adj: egală / egali / egale|Education||
+2312|6246|加|plus|plUs|prep.: (invariabil)|Education||
+2313|6247|减|minus|mInus|prep.: (invariabil)|Education||
+2314|6248|乘以|înmulțit cu|înmulțIt cU|expr.: (invariabil)|Education||
+2315|6249|除以|împărțit la|împărțIt lA|expr.: (invariabil)|Education||
+2316|6250|百分比|procent|procEnt|s.n.: procente|Education||
+2317|6251|分数|fracție|frAcție|s.f.: fracții|Education||
+2318|6253|明喻|comparație|comparAție|s.f.: comparații|Literature||
+2319|6255|夸张|exagerare|exagerAre|s.f.: exagerări|Literature||
+2320|6256|重复|repetiție|repetIție|s.f.: repetiții|Literature||
+2321|6257|押韵|rimă|rImă|s.f.: rime|Literature||
+2322|6259|诗节|strofă|strOfă|s.f.: strofe|Literature||
+2323|6260|诗行|vers|vErs|s.n.: versuri|Literature||
+2324|6263|场景设定|cadru narativ|cAdru naratIv|s.n.: cadre narative|Literature||
+2325|6264|冲突|conflict|conflIct|s.n.: conflicte|Literature||
+2326|6266|解决方案|rezolvare|rezolvAre|s.f.: rezolvări|Literature||
+2327|6268|中世纪|Evul Mediu|Evul mEdiu|s.n.: (fără plural)|History||
+2328|6270|工业革命|Revoluție Industrială|revolUție industriAlă|s.f.: (fără plural)|History||
+2329|6271|世界大战|Război Mondial|răzbOi mondiAl|s.n.: Războaie Mondiale|History||
+2330|6272|独立战争|Război de Independență|răzbOi de independEnță|s.n.: Războaie de Independență|History||
+2331|6273|殖民地时代|epoca colonială|Epoca colonIAlă|s.f.: (fără plural)|History||
+2332|6274|革命领袖|lider revoluționar|lIder revoluționAr|s.m.: lideri revoluționari|History||
+2333|6275|历史事件|eveniment istoric|evenimEnt istOric|s.n.: evenimente istorice|History||
+2334|6276|历史文献|document istoric|documEnt istOric|s.n.: documente istorice|History||
+2335|6277|考古发现|descoperire arheologică|descoperIre arheologică|s.f.: descoperiri arheologice|History||
+2336|6280|古代文字|scriere antică|scriEre Antică|s.f.: scrieri antice|History||
+2337|6281|考古挖掘|săpătură arheologică|săpătUră arheologică|s.f.: săpături arheologice|History||
+2338|6282|固体|solid|sOlid|s.n.: solide|Science||
+2339|6283|液体|lichid|lIchid|s.n.: lichide|Science||
+2340|6285|融化|a se topi|a se topI|verb: conj. IV (mă topesc/te topești/se topește)|Science||
+2341|6286|冻结|a îngheța|a înghețA|verb: conj. I (îngheț/îngheți/îngheață)|Science||
+2342|6287|蒸发|a se evapora|a se evaporA|verb: conj. I (mă evapor/te evapori/se evaporă)|Science||
+2343|6288|燃烧|a arde|a Arde|verb: conj. III (ard/arzi/arde)|Science||
+2344|6289|混合|a amesteca|a amestecA|verb: conj. I (amestec/amesteci/amestecă)|Science||
+2345|6290|分离|a separa|a separA|verb: conj. I (separ/separi/separă)|Science||
+2346|6291|溶解|a dizolva|a dizolvA|verb: conj. I (dizolv/dizolvi/dizolvă)|Science||
+2347|6292|重量|greutate|greutAte|s.f.: greutăți|Science||
+2348|6293|体积|volum|volUm|s.n.: volume|Science||
+2349|6294|面积|suprafață|suprafAță|s.f.: suprafețe|Science||
+2350|6295|长度|lungime|lungIme|s.f.: lungimi|Science||
+2351|6296|宽度|lățime|lățIme|s.f.: lățimi|Science||
+2352|6297|打开|a deschide|a deschIde|verb: conj. III (deschid/deschizi/deschide)|Engineering||
+2353|6298|关闭|a închide|a închIde|verb: conj. III (închid/închizi/închide)|Engineering||
+2354|6299|修理|a repara|a reparA|verb: conj. I (repar/repari/repară)|Engineering||
+2355|6300|安装|a instala|a instalA|verb: conj. I (instalez/instalezi/instalează)|Engineering||
+2356|6301|拆除|a demonta|a demontA|verb: conj. I (demontez/demontezi/demontează)|Engineering||
+2357|6302|建造|a construi|a construI|verb: conj. IV (construiesc/construiești/construiește)|Engineering||
+2358|6303|拆毁|a demola|a demolA|verb: conj. I (demolez/demolezi/demolează)|Engineering||
+2359|6304|维修|a întreține|a întrețIne|verb: conj. III (întrețin/întrețini/întreține)|Engineering||
+2360|6305|连接|a conecta|a conectA|verb: conj. I (conectez/conectezi/conectează)|Engineering||
+2361|6306|断开|a deconecta|a deconectA|verb: conj. I (deconectez/deconectezi/deconectează)|Engineering||
+2362|6307|充电|a încărca|a încărcA|verb: conj. I (încarc/încarci/încarcă)|Engineering||
+2363|6309|开机|a porni|a pornI|verb: conj. IV (pornesc/pornești/pornește)|Engineering||
+2364|6310|更新|a actualiza|a actualizA|verb: conj. I (actualizez/actualizezi/actualizează)|Engineering||
+2365|6311|下载|a descărca|a descărcA|verb: conj. I (descarc/descarci/descarcă)|Engineering||
+2366|6312|浇花|a uda florile|a udA flOrile|verb: conj. I (ud/uzi/udă)|Agriculture||
+2367|6313|种花|a planta flori|a plantA flOri|verb: conj. I (plantez/plantezi/plantează)|Agriculture||
+2368|6314|除草|a plivit|a plIvit|verb: conj. IV (plivesc/plivești/plivește)|Agriculture||
+2369|6315|施肥|a îngrășa|a îngrășA|verb: conj. I (îngras/îngrași/îngrașă)|Agriculture||
+2370|6317|喂鸡|a hrăni găinile|a hrănI găInile|verb: conj. IV (hrănesc/hrănești/hrănește)|Agriculture||
+2371|6318|挤牛奶|a mulge vaca|a mUlge vAca|verb: conj. III (mulg/mulgi/mulge)|Agriculture||
+2372|6319|种树|a planta copaci|a plantA copAci|verb: conj. I (plantez/plantezi/plantează)|Agriculture||
+2373|6320|摘果子|a culege fructe|a culEge frUcte|verb: conj. III (culeg/culegi/culege)|Agriculture||
+2374|6321|翻土|a ara|a arA|verb: conj. I (ar/ari/ară)|Agriculture||
+2375|6322|菜地|grădină de zarzavaturi|grădInă de zarzavAtUri|s.f.: grădini de zarzavaturi|Agriculture||
+2376|6325|农场主|fermier|fermiEr|s.m.: fermieri|Agriculture||
+2377|6326|庄稼|cultură agricolă|cultUră agrIcolă|s.f.: culturi agricole|Agriculture||
+2378|6327|医生问诊|consultație medicală|consultAție medicAlă|s.f.: consultații medicale|Medicine||
+2379|6328|血压|tensiune arterială|tensiUne arterIAlă|s.f.: tensiuni arteriale|Medicine||
+2380|6329|心跳|bătăi ale inimii|bătAi ale inImii|s.f.pl.: bătăi ale inimii|Medicine||
+2381|6330|呼吸|respirație|respirAție|s.f.: respirații|Medicine||
+2382|6331|测量血压|a măsura tensiunea|a măsurA tensiUnea|verb: conj. I (măsor/măsori/măsoară)|Medicine||
+2383|6332|听诊|a asculta cu stetoscopul|a ascultA cu stetoscOpul|verb: conj. I (ascult/asculți/ascultă)|Medicine||
+2384|6333|开药方|a prescrie|a prescriE|verb: conj. III (prescriu/prescrii/prescrie)|Medicine||
+2385|6334|打石膏|a pune ghips|a pUne ghIps|verb: conj. III (pun/pui/pune)|Medicine||
+2386|6335|住院|a fi internat|a fI internAt|verb: conj. nreg. (sunt/ești/este internat)|Medicine||
+2387|6336|出院|a fi externat|a fI externAt|verb: conj. nreg. (sunt/ești/este externat)|Medicine||
+2388|6337|挂号|a face o programare|a fAce o programAre|verb: conj. III (fac/faci/face)|Medicine||
+2389|6338|看急诊|a merge la urgențe|a mErge la urgEnțe|verb: conj. III (merg/mergi/merge)|Medicine||
+2390|6339|过敏测试|test alergologic|tEst alergologIc|s.n.: teste alergologice|Medicine||
+2391|6341|化验单|buletin de analize|buletIn de analIze|s.n.: buletine de analize|Medicine||
+2392|6342|保卫祖国|a apăra patria|a apărA pAtria|verb: conj. I (apăr/aperi/apără)|Military Science||
+2393|6344|服兵役|a satisface stagiul militar|a satisfAce stAgiul militAr|verb: conj. III (satisfac/satisfaci/satisface)|Military Science||
+2394|6345|站岗|a sta de gardă|a stA de gArdă|verb: conj. I (stau/stai/stă)|Military Science||
+2395|6346|巡逻|a patrula|a patrulA|verb: conj. I (patrulez/patrulezi/patrulează)|Military Science||
+2396|6348|敬礼|a saluta militar|a salutA militAr|verb: conj. I (salut/saluți/salută)|Military Science||
+2397|6349|阵地|poziție|pozIție|s.f.: poziții|Military Science||
+2398|6350|前线|linie de front|lInie de frOnt|s.f.: linii de front|Military Science||
+2399|6351|后方|spatele frontului|spAtele frOntului|s.n.: (fără plural)|Military Science||
+2400|6352|战场|câmp de bătălie|cÂmp de bătAlIe|s.n.: câmpuri de bătălie|Military Science||
+2401|6353|碉堡|buncăr|bUncăr|s.n.: buncăre|Military Science||
+2402|6354|壕沟|șanț|șAnț|s.n.: șanțuri|Military Science||
+2403|6355|铁丝网|sârmă ghimpată|sÂrmă ghimpAtă|s.f.: sârme ghimpate|Military Science||
+2404|6356|军事地图|hartă militară|hArtă militAră|s.f.: hărți militare|Military Science||
+2405|6357|招聘|a recruta|a recrutA|verb: conj. I (recrutez/recrutezi/recrutează)|Management||
+2406|6358|培训|a instrui|a instruI|verb: conj. IV (instruiesc/instruiești/instruiește)|Management||
+2407|6359|评估员工|a evalua angajații|a evaluA angajAții|verb: conj. I (evaluez/evaluezi/evaluează)|Management||
+2408|6360|解雇|a concedia|a concediA|verb: conj. I (concediez/concediezi/concediază)|Management||
+2409|6361|开会|a face o ședință|a fAce o ședInță|verb: conj. III (fac/faci/face)|Management||
+2410|6362|做报告|a face un raport|a fAce un rapOrt|verb: conj. III (fac/faci/face)|Management||
+2411|6363|分配任务|a distribui sarcini|a distribuI sArcini|verb: conj. IV (distribuiesc/distribuiești/distribuiește)|Management||
+2412|6364|检查工作|a verifica munca|a verificA mUnca|verb: conj. I (verific/verifici/verifică)|Management||
+2413|6365|设定目标|a stabili obiective|a stabilI obiectIve|verb: conj. IV (stabilesc/stabilești/stabilește)|Management||
+2414|6366|监督|a superviza|a supervizA|verb: conj. I (supervizez/supervizezi/supervizează)|Management||
+2415|6367|协调|a coordona|a coordonA|verb: conj. I (coordonez/coordonezi/coordonează)|Management||
+2416|6368|激励员工|a motiva angajații|a motivA angajAții|verb: conj. I (motivez/motivezi/motivează)|Management||
+2417|6369|表彰|a recompensa|a recompensA|verb: conj. I (recompensez/recompensezi/recompensează)|Management||
+2418|6370|批评|a critica|a criticA|verb: conj. I (critic/critici/critică)|Management||
+2419|6371|改进|a îmbunătăți|a îmbunătățI|verb: conj. IV (îmbunătățesc/îmbunătățești/îmbunătățește)|Management||
+2420|6372|画一幅画|a picta un tablou|a pictA un tablOu|verb: conj. I (pictez/pictezi/pictează)|Art||
+2421|6373|拍一张照|a face o fotografie|a fAce o fotografIe|verb: conj. III (fac/faci/face)|Art||
+2422|6374|写一首诗|a scrie o poezie|a scrIe o poEzie|verb: conj. III (scriu/scrii/scrie)|Art||
+2423|6375|唱一首歌|a cânta un cântec|a cântA un cÂntec|verb: conj. I (cânt/cânți/cântă)|Art||
+2424|6376|演奏乐器|a cânta la un instrument|a cântA la un instrumEnt|verb: conj. I (cânt/cânți/cântă)|Art||
+2425|6377|跳一支舞|a dansa un dans|a dansA un dAns|verb: conj. I (dansez/dansezi/dansează)|Art||
+2426|6378|演一个角色|a juca un rol|a jucA un rOl|verb: conj. I (joc/joci/joacă)|Art||
+2427|6379|导演一部电影|a regiza un film|a regizA un fIlm|verb: conj. I (regizez/regizezi/regizează)|Art||
+2428|6380|展览作品|a expune lucrări|a expUne lucrĂri|verb: conj. III (expun/expui/expune)|Art||
+2429|6381|欣赏艺术|a aprecia arta|a apreciA Arta|verb: conj. I (apreciez/apreciezi/apreciază)|Art||
+2430|6382|收藏艺术品|a colecționa obiecte de artă|a colecționA obIecte de Artă|verb: conj. I (colecționez/colecționezi/colecționează)|Art||
+2431|6383|批评艺术|a critica arta|a criticA Arta|verb: conj. I (critic/critici/critică)|Art||
+2432|6384|创作音乐|a compune muzică|a compUne mUzică|verb: conj. III (compun/compui/compune)|Art||
+2433|6385|表演节目|a prezenta un spectacol|a prezentA un spectacOl|verb: conj. I (prezint/prezinți/prezintă)|Art||
+2434|6386|参观博物馆|a vizita un muzeu|a vizitA un muzEu|verb: conj. I (vizitez/vizitezi/vizitează)|Art||
+2435|6387|去购物|a merge la cumpărături|a mErge la cumpărătUri|verb: conj. III (merg/mergi/merge)|Daily Life||
+2436|6388|去餐厅|a merge la restaurant|a mErge la restaurAnt|verb: conj. III (merg/mergi/merge)|Daily Life||
+2437|6389|点菜|a comanda mâncare|a comandA mâncAre|verb: conj. I (comand/comanzi/comandă)|Daily Life||
+2438|6390|结账|a cere nota de plată|a cEre nOta de plAtă|verb: conj. III (cer/ceri/cere)|Daily Life||
+2439|6391|给小费|a lăsa bacșiș|a lăsA bacșIș|verb: conj. I (las/lași/lasă)|Daily Life||
+2440|6392|预订餐厅|a rezerva la restaurant|a rezervA la restaurAnt|verb: conj. I (rezerv/rezervi/rezervă)|Daily Life||
+2441|6393|打包带走|a lua la pachet|a luA la pachEt|verb: conj. I (iau/iei/ia)|Daily Life||
+2442|6394|去银行|a merge la bancă|a mErge la bAncă|verb: conj. III (merg/mergi/merge)|Daily Life||
+2443|6395|取款|a retrage bani|a retrAge bAni|verb: conj. III (retrag/retragi/retrage)|Daily Life||
+2444|6396|存款|a depune bani|a depUne bAni|verb: conj. III (depun/depui/depune)|Daily Life||
+2445|6397|换外币|a schimba valută|a schimbA valUtă|verb: conj. I (schimb/schimbi/schimbă)|Daily Life||
+2446|6398|寄包裹|a trimite un colet|a trimIte un colEt|verb: conj. III (trimit/trimiți/trimite)|Daily Life||
+2447|6399|收包裹|a primi un colet|a primI un colEt|verb: conj. IV (primesc/primești/primește)|Daily Life||
+2448|6400|买票|a cumpăra un bilet|a cumpărA un bilEt|verb: conj. I (cumpăr/cumperi/cumpără)|Daily Life||
+2449|6401|检票|a verifica biletul|a verificA bilEtul|verb: conj. I (verific/verifici/verifică)|Daily Life||
+2450|6402|赶公交|a prinde autobuzul|a prInde autobUzul|verb: conj. III (prind/prinzi/prinde)|Daily Life||
+2451|6404|找停车位|a găsi un loc de parcare|a găsI un lOc de parcAre|verb: conj. IV (găsesc/găsești/găsește)|Daily Life||
+2452|6405|加油|a face plinul|a fAce plInul|verb: conj. III (fac/faci/face)|Daily Life||
+2453|6406|洗车|a spăla mașina|a spălA mașIna|verb: conj. I (spăl/speli/spală)|Daily Life||
+2454|6407|修车|a repara mașina|a reparA mașIna|verb: conj. I (repar/repari/repară)|Daily Life||
+2455|6408|租车|a închiria o mașină|a închiriA o mașInă|verb: conj. I (închiriez/închiriezi/închiriază)|Daily Life||
+2456|6409|打出租车|a lua un taxi|a luA un tAxi|verb: conj. I (iau/iei/ia)|Daily Life||
+2457|6410|叫外卖|a comanda mâncare la domiciliu|a comandA mâncAre la domicIliu|verb: conj. I (comand/comanzi/comandă)|Daily Life||
+2458|6411|网上购物|a cumpăra online|a cumpărA onlIne|verb: conj. I (cumpăr/cumperi/cumpără)|Daily Life||
+2459|6412|退货|a returna un produs|a returnA un prodUs|verb: conj. I (returnez/returnezi/returnează)|Daily Life||
+2460|6413|投诉|a face o reclamație|a fAce o reclamAție|verb: conj. III (fac/faci/face)|Daily Life||
+2461|6414|换货|a face un schimb|a fAce un schImb|verb: conj. III (fac/faci/face)|Daily Life||
+2462|6416|取消预约|a anula o programare|a anulA o programAre|verb: conj. I (anulez/anulezi/anulează)|Daily Life||
+2463|6418|感觉|sentiment|sentimEnt|s.n.: sentimente|Philosophy||
+2464|6419|情绪|emoție|emOție|s.f.: emoții|Philosophy||
+2465|6420|快乐|bucurie|bucurIe|s.f.: bucurii|Philosophy||
+2466|6421|悲伤|tristețe|tristEțe|s.f.: (fără plural)|Philosophy||
+2467|6422|愤怒|furie|furIe|s.f.: furii|Philosophy||
+2468|6423|平静|liniște|lInIște|s.f.: (fără plural)|Philosophy||
+2469|6425|满足|mulțumire|mulțumIre|s.f.: (fără plural)|Philosophy||
+2470|6426|失望|dezamăgire|dezamăgIre|s.f.: dezamăgiri|Philosophy||
+2471|6428|羞耻感|rușine|rușIne|s.f.: (fără plural)|Philosophy||
+2472|6429|嫉妒感|gelozie|gelozIe|s.f.: gelozii|Philosophy||
+2473|6430|孤独感|singurătate|singurătAte|s.f.: (fără plural)|Philosophy||
+2474|6431|安全感|siguranță|siguRAnță|s.f.: siguranțe|Philosophy||
+2475|6432|归属感|sentiment de apartenență|sentimEnt de apartenEnță|s.n.: sentimente de apartenență|Philosophy||
+2476|6433|餐厅服务员|chelner|chElner|s.m.: chelneri|Economics||
+2477|6434|邮递员|poștas|poștAș|s.m.: poștași|Economics||
+2478|6435|清洁工|curățitor|curățitOr|s.m.: curățitori|Economics||
+2479|6436|保安|paznic|pAznic|s.m.: paznici|Economics||
+2480|6437|向导|ghid|ghId|s.m.: ghizi|Economics||
+2481|6438|翻译员|traducător|traducătOr|s.m.: traducători|Economics||
+2482|6439|摄影师|fotograf|fotogRAf|s.m.: fotografi|Economics||
+2483|6440|记者|jurnalist|jurnalIst|s.m.: jurnaliști|Economics||
+2484|6442|音乐家|muzician|muziciAn|s.m.: muzicieni|Economics||
+2485|6444|作家|scriitor|scriitOr|s.m.: scriitori|Economics||
+2486|6446|兽医|veterinar|veterinAr|s.m.: veterinari|Economics||
+2487|6447|药剂师|farmacist|farmacIst|s.m.: farmaciști|Economics||
+2488|6448|遵守规则|a respecta regulile|a respectA rEgulile|verb: conj. I (respect/respecți/respectă)|Law||
+2489|6449|违反法律|a încălca legea|a încălcA lEgea|verb: conj. I (încalc/încalci/încalcă)|Law||
+2490|6450|维护权利|a-și apăra drepturile|a-și apărA drEpturile|verb: conj. I (apăr/aperi/apără)|Law||
+2491|6451|申请许可|a solicita un permis|a solicitA un permIs|verb: conj. I (solicit/soliciți/solicită)|Law||
+2492|6452|提交申请|a depune o cerere|a depUne o cErere|verb: conj. III (depun/depui/depune)|Law||
+2493|6453|签署合同|a semna un contract|a semnA un contrAct|verb: conj. I (semnez/semnezi/semnează)|Law||
+2494|6454|取消合同|a rezilia un contract|a reziliA un contrAct|verb: conj. I (reziliez/reziliezi/reziliază)|Law||
+2495|6455|起诉某人|a da pe cineva în judecată|a dA pe cIneva în judecAtă|verb: conj. I (dau/dai/dă)|Law||
+2496|6456|辩护|a se apăra|a se apărA|verb: conj. I (mă apar/te aperi/se apără)|Law||
+2497|6457|上诉|a face apel|a fAce apEl|verb: conj. III (fac/faci/face)|Law||
+2498|6458|赔偿|a despăgubi|a despăgubI|verb: conj. IV (despăgubesc/despăgubești/despăgubește)|Law||
+2499|6459|支付罚款|a plăti o amendă|a plătI o amEndă|verb: conj. IV (plătesc/plătești/plătește)|Law||
+2500|6460|做证|a depune mărturie|a depUne mărturIe|verb: conj. III (depun/depui/depune)|Law||

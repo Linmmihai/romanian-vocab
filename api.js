@@ -197,10 +197,20 @@ async function apiInsertWords(words) {
     example_zh: String(w.example_zh || w.exampleZh || '').trim()
   })).filter(w => w.ro);
   const roList = [...new Set(normalized.map(w => w.ro))];
-  const { data: existingRows, error: existingError } = await sb
+  let exampleSchemaMissing = false;
+  let { data: existingRows, error: existingError } = await sb
     .from('words')
-    .select('id,ro')
+    .select('id,ro,example_ro,example_zh')
     .in('ro', roList);
+  if (existingError && isMissingExampleColumnsError(existingError)) {
+    exampleSchemaMissing = true;
+    const retry = await sb
+      .from('words')
+      .select('id,ro')
+      .in('ro', roList);
+    existingRows = retry.data;
+    existingError = retry.error;
+  }
   if (existingError) throw new Error(existingError.message);
   const existingByRo = new Map((existingRows || []).map(row => [row.ro, row]));
   const newWords = normalized.filter(w => !existingByRo.has(w.ro));
@@ -220,7 +230,6 @@ async function apiInsertWords(words) {
     difficulty: w.difficulty || 'beginner'
   }));
   let inserted = 0;
-  let exampleSchemaMissing = false;
   if (payload.length) {
     const { data, error } = await sb.from('words')
       .upsert(payload, { onConflict: 'ro', ignoreDuplicates: true })
@@ -243,8 +252,9 @@ async function apiInsertWords(words) {
   for (const word of normalized) {
     const existing = existingByRo.get(word.ro);
     if (!existing || !word.example_ro) continue;
+    if (String(existing.example_ro || '').trim()) continue;
     const updates = { example_ro: word.example_ro };
-    if (word.example_zh) updates.example_zh = word.example_zh;
+    if (word.example_zh && !String(existing.example_zh || '').trim()) updates.example_zh = word.example_zh;
     const { error } = await sb.from('words').update(updates).eq('id', existing.id);
     if (error && isMissingExampleColumnsError(error)) {
       exampleSchemaMissing = true;
@@ -258,6 +268,97 @@ async function apiInsertWords(words) {
 
 function isMissingExampleColumnsError(error) {
   return /example_(ro|zh)|schema cache|Could not find/i.test(error?.message || '');
+}
+
+function normalizePendingWordPayload(words) {
+  return words.map(w => ({
+    zh: String(w.zh || '').trim(),
+    ro: String(w.ro || '').trim(),
+    ipa: String(w.ipa || '').trim(),
+    hint: String(w.hint || '').trim(),
+    cat: w.cat || 'Daily Life',
+    example_ro: String(w.example_ro || w.exampleRo || '').trim(),
+    example_zh: String(w.example_zh || w.exampleZh || '').trim()
+  })).filter(w => w.ro && (w.zh || w.example_ro));
+}
+
+/**
+ * 提交词汇到管理员审核队列。审核通过后才写入正式词库。
+ */
+async function apiSubmitWordsForReview(words, submitter = {}) {
+  if (isOfflineMode()) throw new Error('离线模式下不能提交共享词库审核');
+  const normalized = normalizePendingWordPayload(words);
+  if (!normalized.length) throw new Error('没有可提交审核的词汇');
+  const missingZh = normalized.filter(w => !w.zh && !w.example_ro);
+  if (missingZh.length) throw new Error(`新词缺少中文：${missingZh.map(w => w.ro).join('、')}`);
+
+  const payload = normalized.map(w => ({
+    ...w,
+    status: 'pending',
+    submitted_by: submitter.id || currentUser?.id || null,
+    submitted_email: submitter.email || currentUser?.email || null
+  }));
+  const { data, error } = await sb.from('pending_words').insert(payload).select();
+  if (error) throw new Error(error.message);
+  return { submitted: data?.length || payload.length };
+}
+
+async function apiLoadPendingWords() {
+  if (isOfflineMode()) return [];
+  const { data, error } = await sb.from('pending_words').select('*').order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+async function apiUpdatePendingWord(rowId, updates) {
+  if (isOfflineMode()) throw new Error('离线模式下不能修改审核词汇');
+  const normalized = normalizePendingWordPayload([updates])[0];
+  if (!normalized) throw new Error('请填写罗语；新词需要中文，已有词补例句需要罗语例句');
+  const { error } = await sb.from('pending_words').update(normalized).eq('id', rowId).eq('status', 'pending');
+  if (error) throw new Error(error.message);
+}
+
+async function apiApprovePendingWord(row) {
+  if (isOfflineMode()) throw new Error('离线模式下不能审核共享词库');
+  if (!row?.id) throw new Error('找不到待审核词汇');
+  const { inserted, skipped, updatedExamples, exampleSchemaMissing } = await apiInsertWords([row]);
+  const { error } = await sb.from('pending_words').update({
+    status: 'approved',
+    reviewed_by: currentUser?.id || null,
+    reviewed_at: new Date().toISOString()
+  }).eq('id', row.id);
+  if (error) throw new Error(error.message);
+  return { inserted, skipped, updatedExamples, exampleSchemaMissing };
+}
+
+async function apiApprovePendingWords(rows) {
+  if (isOfflineMode()) throw new Error('离线模式下不能审核共享词库');
+  const pendingRows = (rows || []).filter(row => row?.id && row.status === 'pending');
+  if (!pendingRows.length) throw new Error('没有待审核词汇');
+  const { inserted, skipped, updatedExamples, exampleSchemaMissing } = await apiInsertWords(pendingRows);
+  const { error } = await sb.from('pending_words').update({
+    status: 'approved',
+    reviewed_by: currentUser?.id || null,
+    reviewed_at: new Date().toISOString()
+  }).in('id', pendingRows.map(row => row.id));
+  if (error) throw new Error(error.message);
+  return { approved: pendingRows.length, inserted, skipped, updatedExamples, exampleSchemaMissing };
+}
+
+async function apiRejectPendingWord(rowId) {
+  if (isOfflineMode()) throw new Error('离线模式下不能审核共享词库');
+  const { error } = await sb.from('pending_words').update({
+    status: 'rejected',
+    reviewed_by: currentUser?.id || null,
+    reviewed_at: new Date().toISOString()
+  }).eq('id', rowId);
+  if (error) throw new Error(error.message);
+}
+
+async function apiPendingWordSubmissionCount() {
+  if (isOfflineMode()) return 0;
+  const { count } = await sb.from('pending_words').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+  return count || 0;
 }
 
 /**

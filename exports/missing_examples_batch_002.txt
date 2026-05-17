@@ -1,0 +1,504 @@
+Words missing example sentence (example_ro is empty)
+Batch: 2
+Rows: 500
+Format: row|id|zh|ro|ipa|hint|cat|example_ro|example_zh
+501|3970|存在主义|existențialism|existențialIsm|s.n.: (fără plural)|Philosophy||
+502|3971|虚无主义|nihilism|nihilIsm|s.n.: (fără plural)|Philosophy||
+503|3972|结构主义|structuralism|structuralIsm|s.n.: (fără plural)|Philosophy||
+504|3973|诠释学|hermeneutică|hermenEutică|s.f.: (fără plural)|Philosophy||
+505|3974|现象学|fenomenologie|fenomenologIe|s.f.: (fără plural)|Philosophy||
+506|3975|形式逻辑|logică formală|lOgică formAlă|s.f.: logici formale|Philosophy||
+507|3976|命题|propoziție|propozIție|s.f.: propoziții|Philosophy||
+508|3977|三段论|silogism|silogIsm|s.n.: silogisme|Philosophy||
+509|3978|先验|a priori|a priOri|loc. adv.: (invariabil)|Philosophy||
+510|3979|后验|a posteriori|a posteriOri|loc. adv.: (invariabil)|Philosophy||
+511|3980|二元论|dualism|dualIsm|s.n.: (fără plural)|Philosophy||
+512|3981|一元论|monism|monIsm|s.n.: (fără plural)|Philosophy||
+513|3982|权力意志|voință de putere|voInță de putEre|s.f.: (fără plural)|Philosophy||
+514|3983|宏观经济|macroeconomie|macroeconomIe|s.f.: (fără plural)|Economics||
+515|3984|微观经济|microeconomie|microeconomIe|s.f.: (fără plural)|Economics||
+516|3985|贸易逆差|deficit comercial|deficIt comerciAl|s.n.: deficite comerciale|Economics||
+517|3986|贸易顺差|excedent comercial|excedEnt comerciAl|s.n.: excedente comerciale|Economics||
+518|3987|自由市场|piață liberă|piAță lIberă|s.f.: piețe libere|Economics||
+519|3988|计划经济|economie planificată|economIe planificAtă|s.f.: economii planificate|Economics||
+520|3989|全球化|globalizare|globalizAre|s.f.: (fără plural)|Economics||
+521|3990|私有化|privatizare|privatizAre|s.f.: privatizări|Economics||
+522|3991|国有化|naționalizare|naționalizAre|s.f.: naționalizări|Economics||
+523|3993|经济周期|ciclu economic|cIclu econOmic|s.n.: cicluri economice|Economics||
+524|3994|劳动力|forță de muncă|fOrță de mUncă|s.f.: forțe de muncă|Economics||
+525|3995|生产力|productivitate|productivitAte|s.f.: productivități|Economics||
+526|3996|经济增长|creștere economică|crEștere econOmică|s.f.: creșteri economice|Economics||
+527|3997|国际法|drept internațional|drEpt internaționAl|s.n.: (fără plural)|Law||
+528|3998|人权|drepturi ale omului|drEpturi ale Omului|s.n.pl.: drepturi ale omului|Law||
+529|3999|商法|drept comercial|drEpt comerciAl|s.n.: (fără plural)|Law||
+530|4000|税法|drept fiscal|drEpt fiscAl|s.n.: (fără plural)|Law||
+531|4001|行政法|drept administrativ|drEpt administratIv|s.n.: (fără plural)|Law||
+532|4002|合法|legal|legAl|adj: legală / legali / legale|Law||
+533|4004|判例|jurisprudență|jurisprudEnță|s.f.: jurisprudențe|Law||
+534|4005|赦免|amnistie|amnistIe|s.f.: amnistii|Law||
+535|4006|引渡|extrădare|extrădAre|s.f.: extrădări|Law||
+536|4007|公诉|acuzare publică|acuzAre pUblică|s.f.: acuzări publice|Law||
+537|4008|不起诉|neîncepere a urmăririi|neîncEpere a urmăririI|s.f.: (fără plural)|Law||
+538|4009|侵权|prejudiciu|prejudIciu|s.n.: prejudicii|Law||
+539|4010|损害赔偿|despăgubire|despăgubIre|s.f.: despăgubiri|Law||
+540|4011|远程教育|educație la distanță|educAție la distAnță|s.f.: educații la distanță|Education||
+541|4012|终身学习|învățare pe tot parcursul vieții|învățAre pe tot parcUrsul vIeții|s.f.: (fără plural)|Education||
+542|4013|批判性思维|gândire critică|gândIre crItică|s.f.: gândiri critice|Education||
+543|4014|教育心理学|psihologie educațională|psihologIe educaționAlă|s.f.: (fără plural)|Education||
+544|4015|课外活动|activitate extracurriculară|activitAte extracurriculAră|s.f.: activități extracurriculare|Education||
+545|4016|启发式教学|metodă euristică|metOdă eurIstică|s.f.: metode euristice|Education||
+546|4017|教育改革|reformă educațională|refOrmă educaționAlă|s.f.: reforme educaționale|Education||
+547|4018|双语教育|educație bilingvă|educAție bilIngvă|s.f.: educații bilingve|Education||
+548|4019|特殊教育|educație specială|educAție specIAlă|s.f.: educații speciale|Education||
+549|4020|教育政策|politică educațională|polItică educaționAlă|s.f.: politici educaționale|Education||
+550|4021|学习障碍|dificultăți de învățare|dificultĂți de învățAre|s.f.pl.: dificultăți de învățare|Education||
+551|4022|教育机构|instituție de învățământ|instituțIe de învățămÂnt|s.f.: instituții de învățământ|Education||
+552|4023|奖学金委员会|comisie de burse|comIsie de bUrse|s.f.: comisii de burse|Education||
+553|4024|成人教育|educație pentru adulți|educAție pentru adUlți|s.f.: educații pentru adulți|Education||
+554|4025|文学运动|mișcare literară|mișcAre literAră|s.f.: mișcări literare|Literature||
+555|4026|自然主义|naturalism|naturalIsm|s.n.: (fără plural)|Literature||
+556|4027|现实主义|realism|realIsm|s.n.: (fără plural)|Literature||
+557|4028|象征主义|simbolism|simbolIsm|s.n.: (fără plural)|Literature||
+558|4029|现代主义|modernism|modernIsm|s.n.: (fără plural)|Literature||
+559|4030|后现代主义|postmodernism|postmodernIsm|s.n.: (fără plural)|Literature||
+560|4032|视角|perspectivă|perspectIvă|s.f.: perspective|Literature||
+561|4034|高潮|punct culminant|pUnct culminAnt|s.n.: puncte culminante|Literature||
+562|4035|结局|deznodământ|deznodămÂnt|s.n.: deznodăminte|Literature||
+563|4036|独白|monolog|monolOg|s.n.: monologuri|Literature||
+564|4037|对话|dialog|dialOg|s.n.: dialoguri|Literature||
+565|4038|反讽|ironie|ironIe|s.f.: ironii|Literature||
+566|4039|史学|istoriografie|istoriografIe|s.f.: istoriografii|History||
+567|4040|古文明|civilizație antică|civilizAție Antică|s.f.: civilizații antice|History||
+568|4041|考古遗址|sit arheologic|sIt arheologIc|s.n.: situri arheologice|History||
+569|4042|石器时代|epoca de piatră|Epoca de piAtră|s.f.: (fără plural)|History||
+570|4043|青铜时代|epoca bronzului|Epoca brOnzului|s.f.: (fără plural)|History||
+571|4044|铁器时代|epoca fierului|Epoca fiErului|s.f.: (fără plural)|History||
+572|4045|古罗马|Roma Antică|rOma Antică|s.f.: (fără plural)|History||
+573|4046|中世纪骑士|cavaler medieval|cavalEr medievAl|s.m.: cavaleri medievali|History||
+574|4047|十字军东征|cruciadă|cruciAdă|s.f.: cruciade|History||
+575|4048|奥斯曼帝国|Imperiul Otoman|impEriul otomAn|s.n.: (fără plural)|History||
+576|4049|工业化|industrializare|industrializAre|s.f.: (fără plural)|History||
+577|4050|城市化|urbanizare|urbanizAre|s.f.: (fără plural)|History||
+578|4051|移民|emigrare|emigrAre|s.f.: emigrări|History||
+579|4052|殖民者|colonist|colonIst|s.m.: coloniști|History||
+580|4053|弦理论|teoria corzilor|teorIa cOrzilor|s.f.: (fără plural)|Science||
+581|4054|暗物质|materie întunecată|matErie întunecAtă|s.f.: (fără plural)|Science||
+582|4055|暗能量|energIe întunecată|energIe întunecAtă|s.f.: (fără plural)|Science||
+583|4056|超导体|supraconductor|supraconductOr|s.n.: supraconductoare|Science||
+584|4057|纳米技术|nanotehnologie|nanotehnologIe|s.f.: nanotehnologii|Science||
+585|4058|热力学|termodinamică|termodinAmică|s.f.: (fără plural)|Science||
+586|4059|电磁学|electromagnetism|electromagnetIsm|s.n.: (fără plural)|Science||
+587|4060|流体力学|mecanică fluidelor|mecAnică flUidelor|s.f.: (fără plural)|Science||
+588|4061|光学|optică|Optică|s.f.: (fără plural)|Science||
+589|4062|声学|acustică|acUstică|s.f.: (fără plural)|Science||
+590|4063|核物理|fizică nucleară|fIzică nucleAră|s.f.: (fără plural)|Science||
+591|4064|地球物理|geofizică|geofIzică|s.f.: (fără plural)|Science||
+592|4065|气候变化|schimbare climatică|schimbAre climAtică|s.f.: schimbări climatice|Science||
+593|4066|可再生能源|energie regenerabilă|energIe regenerAbilă|s.f.: energii regenerabile|Science||
+594|4067|航空航天|aerospațial|aerospațiAl|adj: aerospațială / aerospațiali / aerospațiale|Engineering||
+595|4068|核能|energie nucleară|energIe nucleAră|s.f.: (fără plural)|Engineering||
+596|4069|太阳能|energie solară|energIe solAră|s.f.: (fără plural)|Engineering||
+597|4070|风能|energie eoliană|energIe eoliAnă|s.f.: (fără plural)|Engineering||
+598|4071|水力发电|hidroenergie|hidroenergIe|s.f.: (fără plural)|Engineering||
+599|4072|生物燃料|biocombustibil|biocombustIbil|s.n.: biocombustibili|Engineering||
+600|4073|3D打印|imprimare 3D|imprimAre 3D|s.f.: imprimări 3D|Engineering||
+601|4074|增强现实|realitate augmentată|realitAte augmentAtă|s.f.: (fără plural)|Engineering||
+602|4075|虚拟现实|realitate virtuală|realitAte virtuAlă|s.f.: (fără plural)|Engineering||
+603|4076|云计算|cloud computing|clOud compUting|s.n.: (fără plural)|Engineering||
+604|4077|大数据|date masive|dAte masIve|s.f.pl.: date masive|Engineering||
+605|4078|区块链|blockchain|blockchain|s.n.: (fără plural)|Engineering||
+606|4079|网络安全|securitate cibernetică|securitAte cibernEtică|s.f.: (fără plural)|Engineering||
+607|4080|嵌入式系统|sistem încorporat|sistEm încorporAt|s.n.: sisteme încorporate|Engineering||
+608|4081|土地改革|reformă agrară|refOrmă agrAră|s.f.: reforme agrare|Agriculture||
+609|4082|粮食安全|securitate alimentară|securitAte alimentAră|s.f.: (fără plural)|Agriculture||
+610|4083|农业机械化|mecanizare agricolă|mecanizAre agrIcolă|s.f.: (fără plural)|Agriculture||
+611|4084|水土保持|conservarea solului|conservArea sOlului|s.f.: (fără plural)|Agriculture||
+612|4085|生物多样性|biodiversitate|biodiversitAte|s.f.: (fără plural)|Agriculture||
+613|4086|可持续农业|agricultură durabilă|agricultUră durAbilă|s.f.: (fără plural)|Agriculture||
+614|4087|精准农业|agricultură de precizie|agricultUră de precIzie|s.f.: (fără plural)|Agriculture||
+615|4088|农产品|produs agricol|prodUs agrIcol|s.n.: produse agricole|Agriculture||
+616|4089|合作社|cooperativă|cooperatIvă|s.f.: cooperative|Agriculture||
+617|4090|种植园|plantație|plantAție|s.f.: plantații|Agriculture||
+618|4093|玉米|porumb|porUmb|s.m.: (fără plural)|Agriculture||
+619|4094|大豆|soia|sOia|s.f.: (fără plural)|Agriculture||
+620|4095|基因工程|inginerie genetică|inginerIe genetică|s.f.: (fără plural)|Medicine||
+621|4096|干细胞|celulă stem|celUlă stEm|s.f.: celule stem|Medicine||
+622|4097|基因疗法|terapie genică|terapIe gEnică|s.f.: terapii genice|Medicine||
+623|4098|免疫疗法|imunoterapie|imunoterapIe|s.f.: imunoterapii|Medicine||
+624|4099|内分泌学|endocrinologie|endocrinologIe|s.f.: (fără plural)|Medicine||
+625|4100|风湿病学|reumatologie|reumatologIe|s.f.: (fără plural)|Medicine||
+626|4101|传染病|boală infecțioasă|boAlă infecțioAsă|s.f.: boli infecțioase|Medicine||
+627|4102|公共卫生|sănătate publică|sănătAte pUblică|s.f.: (fără plural)|Medicine||
+628|4103|医学伦理|etică medicală|Etică medicAlă|s.f.: etici medicale|Medicine||
+629|4104|病历|fișă medicală|fIșă medicAlă|s.f.: fișe medicale|Medicine||
+630|4105|体检|examen medical|exAmen medicAl|s.n.: examene medicale|Medicine||
+631|4106|血型|grupă de sânge|grUpă de sÂnge|s.f.: grupe de sânge|Medicine||
+632|4107|急诊室|camera de urgență|cAmera de urgEnță|s.f.: camere de urgență|Medicine||
+633|4108|重症监护|terapie intensivă|terapIe intensIvă|s.f.: terapii intensive|Medicine||
+634|4109|战争法|dreptul războiului|drEptul răzbOiului|s.n.: (fără plural)|Military Science||
+635|4110|军事同盟|alianță militară|aliAnță militAră|s.f.: alianțe militare|Military Science||
+636|4111|军事工业|industrie militară|indUstrie militAră|s.f.: industrii militare|Military Science||
+637|4112|战略核武器|armament nuclear strategic|armamEnt nucleAr stratEgic|s.n.: (fără plural)|Military Science||
+638|4113|心理战|război psihologic|răzbOi psiholOgic|s.n.: (fără plural)|Military Science||
+639|4114|信息战|război informațional|răzbOi informaționAl|s.n.: (fără plural)|Military Science||
+640|4115|网络战|război cibernetic|răzbOi cibernEtic|s.n.: (fără plural)|Military Science||
+641|4116|特种部队|forțe speciale|fOrțe specIAle|s.f.pl.: forțe speciale|Military Science||
+642|4117|军事训练|instrucție militară|instrUcție militAră|s.f.: instrucții militare|Military Science||
+643|4118|军事条约|tratat militar|tratAt militAr|s.n.: tratate militare|Military Science||
+644|4119|武装冲突|conflict armat|conflIct armAt|s.n.: conflicte armate|Military Science||
+645|4120|维和部队|forțe de menținere a păcii|fOrțe de mențInere a păcII|s.f.pl.: forțe de menținere a păcii|Military Science||
+646|4121|军事情报|informații militare|informAții militAre|s.f.pl.: informații militare|Military Science||
+647|4122|战略储备|rezervă strategică|rezErvă stratEgică|s.f.: rezerve strategice|Military Science||
+648|4123|变革管理|managementul schimbării|managemEntul schimbĂrii|s.n.: (fără plural)|Management||
+649|4124|知识管理|managementul cunoașterii|managemEntul cunoAșterii|s.n.: (fără plural)|Management||
+650|4125|项目管理|managementul proiectelor|managemEntul proiEctelor|s.n.: (fără plural)|Management||
+651|4126|供应商|furnizor|furnizOr|s.m.: furnizori|Management||
+652|4127|利润率|marjă de profit|mArjă de prOfit|s.f.: marje de profit|Management||
+653|4128|市场份额|cotă de piață|cOtă de piAță|s.f.: cote de piață|Management||
+654|4129|商业模式|model de afaceri|modEl de afAceri|s.n.: modele de afaceri|Management||
+655|4130|核心竞争力|competență de bază|competEnță de bAză|s.f.: competențe de bază|Management||
+656|4131|战略规划|planificare strategică|planificAre stratEgică|s.f.: planificări strategice|Management||
+657|4132|组织变革|schimbare organizațională|schimbAre organizaționAlă|s.f.: schimbări organizaționale|Management||
+658|4133|运营管理|management operațional|managemEnt operaționAl|s.n.: (fără plural)|Management||
+659|4134|财务管理|management financiar|managemEnt financiAr|s.n.: (fără plural)|Management||
+660|4135|危机管理|management de criză|managemEnt de crIză|s.n.: (fără plural)|Management||
+661|4136|企业社会责任|responsabilitate socială corporativă|responsabilitAte socIAlă corporatIvă|s.f.: (fără plural)|Management||
+662|4137|达达主义|dadaism|dadaIsm|s.n.: (fără plural)|Art||
+663|4138|野兽派|fauvism|fauvIsm|s.n.: (fără plural)|Art||
+664|4139|表现主义|expresionism|expresionIsm|s.n.: (fără plural)|Art||
+665|4140|包豪斯|Bauhaus|bauhaus|艺术风格：功能优先，少装饰，强调简洁与实用|Art||
+666|4141|艺术装饰|Art Deco|Art dEco|s.n.: (fără plural)|Art||
+667|4142|波普艺术|artă pop|Artă pOp|s.f.: (fără plural)|Art||
+668|4143|行为艺术|artă performativă|Artă performatIvă|s.f.: arte performative|Art||
+669|4144|数字艺术|artă digitală|Artă digitAlă|s.f.: arte digitale|Art||
+670|4145|纪录片|documentar|documentAr|s.n.: documentare|Art||
+671|4146|音效|efecte sonore|efEcte sonOre|s.n.pl.: efecte sonore|Art||
+672|4147|剧本|scenariu|scenAriu|s.n.: scenarii|Art||
+673|4148|导演|regizor|regizOr|s.m.: regizori|Art||
+674|4149|演员|actor|actOr|s.m.: actori|Art||
+675|4150|布景|decor|decOr|s.n.: decoruri|Art||
+676|4152|加油站|stație de benzină|stAție de benzInă|s.f.: stații de benzină|Daily Life||
+677|4153|停车费|taxă de parcare|tAxă de parcAre|s.f.: taxe de parcare|Daily Life||
+678|4158|摩托车|motocicletă|motociclEtă|s.f.: motociclete|Daily Life||
+679|4159|交通灯|semafor|semafOr|s.n.: semafoare|Daily Life||
+680|4160|人行横道|trecere de pietoni|trecEre de pietOni|s.f.: treceri de pietoni|Daily Life||
+681|4163|喷泉|fântână|fântÂnă|s.f.: fântâni|Daily Life||
+682|4167|真实性|autenticitate|autenticitAte|s.f.: autenticități|Philosophy||
+683|4168|虚构|ficțiune|ficțiUne|s.f.: ficțiuni|Philosophy||
+684|4169|永恒|eternitate|eternitAte|s.f.: eternități|Philosophy||
+685|4170|偶然性|contingență|contingEnță|s.f.: contingențe|Philosophy||
+686|4171|必然性|necesitate|necesitAte|s.f.: necesități|Philosophy||
+687|4172|自我|sine|sIne|s.n.: (fără plural)|Philosophy||
+688|4173|他者|celălalt|celălAlt|pron.: ceilalți / celelalte|Philosophy||
+689|4174|异化|alienare|alienAre|s.f.: alienări|Philosophy||
+690|4175|解放|emancipare|emancipAre|s.f.: emancipări|Philosophy||
+691|4176|话语|discurs|discUrs|s.n.: discursuri|Philosophy||
+692|4177|权力|putere|putEre|s.f.: puteri|Philosophy||
+693|4178|平等|egalitate|egalitAte|s.f.: egalități|Philosophy||
+694|4179|正义|dreptate|dreptAte|s.f.: dreptăți|Philosophy||
+695|4180|经济模型|model economic|modEl economIc|s.n.: modele economice|Economics||
+696|4181|价格弹性|elasticitate a prețului|elasticitAte a prețUlui|s.f.: elasticități ale prețului|Economics||
+697|4182|边际效益|utilitate marginală|utilitAte marginAlă|s.f.: utilități marginale|Economics||
+698|4183|市场失灵|eșec al pieței|eșEc al piEței|s.n.: eșecuri ale pieței|Economics||
+699|4184|外部性|externalitate|externalitAte|s.f.: externalități|Economics||
+700|4185|公共财货|bun public|bUn pUblic|s.n.: bunuri publice|Economics||
+701|4186|信息不对称|asimetrie informațională|asimetrIe informaționAlă|s.f.: asimetrii informaționale|Economics||
+702|4187|博弈论|teoria jocurilor|teorIa jocUrilor|s.f.: (fără plural)|Economics||
+703|4188|行为经济学|economie comportamentală|economIe comportamentAlă|s.f.: (fără plural)|Economics||
+704|4189|发展经济学|economie a dezvoltării|economIe a dezvoltării|s.f.: (fără plural)|Economics||
+705|4190|国际贸易|comerț internațional|comErț internaționAl|s.n.: (fără plural)|Economics||
+706|4191|外汇储备|rezerve valutare|rezErve valutAre|s.f.pl.: rezerve valutare|Economics||
+707|4192|中央银行|bancă centrală|bAncă centrAlă|s.f.: bănci centrale|Economics||
+708|4193|货币政策|politică monetară|polItică monetAră|s.f.: politici monetare|Economics||
+709|4194|宪法权利|drepturi constituționale|drEpturi constituționAle|s.n.pl.: drepturi constituționale|Law||
+710|4195|诉讼时效|termen de prescripție|tErmen de prescripție|s.n.: termene de prescripție|Law||
+711|4196|共同犯罪|complicitate|complicitAte|s.f.: complicități|Law||
+712|4197|正当防卫|legitimă apărare|legItimă apărAre|s.f.: (fără plural)|Law||
+713|4198|强制执行|executare silită|executAre silItă|s.f.: executări silite|Law||
+714|4199|不可抗力|forță majoră|fOrță majOră|s.f.: (fără plural)|Law||
+715|4200|调查令|mandat de percheziție|mandAt de percheziție|s.n.: mandate de percheziție|Law||
+716|4201|国家主权|suveranitate națională|suveranitAte națională|s.f.: suveranități naționale|Law||
+717|4202|平等权利|egalitate în drepturi|egalitAte în drEpturi|s.f.: (fără plural)|Law||
+718|4203|禁止令|ordin de restricție|OrdIn de restricție|s.n.: ordine de restricție|Law||
+719|4204|行政处罚|sancțiune administrativă|sancțiUne administratIvă|s.f.: sancțiuni administrative|Law||
+720|4205|继承权|drept de moștenire|drEpt de moștenIre|s.n.: drepturi de moștenire|Law||
+721|4206|合同违约|nerespectare a contractului|nerespectAre a contrActului|s.f.: nerespectări ale contractului|Law||
+722|4207|司法独立|independența justiției|independEnța justIției|s.f.: (fără plural)|Law||
+723|4208|教育哲学|filozofia educației|filozofIa educației|s.f.: (fără plural)|Education||
+724|4209|合作学习|învățare colaborativă|învățAre colaboratIvă|s.f.: învățări colaborative|Education||
+725|4210|项目式学习|învățare bazată pe proiecte|învățAre bazAtă pe proIecte|s.f.: (fără plural)|Education||
+726|4211|反思性学习|învățare reflexivă|învățAre reflexIvă|s.f.: (fără plural)|Education||
+727|4212|形成性评估|evaluare formativă|evaluAre formatIvă|s.f.: evaluări formative|Education||
+728|4213|总结性评估|evaluare sumativă|evaluAre sumatIvă|s.f.: evaluări sumative|Education||
+729|4214|学习成果|rezultat al învățării|rezultAt al învățării|s.n.: rezultate ale învățării|Education||
+730|4215|教学策略|strategie didactică|strategIe didactică|s.f.: strategii didactice|Education||
+731|4216|课程设计|design curricular|desIgn curriculAr|s.n.: designuri curriculare|Education||
+732|4217|教育技术|tehnologie educațională|tehnologIe educaționAlă|s.f.: tehnologii educaționale|Education||
+733|4218|学习理论|teorie a învățării|teorIe a învățării|s.f.: teorii ale învățării|Education||
+734|4219|评估工具|instrument de evaluare|instrumEnt de evaluAre|s.n.: instrumente de evaluare|Education||
+735|4220|差异化教学|predare diferențiată|predAre diferențiAtă|s.f.: predări diferențiate|Education||
+736|4221|包容性教育|educație incluzivă|educAție incluzIvă|s.f.: educații incluzive|Education||
+737|4222|文学理论|teorie literară|teorIe literAră|s.f.: teorii literare|Literature||
+738|4223|互文性|intertextualitate|intertextualitAte|s.f.: (fără plural)|Literature||
+739|4224|叙事结构|structură narativă|structUră narativă|s.f.: structuri narative|Literature||
+740|4225|作者意图|intenție auctorială|intEnție auctorIAlă|s.f.: intenții auctoriale|Literature||
+741|4226|读者反应|receptare a cititorului|receptAre a cititorului|s.f.: receptări ale cititorului|Literature||
+742|4228|语境|context|contExt|s.n.: contexte|Literature||
+743|4229|语义|semantică|semAntică|s.f.: (fără plural)|Literature||
+744|4230|叙事学|naratologie|naratologIe|s.f.: (fără plural)|Literature||
+745|4232|意象|imagine poetică|imAgine poEtică|s.f.: imagini poetice|Literature||
+746|4233|拟人|personificare|personificAre|s.f.: personificări|Literature||
+747|4234|夸张|hiperbolă|hipErbolă|s.f.: hiperbole|Literature||
+748|4235|排比|paralelism|paralelIsm|s.n.: paralelisme|Literature||
+749|4236|古典时代|Antichitate clasică|antichitAte clAsică|s.f.: (fără plural)|History||
+750|4237|拜占庭帝国|Imperiul Bizantin|impEriul bizantIn|s.n.: (fără plural)|History||
+751|4238|蒙古帝国|Imperiul Mongol|impEriul mongOl|s.n.: (fără plural)|History||
+752|4239|大航海时代|epoca marilor descoperiri geografice|Epoca mArilor descoperIri geografice|s.f.: (fără plural)|History||
+753|4240|宗教改革|Reformă religioasă|refOrmă religiOasă|s.f.: reforme religioase|History||
+754|4241|法国大革命|Revoluția Franceză|revolUția francEză|s.f.: (fără plural)|History||
+755|4242|拿破仑战争|Războaiele napoleoniene|răzbOAiele napoleoniEne|s.n.pl.: (fără plural)|History||
+756|4243|第一次世界大战|Primul Război Mondial|prImul răzbOi mondiAl|s.n.: (fără plural)|History||
+757|4244|第二次世界大战|Al Doilea Război Mondial|al doIlea răzbOi mondiAl|s.n.: (fără plural)|History||
+758|4245|冷战时期|perioada Războiului Rece|periOada răzbOiului rEce|s.f.: (fără plural)|History||
+759|4246|去殖民化|decolonizare|decolonizAre|s.f.: (fără plural)|History||
+760|4247|后殖民主义|postcolonialism|postcolonialIsm|s.n.: (fără plural)|History||
+761|4248|历史修正主义|revizionism istoric|revizionIsm istOric|s.n.: (fără plural)|History||
+762|4249|口述历史|istorie orală|istOrie orAlă|s.f.: istorii orale|History||
+763|4250|天体物理学|astrofizică|astrofIzică|s.f.: (fără plural)|Science||
+764|4251|粒子物理学|fizica particulelor|fIzica particUlelor|s.f.: (fără plural)|Science||
+765|4252|凝聚态物理|fizica materiei condensate|fIzica matEriei condensAte|s.f.: (fără plural)|Science||
+766|4253|分子生物学|biologie moleculară|biologIe moleculAră|s.f.: (fără plural)|Science||
+767|4254|微生物学|microbiologie|microbiologIe|s.f.: (fără plural)|Science||
+768|4255|神经科学|neuroștiință|neuroștiInță|s.f.: neuroștiințe|Science||
+769|4256|认知科学|știință cognitivă|știInță cognitivă|s.f.: științe cognitive|Science||
+770|4257|地球化学|geochimie|geochimIe|s.f.: (fără plural)|Science||
+771|4258|海洋学|oceanografie|oceanografIe|s.f.: (fără plural)|Science||
+772|4259|气象学|meteorologie|meteorologIe|s.f.: (fără plural)|Science||
+773|4260|地震学|seismologie|seismologIe|s.f.: (fără plural)|Science||
+774|4261|古生物学|paleontologie|paleontologIe|s.f.: (fără plural)|Science||
+775|4262|遗传学|genetică|genEtică|s.f.: (fără plural)|Science||
+776|4263|免疫学|imunologie|imunologIe|s.f.: (fără plural)|Science||
+777|4264|信号处理|procesare a semnalului|procesAre a semnAlului|s.f.: procesări ale semnalului|Engineering||
+778|4265|嵌入式编程|programare încorporată|programAre încorporAtă|s.f.: programări încorporate|Engineering||
+779|4266|操作系统|sistem de operare|sistEm de operAre|s.n.: sisteme de operare|Engineering||
+780|4267|编译器|compilator|compilatOr|s.n.: compilatoare|Engineering||
+781|4268|微处理器|microprocesor|microprocesOr|s.n.: microprocesoare|Engineering||
+782|4269|传输协议|protocol de transmisie|protocOl de transmisIe|s.n.: protocoale de transmisie|Engineering||
+783|4270|加密|criptare|criptAre|s.f.: criptări|Engineering||
+784|4271|防火墙|firewall|fIrewAll|s.n.: firewall-uri|Engineering||
+785|4272|服务器|server|sErver|s.n.: servere|Engineering||
+786|4273|带宽|lățime de bandă|lățIme de bAndă|s.f.: lățimi de bandă|Engineering||
+787|4274|延迟|latență|latEnță|s.f.: latențe|Engineering||
+788|4275|冗余|redundanță|redundAnță|s.f.: redundanțe|Engineering||
+789|4276|容错|toleranță la erori|tolerAnță la erOri|s.f.: (fără plural)|Engineering||
+790|4277|接口|interfață|interfAță|s.f.: interfețe|Engineering||
+791|4278|土地利用|utilizare a terenului|utilizAre a terEnului|s.f.: utilizări ale terenului|Agriculture||
+792|4279|植物保护|protecție fitosanitară|protEcție fitosanitAră|s.f.: (fără plural)|Agriculture||
+793|4280|农业经济学|economie agrară|economIe agrAră|s.f.: (fără plural)|Agriculture||
+794|4281|农村发展|dezvoltare rurală|dezvoltAre rurAlă|s.f.: (fără plural)|Agriculture||
+795|4282|食品加工|procesare alimentară|procesAre alimentAră|s.f.: procesări alimentare|Agriculture||
+796|4283|食品安全|siguranță alimentară|siguranță alimentAră|s.f.: (fără plural)|Agriculture||
+797|4284|农业补贴|subvenție agricolă|subvEnție agrIcolă|s.f.: subvenții agricole|Agriculture||
+798|4285|耕地退化|degradare a terenului agricol|degradAre a terEnului agrIcol|s.f.: degradări ale terenului agricol|Agriculture||
+799|4286|水资源管理|managementul apei|managemEntul Apei|s.n.: (fără plural)|Agriculture||
+800|4287|粮食储备|rezervă de alimente|rezErvă de alimEnte|s.f.: rezerve de alimente|Agriculture||
+801|4288|农业出口|export agricol|expOrt agrIcol|s.n.: exporturi agricole|Agriculture||
+802|4289|农业技术|tehnologie agricolă|tehnologIe agrIcolă|s.f.: tehnologii agricole|Agriculture||
+803|4290|作物产量|randament al culturii|randamEnt al cultUrii|s.n.: randamente ale culturii|Agriculture||
+804|4291|土地所有权|proprietate funciară|proprietAte funciAră|s.f.: proprietăți funciare|Agriculture||
+805|4292|再生医学|medicină regenerativă|medicInă regeneratIvă|s.f.: (fără plural)|Medicine||
+806|4293|精准医学|medicină de precizie|medicInă de preciZIe|s.f.: (fără plural)|Medicine||
+807|4294|远程医疗|telemedicină|telemedIcInă|s.f.: (fără plural)|Medicine||
+808|4295|医疗伦理|bioetică|bioEtică|s.f.: bioetici|Medicine||
+809|4296|姑息治疗|îngrijire paliativă|îngrijIre paliAtivă|s.f.: îngrijiri paliative|Medicine||
+810|4297|预防医学|medicină preventivă|medicInă preventIvă|s.f.: (fără plural)|Medicine||
+811|4298|流行病|epidemie|epidEmIe|s.f.: epidemii|Medicine||
+812|4299|大流行病|pandemie|pandemIe|s.f.: pandemii|Medicine||
+813|4300|地方病|boală endemică|boAlă endEmică|s.f.: boli endemice|Medicine||
+814|4301|营养学|nutriție|nutrițIe|s.f.: (fără plural)|Medicine||
+815|4302|毒理学|toxicologie|toxicologIe|s.f.: (fără plural)|Medicine||
+816|4303|病理学|patologie|patologIe|s.f.: patologii|Medicine||
+817|4304|生理学|fiziologie|fiziologIe|s.f.: (fără plural)|Medicine||
+818|4305|药理学|farmacologie|farmacologIe|s.f.: (fără plural)|Medicine||
+819|4306|反恐|antiterorism|antiterorIsm|s.n.: (fără plural)|Military Science||
+820|4307|反叛乱|contrainsurgență|contrainsurgEnță|s.f.: (fără plural)|Military Science||
+821|4308|战区|teatru de operațiuni|tEAtru de operațiUni|s.n.: teatre de operațiuni|Military Science||
+822|4309|军事外交|diplomație militară|diplomAție militAră|s.f.: (fără plural)|Military Science||
+823|4310|防御工事|lucrări de apărare|lucrAri de apărAre|s.f.pl.: lucrări de apărare|Military Science||
+824|4311|军事演习|exercițiu militar|exercIțiu militAr|s.n.: exerciții militare|Military Science||
+825|4312|武装力量|forțe armate|fOrțe armAte|s.f.pl.: forțe armate|Military Science||
+826|4313|军事预算|buget militar|bugEt militAr|s.n.: bugete militare|Military Science||
+827|4314|战俘|prizonier de război|prizonIer de răzbOi|s.m.: prizonieri de război|Military Science||
+828|4315|军事占领|ocupație militară|ocupAție militAră|s.f.: ocupații militare|Military Science||
+829|4316|宣战|declarație de război|declarAție de răzbOi|s.f.: declarații de război|Military Science||
+830|4317|停战协议|acord de încetare a focului|acOrd de încetAre a focUlui|s.n.: acorduri de încetare a focului|Military Science||
+831|4318|军事历史|istorie militară|istOrie militAră|s.f.: istorii militare|Military Science||
+832|4319|战略威慑|descurajare strategică|descurajAre stratEgică|s.f.: (fără plural)|Military Science||
+833|4320|组织行为学|comportament organizațional|comportamEnt organizaționAl|s.n.: (fără plural)|Management||
+834|4321|领导力|leadership|lEadershIp|s.n.: (fără plural)|Management||
+835|4322|情商|inteligență emoțională|inteligEnță emoționAlă|s.f.: (fără plural)|Management||
+836|4324|授权|delegare|delegAre|s.f.: delegări|Management||
+837|4325|冲突管理|managementul conflictelor|managemEntul conflIctelor|s.n.: (fără plural)|Management||
+838|4326|时间管理|managementul timpului|managemEntul tImpului|s.n.: (fără plural)|Management||
+839|4327|沟通技巧|abilități de comunicare|abilitAți de comunicAre|s.f.pl.: abilități de comunicare|Management||
+840|4328|团队建设|team building|tEam bUilding|s.n.: (fără plural)|Management||
+841|4329|决策过程|proces decizional|procEs decizionAl|s.n.: procese decizionale|Management||
+842|4330|创造力|creativitate|creativitAte|s.f.: (fără plural)|Management||
+843|4331|问题解决|rezolvare de probleme|rezolvAre de problEme|s.f.: rezolvări de probleme|Management||
+844|4332|战略思维|gândire strategică|gândIre stratEgică|s.f.: (fără plural)|Management||
+845|4333|变革领导力|leadership transformațional|lEadershIp transformaționAl|s.n.: (fără plural)|Management||
+846|4334|美术史|istoria artei|istorIa ArtEi|s.f.: (fără plural)|Art||
+847|4335|艺术哲学|filozofia artei|filozofIa ArtEi|s.f.: (fără plural)|Art||
+848|4336|艺术市场|piața de artă|pIața de Artă|s.f.: (fără plural)|Art||
+849|4337|艺术批评|critică de artă|crItică de Artă|s.f.: critici de artă|Art||
+850|4338|艺术收藏|colecție de artă|colEcție de Artă|s.f.: colecții de artă|Art||
+851|4339|博物馆|muzeu|muzEu|s.n.: muzee|Art||
+852|4340|文化遗产|patrimoniu cultural|patrimOniu culturAl|s.n.: patrimonii culturale|Art||
+853|4341|非物质文化遗产|patrimoniu cultural imaterial|patrimOniu culturAl imateriall|s.n.: (fără plural)|Art||
+854|4342|艺术赞助|mecenat|mecenAt|s.n.: mecenate|Art||
+855|4343|艺术教育|educație artistică|educAție artistică|s.f.: educații artistice|Art||
+856|4344|创意产业|industrii creative|indUstrii creatIve|s.f.pl.: industrii creative|Art||
+857|4345|文化政策|politică culturală|polItică culturAlă|s.f.: politici culturale|Art||
+858|4346|艺术节|festival de artă|festIvAl de Artă|s.n.: festivaluri de artă|Art||
+859|4347|文化交流|schimb cultural|schImb culturAl|s.n.: schimburi culturale|Art||
+860|4348|婚礼|nuntă|nUntă|s.f.: nunți|Daily Life||
+861|4349|葬礼|înmormântare|înmormântAre|s.f.: înmormântări|Daily Life||
+862|4350|生日|zi de naștere|zI de nAștere|s.f.: zile de naștere|Daily Life||
+863|4351|节日|sărbătoare|sărbătOAre|s.f.: sărbători|Daily Life||
+864|4352|礼物|cadou|cadOu|s.n.: cadouri|Daily Life||
+865|4355|约会|întâlnire|întâlnIre|s.f.: întâlniri|Daily Life||
+866|4356|结婚|căsătorie|căsătorIe|s.f.: căsătorii|Daily Life||
+867|4357|离婚|divorț|divOrț|s.n.: divorțuri|Daily Life||
+868|4359|搬家|mutare|mutAre|s.f.: mutări|Daily Life||
+869|4360|宠物|animal de companie|animAl de companIe|s.n.: animale de companie|Daily Life||
+870|4361|保姆|bonă|bOnă|s.f.: bone|Daily Life||
+871|4363|无政府主义|anarhism|anarHIsm|s.n.: (fără plural)|Philosophy||
+872|4364|共产主义|comunism|comunIsm|s.n.: (fără plural)|Philosophy||
+873|4365|自由主义|liberalism|liberalIsm|s.n.: (fără plural)|Philosophy||
+874|4366|保守主义|conservatorism|conservatorIsm|s.n.: (fără plural)|Philosophy||
+875|4367|社会主义|socialism|socialIsm|s.n.: (fără plural)|Philosophy||
+876|4368|民粹主义|populism|populIsm|s.n.: (fără plural)|Philosophy||
+877|4369|法西斯主义|fascism|fascIsm|s.n.: (fără plural)|Philosophy||
+878|4370|极权主义|totalitarism|totalitarIsm|s.n.: (fără plural)|Philosophy||
+879|4371|多元主义|pluralism|pluralIsm|s.n.: (fără plural)|Philosophy||
+880|4372|世界主义|cosmopolitism|cosmopolitIsm|s.n.: (fără plural)|Philosophy||
+881|4373|相对主义|relativism|relativIsm|s.n.: (fără plural)|Philosophy||
+882|4374|绝对主义|absolutism|absolutIsm|s.n.: (fără plural)|Philosophy||
+883|4375|经验主义|empirism|empirIsm|s.n.: (fără plural)|Philosophy||
+884|4376|理性主义|raționalism|raționalIsm|s.n.: (fără plural)|Philosophy||
+885|4377|斯多葛主义|stoicism|stoicIsm|s.n.: (fără plural)|Philosophy||
+886|4378|伊壁鸠鲁主义|epicureism|epicureIsm|s.n.: (fără plural)|Philosophy||
+887|4379|柏拉图主义|platonism|platonIsm|s.n.: (fără plural)|Philosophy||
+888|4380|亚里士多德主义|aristotelism|aristotelIsm|s.n.: (fără plural)|Philosophy||
+889|4381|康德主义|kantianism|kantianIsm|s.n.: (fără plural)|Philosophy||
+890|4382|黑格尔主义|hegelianism|hegelianIsm|s.n.: (fără plural)|Philosophy||
+891|4383|马克思主义|marxism|marxIsm|s.n.: (fără plural)|Philosophy||
+892|4384|尼采主义|nietzscheanism|nietzscheanIsm|s.n.: (fără plural)|Philosophy||
+893|4385|海德格尔思想|gândire heideggeriană|gândIre heideggerIAnă|s.f.: gândiri heideggeriene|Philosophy||
+894|4386|维特根斯坦哲学|filozofie wittgensteiniană|filozofIe wittgensteinIAnă|s.f.: (fără plural)|Philosophy||
+895|4387|善|bine|bIne|s.n.: (fără plural)|Philosophy||
+896|4388|恶|rău|rĂu|s.n.: (fără plural)|Philosophy||
+897|4389|美|frumos|frumOs|s.n.: (fără plural)|Philosophy||
+898|4390|丑|urât|urÂt|s.n.: (fără plural)|Philosophy||
+899|4392|假|fals|fAls|s.n.: falsuri|Philosophy||
+900|4393|无知|ignoranță|ignorAnță|s.f.: ignoranțe|Philosophy||
+901|4394|智慧|înțelepciune|înțelEpciune|s.f.: (fără plural)|Philosophy||
+902|4395|启蒙|iluminare|iluminAre|s.f.: iluminări|Philosophy||
+903|4398|特许经营|franciză|francIză|s.f.: francize|Economics||
+904|4399|风险资本|capital de risc|capitAl de rIsc|s.f.: capitaluri de risc|Economics||
+905|4400|初创企业|startup|stArtup|s.n.: startupuri|Economics||
+906|4401|独角兽企业|unicorn|unicOrn|s.n.: unicornuri|Economics||
+907|4402|众筹|finanțare participativă|finanțAre participatIvă|s.f.: finanțări participative|Economics||
+908|4403|小额信贷|microcredit|microcredIt|s.n.: microcredite|Economics||
+909|4404|金融科技|fintech|fIntEch|s.n.: (fără plural)|Economics||
+910|4405|加密货币|criptomonedă|criptomonEdă|s.f.: criptomonede|Economics||
+911|4406|通证经济|tokenomics|tokEnomics|s.n.: (fără plural)|Economics||
+912|4407|平台经济|economie de platformă|economIe de platfOrmă|s.f.: economii de platformă|Economics||
+913|4408|共享经济|economie colaborativă|economIe colaboratIvă|s.f.: economii colaborative|Economics||
+914|4409|循环经济|economie circulară|economIe circulAră|s.f.: economii circulare|Economics||
+915|4410|绿色经济|economie verde|economIe vErde|s.f.: economii verzi|Economics||
+916|4411|知识经济|economie a cunoașterii|economIe a cunoAșterii|s.f.: economii ale cunoașterii|Economics||
+917|4412|数字经济|economie digitală|economIe digitAlă|s.f.: economii digitale|Economics||
+918|4413|影子经济|economie subterană|economIe subterAnă|s.f.: economii subterane|Economics||
+919|4414|经济特区|zonă economică specială|zOnă economică specIAlă|s.f.: zone economice speciale|Economics||
+920|4415|自由贸易区|zonă de liber schimb|zOnă de lIber schImb|s.f.: zone de liber schimb|Economics||
+921|4416|关税|taxă vamală|tAxă vamAlă|s.f.: taxe vamale|Economics||
+922|4417|贸易壁垒|barieră comercială|bariEră comercIAlă|s.f.: bariere comerciale|Economics||
+923|4418|经济制裁|sancțiune economică|sancțiUne economică|s.f.: sancțiuni economice|Economics||
+924|4419|经济援助|ajutor economic|ajutOr economIc|s.n.: ajutoare economice|Economics||
+925|4420|经济合作|cooperare economică|cooperAre economică|s.f.: cooperări economice|Economics||
+926|4421|经济一体化|integrare economică|integrAre economică|s.f.: integrări economice|Economics||
+927|4422|财政刺激|stimul fiscal|stImul fiscAl|s.n.: stimuli fiscali|Economics||
+928|4423|量化宽松|relaxare cantitativă|relaxAre cantitativă|s.f.: relaxări cantitative|Economics||
+929|4424|利差|diferențial de dobândă|diferențiAl de dobÂndă|s.n.: diferențiale de dobândă|Economics||
+930|4425|资产负债表|bilanț contabil|biLAnț contAbil|s.n.: bilanțuri contabile|Economics||
+931|4426|损益表|cont de profit și pierderi|cOnt de prOfit și piErderi|s.n.: conturi de profit și pierderi|Economics||
+932|4427|现金流|flux de numerar|flUx de numerAr|s.n.: fluxuri de numerar|Economics||
+933|4428|净资产|activ net|actIv nEt|s.n.: active nete|Economics||
+934|4429|资产回报率|rentabilitate a activelor|rentabilitAte a actIvelor|s.f.: rentabilități ale activelor|Economics||
+935|4430|股本回报率|rentabilitate a capitalului propriu|rentabilitAte a capitalUlui prOpriu|s.f.: (fără plural)|Economics||
+936|4431|负债率|grad de îndatorare|grAd de îndatorAre|s.n.: grade de îndatorare|Economics||
+937|4432|流动性|lichiditate|lichidItAte|s.f.: lichidități|Economics||
+938|4433|环境法|drept al mediului|drEpt al mEdiului|s.n.: (fără plural)|Law||
+939|4434|海洋法|drept maritim|drEpt maritIm|s.n.: (fără plural)|Law||
+940|4435|航空法|drept aeronautic|drEpt aeronautIc|s.n.: (fără plural)|Law||
+941|4436|太空法|drept spațial|drEpt spațiAl|s.n.: (fără plural)|Law||
+942|4437|网络法|drept cibernetic|drEpt cibernEtic|s.n.: (fără plural)|Law||
+943|4438|数据保护法|legislație privind protecția datelor|legislAție privInd protEcția dAtelor|s.f.: (fără plural)|Law||
+944|4439|反垄断法|legislație antitrust|legislAție antItrUst|s.f.: (fără plural)|Law||
+945|4440|消费者保护法|legislație privind protecția consumatorilor|legislAție privInd protEcția consumatOrilor|s.f.: (fără plural)|Law||
+946|4441|劳动关系法|dreptul relațiilor de muncă|drEptul relațIilor de mUncă|s.n.: (fără plural)|Law||
+947|4442|公司法|drept societar|drEpt societAr|s.n.: (fără plural)|Law||
+948|4443|破产法|drept al insolvenței|drEpt al insolVEnței|s.n.: (fără plural)|Law||
+949|4444|家庭法|dreptul familiei|drEptul famIliei|s.n.: (fără plural)|Law||
+950|4445|移民法|drept al imigrației|drEpt al imigrAției|s.n.: (fără plural)|Law||
+951|4446|难民法|drept al refugiaților|drEpt al refugiAților|s.n.: (fără plural)|Law||
+952|4447|人道主义法|drept umanitar|drEpt umanitAr|s.n.: (fără plural)|Law||
+953|4448|刑事诉讼法|drept procesual penal|drEpt procesUAl penAl|s.n.: (fără plural)|Law||
+954|4449|民事诉讼法|drept procesual civil|drEpt procesUAl civIl|s.n.: (fără plural)|Law||
+955|4450|行政诉讼|contencios administrativ|contencIos administratIv|s.n.: (fără plural)|Law||
+956|4451|执法|aplicare a legii|aplicAre a lEgii|s.f.: aplicări ale legii|Law||
+957|4452|刑事侦查|investigație penală|investigAție penAlă|s.f.: investigații penale|Law||
+958|4453|起诉书|rechizitoriu|rechizitOrIu|s.n.: rechizitorii|Law||
+959|4454|辩护词|pledoarie|pledoArIe|s.f.: pledoarii|Law||
+960|4455|判决书|hotărâre judecătorească|hotărÂre judecătorEască|s.f.: hotărâri judecătorești|Law||
+961|4456|上诉法院|curte de apel|cUrte de apEl|s.f.: curți de apel|Law||
+962|4457|最高法院|curte supremă|cUrte suprEmă|s.f.: (fără plural)|Law||
+963|4458|宪法法院|curte constituțională|cUrte constituționAlă|s.f.: (fără plural)|Law||
+964|4459|国际法院|curte internațională|cUrte internaționAlă|s.f.: (fără plural)|Law||
+965|4460|法律援助|asistență juridică|asistEnță juridică|s.f.: asistențe juridice|Law||
+966|4461|法律顾问|consilier juridic|consilIer juridIc|s.m.: consilieri juridici|Law||
+967|4462|公证人|notar|notAr|s.m.: notari|Law||
+968|4463|法律体系|sistem juridic|sistEm juridIc|s.n.: sisteme juridice|Law||
+969|4464|普通法|drept cutumiar|drEpt cutumiAr|s.n.: (fără plural)|Law||
+970|4465|成文法|drept codificat|drEpt codificAt|s.n.: (fără plural)|Law||
+971|4466|判例法|drept jurisprudențial|drEpt jurisprudențiAl|s.n.: (fără plural)|Law||
+972|4467|法律推理|raționament juridic|rațIonamEnt juridIc|s.n.: raționamente juridice|Law||
+973|4468|蒙台梭利教育|pedagogie Montessori|pedagogIe MontessOrI|s.f.: (fără plural)|Education||
+974|4469|华德福教育|pedagogie Waldorf|pedagogIe WaldOrf|s.f.: (fără plural)|Education||
+975|4470|翻转课堂|clasă inversată|clAsă inversAtă|s.f.: clase inversate|Education||
+976|4471|混合学习|învățare mixtă|învățAre mIxtă|s.f.: (fără plural)|Education||
+977|4472|游戏化学习|gamificare|gamificAre|s.f.: (fără plural)|Education||
+978|4473|微学习|microînvățare|microînvățAre|s.f.: (fără plural)|Education||
+979|4474|同伴学习|învățare între egali|învățAre Între egAli|s.f.: (fără plural)|Education||
+980|4475|自主学习|învățare autonomă|învățAre autonomă|s.f.: (fără plural)|Education||
+981|4476|探究式学习|învățare prin descoperire|învățAre prIn descoperIre|s.f.: (fără plural)|Education||
+982|4477|体验式学习|învățare experiențială|învățAre experiențiAlă|s.f.: (fără plural)|Education||
+983|4478|社会情感学习|învățare socio-emoțională|învățAre socio-emoționAlă|s.f.: (fără plural)|Education||
+984|4479|认知发展|dezvoltare cognitivă|dezvoltAre cognItivă|s.f.: (fără plural)|Education||
+985|4480|多元智能|inteligențe multiple|inteligEnțe mUltiple|s.f.pl.: inteligențe multiple|Education||
+986|4481|学习风格|stil de învățare|stIl de învățAre|s.n.: stiluri de învățare|Education||
+987|4482|教育公平|echitate educațională|echitAte educaționAlă|s.f.: (fără plural)|Education||
+988|4483|学习动机|motivație de învățare|motivAție de învățAre|s.f.: motivații de învățare|Education||
+989|4484|自我效能感|autoeficacitate|autoeficacitAte|s.f.: (fără plural)|Education||
+990|4485|成长型思维|mentalitate de creștere|mentalitAte de crEștere|s.f.: mentalități de creștere|Education||
+991|4486|固定型思维|mentalitate fixă|mentalitAte fIxă|s.f.: mentalități fixe|Education||
+992|4487|学业成就|performanță academică|performAnță academică|s.f.: performanțe academice|Education||
+993|4488|教育心理学家|psihopedagog|psihopedagOg|s.m.: psihopedagogi|Education||
+994|4489|学习困难|dificultate de învățare|dificultAte de învățAre|s.f.: dificultăți de învățare|Education||
+995|4490|阅读障碍|dislexie|dislexIe|s.f.: dislexii|Education||
+996|4491|计算思维|gândire computațională|gândIre computaționAlă|s.f.: (fără plural)|Education||
+997|4492|数字素养|alfabetizare digitală|alfabetizAre digitAlă|s.f.: (fără plural)|Education||
+998|4493|媒体素养|alfabetizare media|alfabetizAre mEdia|s.f.: (fără plural)|Education||
+999|4494|科学素养|alfabetizare științifică|alfabetizAre științifică|s.f.: (fără plural)|Education||
+1000|4495|全球素养|competență globală|competEnță globAlă|s.f.: competențe globale|Education||

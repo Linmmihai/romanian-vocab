@@ -4,9 +4,12 @@ import path from 'node:path';
 import { build } from 'esbuild';
 
 const appRoot = process.cwd();
+const projectRoot = path.resolve(appRoot, '..');
 const webRoot = existsSync(path.join(appRoot, '..', 'romanian_vocab_code', 'index.html'))
   ? path.join(appRoot, '..', 'romanian_vocab_code')
-  : appRoot;
+  : existsSync(path.join(projectRoot, 'index.html'))
+    ? projectRoot
+    : appRoot;
 const dataRoot = existsSync(path.join(webRoot, 'data', 'vocab.json')) ? webRoot : appRoot;
 const root = appRoot;
 const out = path.join(root, 'www');
@@ -35,7 +38,9 @@ for (const file of files) {
 }
 
 for (const icon of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) {
-  const iconPath = path.join(webRoot, 'icons', icon);
+  const iconPath = existsSync(path.join(webRoot, 'icons', icon))
+    ? path.join(webRoot, 'icons', icon)
+    : path.join(webRoot, 'manifest', icon);
   if (existsSync(iconPath)) await copyFile(iconPath, path.join(out, 'icons', icon));
 }
 

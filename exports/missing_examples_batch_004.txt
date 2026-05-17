@@ -1,0 +1,504 @@
+Words missing example sentence (example_ro is empty)
+Batch: 4
+Rows: 500
+Format: row|id|zh|ro|ipa|hint|cat|example_ro|example_zh
+1501|5010|文化史|istorie culturală|istOrie culturAlă|s.f.: istorii culturale|History||
+1502|5011|政治史|istorie politică|istOrie polItică|s.f.: istorii politice|History||
+1503|5013|思想史|istoria ideilor|istorIa ideIlor|s.f.: (fără plural)|History||
+1504|5014|性别史|istoria genului|istorIa gEnului|s.f.: (fără plural)|History||
+1505|5015|环境史|istorie a mediului|istOrie a mEdiului|s.f.: istorii ale mediului|History||
+1506|5016|殖民史|istorie colonială|istOrie colonIAlă|s.f.: istorii coloniale|History||
+1507|5017|比较史学|istorie comparată|istOrie comparAtă|s.f.: istorii comparate|History||
+1508|5018|全球史|istorie globală|istOrie globAlă|s.f.: istorii globale|History||
+1509|5019|微观史|microistorie|microistOrie|s.f.: microistorii|History||
+1510|5020|大历史|macroistorie|macroistOrie|s.f.: macroistoriI|History||
+1511|5021|历史哲学家|filozof al istoriei|filOzof al istOriei|s.m.: filozofi ai istoriei|History||
+1512|5022|历史学家|istoric|istOric|s.m.: istorici|History||
+1513|5023|年代学|cronologie|cronologIe|s.f.: cronologii|History||
+1514|5025|数学|matematică|matemAtică|s.f.: (fără plural)|Science||
+1515|5026|代数|algebră|Algebră|s.f.: (fără plural)|Science||
+1516|5027|几何学|geometrie|geometrIe|s.f.: (fără plural)|Science||
+1517|5028|微积分|calcul diferențial și integral|cAlcul diferențiAl și integrAl|s.n.: (fără plural)|Science||
+1518|5029|统计学|statistică|statIstică|s.f.: (fără plural)|Science||
+1519|5030|概率论|teoria probabilităților|teorIa probabilItăților|s.f.: (fără plural)|Science||
+1520|5031|数论|teoria numerelor|teorIa numerElor|s.f.: (fără plural)|Science||
+1521|5032|拓扑学|topologie|topologIe|s.f.: (fără plural)|Science||
+1522|5033|图论|teoria grafurilor|teorIa grAfurilor|s.f.: (fără plural)|Science||
+1523|5034|密码学|criptografie|criptografIe|s.f.: (fără plural)|Science||
+1524|5035|信息论|teoria informației|teorIa informAției|s.f.: (fără plural)|Science||
+1525|5037|最优化|optimizare|optimizAre|s.f.: optimizări|Science||
+1526|5038|线性代数|algebră liniară|Algebră liniAră|s.f.: (fără plural)|Science||
+1527|5039|微分方程|ecuație diferențială|ecuAție diferențiAlă|s.f.: ecuații diferențiale|Science||
+1528|5040|偏微分方程|ecuație cu derivate parțiale|ecuAție cu derivAte parțIAle|s.f.: ecuații cu derivate parțiale|Science||
+1529|5041|傅里叶变换|transformata Fourier|transformAta fouriEr|s.f.: transformate Fourier|Science||
+1530|5042|拉普拉斯变换|transformata Laplace|transformAta laplAce|s.f.: transformate Laplace|Science||
+1531|5043|向量|vector|vEctor|s.m.: vectori|Science||
+1532|5044|矩阵|matrice|mAtrIce|s.f.: matrici|Science||
+1533|5045|张量|tensor|tensOr|s.m.: tensori|Science||
+1534|5046|微分几何|geometrie diferențială|geometrIe diferențiAlă|s.f.: (fără plural)|Science||
+1535|5047|代数几何|geometrie algebrică|geometrIe algebrică|s.f.: (fără plural)|Science||
+1536|5048|数学证明|demonstrație matematică|demonstrAție matematică|s.f.: demonstrații matematice|Science||
+1537|5049|公理|axiomă|axiOmă|s.f.: axiome|Science||
+1538|5050|定理|teoremă|teorEmă|s.f.: teoreme|Science||
+1539|5051|引理|lemă|lEmă|s.f.: leme|Science||
+1540|5052|推论|corolar|corolAr|s.n.: corolare|Science||
+1541|5054|猜想|conjectură|conjEctură|s.f.: conjecturi|Science||
+1542|5055|哥德尔不完备定理|teorema incompletitudinii lui Gödel|teorEma incompletitUdinii lui gödEl|s.f.: (fără plural)|Science||
+1543|5056|黎曼猜想|conjectura Riemann|conjEctura riemAnn|s.f.: (fără plural)|Science||
+1544|5057|P对NP问题|problema P versus NP|problEma P vErsus NP|s.f.: (fără plural)|Science||
+1545|5058|费马大定理|ultima teoremă a lui Fermat|Ultima teorEmă a lui fErmAt|s.f.: (fără plural)|Science||
+1546|5059|庞加莱猜想|conjectura Poincaré|conjEctura poincarE|s.f.: (fără plural)|Science||
+1547|5060|航天工程|inginerie aerospațială|inginerIe aerospațiAlă|s.f.: (fără plural)|Engineering||
+1548|5061|火箭推进|propulsie prin rachetă|propulsiE prIn rachEtă|s.f.: propulsii prin rachetă|Engineering||
+1549|5062|轨道力学|mecanică orbitală|mecAnică orbitAlă|s.f.: (fără plural)|Engineering||
+1550|5063|空间站|stație spațială|stAție spațiAlă|s.f.: stații spațiale|Engineering||
+1551|5064|月球探测|explorare lunară|explorAre lunAră|s.f.: explorări lunare|Engineering||
+1552|5065|火星任务|misiune pe Marte|MisiUne pe mArte|s.f.: misiuni pe Marte|Engineering||
+1553|5066|深空探测|explorare a spațiului profund|explorAre a spAțiului profUnd|s.f.: explorări ale spațiului profund|Engineering||
+1554|5067|太空望远镜|telescop spațial|telescOp spațiAl|s.n.: telescoape spațiale|Engineering||
+1555|5068|地球观测卫星|satelit de observare a Pământului|satelIt de observAre a pămÂntului|s.m.: sateliți de observare a Pământului|Engineering||
+1556|5069|导航系统|sistem de navigație|sistEm de navigAție|s.n.: sisteme de navigație|Engineering||
+1557|5070|全球定位系统|sistem de poziționare globală|sistEm de pozițIonare globAlă|s.n.: sisteme de poziționare globală|Engineering||
+1558|5071|核聚变|fuziune nucleară|fuziUne nucleAră|s.f.: (fără plural)|Engineering||
+1559|5072|托卡马克|tokamak|tokamAk|s.n.: tokamakuri|Engineering||
+1560|5073|惯性约束|confinament inerțial|confinamEnt inerțiAl|s.n.: (fără plural)|Engineering||
+1561|5074|磁约束|confinament magnetic|confinamEnt magnEtic|s.n.: (fără plural)|Engineering||
+1562|5075|超导磁体|magnet supraconductor|magnEt supraconductOr|s.n.: magneți supraconductori|Engineering||
+1563|5076|粒子加速器|accelerator de particule|acceleratOr de particUle|s.n.: acceleratoare de particule|Engineering||
+1564|5077|同步辐射|radiație sincrotronică|radiAție sincrotronică|s.f.: radiații sincrotronice|Engineering||
+1565|5078|自由电子激光|laser cu electroni liberi|lasEr cu electroni lIberi|s.n.: lasere cu electroni liberi|Engineering||
+1566|5079|纳米制造|nanofabricare|nanofabricAre|s.f.: nanofabricări|Engineering||
+1567|5080|原子力显微镜|microscop cu forță atomică|microscOp cu fOrță atomică|s.n.: microscoape cu forță atomică|Engineering||
+1568|5081|扫描隧道显微镜|microscop cu efect tunel|microscOp cu efEct tunEl|s.n.: microscoape cu efect tunel|Engineering||
+1569|5082|分子机器|mașină moleculară|mașInă moleculAră|s.f.: mașini moleculare|Engineering||
+1570|5083|DNA计算|calcul pe bază de ADN|cAlcul pe bAză de A-D-N|s.n.: (fără plural)|Engineering||
+1571|5084|量子通信|comunicare cuantică|comunicAre cuAntică|s.f.: comunicări cuantice|Engineering||
+1572|5086|量子传感|senzori cuantici|sEnzori cuAntici|s.m.pl.: senzori cuantici|Engineering||
+1573|5087|量子模拟|simulare cuantică|simulAre cuAntică|s.f.: simulări cuantice|Engineering||
+1574|5088|拓扑量子计算|calcul cuantic topologic|cAlcul cuAntic topologIc|s.n.: (fără plural)|Engineering||
+1575|5089|错误纠正码|cod de corecție a erorilor|cOd de corEcție a erOrilor|s.n.: coduri de corecție a erorilor|Engineering||
+1576|5090|光子计算|calcul fotonic|cAlcul fotOnic|s.n.: (fără plural)|Engineering||
+1577|5091|神经形态计算|calcul neuromorfic|cAlcul neuromorfIc|s.n.: (fără plural)|Engineering||
+1578|5092|生物计算|calcul biologic|cAlcul biologIc|s.n.: (fără plural)|Engineering||
+1579|5093|超级计算机|supercalculator|supercalculatOr|s.n.: supercalculatoare|Engineering||
+1580|5094|边缘人工智能|inteligență artificială la margine|inteligEnță artificIAlă la mArgine|s.f.: (fără plural)|Engineering||
+1581|5095|土地退化|degradare a terenului|degradAre a terEnului|s.f.: degradări ale terenului|Agriculture||
+1582|5096|荒漠化|deșertificare|deșertificAre|s.f.: (fără plural)|Agriculture||
+1583|5097|土壤侵蚀|eroziune a solului|eroziUne a sOlului|s.f.: eroziuni ale solului|Agriculture||
+1584|5098|盐碱化|salinizare|salinizAre|s.f.: salinizări|Agriculture||
+1585|5099|水资源短缺|deficit hidric|deficIt hIdric|s.n.: deficite hidrice|Agriculture||
+1586|5100|干旱管理|managementul secetei|managemEntul secEtei|s.n.: (fără plural)|Agriculture||
+1587|5101|洪涝管理|managementul inundațiilor|managemEntul inundAțiilor|s.n.: (fără plural)|Agriculture||
+1588|5102|气候适应农业|agricultură adaptată la climă|agricultUră adaptAtă la clImă|s.f.: (fără plural)|Agriculture||
+1589|5103|农业碳排放|emisii de carbon din agricultură|emIsii de cArbon din agricultUră|s.f.pl.: (fără plural)|Agriculture||
+1590|5104|减排农业|agricultură cu emisii reduse|agricultUră cu emIsii redUse|s.f.: (fără plural)|Agriculture||
+1591|5105|碳中和农业|agricultură neutră în carbon|agricultUră neUtră în cArbon|s.f.: (fără plural)|Agriculture||
+1592|5106|生物多样性农业|agricultură pentru biodiversitate|agricultUră pentru biodiversitAte|s.f.: (fără plural)|Agriculture||
+1593|5107|传粉者保护|protecția polenizatorilor|protEcția polenizatOrilor|s.f.: (fără plural)|Agriculture||
+1594|5108|水生农业|acvacultură|acvaculTUră|s.f.: (fără plural)|Agriculture||
+1595|5109|海藻养殖|algicultură|algiculTUră|s.f.: (fără plural)|Agriculture||
+1596|5110|昆虫养殖|entomofagie|entomofagIe|s.f.: (fără plural)|Agriculture||
+1597|5111|食用昆虫|insecte comestibile|insEcte comestIbile|s.f.pl.: insecte comestibile|Agriculture||
+1598|5112|蛋白质替代|proteină alternativă|proteInă alternAtivă|s.f.: proteine alternative|Agriculture||
+1599|5113|人造肉|carne cultivată|cArne cultivAtă|s.f.: (fără plural)|Agriculture||
+1600|5114|植物基食品|aliment pe bază de plante|alimEnt pe bAză de plAnte|s.n.: alimente pe bază de plante|Agriculture||
+1601|5115|发酵食品|aliment fermentat|alimEnt fermentAt|s.n.: alimente fermentate|Agriculture||
+1602|5116|功能性食品|aliment funcțional|alimEnt funcționAl|s.n.: alimente funcționale|Agriculture||
+1603|5117|营养强化食品|aliment îmbogățit cu nutrienți|alimEnt îmbogățIt cu nutriEnți|s.n.: alimente îmbogățite cu nutrienți|Agriculture||
+1604|5118|食品浪费|risipă alimentară|rIsIpă alimentAră|s.f.: (fără plural)|Agriculture||
+1605|5119|食品损失|pierderi alimentare|piErderi alimentAre|s.f.pl.: pierderi alimentare|Agriculture||
+1606|5120|粮食体系|sistem alimentar|sistEm alimentAr|s.n.: sisteme alimentare|Agriculture||
+1607|5121|食物主权|suveranitate alimentară|suveranitAte alimentAră|s.f.: (fără plural)|Agriculture||
+1608|5122|粮食援助|ajutor alimentar|ajutOr alimentAr|s.n.: ajutoare alimentare|Agriculture||
+1609|5123|营养不良|malnutriție|malnutriție|s.f.: malnutriții|Agriculture||
+1610|5124|隐性饥饿|foame ascunsă|foAme ascUnsă|s.f.: (fără plural)|Agriculture||
+1611|5125|肥胖症|obezitate|obezitAte|s.f.: obezități|Agriculture||
+1612|5126|饮食多样化|diversificare alimentară|diversificAre alimentAră|s.f.: diversificări alimentare|Agriculture||
+1613|5127|地中海饮食|dietă mediteraneană|diEtă mediteraneAnă|s.f.: diete mediteraneene|Agriculture||
+1614|5128|生酮饮食|dietă ketogenică|diEtă cetogenică|s.f.: diete cetogenice|Agriculture||
+1615|5129|间歇性断食|post intermitent|pOst intermitEnt|s.n.: posturi intermitente|Agriculture||
+1616|5130|急性病|boală acută|boAlă acUtă|s.f.: boli acute|Medicine||
+1617|5131|慢性病|boală cronică|boAlă cronică|s.f.: boli cronice|Medicine||
+1618|5132|退行性疾病|boală degenerativă|boAlă degenerAtivă|s.f.: boli degenerative|Medicine||
+1619|5133|自身免疫病|boală autoimună|boAlă autoimUnă|s.f.: boli autoimune|Medicine||
+1620|5134|代谢综合征|sindrom metabolic|sindrOm metabolIc|s.n.: sindroame metabolice|Medicine||
+1621|5135|心血管疾病|boală cardiovasculară|boAlă cardiovasculAră|s.f.: boli cardiovasculare|Medicine||
+1622|5136|脑卒中|accident vascular cerebral|accidEnt vasculAr cerebrAl|s.n.: accidente vasculare cerebrale|Medicine||
+1623|5137|心肌梗死|infarct miocardic|infArct miocArdic|s.n.: infarcturi miocardice|Medicine||
+1624|5138|心力衰竭|insuficiență cardiacă|insuficiEnță cardiacă|s.f.: insuficiențe cardiace|Medicine||
+1625|5139|高血压|hipertensiune arterială|hipertEnsiUne arterIAlă|s.f.: hipertensiuni arteriale|Medicine||
+1626|5140|动脉硬化|ateroscleroză|aterosclerOză|s.f.: ateroscleroze|Medicine||
+1627|5141|慢性阻塞性肺病|boală pulmonară obstructivă cronică|boAlă pulmonAră obstructIvă cronică|s.f.: boli pulmonare obstructive cronice|Medicine||
+1628|5142|哮喘|astm bronșic|Astm bronșIc|s.n.: astmuri bronșice|Medicine||
+1629|5143|过敏性疾病|boală alergică|boAlă alErgică|s.f.: boli alergice|Medicine||
+1630|5144|炎症性肠病|boală inflamatorie intestinală|boAlă inflamatOrIe intestinAlă|s.f.: boli inflamatorii intestinale|Medicine||
+1631|5145|肝硬化|ciroză hepatică|cirOză hepatică|s.f.: ciroze hepatice|Medicine||
+1632|5146|肾功能衰竭|insuficiență renală|insuficiEnță renAlă|s.f.: insuficiențe renale|Medicine||
+1633|5147|帕金森病|boala Parkinson|boAla parkinsOn|s.f.: (fără plural)|Medicine||
+1634|5148|阿尔茨海默症|boala Alzheimer|boAla alzheimEr|s.f.: (fără plural)|Medicine||
+1635|5149|多发性硬化|scleroză multiplă|sclerOză mUltiplă|s.f.: (fără plural)|Medicine||
+1636|5150|癫痫|epilepsie|epilepsIe|s.f.: epilepsii|Medicine||
+1637|5151|抑郁症|depresie|depresIe|s.f.: depresii|Medicine||
+1638|5152|焦虑症|anxietate|anxietAte|s.f.: anxietăți|Medicine||
+1639|5153|精神分裂症|schizofrenie|schizofrenIe|s.f.: schizofrenii|Medicine||
+1640|5154|双相情感障碍|tulburare bipolară|tulburAre bipolAră|s.f.: tulburări bipolare|Medicine||
+1641|5155|创伤后应激障碍|tulburare de stres posttraumatic|tulburAre de strEs posttraumAtic|s.f.: tulburări de stres posttraumatic|Medicine||
+1642|5156|强迫症|tulburare obsesiv-compulsivă|tulburAre obsesIv-compulsIvă|s.f.: tulburări obsesiv-compulsive|Medicine||
+1643|5157|进食障碍|tulburare de alimentație|tulburAre de alimentAție|s.f.: tulburări de alimentație|Medicine||
+1644|5158|物质依赖|dependență de substanțe|dependEnță de substAnțe|s.f.: dependențe de substanțe|Medicine||
+1645|5159|酒精依赖|alcoolism|alcoolIsm|s.n.: (fără plural)|Medicine||
+1646|5160|阿片类药物危机|criza opioidelor|crIza opiOIdelor|s.f.: (fără plural)|Medicine||
+1647|5161|心理健康|sănătate mintală|sănătAte mIntală|s.f.: (fără plural)|Medicine||
+1648|5162|心理弹性|reziliență|reziliEnță|s.f.: reziliențe|Medicine||
+1649|5163|正念|mindfulness|mIndfulness|s.n.: (fără plural)|Medicine||
+1650|5164|冥想疗法|meditație terapeutică|meditAție terapEutică|s.f.: meditații terapeutice|Medicine||
+1651|5165|孙子兵法|Arta Războiului|Arta răzbOiului|s.f.: (fără plural)|Military Science||
+1652|5166|克劳塞维茨|Clausewitz|clAusEwitz|s.m.: (fără plural)|Military Science||
+1653|5167|战争迷雾|ceața războiului|cEața răzbOiului|s.f.: (fără plural)|Military Science||
+1654|5168|摩擦力|fricțiune|fricțiUne|s.f.: fricțiuni|Military Science||
+1655|5169|战斗力|putere de luptă|putEre de lUptă|s.f.: (fără plural)|Military Science||
+1656|5170|作战节奏|ritm operațional|rItm operaționAl|s.n.: ritmuri operaționale|Military Science||
+1657|5171|指挥与控制|comandă și control|comAndă și contrOl|s.f.: (fără plural)|Military Science||
+1658|5172|任务指挥|comandă prin misiune|comAndă prIn MisiUne|s.f.: (fără plural)|Military Science||
+1659|5173|联合作战|operațiuni comune|operațiUni comUne|s.f.pl.: operațiuni comune|Military Science||
+1660|5174|多域作战|operațiuni în domenii multiple|operațiUni în domEnii mUltiple|s.f.pl.: (fără plural)|Military Science||
+1661|5175|灰色地带冲突|conflict în zona gri|conflIct în zOna grI|s.n.: conflicte în zona gri|Military Science||
+1662|5176|阈下战争|război subbelic|răzbOi subbelIc|s.n.: (fără plural)|Military Science||
+1663|5177|强制外交|diplomație coercitivă|diplomAție coercItivă|s.f.: (fără plural)|Military Science||
+1664|5178|威慑理论|teoria descurajării|teorIa descurajării|s.f.: (fără plural)|Military Science||
+1665|5179|核三位一体|triada nucleară|triAda nucleAră|s.f.: (fără plural)|Military Science||
+1666|5180|第一次打击|primul atac|prImul atAc|s.n.: (fără plural)|Military Science||
+1667|5181|相互确保毁灭|distrugere reciprocă garantată|distrUgere reciprocă garantAtă|s.f.: (fără plural)|Military Science||
+1668|5182|战略稳定性|stabilitate strategică|stabilitAte stratEgică|s.f.: stabilități strategice|Military Science||
+1669|5183|军备竞赛|cursă a înarmărilor|cUrsă a înarmărilor|s.f.: curse ale înarmărilor|Military Science||
+1670|5184|安全困境|dilema securității|dilEma securItății|s.f.: dileme ale securității|Military Science||
+1671|5185|集体安全|securitate colectivă|securitAte colectIvă|s.f.: (fără plural)|Military Science||
+1672|5186|共同防御|apărare comună|apărAre comUnă|s.f.: (fără plural)|Military Science||
+1673|5187|前沿部署|desfășurare înaintată|desfășurAre înaintAtă|s.f.: desfășurări înaintate|Military Science||
+1674|5188|战略纵深|adâncime strategică|adâncIme stratEgică|s.f.: adâncimi strategice|Military Science||
+1675|5189|战略包围|încercuire strategică|încercuIre stratEgică|s.f.: încercuiri strategice|Military Science||
+1676|5190|蓝海战略|strategie oceanul albastru|strategIe oceAnul albAstru|s.f.: strategii oceanul albastru|Management||
+1677|5191|红海战略|strategie oceanul roșu|strategIe oceAnul rOșu|s.f.: strategii oceanul roșu|Management||
+1678|5192|波特五力|cele cinci forțe ale lui Porter|cEle cInci fOrțe ale lui pOrter|s.f.pl.: (fără plural)|Management||
+1679|5193|价值链分析|analiza lanțului valoric|analIza lAnțului valorIc|s.f.: analize ale lanțului valoric|Management||
+1680|5194|SWOT分析|analiză SWOT|analIză swOt|s.f.: analize SWOT|Management||
+1681|5195|PESTLE分析|analiză PESTLE|analIză pEstle|s.f.: analize PESTLE|Management||
+1682|5196|波士顿矩阵|matricea BCG|matrIcea b-c-g|s.f.: matrici BCG|Management||
+1683|5197|安索夫矩阵|matricea Ansoff|matrIcea Ansoff|s.f.: matrici Ansoff|Management||
+1684|5198|麦肯锡7S框架|cadrul 7S McKinsey|cAdrul 7S McKInsey|s.n.: cadre 7S McKinsey|Management||
+1685|5200|商业模式画布|canvas pentru modelul de afaceri|cAnvas pentru modElul de afAceri|s.n.: canvasuri pentru modelul de afaceri|Management||
+1686|5201|精益创业|startup lean|stArtup lEan|s.n.: startupuri lean|Management||
+1687|5202|设计思维|design thinking|desIgn thInking|s.n.: (fără plural)|Management||
+1688|5203|蓝图思维|gândire sistemică|gândIre sistEmică|s.f.: (fără plural)|Management||
+1689|5204|敏捷方法论|metodologie agilă|metodologIe agilă|s.f.: metodologii agile|Management||
+1690|5205|斯克拉姆|Scrum|scrUm|s.n.: (fără plural)|Management||
+1691|5206|看板方法|metodă Kanban|metOdă kAnban|s.f.: metode Kanban|Management||
+1692|5207|极限编程|programare extremă|programAre extremă|s.f.: (fără plural)|Management||
+1693|5208|持续交付|livrare continuă|livrAre contInuă|s.f.: livrări continue|Management||
+1694|5209|DevOps|DevOps|devOps|s.n.: (fără plural)|Management||
+1695|5210|价值流映射|cartografiere a fluxului de valoare|cartografIere a fluxUlui de valOAre|s.f.: cartografieri ale fluxului de valoare|Management||
+1696|5211|根本原因分析|analiză a cauzei principale|analIză a cAuzei principAle|s.f.: analize ale cauzei principale|Management||
+1697|5212|鱼骨图|diagrama Ishikawa|diagrAma ishikAwa|s.f.: diagrame Ishikawa|Management||
+1698|5213|帕累托分析|analiza Pareto|analIza parEto|s.f.: analize Pareto|Management||
+1699|5214|5Why分析|analiza celor 5 De ce|analIza cElor 5 de cE|s.f.: analize ale celor 5 De ce|Management||
+1700|5215|希腊古典艺术|artă clasică greacă|Artă clasică greacă|s.f.: arte clasice grecești|Art||
+1701|5216|罗马艺术|artă romană|Artă romAnă|s.f.: arte romane|Art||
+1702|5217|拜占庭艺术|artă bizantină|Artă bizantInă|s.f.: arte bizantine|Art||
+1703|5218|哥特式艺术|artă gotică|Artă gotică|s.f.: arte gotice|Art||
+1704|5219|伊斯兰艺术|artă islamică|Artă islAmică|s.f.: arte islamice|Art||
+1705|5220|东方艺术|artă orientală|Artă orientAlă|s.f.: arte orientale|Art||
+1706|5221|中国画|pictură chineză|pictUră chinEză|s.f.: picturi chinezești|Art||
+1707|5222|日本浮世绘|ukiyo-e|UkIyo-e|s.n.: (fără plural)|Art||
+1708|5223|非洲艺术|artă africană|Artă africAnă|s.f.: arte africane|Art||
+1709|5224|土著艺术|artă indigenă|Artă indigenă|s.f.: arte indigene|Art||
+1710|5225|拉丁美洲艺术|artă latino-americană|Artă latino-americAnă|s.f.: arte latino-americane|Art||
+1711|5226|现代艺术|artă modernă|Artă modErnă|s.f.: arte moderne|Art||
+1712|5227|当代艺术|artă contemporană|Artă contemporAnă|s.f.: arte contemporane|Art||
+1713|5228|新媒体艺术|artă media nouă|Artă mEdia nOuă|s.f.: arte media noi|Art||
+1714|5229|声音艺术|artă sonoră|Artă sonOră|s.f.: arte sonore|Art||
+1715|5230|视频艺术|video art|vIdeo Art|s.n.: (fără plural)|Art||
+1716|5231|网络艺术|net art|nEt Art|s.n.: (fără plural)|Art||
+1717|5232|生成艺术|artă generativă|Artă generatIvă|s.f.: arte generative|Art||
+1718|5233|沉浸式艺术|artă imersivă|Artă imersIvă|s.f.: arte imersive|Art||
+1719|5234|参与式艺术|artă participativă|Artă participatIvă|s.f.: arte participative|Art||
+1720|5235|关系美学|estetică relațională|estEtică relațională|s.f.: estetici relaționale|Art||
+1721|5236|情境主义|situaționism|situaționIsm|s.n.: (fără plural)|Art||
+1722|5237|跨媒介艺术|artă transmedia|Artă transmEdia|s.f.: arte transmedia|Art||
+1723|5238|混合现实艺术|artă în realitate mixtă|Artă în realitAte mIxtă|s.f.: arte în realitate mixtă|Art||
+1724|5239|艺术与科技|artă și tehnologie|Artă și tehnologIe|s.f.: (fără plural)|Art||
+1725|5241|午餐|prânz|prÂnz|s.n.: prânzuri|Daily Life||
+1726|5242|晚餐|cină|cInă|s.f.: cine|Daily Life||
+1727|5243|零食|gustare|gustAre|s.f.: gustări|Daily Life||
+1728|5244|甜点|desert|desErt|s.n.: deserturi|Daily Life||
+1729|5245|开胃菜|aperitiv|aperitIv|s.n.: aperitive|Daily Life||
+1730|5246|主菜|fel principal|fEl principAl|s.n.: feluri principale|Daily Life||
+1731|5248|沙拉|salată|salAtă|s.f.: salate|Daily Life||
+1732|5249|三明治|sandviș|sAndviș|s.n.: sandvișuri|Daily Life||
+1733|5250|披萨|pizza|pIzza|s.f.: pizze|Daily Life||
+1734|5251|汉堡|burger|bUrger|s.n.: burgeri|Daily Life||
+1735|5252|寿司|sushi|sUshi|s.n.: (fără plural)|Daily Life||
+1736|5253|饺子|găluște|gălUște|s.f.pl.: găluște|Daily Life||
+1737|5254|面条|tăiței|tăițEi|s.m.pl.: tăiței|Daily Life||
+1738|5255|米饭|orez fiert|orEz fiErt|s.n.: (fără plural)|Daily Life||
+1739|5256|烧烤|grătar|grătAr|s.n.: grătare|Daily Life||
+1740|5257|火锅（瑞士奶酪/巧克力）|fondue|fondUe|s.n.: (fără plural)|Daily Life||
+1741|5258|冰淇淋|înghețată|înghețAtă|s.f.: înghețate|Daily Life||
+1742|5259|蛋糕|tort|tOrt|s.n.: torturi|Daily Life||
+1743|5260|饼干|biscuit|biscuIt|s.m.: biscuiți|Daily Life||
+1744|5261|巧克力|ciocolată|ciocolAtă|s.f.: ciocolate|Daily Life||
+1745|5262|果汁|suc de fructe|sUc de frUcte|s.n.: sucuri de fructe|Daily Life||
+1746|5263|气泡水|apă minerală|Apă minerAlă|s.f.: ape minerale|Daily Life||
+1747|5264|啤酒|bere|bEre|s.f.: beri|Daily Life||
+1748|5267|好的|bun|bUn|adj: bună / buni / bune|Philosophy||
+1749|5269|对的|corect|corEct|adj: corectă / corecți / corecte|Philosophy||
+1750|5270|错的|greșit|grEșit|adj: greșită / greșiți / greșite|Philosophy||
+1751|5271|重要的|important|importAnt|adj: importantă / importanți / importante|Philosophy||
+1752|5272|真实的|adevărat|adevărAt|adj: adevărată / adevărați / adevărate|Philosophy||
+1753|5274|相同的|același|acElași|adj: aceeași / aceiași / aceleași|Philosophy||
+1754|5275|不同的|diferit|diferIt|adj: diferită / diferiți / diferite|Philosophy||
+1755|5276|简单的|simplu|sImplu|adj: simplă / simpli / simple|Philosophy||
+1756|5277|复杂的|complex|complEx|adj: complexă / complecși / complexe|Philosophy||
+1757|5278|可能的|posibil|posIbil|adj: posibilă / posibili / posibile|Philosophy||
+1758|5279|不可能的|imposibil|imposIbil|adj: imposibilă / imposibili / imposibile|Philosophy||
+1759|5280|必要的|necesar|necEsar|adj: necesară / necesari / necesare|Philosophy||
+1760|5281|自由的|liber|lIber|adj: liberă / liberi / libere|Philosophy||
+1761|5282|便宜的|ieftin|iEftin|adj: ieftină / ieftini / ieftine|Economics||
+1762|5283|贵的|scump|scUmp|adj: scumpă / scumpi / scumpe|Economics||
+1763|5285|收据|bon|bOn|s.n.: bonuri|Economics||
+1764|5287|零钱|monede|monEde|s.f.pl.: monede|Economics||
+1765|5288|钱包|portofel|portofEl|s.n.: portofele|Economics||
+1766|5289|账单|factură|fActură|s.f.: facturi|Economics||
+1767|5290|现金|numerar|numerAr|s.n.: (fără plural)|Economics||
+1768|5292|自动取款机|bancomat|bancomAt|s.n.: bancomate|Economics||
+1769|5293|转账|transfer bancar|transfEr bancAr|s.n.: transferuri bancare|Economics||
+1770|5294|账户|cont|cOnt|s.n.: conturi|Economics||
+1771|5295|存款|depozit|depOzit|s.n.: depozite|Economics||
+1772|5296|汇款|remitență|remitEnță|s.f.: remitențe|Economics||
+1773|5297|规则|regulă|rEgulă|s.f.: reguli|Law||
+1774|5299|禁止|interdicție|interdicție|s.f.: interdicții|Law||
+1775|5300|允许|permisiune|permisiUne|s.f.: permisiuni|Law||
+1776|5304|签名|semnătură|semnătUră|s.f.: semnături|Law||
+1777|5306|身份证|carte de identitate|cArte de identitAte|s.f.: cărți de identitate|Law||
+1778|5309|警察|polițist|polițIst|s.m.: polițiști|Law||
+1779|5310|盗窃|furt|fUrt|s.n.: furturi|Law||
+1780|5311|投诉|reclamație|reclamAție|s.f.: reclamații|Law||
+1781|5312|铅笔|creion|crEion|s.n.: creioane|Education||
+1782|5313|橡皮|radieră|radiEră|s.f.: radiere|Education||
+1783|5314|尺子|riglă|rIglă|s.f.: rigle|Education||
+1784|5315|书包|ghiozdan|ghiozdAn|s.n.: ghiozdane|Education||
+1785|5319|课堂|clasă|clAsă|s.f.: clase|Education||
+1786|5320|课程|lecție|lEcție|s.f.: lecții|Education||
+1787|5321|问题|întrebare|întrebAre|s.f.: întrebări|Education||
+1788|5322|答案|răspuns|răspUns|s.n.: răspunsuri|Education||
+1789|5323|错误|greșeală|grEșeală|s.f.: greșeli|Education||
+1790|5328|结局|final|finAl|s.n.: finale|Literature||
+1791|5329|开头|început|începUt|s.n.: începuturi|Literature||
+1792|5330|中间|mijloc|mIjloc|s.n.: mijloace|Literature||
+1793|5332|英雄|erou|erOu|s.m.: eroi|Literature||
+1794|5333|反派|răufăcător|răufăcătOr|s.m.: răufăcători|Literature||
+1795|5336|描述|descriere|descriEre|s.f.: descrieri|Literature||
+1796|5338|页码|pagină|pAgină|s.f.: pagini|Literature||
+1797|5340|标题|titlu|tItlu|s.n.: titluri|Literature||
+1798|5341|封面|copertă|copErtă|s.f.: coperți|Literature||
+1799|5342|过去|trecut|trEcut|s.n.: (fără plural)|History||
+1800|5343|现在|prezent|prezEnt|s.n.: (fără plural)|History||
+1801|5344|未来|viitor|viitOr|s.n.: (fără plural)|History||
+1802|5345|古代的|antic|Antic|adj: antică / antici / antice|History||
+1803|5346|现代的|modern|modErn|adj: modernă / moderni / moderne|History||
+1804|5348|和平|pace|pAce|s.f.: păci|History||
+1805|5349|国王|rege|rEge|s.m.: regi|History||
+1806|5350|女王|regină|regInă|s.f.: regine|History||
+1807|5351|城堡|castel|castEl|s.n.: castele|History||
+1808|5353|胜利|victorie|victOrIe|s.f.: victorii|History||
+1809|5354|失败|înfrângere|înfrAngere|s.f.: înfrângeri|History||
+1810|5357|动物|animal|animAl|s.n.: animale|Science||
+1811|5358|植物|plantă|plAntă|s.f.: plante|Science||
+1812|5359|昆虫|insectă|insEctă|s.f.: insecte|Science||
+1813|5360|鱼类|pești|pEști|s.m.pl.: pești|Science||
+1814|5361|爬行动物|reptilă|reptIlă|s.f.: reptile|Science||
+1815|5362|哺乳动物|mamifer|mamIfEr|s.n.: mamifere|Science||
+1816|5363|根|rădăcină|rădăcInă|s.f.: rădăcini|Science||
+1817|5364|茎|tulpină|tulpInă|s.f.: tulpini|Science||
+1818|5365|叶子|frunză|frUnză|s.f.: frunze|Science||
+1819|5366|种子|sămânță|sămÂnță|s.f.: semințe|Science||
+1820|5368|岩石|rocă|rOcă|s.f.: roci|Science||
+1821|5369|矿物|mineral|minerAl|s.n.: minerale|Science||
+1822|5370|金属|metal|metAl|s.n.: metale|Science||
+1823|5371|气体|gaz|gAz|s.n.: gaze|Science||
+1824|5372|工具|unealtă|uneAltă|s.f.: unelte|Engineering||
+1825|5373|锤子|ciocan|ciocAn|s.n.: ciocane|Engineering||
+1826|5374|螺丝刀|șurubelniță|șurubelnIță|s.f.: șurubelnițe|Engineering||
+1827|5375|钳子|clește|clEște|s.m.: clești|Engineering||
+1828|5376|扳手|cheie fixă|chEie fIxă|s.f.: chei fixe|Engineering||
+1829|5377|钉子|cui|cUi|s.n.: cuie|Engineering||
+1830|5378|绳子|frânghie|frÂnghie|s.f.: frânghii|Engineering||
+1831|5379|电线|fir electric|fIr eEctric|s.n.: fire electrice|Engineering||
+1832|5380|开关|întrerupător|întrerupătOr|s.n.: întrerupătoare|Engineering||
+1833|5381|插座|priză|prIză|s.f.: prize|Engineering||
+1834|5382|电灯泡|bec|bEc|s.n.: becuri|Engineering||
+1835|5383|管子|țeavă|țEavă|s.f.: țevi|Engineering||
+1836|5386|砖块|cărămidă|cărămIdă|s.f.: cărămizi|Engineering||
+1837|5387|种地|a cultiva pământul|a cultivA pămÂntul|verb: conj. I (cultiv/cultivi/cultivă)|Agriculture||
+1838|5388|浇水|a uda|a udA|verb: conj. I (ud/uzi/udă)|Agriculture||
+1839|5389|施肥|a fertiliza|a fertilizA|verb: conj. I (fertilizez/fertilizezi/fertilizează)|Agriculture||
+1840|5390|除草|a prăși|a prășI|verb: conj. IV (prășesc/prășești/prășește)|Agriculture||
+1841|5391|收获|a recolta|a recoltA|verb: conj. I (recoltez/recoltezi/recoltează)|Agriculture||
+1842|5392|播种|a semăna|a semănA|verb: conj. I (semăn/semeni/seamănă)|Agriculture||
+1843|5393|修剪|a tăia|a tăiA|verb: conj. I (tai/tai/taie)|Agriculture||
+1844|5394|喂动物|a hrăni animale|a hrănI animAle|verb: conj. IV (hrănesc/hrănești/hrănește)|Agriculture||
+1845|5395|耕地|ogor|ogOr|s.n.: ogoare|Agriculture||
+1846|5396|菜园|grădină de legume|grădInă de lEgume|s.f.: grădini de legume|Agriculture||
+1847|5398|农具|unealtă agricolă|uneAltă agrIcolă|s.f.: unelte agricole|Agriculture||
+1848|5399|锄头|sapă|sApă|s.f.: sape|Agriculture||
+1849|5400|犁|plug|plUg|s.n.: pluguri|Agriculture||
+1850|5401|镰刀|coasă|coAsă|s.f.: coase|Agriculture||
+1851|5402|看医生|a merge la doctor|a mErge la doctOr|verb: conj. III (merg/mergi/merge)|Medicine||
+1852|5403|吃药|a lua medicamente|a luA medicamEnte|verb: conj. I (iau/iei/ia)|Medicine||
+1853|5404|量体温|a măsura temperatura|a măsurA temperatUra|verb: conj. I (măsor/măsori/măsoară)|Medicine||
+1854|5405|打针|a face o injecție|a fAce o injEcție|verb: conj. III (fac/faci/face)|Medicine||
+1855|5406|包扎|a bandaja|a bandajA|verb: conj. I (bandajez/bandajezi/bandajează)|Medicine||
+1856|5407|恢复|a se recupera|a se recuperA|verb: conj. I (mă recuperez/te recuperezi/se recuperează)|Medicine||
+1857|5408|头痛|durere de cap|durEre de cAp|s.f.: dureri de cap|Medicine||
+1858|5409|肚子痛|durere de burtă|durEre de bUrtă|s.f.: dureri de burtă|Medicine||
+1859|5410|恶心|greață|greAță|s.f.: (fără plural)|Medicine||
+1860|5411|呕吐|vărsătură|vărsătUră|s.f.: vărsături|Medicine||
+1861|5412|腹泻|diaree|diarEe|s.f.: diarei|Medicine||
+1862|5413|便秘|constipație|constipAție|s.f.: constipații|Medicine||
+1863|5414|皮疹|erupție cutanată|erupție cutanAtă|s.f.: erupții cutanate|Medicine||
+1864|5415|瘙痒|mâncărime|mâncărIme|s.f.: mâncărimi|Medicine||
+1865|5416|肿胀|umflătură|umflătUră|s.f.: umflături|Medicine||
+1866|5420|盾牌|scut|scUt|s.n.: scuturi|Military Science||
+1867|5421|头盔|cască|cAscă|s.f.: căști|Military Science||
+1868|5422|制服|uniformă|unifOrmă|s.f.: uniforme|Military Science||
+1869|5424|命令|ordin|OrdIn|s.n.: ordine|Military Science||
+1870|5429|边界|graniță|grAnIță|s.f.: granițe|Military Science||
+1871|5430|旗帜|steag|steAg|s.n.: steaguri|Military Science||
+1872|5431|敌人|dușman|dușmAn|s.m.: dușmani|Military Science||
+1873|5432|老板|șef|șEf|s.m.: șefi|Management||
+1874|5433|员工|angajat|angajAt|s.m.: angajați|Management||
+1875|5434|同事|coleg|colEg|s.m.: colegi|Management||
+1876|5435|会议|ședință|ședInță|s.f.: ședințe|Management||
+1877|5436|任务|sarcină|sArcină|s.f.: sarcini|Management||
+1878|5441|结果|rezultat|rezultAt|s.n.: rezultate|Management||
+1879|5442|问题|problemă|problEmă|s.f.: probleme|Management||
+1880|5443|解决方案|soluție|solUție|s.f.: soluții|Management||
+1881|5445|进度|progres|progrEs|s.n.: progrese|Management||
+1882|5448|画笔|pensulă|pEnsulă|s.f.: pensule|Art||
+1883|5449|画布|pânză|pÂnză|s.f.: pânze|Art||
+1884|5450|素描本|caiet de desen|caIet de desEn|s.n.: caiete de desen|Art||
+1885|5451|铅笔素描|desen în creion|desEn în crEion|s.n.: desene în creion|Art||
+1886|5452|水彩颜料|acuarele|acuarEle|s.f.pl.: acuarele|Art||
+1887|5453|乐谱|partitură|partitUră|s.f.: partituri|Art||
+1888|5454|乐器|instrument muzical|instrumEnt muzicAl|s.n.: instrumente muzicale|Art||
+1889|5455|钢琴|pian|piAn|s.n.: piane|Art||
+1890|5456|吉他|chitară|chitAră|s.f.: chitare|Art||
+1891|5457|小提琴|vioară|vioAră|s.f.: viori|Art||
+1892|5458|鼓|tobă|tObă|s.f.: tobe|Art||
+1893|5459|舞台|scenă|scEnă|s.f.: scene|Art||
+1894|5460|观众|public|pUblic|s.n.: publicuri|Art||
+1895|5461|掌声|aplauze|aplAuze|s.f.pl.: aplauze|Art||
+1896|5466|穿衣服|a se îmbrăca|a se îmbrăcA|verb: conj. I (mă îmbrac/te îmbraci/se îmbracă)|Daily Life||
+1897|5467|脱衣服|a se dezbrăca|a se dezbrăcA|verb: conj. I (mă dezbrac/te dezbraci/se dezbracă)|Daily Life||
+1898|5469|洗碗|a spăla vasele|a spălA vAsele|verb: conj. I (spăl/speli/spală)|Daily Life||
+1899|5470|打扫|a face curățenie|a fAce curățenIe|verb: conj. III (fac/faci/face)|Daily Life||
+1900|5471|购物|a face cumpărături|a fAce cumpărătUri|verb: conj. III (fac/faci/face)|Daily Life||
+1901|5475|听音乐|a asculta muzică|a ascultA mUzică|verb: conj. I (ascult/asculți/ascultă)|Daily Life||
+1902|5476|读书|a citi|a citI|verb: conj. IV (citesc/citești/citește)|Daily Life||
+1903|5477|打电话|a da un telefon|a dA un telefOn|verb: conj. I (dau/dai/dă)|Daily Life||
+1904|5479|上网|a naviga pe internet|a navigA pe internEt|verb: conj. I (navighez/navighezi/navighează)|Daily Life||
+1905|5480|开车|a conduce|a condUce|verb: conj. III (conduc/conduci/conduce)|Daily Life||
+1906|5481|等公交|a aștepta autobuzul|a așteptA autobUzul|verb: conj. I (aștept/aștepți/așteaptă)|Daily Life||
+1907|5482|付钱|a plăti|a plătI|verb: conj. IV (plătesc/plătești/plătește)|Daily Life||
+1908|5483|找零钱|a da rest|a dA rEst|verb: conj. I (dau/dai/dă)|Daily Life||
+1909|5484|预订|a rezerva|a rezervA|verb: conj. I (rezerv/rezervi/rezervă)|Daily Life||
+1910|5485|取消|a anula|a anulA|verb: conj. I (anulez/anulezi/anulează)|Daily Life||
+1911|5486|迷路|a se rătăci|a se rătăcI|verb: conj. IV (mă rătăcesc/te rătăcești/se rătăcește)|Daily Life||
+1912|5487|问路|a cere indicații|a cEre indicAții|verb: conj. III (cer/ceri/cere)|Daily Life||
+1913|5488|换钱|a schimba bani|a schimbA bAni|verb: conj. I (schimb/schimbi/schimbă)|Daily Life||
+1914|5489|借钱|a împrumuta bani|a împrumutA bAni|verb: conj. I (împrumut/împrumuți/împrumută)|Daily Life||
+1915|5490|还钱|a returna bani|a returnA bAni|verb: conj. I (returnez/returnezi/returnează)|Daily Life||
+1916|5491|存钱|a economisi bani|a economisI bAni|verb: conj. IV (economisesc/economisești/economisește)|Daily Life||
+1917|5492|花钱|a cheltui bani|a cheltuI bAni|verb: conj. IV (cheltuiesc/cheltuiești/cheltuiește)|Daily Life||
+1918|5493|赚钱|a câștiga bani|a câștigA bAni|verb: conj. I (câștig/câștigi/câștigă)|Daily Life||
+1919|5494|搬家|a se muta|a se mutA|verb: conj. I (mă mut/te muți/se mută)|Daily Life||
+1920|5495|租房子|a închiria o casă|a închiriA o cAsă|verb: conj. I (închiriez/închiriezi/închiriază)|Daily Life||
+1921|5496|修房子|a repara casa|a reparA cAsa|verb: conj. I (repar/repari/repară)|Daily Life||
+1922|5498|对话|conversație|conversAție|s.f.: conversații|Philosophy||
+1923|5499|观点|opinie|opInie|s.f.: opinii|Philosophy||
+1924|5500|理解|înțelegere|înțelEgere|s.f.: înțelegeri|Philosophy||
+1925|5501|同意|acord|acOrd|s.n.: acorduri|Philosophy||
+1926|5502|不同意|dezacord|dezacOrd|s.n.: dezacorduri|Philosophy||
+1927|5503|相信|a crede|a crEde|verb: conj. III (cred/crezi/crede)|Philosophy||
+1928|5504|怀疑|a se îndoi|a se îndoI|verb: conj. IV (mă îndoiesc/te îndoiești/se îndoiește)|Philosophy||
+1929|5505|思考|a se gândi|a se gândI|verb: conj. IV (mă gândesc/te gândești/se gândește)|Philosophy||
+1930|5506|了解|a înțelege|a înțelEge|verb: conj. III (înțeleg/înțelegi/înțelege)|Philosophy||
+1931|5507|记住|a-și aminti|a-și amintI|verb: conj. IV (îmi amintesc/îți amintești/își amintește)|Philosophy||
+1932|5508|忘记|a uita|a uitA|verb: conj. I (uit/uiți/uită)|Philosophy||
+1933|5509|想象|a-și imagina|a-și imaginA|verb: conj. I (îmi imaginez/îți imaginezi/își imaginează)|Philosophy||
+1934|5510|决定|a decide|a decIde|verb: conj. III (decid/decizi/decide)|Philosophy||
+1935|5511|选择|a alege|a alEge|verb: conj. III (aleg/alegi/alege)|Philosophy||
+1936|5512|改变主意|a-și schimba părerea|a-și schimbA părErea|verb: conj. I (îmi schimb/îți schimbi/își schimbă)|Philosophy||
+1937|5513|打折|reducere de preț|reducEre de prEț|s.f.: reduceri de preț|Economics||
+1938|5514|全价|preț întreg|prEț întrEg|s.n.: prețuri întregi|Economics||
+1939|5515|半价|jumătate de preț|jumătAte de prEț|s.f.: jumătăți de preț|Economics||
+1940|5516|免费|gratuit|gratuIt|adj: gratuită / gratuiți / gratuite|Economics||
+1941|5517|特价|ofertă specială|ofErtă specIAlă|s.f.: oferte speciale|Economics||
+1942|5518|购物清单|listă de cumpărături|lIstă de cumpărătUri|s.f.: liste de cumpărături|Economics||
+1943|5521|商场|mall|mAll|s.n.: malluri|Economics||
+1944|5524|价签|etichetă de preț|etichetă de prEț|s.f.: etichete de preț|Economics||
+1945|5525|退款|rambursare|rambursAre|s.f.: rambursări|Economics||
+1946|5526|换货|schimb de produs|schImb de prodUs|s.n.: schimburi de produse|Economics||
+1947|5529|违反规定|a încălca regulamentul|a încălcA regulamEntul|verb: conj. I (încalc/încalci/încalcă)|Law||
+1948|5530|举报|a raporta|a raportA|verb: conj. I (raportez/raportezi/raportează)|Law||
+1949|5531|报警|a suna la poliție|a sunA la polIție|verb: conj. I (sun/suni/sună)|Law||
+1950|5533|表格|formular|formulAr|s.n.: formulare|Law||
+1951|5535|居留许可|permis de ședere|permIs de șEdere|s.n.: permise de ședere|Law||
+1952|5536|公民身份|cetățenie|cetățenIe|s.f.: cetățenii|Law||
+1953|5538|投票|vot|vOt|s.n.: voturi|Law||
+1954|5539|选举|alegere|alEgere|s.f.: alegeri|Law||
+1955|5540|权利|drepturi|drEpturi|s.n.pl.: drepturi|Law||
+1956|5541|义务|îndatoriri|îndatorIri|s.f.pl.: îndatoriri|Law||
+1957|5546|地理|geografie|geografIe|s.f.: geografii|Education||
+1958|5547|音乐|muzică|mUzică|s.f.: muzici|Education||
+1959|5549|美术|artă plastică|Artă plAstică|s.f.: arte plastice|Education||
+1960|5550|外语|limbă străină|lImbă străInă|s.f.: limbi străine|Education||
+1961|5551|母语|limbă maternă|lImbă maternă|s.f.: limbi materne|Education||
+1962|5553|词汇|vocabular|vocabulAr|s.n.: vocabulare|Education||
+1963|5554|发音|pronunție|pronUnție|s.f.: pronunții|Education||
+1964|5555|听力|ascultare|ascultAre|s.f.: ascultări|Education||
+1965|5556|阅读|citire|citIre|s.f.: citiri|Education||
+1966|5557|写作|scriere|scriEre|s.f.: scrieri|Education||
+1967|5560|童话|basm|bAsm|s.n.: basme|Literature||
+1968|5564|戏剧|piesă de teatru|piEsă de tEAtru|s.f.: piese de teatru|Literature||
+1969|5567|冒险故事|poveste de aventuri|povEste de aventUri|s.f.: povești de aventuri|Literature||
+1970|5568|爱情故事|poveste de dragoste|povEste de drAgoste|s.f.: povești de dragoste|Literature||
+1971|5569|恐怖故事|poveste de groază|povEste de groAză|s.f.: povești de groază|Literature||
+1972|5570|科幻故事|poveste SF|povEste S-F|s.f.: povești SF|Literature||
+1973|5571|书签|semn de carte|sEmn de cArte|s.n.: semne de carte|Literature||
+1974|5574|首都|capitală|capItală|s.f.: capitale|History||
+1975|5575|城市|oraș|orAș|s.n.: orașe|History||
+1976|5576|村庄|sat|sAt|s.n.: sate|History||
+1977|5579|文化|cultură|cultUră|s.f.: culturi|History||
+1978|5580|传统|tradiție|tradIție|s.f.: tradiții|History||
+1979|5581|习俗|obicei|obIcei|s.n.: obiceiuri|History||
+1980|5585|古迹|ruine|ruIne|s.f.pl.: ruine|History||
+1981|5587|发明|invenție|invEnție|s.f.: invenții|History||
+1982|5589|观察|observație|observAție|s.f.: observații|Science||
+1983|5590|测量|măsurare|măsurAre|s.f.: măsurări|Science||
+1984|5596|温度计|termometru|termomEtru|s.n.: termometre|Science||
+1985|5597|磁铁|magnet|magnEt|s.n.: magneți|Science||
+1986|5601|放大镜|lupă|lUpă|s.f.: lupe|Science||
+1987|5602|天平|balanță|balAnță|s.f.: balanțe|Science||
+1988|5603|房子|casă|cAsă|s.f.: case|Engineering||
+1989|5605|屋顶|acoperiș|acoperIș|s.n.: acoperișuri|Engineering||
+1990|5606|墙壁|perete|perEte|s.m.: pereți|Engineering||
+1991|5607|地板|podea|podEa|s.f.: podele|Engineering||
+1992|5608|天花板|tavan|tavAn|s.n.: tavane|Engineering||
+1993|5613|地下室|subsol|subsOl|s.n.: subsoluri|Engineering||
+1994|5615|阳台|balcon|balcOn|s.n.: balcoane|Engineering||
+1995|5616|车库|garaj|garAj|s.n.: garaje|Engineering||
+1996|5617|围栏|gard|gArd|s.n.: garduri|Engineering||
+1997|5618|西红柿|roșie|rOșie|s.f.: roșii|Agriculture||
+1998|5619|黄瓜|castravete|castravEte|s.m.: castraveți|Agriculture||
+1999|5620|土豆|cartof|cartOf|s.m.: cartofi|Agriculture||
+2000|5621|洋葱|ceapă|cEapă|s.f.: cepe|Agriculture||

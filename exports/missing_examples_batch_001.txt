@@ -1,0 +1,504 @@
+Words missing example sentence (example_ro is empty)
+Batch: 1
+Rows: 500
+Format: row|id|zh|ro|ipa|hint|cat|example_ro|example_zh
+1|3201|现象|fenomen|fenomEn|s.n.: fenomene|Philosophy||
+2|3202|绝对|absolut|absolUt|adj: absolută / absoluti / absolute|Philosophy||
+3|3205|规律|principiu|princIpiu|s.n.: principii|Philosophy||
+4|3207|无限|infinit|infinIt|adj: infinită / infiniti / infinite|Philosophy||
+5|3208|有限|finit|finIt|adj: finită / finiți / finite|Philosophy||
+6|3209|目的|scop|scOp|s.n.: scopuri|Philosophy||
+7|3210|判断|judecată|judecAtă|s.f.: judecăți|Philosophy||
+8|3211|认识论|epistemologie|epistemologIe|s.f.: epistemologii|Philosophy||
+9|3212|形而上学|metafizică|metafIzică|s.f.: (fără plural)|Philosophy||
+10|3213|怀疑论|scepticism|scepticIsm|s.n.: (fără plural)|Philosophy||
+11|3214|唯物主义|materialism|materialIsm|s.n.: (fără plural)|Philosophy||
+12|3215|股票|acțiune|acțiUne|s.f.: acțiuni|Economics||
+13|3216|债务|datorie|datorIe|s.f.: datorii|Economics||
+14|3217|贸易|comerț|comErț|s.n.: (fără plural)|Economics||
+15|3218|货币|monedă|monEdă|s.f.: monede|Economics||
+16|3219|竞争|concurență|concurEnță|s.f.: concurențe|Economics||
+17|3220|垄断|monopol|monopOl|s.n.: monopoluri|Economics||
+18|3223|储蓄|economii|economII|s.f.pl.: economii|Economics||
+19|3224|利率|dobândă|dobÂndă|s.f.: dobânzi|Economics||
+20|3225|破产|faliment|falimEnt|s.n.: falimente|Economics||
+21|3226|经济危机|criză|crIză|s.f.: crize|Economics||
+22|3227|财富|avere|avEre|s.f.: averi|Economics||
+23|3228|保险|asigurare|asigurAre|s.f.: asigurări|Economics||
+24|3229|公民|cetățean|cetățEan|s.m.: cetățeni|Law||
+25|3230|法庭|curte|cUrte|s.f.: curți|Law||
+26|3232|陈述|declarație|declarAție|s.f.: declarații|Law||
+27|3233|监狱|închisoare|închisOare|s.f.: închisori|Law||
+28|3234|罚款|amendă|amEndă|s.f.: amenzi|Law||
+29|3235|遗嘱|testament|testamEnt|s.n.: testamente|Law||
+30|3236|财产|proprietate|proprietAte|s.f.: proprietăți|Law||
+31|3237|诉讼|proces|procEs|s.n.: procese|Law||
+32|3238|原告|reclamant|reclamAnt|s.m.: reclamanți|Law||
+33|3239|被告|pârât|pârÂt|s.m.: pârâți|Law||
+34|3241|立法|legislație|legislAție|s.f.: legislații|Law||
+35|3242|司法|justiție|justIție|s.f.: (fără plural)|Law||
+36|3243|幼儿园|grădiniță|grădinIță|s.f.: grădinițe|Education||
+37|3244|小学|școală primară|șcOală primAră|s.f.: școli primare|Education||
+38|3245|中学|liceu|licEu|s.n.: licee|Education||
+39|3246|学费|taxă școlară|tAxă școlAră|s.f.: taxe școlare|Education||
+40|3248|笔记本|caiet|caIet|s.n.: caiete|Education||
+41|3249|成绩|notă|nOtă|s.f.: note|Education||
+42|3250|毕业|absolvire|absolvIre|s.f.: absolviri|Education||
+43|3251|入学|admitere|admItere|s.f.: admiteri|Education||
+44|3252|奖状|diplomă|diplOmă|s.f.: diplome|Education||
+45|3253|学期|semestru|semEstru|s.n.: semestre|Education||
+46|3254|课表|orar|orAr|s.n.: orare|Education||
+47|3255|黑板|tablă|tAblă|s.f.: table|Education||
+48|3256|校长|director|dirEctor|s.m.: directori|Education||
+49|3257|神话|mit|mIt|s.n.: mituri|Literature||
+50|3258|传说|legendă|legEndă|s.f.: legende|Literature||
+51|3259|语言|limbă|lImbă|s.f.: limbi|Literature||
+52|3260|词语|cuvânt|cuvÂnt|s.m.: cuvinte|Literature||
+53|3261|风格|stil|stIl|s.n.: stiluri|Literature||
+54|3262|叙事|narațiune|narațiUne|s.f.: narațiuni|Literature||
+55|3263|悲剧|tragedie|tragedIe|s.f.: tragedii|Literature||
+56|3264|喜剧|comedie|comEdie|s.f.: comedii|Literature||
+57|3266|象征|simbol|simbOl|s.n.: simboluri|Literature||
+58|3268|文学批评|critică literară|crItică literAră|s.f.: critici literare|Literature||
+59|3269|修辞|retorică|retOrică|s.f.: retorice|Literature||
+60|3270|典故|aluzie|alUzie|s.f.: aluzii|Literature||
+61|3271|古代|antichitate|antichitAte|s.f.: antichități|History||
+62|3272|中世纪|Ev Mediu|Ev mEdiu|s.n.: (fără plural)|History||
+63|3273|近代|epocă modernă|Epocă modErnă|s.f.: epoci moderne|History||
+64|3274|年代|epocă|Epocă|s.f.: epoci|History||
+65|3275|发现|descoperire|descoperIre|s.f.: descoperiri|History||
+66|3276|征服|cucerire|cucerIre|s.f.: cuceriri|History||
+67|3277|殖民主义|colonialism|colonialIsm|s.n.: (fără plural)|History||
+68|3278|独立|independență|independEnță|s.f.: (fără plural)|History||
+69|3279|民族|națiune|națiUne|s.f.: națiuni|History||
+70|3280|起源|origine|orIgine|s.f.: origini|History||
+71|3281|统治|domnie|domnIe|s.f.: domnii|History||
+72|3282|君主|monarh|monArh|s.m.: monarhi|History||
+73|3283|共和国|republică|repUblică|s.f.: republici|History||
+74|3284|民主|democrație|democrAție|s.f.: democrații|History||
+75|3285|宇宙|univers|univErs|s.n.: universuri|Science||
+76|3286|星系|galaxie|galaxIe|s.f.: galaxii|Science||
+77|3287|辐射|radiație|radiAție|s.f.: radiații|Science||
+78|3288|磁场|câmp magnetic|cÂmp magnEtic|s.n.: câmpuri magnetice|Science||
+79|3289|温度|temperatură|temperatUră|s.f.: temperaturi|Science||
+80|3290|压力|presiune|presiUne|s.f.: presiuni|Science||
+81|3291|基因|genă|gEnă|s.f.: gene|Science||
+82|3292|蛋白质|proteină|proteInă|s.f.: proteine|Science||
+83|3293|生态系统|ecosistem|ecosistEm|s.n.: ecosisteme|Science||
+84|3294|光|lumină|lumInă|s.f.: lumini|Science||
+85|3295|声音|sunet|sUnet|s.n.: sunete|Science||
+86|3296|密度|densitate|densitAte|s.f.: densități|Science||
+87|3297|电流|curent electric|curEnt elEctric|s.n.: curenți electrici|Science||
+88|3298|催化剂|catalizator|catalizatOr|s.n.: catalizatori|Science||
+89|3299|材料|material|materiAl|s.n.: materiale|Engineering||
+90|3300|钢铁|oțel|oțEl|s.n.: oțeluri|Engineering||
+91|3301|混凝土|beton|betOn|s.n.: betoane|Engineering||
+92|3303|电压|tensiune|tensiUne|s.f.: tensiuni|Engineering||
+93|3304|频率|frecvență|frecvEnță|s.f.: frecvențe|Engineering||
+94|3305|网络|rețea|rețeA|s.f.: rețele|Engineering||
+95|3306|数据库|bază de date|bAză de dAte|s.f.: baze de date|Engineering||
+96|3307|处理器|procesor|procesOr|s.n.: procesoare|Engineering||
+97|3308|天线|antenă|antEnă|s.f.: antene|Engineering||
+98|3309|涡轮|turbină|turbInă|s.f.: turbine|Engineering||
+99|3310|管道|conductă|condUctă|s.f.: conducte|Engineering||
+100|3311|齿轮|roată dințată|rOată dințAtă|s.f.: roți dințate|Engineering||
+101|3312|图纸|plan tehnic|plAn tEhnic|s.n.: planuri tehnice|Engineering||
+102|3313|温室|seră|sEră|s.f.: sere|Agriculture||
+103|3314|灌木|arbust|arbUst|s.m.: arbuști|Agriculture||
+104|3315|嫁接|altoire|altoIre|s.f.: altoiri|Agriculture||
+105|3316|施肥|fertilizare|fertilizAre|s.f.: fertilizări|Agriculture||
+106|3317|耕作|cultivare|cultivAre|s.f.: cultivări|Agriculture||
+107|3318|干旱|secetă|sEcetă|s.f.: secete|Agriculture||
+108|3319|洪水|inundație|inundAție|s.f.: inundații|Agriculture||
+109|3320|农场|fermă|fErmă|s.f.: ferme|Agriculture||
+110|3321|谷仓|hambar|hambAr|s.n.: hambare|Agriculture||
+111|3322|家禽|păsări de curte|pAsări de cUrte|s.f.pl.: păsări de curte|Agriculture||
+112|3323|猪|porc|pOrc|s.m.: porci|Agriculture||
+113|3324|羊|oaie|OAie|s.f.: oi|Agriculture||
+114|3325|拖拉机|tractor|tractOr|s.n.: tractoare|Agriculture||
+115|3326|蜜蜂|albină|albInă|s.f.: albine|Agriculture||
+116|3327|抗生素|antibiotic|antibiotIc|s.n.: antibiotice|Medicine||
+117|3329|糖尿病|diabet|diabEt|s.n.: (fără plural)|Medicine||
+118|3330|癌症|cancer|cAncer|s.n.: cancere|Medicine||
+119|3331|心脏病|boală cardiacă|boAlă cardIacă|s.f.: boli cardiace|Medicine||
+120|3332|骨科|ortopedie|ortopedIe|s.f.: (fără plural)|Medicine||
+121|3333|急救|prim ajutor|prIm ajutOr|s.n.: (fără plural)|Medicine||
+122|3334|输血|transfuzie|transfUzie|s.f.: transfuzii|Medicine||
+123|3335|解剖|anatomie|anatomIe|s.f.: (fără plural)|Medicine||
+124|3336|康复|recuperare|recuperAre|s.f.: recuperări|Medicine||
+125|3337|免疫|imunitate|imunitAte|s.f.: imunități|Medicine||
+126|3338|病房|salon|salOn|s.n.: saloane|Medicine||
+127|3339|胰岛素|insulină|insulInă|s.f.: insuline|Medicine||
+128|3340|心理学|psihologie|psihologIe|s.f.: (fără plural)|Medicine||
+129|3341|作战计划|plan de luptă|plAn de lUptă|s.n.: planuri de luptă|Military Science||
+130|3343|步兵|infanterie|infantErie|s.f.: (fără plural)|Military Science||
+131|3344|骑兵|cavalerie|cavalErie|s.f.: (fără plural)|Military Science||
+132|3345|海军|marină|marInă|s.f.: marine|Military Science||
+133|3346|空军|aviație|aviAție|s.f.: aviații|Military Science||
+134|3347|要塞|fortăreață|fortăreAță|s.f.: fortărețe|Military Science||
+135|3348|弹药|muniție|munIție|s.f.: muniții|Military Science||
+136|3349|勋章|medalie|medAlie|s.f.: medalii|Military Science||
+137|3350|盟军|aliați|aliAți|s.m.pl.: aliați|Military Science||
+138|3351|停火|armistițiu|armistIțiu|s.n.: armistițiuri|Military Science||
+139|3352|占领|ocupație|ocupAție|s.f.: ocupații|Military Science||
+140|3353|游击战|gherilă|gherIlă|s.f.: guerile|Military Science||
+141|3354|炮兵|artilerie|artilErie|s.f.: (fără plural)|Military Science||
+142|3357|股东|acționar|acționAr|s.m.: acționari|Management||
+143|3358|供应链|lanț de aprovizionare|lAnț de aprovizionAre|s.n.: lanțuri de aprovizionare|Management||
+144|3359|品牌|brand|brAnd|s.n.: branduri|Management||
+145|3360|市场营销|marketing|mArketing|s.n.: (fără plural)|Management||
+146|3361|创新|inovație|inovAție|s.f.: inovații|Management||
+147|3362|资源|resursă|resUrsă|s.f.: resurse|Management||
+148|3364|客户|client|cliEnt|s.m.: clienți|Management||
+149|3365|竞争力|competitivitate|competitivitAte|s.f.: (fără plural)|Management||
+150|3366|咨询|consultanță|consultAnță|s.f.: consultanțe|Management||
+151|3367|质量|calitate|calitAte|s.f.: calități|Management||
+152|3368|反馈|feedback|feedback|s.n.: feedbackuri|Management||
+153|3369|建筑艺术|arhitectură|arhitectUră|s.f.: arhitecturi|Art||
+154|3370|陶瓷|ceramică|cerAmică|s.f.: ceramici|Art||
+155|3371|版画|gravură|gravUră|s.f.: gravuri|Art||
+156|3372|素描|desen|desEn|s.n.: desene|Art||
+157|3373|水彩|acuarelă|acuarElă|s.f.: acuarele|Art||
+158|3374|油画|pictură în ulei|pictUră în Ulei|s.f.: picturi în ulei|Art||
+159|3375|乐团|orchestră|orchEstră|s.f.: orchestre|Art||
+160|3376|交响乐|simfonie|simfonIe|s.f.: simfonii|Art||
+161|3377|歌剧|operă|Operă|s.f.: opere|Art||
+162|3378|芭蕾|balet|balEt|s.n.: balete|Art||
+163|3379|民俗|folclor|folclOr|s.n.: (fără plural)|Art||
+164|3380|雕像|statuie|statUie|s.f.: statui|Art||
+165|3381|壁画|frescă|frEscă|s.f.: fresce|Art||
+166|3382|工艺品|artizanat|artizanAt|s.n.: artizanate|Art||
+167|3384|停车场|parcare|parcAre|s.f.: parcări|Daily Life||
+168|3385|电梯|lift|lIft|s.n.: lifturi|Daily Life||
+169|3386|楼梯|scară|scAră|s.f.: scări|Daily Life||
+170|3388|包裹|pachet|pachEt|s.n.: pachete|Daily Life||
+171|3389|信封|plic|plIc|s.n.: plicuri|Daily Life||
+172|3391|行李|bagaj|bagAj|s.n.: bagaje|Daily Life||
+173|3392|护照|pașaport|pașapOrt|s.n.: pașapoarte|Daily Life||
+174|3393|签证|viză|vIză|s.f.: vize|Daily Life||
+175|3394|地图|hartă|hArtă|s.f.: hărți|Daily Life||
+176|3396|菜单|meniu|menIu|s.n.: meniuri|Daily Life||
+177|3398|哲学|filozofie|filozofIe|s.f.: filozofii|Philosophy||
+178|3399|真理|adevăr|adevĂr|s.n.: adevăruri|Philosophy||
+179|3403|道德|morală|morAlă|s.f.: morale|Philosophy||
+180|3404|灵魂|suflet|suflEt|s.n.: suflete|Philosophy||
+181|3405|理性|rațiune|rațiUne|s.f.: rațiuni|Philosophy||
+182|3406|逻辑|logică|lOgică|s.f.: logici|Philosophy||
+183|3407|知识|cunoaștere|cunoAștere|s.f.: cunoașteri|Philosophy||
+184|3408|价值|valoare|valOAre|s.f.: valori|Philosophy||
+185|3409|思想|gândire|gândIre|s.f.: gândiri|Philosophy||
+186|3410|辩证法|dialectică|dialEctică|s.f.: dialectici|Philosophy||
+187|3412|经济|economie|economIe|s.f.: economii|Economics||
+188|3413|资本|capital|capitAl|s.n.: capitale|Economics||
+189|3417|投资|investiție|investIție|s.f.: investiții|Economics||
+190|3419|失业|șomaj|șomAj|s.n.: (fără plural)|Economics||
+191|3420|工资|salariu|salAriu|s.n.: salarii|Economics||
+192|3422|出口|export|Export|s.n.: exporturi|Economics||
+193|3423|进口|import|Import|s.n.: importuri|Economics||
+194|3424|商品|marfă|mArfă|s.f.: mărfuri|Economics||
+195|3425|消费|consum|consUm|s.n.: consumuri|Economics||
+196|3427|法院|tribunal|tribunAl|s.n.: tribunale|Law||
+197|3428|法官|judecător|judecătOr|s.m.: judecători|Law||
+198|3429|律师|avocat|avocAt|s.m.: avocați|Law||
+199|3430|犯罪|crimă|crImă|s.f.: crime|Law||
+200|3431|证据|dovadă|dovAdă|s.f.: dovezi|Law||
+201|3434|宪法|constituție|constitUție|s.f.: constituții|Law||
+202|3435|刑罚|pedeapsă|pedEapsă|s.f.: pedepse|Law||
+203|3436|法规|regulament|regulamEnt|s.n.: regulamente|Law||
+204|3437|起诉|acuzare|acuzAre|s.f.: acuzări|Law||
+205|3438|无罪|nevinovăție|nevinovățIe|s.f.: (fără plural)|Law||
+206|3439|陪审团|juriu|jUriu|s.n.: jurii|Law||
+207|3440|大学|universitate|universitAte|s.f.: universități|Education||
+208|3441|图书馆|bibliotecă|bibliotEcă|s.f.: biblioteci|Education||
+209|3446|教室|sală de clasă|sAlă de clAsă|s.f.: săli de clasă|Education||
+210|3447|练习|exercițiu|exercIțiu|s.n.: exerciții|Education||
+211|3448|研究|cercetare|cercetAre|s.f.: cercetări|Education||
+212|3450|奖励|premiu|prEmiu|s.n.: premii|Education||
+213|3451|专业|specialitate|specialitAte|s.f.: specialități|Education||
+214|3452|注册|înscriere|înscrIere|s.f.: înscrieri|Education||
+215|3453|诗歌|poezie|poezIe|s.f.: poezii|Literature||
+216|3454|小说|roman|romAn|s.n.: romane|Literature||
+217|3455|故事|poveste|povEste|s.f.: povești|Literature||
+218|3456|作者|autor|autOr|s.m.: autori|Literature||
+219|3457|人物|personaj|personAj|s.n.: personaje|Literature||
+220|3458|戏剧|piesă|piEsă|s.f.: piese|Literature||
+221|3459|诗人|poet|poEt|s.m.: poeți|Literature||
+222|3462|章节|capitol|capItol|s.n.: capitole|Literature||
+223|3463|出版|ediție|edIție|s.f.: ediții|Literature||
+224|3464|手稿|manuscris|manuscrIs|s.n.: manuscrise|Literature||
+225|3465|寓言|fabulă|fAbulă|s.f.: fabule|Literature||
+226|3467|历史|istorie|istOrie|s.f.: istorii|History||
+227|3468|战争|război|răzbOi|s.n.: războaie|History||
+228|3470|皇帝|împărat|împărAt|s.m.: împărați|History||
+229|3473|文明|civilizație|civilizAție|s.f.: civilizații|History||
+230|3474|遗产|moștenire|moștenIre|s.f.: moșteniri|History||
+231|3476|王朝|dinastie|dinastIe|s.f.: dinastii|History||
+232|3478|档案|arhivă|arhIvă|s.f.: arhive|History||
+233|3479|编年史|cronică|crOnică|s.f.: cronici|History||
+234|3480|考古|arheologie|arheologIe|s.f.: arheologii|History||
+235|3481|科学|știință|știInță|s.f.: științe|Science||
+236|3483|原子|atom|atOm|s.m.: atomi|Science||
+237|3484|细胞|celulă|celUlă|s.f.: celule|Science||
+238|3485|能量|energie|energIe|s.f.: energii|Science||
+239|3486|力|forță|fOrță|s.f.: forțe|Science||
+240|3487|物质|materie|matErie|s.f.: materii|Science||
+241|3489|元素|element|elemEnt|s.n.: elemente|Science||
+242|3491|引力|gravitație|gravitAție|s.f.: gravitații|Science||
+243|3492|化学|chimie|chimIe|s.f.: (fără plural)|Science||
+244|3493|生物学|biologie|biologIe|s.f.: (fără plural)|Science||
+245|3494|物理|fizică|fIzică|s.f.: (fără plural)|Science||
+246|3495|工程|inginerie|inginerIe|s.f.: inginerii|Engineering||
+247|3496|机器|mașină|mașInă|s.f.: mașini|Engineering||
+248|3497|发动机|motor|motOr|s.n.: motoare|Engineering||
+249|3498|桥梁|pod|pOd|s.n.: poduri|Engineering||
+250|3499|建筑|clădire|clădIre|s.f.: clădiri|Engineering||
+251|3501|软件|software|sOftware|s.n.: (fără plural)|Engineering||
+252|3504|电池|baterie|baterIe|s.f.: baterii|Engineering||
+253|3505|螺丝|șurub|șurUb|s.n.: șuruburi|Engineering||
+254|3506|结构|structură|structUră|s.f.: structuri|Engineering||
+255|3508|农业|agricultură|agricultUră|s.f.: (fără plural)|Agriculture||
+256|3509|田地|câmp|cÂmp|s.n.: câmpuri|Agriculture||
+257|3510|种子|semințe|semInțe|s.f.pl.: semințe|Agriculture||
+258|3512|土壤|sol|sOl|s.n.: soluri|Agriculture||
+259|3515|粮食|grâu|grÂu|s.n.: (fără plural)|Agriculture||
+260|3516|农民|țăran|țărAn|s.m.: țărani|Agriculture||
+261|3517|牧场|pășune|pășUne|s.f.: pășuni|Agriculture||
+262|3518|果园|livadă|livAdă|s.f.: livezi|Agriculture||
+263|3519|农药|pesticid|pesticId|s.n.: pesticide|Agriculture||
+264|3520|耕地|arătură|arătUră|s.f.: arături|Agriculture||
+265|3525|病毒|virus|vIrus|s.n.: virusuri|Medicine||
+266|3526|细菌|bacterie|bactErie|s.f.: bacterii|Medicine||
+267|3527|骨折|fractură|fractUră|s.f.: fracturi|Medicine||
+268|3529|护士|asistentă|asistEntă|s.f.: asistente|Medicine||
+269|3530|处方|rețetă|rețEtă|s.f.: rețete|Medicine||
+270|3531|肺|plămân|plămÂn|s.m.: plămâni|Medicine||
+271|3532|肾脏|rinichi|rinIchi|s.m.: rinichi|Medicine||
+272|3533|胃|stomac|stomAc|s.n.: stomacuri|Medicine||
+273|3534|神经|nerv|nErv|s.m.: nervi|Medicine||
+274|3535|军队|armată|armAtă|s.f.: armate|Military Science||
+275|3536|武器|armă|Armă|s.f.: arme|Military Science||
+276|3538|将军|general|generAl|s.m.: generali|Military Science||
+277|3539|士兵|soldat|soldAt|s.m.: soldați|Military Science||
+278|3541|进攻|atac|atAc|s.n.: atacuri|Military Science||
+279|3542|炸弹|bombă|bOmbă|s.f.: bombe|Military Science||
+280|3543|舰队|flotă|flOtă|s.f.: flote|Military Science||
+281|3544|雷达|radar|radAr|s.n.: radare|Military Science||
+282|3545|情报|informație|informAție|s.f.: informații|Military Science||
+283|3546|指挥官|comandant|comandAnt|s.m.: comandanți|Military Science||
+284|3547|营地|tabără|tAbără|s.f.: tabere|Military Science||
+285|3548|管理|management|mAnagement|s.n.: (fără plural)|Management||
+286|3549|领导|lider|lIder|s.m.: lideri|Management||
+287|3550|团队|echipă|echIpă|s.f.: echipe|Management||
+288|3552|目标|obiectiv|obiectIv|s.n.: obiective|Management||
+289|3553|评估|evaluare|evaluAre|s.f.: evaluări|Management||
+290|3554|项目|proiect|proiEct|s.n.: proiecte|Management||
+291|3555|效率|eficiență|eficiEnță|s.f.: eficiențe|Management||
+292|3556|决策|decizie|decIzie|s.f.: decizii|Management||
+293|3557|报告|raport|rapOrt|s.n.: rapoarte|Management||
+294|3558|计划|plan|plAn|s.n.: planuri|Management||
+295|3559|风险|risc|rIsc|s.n.: riscuri|Management||
+296|3560|合作|colaborare|colaborAre|s.f.: colaborări|Management||
+297|3561|绘画|pictură|pictUră|s.f.: picturi|Art||
+298|3563|画家|pictor|pictOr|s.m.: pictori|Art||
+299|3565|乐器|instrument|instrumEnt|s.n.: instrumente|Art||
+300|3566|旋律|melodie|melodIe|s.f.: melodii|Art||
+301|3567|舞蹈|dans|dAns|s.n.: dansuri|Art||
+302|3568|剧院|teatru|tEAtru|s.n.: teatre|Art||
+303|3569|画廊|galerie|galerIe|s.f.: galerii|Art||
+304|3571|灵感|inspirație|inspirAție|s.f.: inspirații|Art||
+305|3573|色彩|culoare|culOAre|s.f.: culori|Art||
+306|3577|花园|grădină|grădInă|s.f.: grădini|Daily Life||
+307|3579|镜子|oglindă|oglIndă|s.f.: oglinzi|Daily Life||
+308|3580|毛巾|prosop|prosOp|s.n.: prosoape|Daily Life||
+309|3581|肥皂|săpun|săpUn|s.n.: săpunuri|Daily Life||
+310|3582|梳子|pieptene|piEptene|s.n.: piepteni|Daily Life||
+311|3772|伦理学|etică|Etică|s.f.: etici|Philosophy||
+312|3773|美学|estetică|estEtică|s.f.: estetici|Philosophy||
+313|3774|本体论|ontologie|ontologIe|s.f.: ontologii|Philosophy||
+314|3775|现实|realitate|realitAte|s.f.: realități|Philosophy||
+315|3776|虚无|neant|neAnt|s.n.: (fără plural)|Philosophy||
+316|3777|归纳|inducție|indUcție|s.f.: inducții|Philosophy||
+317|3778|演绎|deducție|dedUcție|s.f.: deducții|Philosophy||
+318|3779|主观|subiectiv|subiectIv|adj: subiectivă / subiectivi / subiective|Philosophy||
+319|3781|因果|cauzalitate|cauzalitAte|s.f.: cauzalități|Philosophy||
+320|3782|直觉|intuiție|intuIție|s.f.: intuiții|Philosophy||
+321|3783|空间|spațiu|spAțiu|s.n.: spații|Philosophy||
+322|3784|时间性|temporalitate|temporalitAte|s.f.: temporalități|Philosophy||
+323|3785|超验|transcendență|transcendEnță|s.f.: transcendențe|Philosophy||
+324|3786|通缩|deflație|deflAție|s.f.: deflații|Economics||
+325|3787|汇率|curs valutar|cUrs valutAr|s.n.: cursuri valutare|Economics||
+326|3788|财政政策|politică fiscală|polItică fiscAlă|s.f.: politici fiscale|Economics||
+327|3789|国内生产总值|produs intern brut|prodUs intErn brUt|s.n.: (abrev. PIB)|Economics||
+328|3790|赤字|deficit|deficIt|s.n.: deficite|Economics||
+329|3791|盈余|excedent|excedEnt|s.n.: excedente|Economics||
+330|3792|分红|dividend|dividEnd|s.n.: dividende|Economics||
+331|3793|证券|titlu de valoare|tItlu de valOAre|s.n.: titluri de valoare|Economics||
+332|3794|抵押|ipotecă|ipotEcă|s.f.: ipoteci|Economics||
+333|3795|租金|chirie|chIrie|s.f.: chirii|Economics||
+334|3796|经济学家|economist|economIst|s.m.: economiști|Economics||
+335|3797|收入|venit|venIt|s.n.: venituri|Economics||
+336|3798|支出|cheltuială|cheltuIală|s.f.: cheltuieli|Economics||
+337|3799|外债|datorie externă|datorIe extErnă|s.f.: datorii externe|Economics||
+338|3800|上诉|apel|apEl|s.n.: apeluri|Law||
+339|3801|仲裁|arbitraj|arbitrAj|s.n.: arbitraje|Law||
+340|3802|调解|mediere|mediEre|s.f.: medieri|Law||
+341|3803|知识产权|proprietate intelectuală|proprietAte intelectuAlă|s.f.: proprietăți intelectuale|Law||
+342|3804|版权|drept de autor|drEpt de autOr|s.n.: drepturi de autor|Law||
+343|3805|专利|brevet|brevEt|s.n.: brevete|Law||
+344|3806|劳动法|dreptul muncii|drEptul mUncii|s.n.: (fără plural)|Law||
+345|3807|合法性|legalitate|legalitAte|s.f.: legalități|Law||
+346|3808|刑法|drept penal|drEpt penAl|s.n.: (fără plural)|Law||
+347|3809|民法|drept civil|drEpt civIl|s.n.: (fără plural)|Law||
+348|3810|拘留|reținere|rețInere|s.f.: rețineri|Law||
+349|3811|保释|cauțiune|cauțiUne|s.f.: cauțiuni|Law||
+350|3813|公证|notariat|notariAt|s.n.: notariate|Law||
+351|3814|职业教育|educație vocațională|educAție vocaționAlă|s.f.: educații vocaționale|Education||
+352|3815|继续教育|educație continuă|educAție contInuă|s.f.: educații continue|Education||
+353|3816|学术|academic|acadEmic|adj: academică / academici / academice|Education||
+354|3817|教学法|pedagogie|pedagogIe|s.f.: pedagogii|Education||
+355|3818|实习|stagiu|stAgiu|s.n.: stagii|Education||
+356|3819|评分|notare|notAre|s.f.: notări|Education||
+357|3820|辅导|meditație|meditAție|s.f.: meditații|Education||
+358|3821|学分|credit|crEdit|s.n.: credite|Education||
+359|3822|讲座|prelegere|prelEgere|s.f.: prelegeri|Education||
+360|3823|研讨会|seminar|seminAr|s.n.: seminare|Education||
+361|3824|实验室|laborator|laboratOr|s.n.: laboratoare|Education||
+362|3825|考研|master|mAster|s.n.: masterate|Education||
+363|3826|博士|doctorat|doctorAt|s.n.: doctorate|Education||
+364|3827|素质教育|educație formativă|educAție formativă|s.f.: educații formative|Education||
+365|3828|史诗|epopee|epopEe|s.f.: epopei|Literature||
+366|3829|颂歌|odă|Odă|s.f.: ode|Literature||
+367|3830|十四行诗|sonet|sonEt|s.n.: sonete|Literature||
+368|3831|讽刺|satiră|satIră|s.f.: satire|Literature||
+369|3832|回忆录|memorii|memOrii|s.f.pl.: memorii|Literature||
+370|3833|日记|jurnal|jurnAl|s.n.: jurnale|Literature||
+371|3834|书信|epistolă|epIstolă|s.f.: epistole|Literature||
+372|3835|文集|antologie|antologIe|s.f.: antologii|Literature||
+373|3836|序言|prefață|prEfață|s.f.: prefețe|Literature||
+374|3837|后记|postfață|postfAță|s.f.: postfețe|Literature||
+375|3838|注释|adnotare|adnotAre|s.f.: adnotări|Literature||
+376|3839|翻译|traducere|tradUcere|s.f.: traduceri|Literature||
+377|3840|文学流派|curent literar|curEnt literAr|s.n.: curente literare|Literature||
+378|3841|浪漫主义|romantism|romantIsm|s.n.: (fără plural)|Literature||
+379|3842|史前|preistorie|preistOrie|s.f.: preistorii|History||
+380|3843|封建制度|feudalism|feudalIsm|s.n.: (fără plural)|History||
+381|3844|文艺复兴|Renaștere|renAștere|s.f.: renașteri|History||
+382|3845|启蒙运动|iluminism|iluminIsm|s.n.: (fără plural)|History||
+383|3846|工业革命|revoluție industrială|revolUție industriAlă|s.f.: revoluții industriale|History||
+384|3847|冷战|Război Rece|răzbOi rEce|s.n.: (fără plural)|History||
+385|3848|殖民扩张|expansiune colonială|expansiUne colonIAlă|s.f.: expansiuni coloniale|History||
+386|3849|民族主义|nationalism|naționalIsm|s.n.: (fără plural)|History||
+387|3850|外交|diplomație|diplomAție|s.f.: diplomații|History||
+388|3851|大使|ambasador|ambasadOr|s.m.: ambasadori|History||
+389|3852|同盟|alianță|aliAnță|s.f.: alianțe|History||
+390|3853|领土|teritoriu|teritOriu|s.n.: teritorii|History||
+391|3854|流亡|exil|exIl|s.n.: exiluri|History||
+392|3855|纪念碑|monument|monumEnt|s.n.: monumente|History||
+393|3856|黑洞|gaură neagră|gAură neAgră|s.f.: găuri negre|Science||
+394|3857|望远镜|telescop|telescOp|s.n.: telescoape|Science||
+395|3858|显微镜|microscop|microscOp|s.n.: microscoape|Science||
+396|3859|光合作用|fotosinteză|fotosintEză|s.f.: fotosinteză|Science||
+397|3860|DNA|ADN|A-D-N|s.n.: (fără plural)|Science||
+398|3861|酶|enzimă|enzImă|s.f.: enzime|Science||
+399|3862|染色体|cromozom|cromozOm|s.m.: cromozomi|Science||
+400|3863|生态学|ecologie|ecologIe|s.f.: (fără plural)|Science||
+401|3864|地质学|geologie|geologIe|s.f.: (fără plural)|Science||
+402|3865|天文学|astronomie|astronomIe|s.f.: (fără plural)|Science||
+403|3866|粒子|particulă|particUlă|s.f.: particule|Science||
+404|3867|等离子体|plasmă|plAsmă|s.f.: plasme|Science||
+405|3868|核裂变|fisiune nucleară|fisiUne nucleAră|s.f.: fisiuni nucleare|Science||
+406|3869|量子|cuantă|cuAntă|s.f.: cuante|Science||
+407|3870|自动化|automatizare|automatizAre|s.f.: automatizări|Engineering||
+408|3871|机器人|robot|robOt|s.m.: roboți|Engineering||
+409|3872|人工智能|inteligență artificială|inteligEnță artificIAlă|s.f.: (fără plural)|Engineering||
+410|3873|卫星|satelit|satelIt|s.m.: sateliți|Engineering||
+411|3874|光纤|fibră optică|fIbră Optică|s.f.: fibre optice|Engineering||
+412|3875|半导体|semiconductor|semiconductOr|s.n.: semiconductoare|Engineering||
+413|3876|芯片|cip|cIp|s.n.: cipuri|Engineering||
+414|3877|变压器|transformator|transformatOr|s.n.: transformatoare|Engineering||
+415|3878|泵|pompă|pOmpă|s.f.: pompe|Engineering||
+416|3879|阀门|supapă|supApă|s.f.: supape|Engineering||
+417|3880|隧道|tunel|tunEl|s.n.: tuneluri|Engineering||
+418|3881|钻孔|forare|forAre|s.f.: forări|Engineering||
+419|3882|焊料|aliaj de lipit|aliAj de lipIt|s.n.: aliaje de lipit|Engineering||
+420|3883|压缩机|compresor|compresOr|s.n.: compresoare|Engineering||
+421|3884|轮作|rotație a culturilor|rotAție a cultUrilor|s.f.: rotații ale culturilor|Agriculture||
+422|3885|有机农业|agricultură ecologică|agricultUră ecolOgică|s.f.: (fără plural)|Agriculture||
+423|3886|除草剂|erbicid|erbicId|s.n.: erbicide|Agriculture||
+424|3887|授粉|polenizare|polenizAre|s.f.: polenizări|Agriculture||
+425|3888|育种|ameliorare|ameliorAre|s.f.: ameliorări|Agriculture||
+426|3889|储存|depozitare|depozitAre|s.f.: depozitări|Agriculture||
+427|3890|灌木篱|gard viu|gArd vIu|s.n.: garduri vii|Agriculture||
+428|3892|修剪|tăiere|tăIere|s.f.: tăieri|Agriculture||
+429|3893|病虫害|dăunători|dăunătOri|s.m.pl.: dăunători|Agriculture||
+430|3894|奶牛|vacă de lapte|vAcă de lApte|s.f.: vaci de lapte|Agriculture||
+431|3895|养蜂|apicultură|apiculTUră|s.f.: (fără plural)|Agriculture||
+432|3896|养鱼|piscicultură|piscicultUră|s.f.: (fără plural)|Agriculture||
+433|3897|渔业|pescuit|pescuIt|s.n.: (fără plural)|Agriculture||
+434|3898|麻醉|anestezie|anestezIe|s.f.: anestezii|Medicine||
+435|3899|放射治疗|radioterapie|radioterapIe|s.f.: radioterapii|Medicine||
+436|3900|化疗|chimioterapie|chimioterapIe|s.f.: chimioterapii|Medicine||
+437|3901|器官移植|transplant de organ|transplAnt de orgAn|s.n.: transplanturi de organe|Medicine||
+438|3902|流行病学|epidemiologie|epidemiologIe|s.f.: (fără plural)|Medicine||
+439|3903|神经外科|neurochirurgie|neurochirurgIe|s.f.: neurochirurgii|Medicine||
+440|3904|精神病学|psihiatrie|psihiatrIe|s.f.: (fără plural)|Medicine||
+441|3905|儿科|pediatrie|pediatrIe|s.f.: (fără plural)|Medicine||
+442|3906|妇科|ginecologie|ginecologIe|s.f.: (fără plural)|Medicine||
+443|3907|皮肤科|dermatologie|dermatologIe|s.f.: (fără plural)|Medicine||
+444|3908|牙科|stomatologie|stomatologIe|s.f.: (fără plural)|Medicine||
+445|3909|眼科|oftalmologie|oftalmologIe|s.f.: (fără plural)|Medicine||
+446|3910|肿瘤学|oncologie|oncologIe|s.f.: (fără plural)|Medicine||
+447|3911|临床试验|studiu clinic|stUdiu clInic|s.n.: studii clinice|Medicine||
+448|3912|核武器|armă nucleară|Armă nucleAră|s.f.: arme nucleare|Military Science||
+449|3913|无人机|dronă|drOnă|s.f.: drone|Military Science||
+450|3914|导弹|rachetă|rachEtă|s.f.: rachete|Military Science||
+451|3915|坦克|tanc|tAnc|s.n.: tancuri|Military Science||
+452|3916|潜艇|submarin|submarIn|s.n.: submarine|Military Science||
+453|3917|战斗机|avion de luptă|aviOn de lUptă|s.n.: avioane de luptă|Military Science||
+454|3918|军衔|grad militar|grAd militAr|s.n.: grade militare|Military Science||
+455|3919|后勤|logistică|logIstică|s.f.: logistici|Military Science||
+456|3920|征兵|recrutare|recrutAre|s.f.: recrutări|Military Science||
+457|3921|军事基地|bază militară|bAză militAră|s.f.: baze militare|Military Science||
+458|3922|战壕|tranșee|tranșEe|s.f.pl.: tranșee|Military Science||
+459|3925|军事法庭|tribunal militar|tribunAl militAr|s.n.: tribunale militare|Military Science||
+460|3926|企业文化|cultură organizațională|cultUră organizaționAlă|s.f.: culturi organizaționale|Management||
+461|3927|人力资源|resurse umane|resUrse umAne|s.f.pl.: resurse umane|Management||
+462|3928|绩效考核|evaluare a performanței|evaluAre a performAnței|s.f.: evaluări ale performanței|Management||
+463|3929|企业战略|strategie corporativă|strategIe corporatIvă|s.f.: strategii corporative|Management||
+464|3930|成本控制|control al costurilor|contrOl al costUrilor|s.n.: controale ale costurilor|Management||
+465|3931|商业计划|plan de afaceri|plAn de afAceri|s.n.: planuri de afaceri|Management||
+466|3932|利益相关者|parte interesată|pArte interesAtă|s.f.: părți interesate|Management||
+467|3933|组织结构|structură organizatorică|structUră organizatorică|s.f.: structuri organizatorice|Management||
+468|3935|并购|fuziune și achiziție|fuziUne și achizIție|s.f.: fuziuni și achiziții|Management||
+469|3936|谈判|negociere|negociEre|s.f.: negocieri|Management||
+470|3937|审计|audit|AUdit|s.n.: audituri|Management||
+471|3938|企业家|antreprenor|antreprenOr|s.m.: antreprenori|Management||
+472|3939|公司治理|guvernanță corporativă|guvernAnță corporatIvă|s.f.: guvernanțe corporative|Management||
+473|3940|印象主义|impresionism|impresionIsm|s.n.: (fără plural)|Art||
+474|3941|立体主义|cubism|cubIsm|s.n.: (fără plural)|Art||
+475|3942|超现实主义|suprarealism|suprarealIsm|s.n.: (fără plural)|Art||
+476|3943|抽象艺术|artă abstractă|Artă abstraCtă|s.f.: arte abstracte|Art||
+477|3944|表演艺术|arte spectacol|Arte spectacOl|s.f.pl.: arte spectacol|Art||
+478|3945|摄影|fotografie|fotografIe|s.f.: fotografii|Art||
+479|3946|装置艺术|artă instalație|Artă instalAție|s.f.: arte instalație|Art||
+480|3947|书法|caligrafie|caligrafIe|s.f.: caligrafii|Art||
+481|3948|版权保护|drepturi de autor|drEpturi de autOr|s.n.pl.: drepturi de autor|Art||
+482|3949|音乐理论|teorie muzicală|teorIe muzicAlă|s.f.: teorii muzicale|Art||
+483|3950|和声|armonie|armoniE|s.f.: armonii|Art||
+484|3951|对位法|contrapunct|contrapUnct|s.n.: contrapuncte|Art||
+485|3952|指挥家|dirijor|dirijOr|s.m.: dirijori|Art||
+486|3953|作曲家|compozitor|compozitOr|s.m.: compozitori|Art||
+487|3954|理发店|frizerie|frizerIe|s.f.: frizerii|Daily Life||
+488|3956|冰箱|frigider|frigidEr|s.n.: frigidere|Daily Life||
+489|3957|微波炉|cuptor cu microunde|cuptOr cu microUnde|s.n.: cuptoare cu microunde|Daily Life||
+490|3958|暖气|calorifer|calorifEr|s.n.: calorifere|Daily Life||
+491|3959|空调|aer condiționat|Aer condiționAt|s.n.: aparate de aer condiționat|Daily Life||
+492|3960|垃圾桶|coș de gunoi|cOș de gunOi|s.n.: coșuri de gunoi|Daily Life||
+493|3961|扫帚|mătură|mătUră|s.f.: mături|Daily Life||
+494|3962|熨斗|fier de călcat|fiEr de călcAt|s.n.: fiare de călcat|Daily Life||
+495|3963|保险柜|seif|sEif|s.n.: seifuri|Daily Life||
+496|3964|门铃|sonerie|sonerIe|s.f.: sonerii|Daily Life||
+497|3965|窗帘|perdea|perdEa|s.f.: perdele|Daily Life||
+498|3966|地毯|covor|covOr|s.n.: covoare|Daily Life||
+499|3967|书架|raft de cărți|rAft de cĂrți|s.n.: rafturi de cărți|Daily Life||
+500|3969|实用主义|pragmatism|pragmatIsm|s.n.: (fără plural)|Philosophy||

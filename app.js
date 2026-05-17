@@ -36,6 +36,7 @@ let qRoundTotal = 0;  // 本轮答题
 
 let editingWordId = null;
 let editingReportId = null;
+let editingPendingWordId = null;
 let detailWordRo = null;
 let flashcardButtonsBound = false;
 let cardGesturesBound = false;
@@ -1077,7 +1078,7 @@ function switchPage(p) {
   if (p === 'leaderboard') renderLeaderboard();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
-  if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminReports(); loadAdminUsers(); }
+  if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminPendingWords(); loadAdminReports(); loadAdminUsers(); }
 }
 
 function toggleNavMenu(event) {
@@ -1287,7 +1288,6 @@ function renderCard() {
   setGrammarText('fc-phint', w, stress);
   const example = buildExampleSentence(w);
   renderExampleBlock('fc-example', example);
-  hydrateCorpusExample('fc-example', w, () => getCurrentFlashWord()?.ro === w.ro);
   // 显示熟练度
   const p = progressMap[w.ro] || {};
   const lv = getProgressLevel(w.ro);
@@ -2609,7 +2609,7 @@ function renderWordDetail(w) {
       <div class="detail-chip"><div class="detail-label">练习记录</div><div class="detail-value">正确 ${p.qr || 0}/${p.qt || 0} · 答错 ${s.wrong} · 连错 ${s.streak}</div></div>
       <div class="detail-chip"><div class="detail-label">今日类型</div><div class="detail-value">${escapeHtml(getDailyTaskType(w))}</div></div>
     </div>
-    <div class="detail-chip">
+    <div class="detail-chip" style="${example ? '' : 'display:none'}">
       <div class="detail-label">例句</div>
       <div class="detail-value" id="detail-example">${exampleHtml(example)}</div>
     </div>
@@ -2619,7 +2619,6 @@ function renderWordDetail(w) {
       ${canQueue ? `<button class="btn-sm" style="border-color:var(--blue);color:var(--blue-text)" onclick="closeWordDetail();addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入今日</button>` : ''}
       <button class="btn-sm" onclick="closeWordDetail();switchPage('quiz')">去测验</button>
     </div>`;
-  hydrateCorpusExample('detail-example', w, () => detailWordRo === w.ro);
 }
 
 function buildExampleSentence(w) {
@@ -2628,7 +2627,7 @@ function buildExampleSentence(w) {
   const savedRo = String(w?.example_ro || w?.exampleRo || w?.sentence_ro || '').trim();
   const savedZh = String(w?.example_zh || w?.exampleZh || w?.sentence_zh || '').trim();
   if (savedRo) return { ro: savedRo, zh: savedZh || `例句使用了“${zh || ro}”。` };
-  return getLocalExample(w);
+  return null;
 }
 
 function pickExampleTemplate(templates, seed) {
@@ -2906,6 +2905,8 @@ function openEditModal(word, reportId = null) {
   document.getElementById('em-hint').value = word.hint || '';
   populateCategoryDatalist();
   document.getElementById('em-cat').value = normalizeCategory(word.cat);
+  document.getElementById('em-example-ro').value = word.example_ro || word.exampleRo || '';
+  document.getElementById('em-example-zh').value = word.example_zh || word.exampleZh || '';
   document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -2923,6 +2924,8 @@ async function saveEdit() {
     ipa: document.getElementById('em-ipa').value.trim(),
     hint: document.getElementById('em-hint').value.trim(),
     cat: normalizeCategory(document.getElementById('em-cat').value),
+    example_ro: document.getElementById('em-example-ro').value.trim(),
+    example_zh: document.getElementById('em-example-zh').value.trim(),
   };
   try {
     await apiUpdateWord(editingWordId, updates);
@@ -2945,6 +2948,9 @@ async function saveEdit() {
 // ── 管理员：词库管理 ──────────────────────────────────────
 
 function openAddWordModal() {
+  editingPendingWordId = null;
+  document.getElementById('aw-title').textContent = '📚 添加词汇';
+  document.getElementById('aw-tabs').style.display = 'flex';
   document.getElementById('aw-mode').value = 'single';
   document.getElementById('aw-single').style.display = 'block';
   document.getElementById('aw-bulk').style.display = 'none';
@@ -2957,11 +2963,17 @@ function openAddWordModal() {
   document.getElementById('aw-example-zh').value = '';
   document.getElementById('aw-bulk-text').value = '';
   document.getElementById('aw-result').textContent = '';
+  document.getElementById('aw-submit').textContent = '提交审核';
   document.getElementById('add-word-modal').style.display = 'flex';
 }
 
 function closeAddWordModal() {
   document.getElementById('add-word-modal').style.display = 'none';
+  editingPendingWordId = null;
+  document.getElementById('aw-title').textContent = '📚 添加词汇';
+  document.getElementById('aw-tabs').style.display = 'flex';
+  document.getElementById('aw-submit').disabled = false;
+  document.getElementById('aw-submit').textContent = '提交审核';
 }
 
 function switchAddMode(mode) {
@@ -2978,7 +2990,8 @@ async function submitAddWord() {
   const mode = document.getElementById('aw-mode').value;
   const btn = document.getElementById('aw-submit');
   populateCategoryDatalist();
-  btn.disabled = true; btn.textContent = '保存中...';
+  const editingPending = editingPendingWordId !== null;
+  btn.disabled = true; btn.textContent = editingPending ? '保存中...' : '提交中...';
 
   try {
     let words = [];
@@ -2987,7 +3000,7 @@ async function submitAddWord() {
       const ro = document.getElementById('aw-ro').value.trim();
       const exampleRo = document.getElementById('aw-example-ro').value.trim();
       const exampleZh = document.getElementById('aw-example-zh').value.trim();
-      if (!ro || (!zh && !exampleRo)) { showToast('请填写罗语；新词需要中文，已有词补例句需要罗语例句'); btn.disabled = false; btn.textContent = '保存'; return; }
+      if (!ro || (!zh && !exampleRo)) { showToast('请填写罗语；新词需要中文，已有词补例句需要罗语例句'); btn.disabled = false; btn.textContent = editingPending ? '保存修改' : '提交审核'; return; }
       words = [{
         zh, ro,
         ipa: document.getElementById('aw-ipa').value.trim(),
@@ -2998,12 +3011,15 @@ async function submitAddWord() {
       }];
     } else {
       // 批量模式：每行 中文|罗马尼亚语|重音标记|语法信息|分类|罗语例句|中文例句
-      const lines = document.getElementById('aw-bulk-text').value.trim().split('\n').filter(l => l.trim());
+      const lines = document.getElementById('aw-bulk-text').value.trim().split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#'));
       words = lines.map(line => {
         const parts = line.split('|').map(s => s.trim());
+        const existingExampleOnly = parts[0] && !parts[1] && !parts[2] && !parts[3] && !parts[4] && parts[5];
         return {
-          zh: parts[0] || '',
-          ro: parts[1] || '',
+          zh: existingExampleOnly ? '' : (parts[0] || ''),
+          ro: existingExampleOnly ? parts[0] : (parts[1] || ''),
           ipa: parts[2] || '',
           hint: parts[3] || '',
           cat: normalizeCategory(parts[4]),
@@ -3011,24 +3027,30 @@ async function submitAddWord() {
           example_zh: parts[6] || ''
         };
       }).filter(w => w.ro && (w.zh || w.example_ro));
-      if (!words.length) { showToast('没有解析到有效词汇，请检查格式'); btn.disabled = false; btn.textContent = '保存'; return; }
+      if (!words.length) { showToast('没有解析到有效词汇，请检查格式'); btn.disabled = false; btn.textContent = editingPending ? '保存修改' : '提交审核'; return; }
     }
 
-    const { inserted, skipped, updatedExamples, exampleSchemaMissing } = await apiInsertWords(words);
+    if (editingPending) {
+      await apiUpdatePendingWord(editingPendingWordId, words[0]);
+      document.getElementById('aw-result').textContent = '✅ 已保存到当前审核项';
+      document.getElementById('aw-result').style.color = 'var(--green-text)';
+      showToast('✅ 已修改当前审核项');
+      closeAddWordModal();
+      await loadAdminPendingWords();
+      await refreshAdminBadge();
+      loadAdminStats();
+      return;
+    }
 
-    // 刷新本地词库
-    W = (await apiLoadWords()).map(normalizeWordCategory);
-    applyFilters();
-    document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
-    buildCats(); renderCard(); renderList();
+    const { submitted } = await apiSubmitWordsForReview(words, currentUser);
 
-    const msg = `✅ 成功添加 ${inserted} 个词${updatedExamples > 0 ? `，补充例句 ${updatedExamples} 条` : ''}${skipped > updatedExamples ? `，跳过重复 ${skipped - updatedExamples} 个` : ''}`;
+    const msg = `✅ 已提交 ${submitted} 个词，等待审核通过后进入正式词库`;
     const missingIpa = words.filter(w => !String(w.ipa || '').trim()).length;
-    const schemaMsg = exampleSchemaMissing ? '；例句字段还没建，例句未保存。请先在 Supabase 运行 tools/example_columns_schema.sql' : '';
-    document.getElementById('aw-result').textContent = msg + schemaMsg;
-    document.getElementById('aw-result').style.color = exampleSchemaMissing ? 'var(--yellow-text)' : 'var(--green-text)';
-    showToast(exampleSchemaMissing ? '词条已处理，但例句字段未建，例句未保存' : (missingIpa ? `${msg}，其中 ${missingIpa} 个待校对音标` : msg));
+    document.getElementById('aw-result').textContent = msg;
+    document.getElementById('aw-result').style.color = 'var(--green-text)';
+    showToast(missingIpa ? `${msg}；其中 ${missingIpa} 个缺少音标` : msg);
+    await loadAdminPendingWords();
+    await refreshAdminBadge();
     loadAdminStats();
 
     if (mode === 'single') {
@@ -3044,7 +3066,7 @@ async function submitAddWord() {
     document.getElementById('aw-result').textContent = '❌ 失败：' + e.message;
     document.getElementById('aw-result').style.color = 'var(--red-text)';
   }
-  btn.disabled = false; btn.textContent = '保存';
+  btn.disabled = false; btn.textContent = editingPending ? '保存修改' : '提交审核';
 }
 
 // 从词汇表删除词条（管理员）
@@ -3071,27 +3093,30 @@ async function loadAdminStats() {
   el.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
-    const [reportsResult, progressResult] = await Promise.allSettled([
+    const [reportsResult, progressResult, pendingWordsResult] = await Promise.allSettled([
       apiLoadReports(),
-      apiLoadAllProgress()
+      apiLoadAllProgress(),
+      apiLoadPendingWords()
     ]);
     const reports = reportsResult.status === 'fulfilled' ? reportsResult.value : [];
     const allProgress = progressResult.status === 'fulfilled' ? progressResult.value : [];
+    const pendingWords = pendingWordsResult.status === 'fulfilled' ? pendingWordsResult.value : [];
     const categoryStats = getAdminCategoryStats();
     const reportStats = getAdminReportStats(reports);
     const wrongStats = getAdminWrongStats(allProgress);
     const missingIpaWords = getMissingIpaWords();
     const pendingGrammarWords = getPendingGrammarWords();
     const pendingReports = reports.filter(r => r.status === 'pending').length;
+    const pendingWordCount = pendingWords.filter(r => r.status === 'pending').length;
     const totalAnswers = allProgress.reduce((sum, r) => sum + (r.quiz_total || 0), 0);
 
     el.innerHTML = `
       <div class="admin-stat-grid">
         <div class="admin-stat"><div class="admin-stat-n">${W.length}</div><div class="admin-stat-l">词库总量</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${categoryStats.length}</div><div class="admin-stat-l">分类数量</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${pendingWordCount}</div><div class="admin-stat-l">待审核新词</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${pendingReports}</div><div class="admin-stat-l">待处理报错</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${missingIpaWords.length}</div><div class="admin-stat-l">待校对音标</div></div>
-        <div class="admin-stat"><div class="admin-stat-n">${pendingGrammarWords.length}</div><div class="admin-stat-l">语法待核对</div></div>
       </div>
       <div class="admin-chart">
         <div class="admin-chart-title">各分类词汇数量</div>
@@ -3106,10 +3131,12 @@ async function loadAdminStats() {
         ${progressResult.status === 'fulfilled' ? renderAdminWrongRows(wrongStats) : `<div class="empty-state">答题记录无法读取：${escapeHtml(progressResult.reason.message)}</div>`}
       </div>`;
     renderMissingIpaPanel();
+    renderPendingWordsPanel(pendingWords);
     renderPendingGrammarPanel();
   } catch (e) {
     el.innerHTML = `<div class="empty-state">词库统计加载失败：${escapeHtml(e.message || '未知错误')}</div>`;
     renderMissingIpaPanel();
+    loadAdminPendingWords();
     renderPendingGrammarPanel();
   }
 }
@@ -3138,6 +3165,157 @@ function renderMissingIpaPanel() {
         </div>`;
       }).join('')}
     </div>`;
+}
+
+async function loadAdminPendingWords() {
+  const el = document.getElementById('pending-words-container');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">加载中...</div>';
+  try {
+    const rows = await apiLoadPendingWords();
+    renderPendingWordsPanel(rows);
+  } catch (e) {
+    const badge = document.getElementById('pending-word-count-badge');
+    const approveAllBtn = document.getElementById('pending-approve-all-btn');
+    if (badge) badge.textContent = '';
+    if (approveAllBtn) approveAllBtn.style.display = 'none';
+    el.innerHTML = `<div class="empty-state">词汇审核加载失败：${escapeHtml(e.message || '未知错误')}<br><span style="font-size:12px">如果还没建表，请在 Supabase 运行 tools/pending_words_schema.sql。</span></div>`;
+  }
+}
+
+function renderPendingWordsPanel(rows = []) {
+  const el = document.getElementById('pending-words-container');
+  const badge = document.getElementById('pending-word-count-badge');
+  const approveAllBtn = document.getElementById('pending-approve-all-btn');
+  if (!el) return;
+  const pending = rows.filter(r => r.status === 'pending');
+  const reviewed = rows.filter(r => r.status && r.status !== 'pending').slice(0, 20);
+  if (badge) badge.textContent = pending.length ? `(${pending.length}条待审核)` : '';
+  if (approveAllBtn) approveAllBtn.style.display = pending.length ? '' : 'none';
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty-state">暂无词汇审核记录</div>';
+    return;
+  }
+  el.innerHTML = [...pending, ...reviewed].map(row => renderPendingWordRow(row)).join('');
+}
+
+function renderPendingWordRow(row) {
+  const isPending = row.status === 'pending';
+  const statusText = { pending: '待审核', approved: '已通过', rejected: '已拒绝' }[row.status] || row.status || '待审核';
+  const submittedAt = row.created_at ? new Date(row.created_at).toLocaleDateString('zh') : '';
+  return `
+    <div class="report-row" style="${isPending ? '' : 'opacity:0.55'}">
+      <div class="report-word">${escapeHtml(row.zh || '补例句')} → ${escapeHtml(row.ro || '')}
+        <span class="issue-tag">${escapeHtml(statusText)}</span>
+      </div>
+      <div class="report-meta">提交：${escapeHtml(row.submitted_email || '未知管理员')}${submittedAt ? ` · ${submittedAt}` : ''}</div>
+      <div class="pending-word-grid">
+        <div class="pending-word-cell"><div class="pending-word-label">重音</div><div class="pending-word-value">${escapeHtml(row.ipa || '未填写')}</div></div>
+        <div class="pending-word-cell"><div class="pending-word-label">分类</div><div class="pending-word-value">${escapeHtml(normalizeCategory(row.cat))}</div></div>
+        <div class="pending-word-cell"><div class="pending-word-label">语法</div><div class="pending-word-value">${escapeHtml(row.hint || '未填写')}</div></div>
+        <div class="pending-word-cell"><div class="pending-word-label">例句</div><div class="pending-word-value">${escapeHtml(row.example_ro || '未填写')}${row.example_zh ? `<br>${escapeHtml(row.example_zh)}` : ''}</div></div>
+      </div>
+      ${isPending ? `<div class="report-actions">
+        <button class="admin-btn approve" onclick="approvePendingWord(${Number(row.id)})">✓ 通过并入库</button>
+        <button class="admin-btn edit" onclick="editPendingWord(${Number(row.id)})">修改</button>
+        <button class="admin-btn revoke" onclick="rejectPendingWord(${Number(row.id)})">拒绝</button>
+      </div>` : ''}
+    </div>`;
+}
+
+async function approvePendingWord(rowId) {
+  try {
+    const rows = await apiLoadPendingWords();
+    const row = rows.find(r => Number(r.id) === Number(rowId));
+    if (!row) { showToast('找不到待审核词汇'); return; }
+    const result = await apiApprovePendingWord(row);
+    W = (await apiLoadWords()).map(normalizeWordCategory);
+    applyFilters();
+    document.getElementById('s-total').textContent = W.length;
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    buildCats(); renderCard(); renderList();
+    await loadAdminPendingWords();
+    await refreshAdminBadge();
+    loadAdminStats();
+    const schemaMsg = result.exampleSchemaMissing ? '；例句字段还没建，例句未保存' : '';
+    const duplicateMsg = result.inserted
+      ? ''
+      : (result.updatedExamples ? '；重复词已补充例句' : '；重复词已保留原词库内容');
+    showToast(`✅ 已通过「${row.zh || row.ro}」${duplicateMsg}${schemaMsg}`);
+  } catch (e) {
+    showToast('审核失败：' + e.message);
+  }
+}
+
+async function approveAllPendingWords() {
+  try {
+    const rows = await apiLoadPendingWords();
+    const pending = rows.filter(r => r.status === 'pending');
+    if (!pending.length) { showToast('没有待审核词汇'); return; }
+    if (!confirm(`确定一次通过 ${pending.length} 条待审核词汇吗？通过后会进入正式词库。`)) return;
+    const btn = document.getElementById('pending-approve-all-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
+    const result = await apiApprovePendingWords(pending);
+    W = (await apiLoadWords()).map(normalizeWordCategory);
+    applyFilters();
+    document.getElementById('s-total').textContent = W.length;
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    buildCats(); renderCard(); renderList();
+    await loadAdminPendingWords();
+    await refreshAdminBadge();
+    loadAdminStats();
+    const schemaMsg = result.exampleSchemaMissing ? '；例句字段还没建，部分例句未保存' : '';
+    const parts = [`新增 ${result.inserted || 0}`];
+    if (result.updatedExamples) parts.push(`补例句 ${result.updatedExamples}`);
+    const unchanged = Math.max(0, (result.approved || 0) - (result.inserted || 0) - (result.updatedExamples || 0));
+    if (unchanged) parts.push(`重复保留 ${unchanged}`);
+    showToast(`✅ 已通过 ${result.approved} 条：${parts.join('，')}${schemaMsg}`);
+  } catch (e) {
+    showToast('批量审核失败：' + e.message);
+  } finally {
+    const btn = document.getElementById('pending-approve-all-btn');
+    if (btn) { btn.disabled = false; btn.textContent = '全部通过'; }
+  }
+}
+
+async function rejectPendingWord(rowId) {
+  if (!confirm('确定拒绝这条词汇提交吗？')) return;
+  try {
+    await apiRejectPendingWord(rowId);
+    await loadAdminPendingWords();
+    await refreshAdminBadge();
+    loadAdminStats();
+    showToast('已拒绝该词汇提交');
+  } catch (e) {
+    showToast('拒绝失败：' + e.message);
+  }
+}
+
+async function editPendingWord(rowId) {
+  try {
+    const rows = await apiLoadPendingWords();
+    const row = rows.find(r => Number(r.id) === Number(rowId));
+    if (!row) { showToast('找不到待审核词汇'); return; }
+    editingPendingWordId = Number(row.id);
+    document.getElementById('aw-title').textContent = '📝 修改审核词汇';
+    document.getElementById('aw-tabs').style.display = 'none';
+    document.getElementById('aw-mode').value = 'single';
+    switchAddMode('single');
+    document.getElementById('aw-tabs').style.display = 'none';
+    document.getElementById('aw-zh').value = row.zh || '';
+    document.getElementById('aw-ro').value = row.ro || '';
+    document.getElementById('aw-ipa').value = row.ipa || '';
+    document.getElementById('aw-hint').value = row.hint || '';
+    document.getElementById('aw-cat').value = normalizeCategory(row.cat);
+    document.getElementById('aw-example-ro').value = row.example_ro || '';
+    document.getElementById('aw-example-zh').value = row.example_zh || '';
+    document.getElementById('aw-result').textContent = '保存后会直接修改当前审核项，不会生成新的申请。';
+    document.getElementById('aw-result').style.color = 'var(--yellow-text)';
+    document.getElementById('aw-submit').textContent = '保存修改';
+    document.getElementById('add-word-modal').style.display = 'flex';
+  } catch (e) {
+    showToast('打开编辑失败：' + e.message);
+  }
 }
 
 function renderPendingGrammarPanel() {
@@ -3298,7 +3476,11 @@ const ISSUE_LABELS = {
 };
 
 async function refreshAdminBadge() {
-  const count = await apiPendingReportCount();
+  const [reports, words] = await Promise.allSettled([
+    apiPendingReportCount(),
+    apiPendingWordSubmissionCount()
+  ]);
+  const count = (reports.status === 'fulfilled' ? reports.value : 0) + (words.status === 'fulfilled' ? words.value : 0);
   const tab = document.getElementById('admin-tab');
   let badge = tab.querySelector('.badge');
   if (count > 0) {
