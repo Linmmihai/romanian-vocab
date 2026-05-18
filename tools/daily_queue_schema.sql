@@ -4,7 +4,7 @@
 create table if not exists public.daily_queue (
   user_id uuid not null references auth.users(id) on delete cascade,
   queue_date date not null,
-  goal integer not null default 20 check (goal > 0 and goal <= 100),
+  goal integer not null default 20 check (goal > 0 and goal <= 5000),
   word_ro text[] not null default '{}',
   completed_word_ro text[] not null default '{}',
   completed boolean not null default false,
@@ -14,6 +14,20 @@ create table if not exists public.daily_queue (
 );
 
 alter table public.daily_queue enable row level security;
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.daily_queue'::regclass
+      and conname = 'daily_queue_goal_check'
+  ) then
+    alter table public.daily_queue drop constraint daily_queue_goal_check;
+  end if;
+  alter table public.daily_queue
+    add constraint daily_queue_goal_check check (goal > 0 and goal <= 5000);
+end $$;
 
 create policy "Users can read own daily queues"
 on public.daily_queue for select

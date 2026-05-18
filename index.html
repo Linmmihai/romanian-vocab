@@ -93,6 +93,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-wrap{perspective:1000px;margin-bottom:1rem}
 .card{width:100%;min-height:540px;border-radius:14px;border:1px solid var(--border);background:white;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;box-shadow:var(--shadow);touch-action:none;user-select:none}
 .daily-goal-panel{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;box-shadow:var(--shadow)}
+.goal-extend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text2)}
+.goal-extend .btn-sm{padding:5px 9px;font-size:12px}
 .card.flipped{transform:rotateY(180deg)}
 .card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
 .card-back{transform:rotateY(180deg);background:var(--bg2);padding:0;overflow:hidden;justify-content:stretch}
@@ -375,11 +377,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="nav-tab" data-page="quiz" onclick="switchPage('quiz')">测验</button>
     <button class="nav-tab" data-page="list" onclick="switchPage('list')">词汇</button>
     <button class="nav-tab" data-page="stats" onclick="switchPage('stats')">统计</button>
+    <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
     <button class="nav-tab hidden-tab" onclick="switchPage('review')">复习</button>
     <div class="nav-more" id="nav-more">
       <button class="nav-tab nav-more-btn" onclick="toggleNavMenu(event)">更多</button>
       <div class="nav-menu">
-        <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">错题本 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
         <button class="nav-tab" data-page="leaderboard" onclick="switchPage('leaderboard')">排行榜</button>
         <button class="nav-tab" data-page="guide" onclick="switchPage('guide')">指南</button>
         <button class="nav-tab" data-page="admin" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
@@ -414,7 +416,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="daily-goal-bar"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
         <span style="font-size:13px;color:var(--text2)">每日任务目标：</span>
-        <input type="number" id="goal-input" min="1" max="100" style="width:60px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="20">
+        <input type="number" id="goal-input" min="1" max="5000" style="width:72px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="20">
         <span style="font-size:13px;color:var(--text2)">个任务</span>
         <button class="btn-sm" onclick="saveGoalSetting()">保存</button>
       </div>
@@ -433,7 +435,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
               <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
               <span id="fc-verify" class="unverified-badge" style="display:none"></span>
             </div>
-            <div class="card-hint-txt">点击卡片查看罗马尼亚语 👆</div>
+            <div class="card-hint-txt" id="fc-front-hint">点击卡片查看罗马尼亚语 👆</div>
             <div class="card-zh" id="fc-zh"></div>
           </div>
           <div class="card-face card-back">

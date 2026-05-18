@@ -49,6 +49,7 @@ let wbStreaks = {};
 let wbGraduated = 0;
 let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
+const DAILY_GOAL_MAX = 5000;
 
 // 每日任务目标状态
 let dailyGoal = 20;
@@ -239,7 +240,7 @@ async function onLogin(user) {
   if (userRole === 'pending') { showPendingScreen(); return; }
 
   const nickname = profile?.nickname || user.email.split('@')[0];
-  dailyGoal = profile?.daily_goal || 20;
+  dailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(profile?.daily_goal) || 20));
 
   // 先设置目标输入框
   const goalInput = document.getElementById('goal-input');
@@ -447,6 +448,61 @@ function getDailyTaskType(w) {
   if (!w) return '';
   if (isDueReviewWord(w)) return '到期复习';
   return '新词';
+}
+
+function getContinueAfterGoalText() {
+  if (dailyGoal < DAILY_GOAL_MAX) {
+    return '想继续学习，可以点下方 +10、+50，或自定义扩展今天的任务量。';
+  }
+  return '今日任务已到上限，可以继续做测验或打开错题本巩固。';
+}
+
+function getGoalInputValue() {
+  const input = document.getElementById('goal-input');
+  return parseInt(input?.value || '', 10);
+}
+
+function setGoalInputValue(value) {
+  const input = document.getElementById('goal-input');
+  if (input) input.value = value;
+}
+
+async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更新') {
+  const nextGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(goal || 0)));
+  dailyGoal = nextGoal;
+  setGoalInputValue(nextGoal);
+  await apiSetDailyGoal(currentUser.id, nextGoal);
+  todayQueue = buildOpenTodayQueue(dailyGoal);
+  await saveTodayQueue();
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  applyFilters();
+  renderCard();
+  renderDailyGoal();
+  renderCalendar();
+  showToast(message);
+}
+
+async function extendTodayGoal(amount) {
+  const extra = Number(amount || 0);
+  if (!extra || extra < 1) return;
+  const base = Math.max(dailyGoal, todayNewWords);
+  const nextGoal = Math.min(DAILY_GOAL_MAX, base + extra);
+  if (nextGoal <= dailyGoal && dailyGoal >= DAILY_GOAL_MAX) {
+    showToast(`每日任务目标最高为 ${DAILY_GOAL_MAX}`);
+    return;
+  }
+  await setDailyGoalAndRebuild(nextGoal, `已扩展今日任务到 ${nextGoal} 个`);
+}
+
+async function extendTodayGoalCustom() {
+  const raw = prompt('这次想额外增加多少个任务？', '20');
+  if (raw === null) return;
+  const extra = parseInt(raw, 10);
+  if (!extra || extra < 1) {
+    showToast('请输入大于 0 的任务数');
+    return;
+  }
+  await extendTodayGoal(extra);
 }
 
 async function saveTodayQueue() {
@@ -901,7 +957,7 @@ function renderReviewPanel() {
   setText('review-new-remaining', unseenRemaining);
   const taskType = current ? getDailyTaskType(current) : '';
   setText('review-note', todayNewWords >= dailyGoal
-    ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。可以继续做测验或打开错题本巩固。`
+    ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
     : `今日任务先完成到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`);
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
@@ -1162,6 +1218,7 @@ function renderDailyGoal() {
   if (!el) return;
   const pct = Math.min(100, Math.round(todayNewWords / dailyGoal * 100));
   const done = todayNewWords >= dailyGoal;
+  const canExtend = done && dailyGoal < DAILY_GOAL_MAX;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">
@@ -1171,22 +1228,23 @@ function renderDailyGoal() {
     </div>
     <div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${done ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
-    </div>`;
+    </div>
+    ${canExtend ? `
+      <div class="goal-extend">
+        <span>继续今天：</span>
+        <button class="btn-sm" onclick="extendTodayGoal(10)">+10</button>
+        <button class="btn-sm" onclick="extendTodayGoal(50)">+50</button>
+        <button class="btn-sm" onclick="extendTodayGoalCustom()">自定义</button>
+      </div>` : ''}`;
 }
 
 async function saveGoalSetting() {
-  const val = parseInt(document.getElementById('goal-input').value);
-  if (!val || val < 1 || val > 100) { showToast('请输入1-100之间的数字'); return; }
-  dailyGoal = val;
-  await apiSetDailyGoal(currentUser.id, val);
-  todayQueue = buildOpenTodayQueue(dailyGoal);
-  await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
-  applyFilters();
-  renderCard();
-  renderDailyGoal();
-  renderCalendar();
-  showToast('每日任务目标已更新');
+  const val = getGoalInputValue();
+  if (!val || val < 1 || val > DAILY_GOAL_MAX) {
+    showToast(`请输入1-${DAILY_GOAL_MAX}之间的数字`);
+    return;
+  }
+  await setDailyGoalAndRebuild(val);
 }
 
 async function renderCalendar() {
@@ -1272,6 +1330,7 @@ function renderCard() {
   if (!filtered.length && !overrideWord) {
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
+    const frontHint = document.getElementById('fc-front-hint');
     const hasOpenQueue = todayQueue.some(ro => !todayQueueCompleted.has(ro));
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro));
@@ -1281,10 +1340,13 @@ function renderCard() {
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
       today: todayNewWords >= dailyGoal
-        ? '可以继续做测验，或明天再学习'
+        ? getContinueAfterGoalText()
         : (hasOpenQueue ? '请切换到全部，先完成到期复习' : '可以切换分类、提高今日任务目标或去测验'),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
+    if (frontHint) {
+      frontHint.textContent = todayNewWords >= dailyGoal ? actionText : '点击卡片查看罗马尼亚语 👆';
+    }
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
     setText('fc-ipa', '');
@@ -1298,6 +1360,8 @@ function renderCard() {
   bindFlashcardButtons();
   if (filtered.length) idx = (idx + filtered.length) % filtered.length;
   const w = overrideWord || filtered[idx];
+  const frontHint = document.getElementById('fc-front-hint');
+  if (frontHint) frontHint.textContent = '点击卡片查看罗马尼亚语 👆';
   const stress = getStressDisplay(w);
   const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
   document.getElementById('fc-cat').textContent = `${w.cat || ''}${taskType}`;
@@ -2436,7 +2500,7 @@ async function importProgressBackup(file) {
       );
     }
     if (payload.dailyGoal) {
-      dailyGoal = Math.max(1, Math.min(100, Number(payload.dailyGoal) || dailyGoal));
+      dailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(payload.dailyGoal) || dailyGoal));
       const input = document.getElementById('goal-input');
       if (input) input.value = dailyGoal;
       await apiSetDailyGoal(currentUser.id, dailyGoal);
