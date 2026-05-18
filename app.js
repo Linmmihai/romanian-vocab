@@ -50,9 +50,9 @@ let wbGraduated = 0;
 let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
 
-// 每日目标状态
+// 每日任务目标状态
 let dailyGoal = 20;
-let todayNewWords = 0;      // 今日新学词数（首次翻到背面算学过）
+let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
 let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
 let todayLog = null;
 
@@ -324,7 +324,7 @@ async function loadDailyQueue() {
     todayQueue = uniqueSavedQueue.filter(ro => {
       const word = W.find(w => w.ro === ro);
       if (!word) return false;
-      if (!isUnseenWord(word)) {
+      if (!isDailyQueueCandidate(word)) {
         todayQueueCompleted.add(ro);
         return false;
       }
@@ -332,8 +332,9 @@ async function loadDailyQueue() {
     });
     queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
-    todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
     todayQueueCompleted = new Set();
+    todaySeenWords = new Set();
+    todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
     todayQueueRecord = await apiSaveDailyQueue(currentUser.id, {
       goal: dailyGoal,
       word_ro: todayQueue,
@@ -343,17 +344,10 @@ async function loadDailyQueue() {
   }
   todaySeenWords = new Set(todayQueueCompleted);
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
-  const neededOpenWords = Math.max(0, dailyGoal - todayQueueCompleted.size);
-  if (todayNewWords < dailyGoal && todayQueue.length < neededOpenWords) {
-    const existing = new Set(todayQueue);
-    const extra = buildDailyQueueWords(dailyGoal)
-      .map(w => w.ro)
-      .filter(ro => !existing.has(ro))
-      .slice(0, neededOpenWords - todayQueue.length);
-    if (extra.length) {
-      todayQueue = [...todayQueue, ...extra];
-      queueChanged = true;
-    }
+  const normalizedQueue = buildOpenTodayQueue(dailyGoal);
+  if (normalizedQueue.join('|') !== todayQueue.join('|')) {
+    todayQueue = normalizedQueue;
+    queueChanged = true;
   }
   if (queueChanged) await saveTodayQueue();
   if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
@@ -372,7 +366,7 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return buildSmartDailyPlan(W, cap);
+  return buildReviewFirstDailyPlan(W, cap);
 }
 
 function uniqueWordsByRo(words) {
@@ -397,6 +391,37 @@ function buildSmartDailyPlan(words = W, limit = dailyGoal) {
   return uniqueWordsByRo([...due, ...weak, ...unseen]).slice(0, cap);
 }
 
+function isDueReviewWord(w) {
+  const p = progressMap[w?.ro];
+  return !!(p && (p.qt || p.known) && isReviewDue(p));
+}
+
+function getRemainingDueReviewWords(words = W) {
+  return words.filter(w => !todayQueueCompleted.has(w.ro) && isDueReviewWord(w));
+}
+
+function isDailyQueueCandidate(w) {
+  return isDueReviewWord(w) || isUnseenWord(w);
+}
+
+function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
+  const cap = Math.max(1, Number(limit || dailyGoal || 20));
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted]);
+  const usable = words.filter(w => w?.ro && !blocked.has(w.ro));
+  const due = sortReviewDueWithWeakPriority(usable).filter(isDueReviewWord);
+  const dueSet = new Set(due.map(w => w.ro));
+  const unseen = getUnseenWords(usable).filter(w => !dueSet.has(w.ro));
+  return uniqueWordsByRo([...due, ...unseen]).slice(0, cap);
+}
+
+function buildOpenTodayQueue(goal = dailyGoal) {
+  const neededOpenWords = Math.max(0, Number(goal || dailyGoal || 20) - todayNewWords);
+  return buildDailyQueueWords(goal)
+    .map(w => w.ro)
+    .filter(ro => !todayQueueCompleted.has(ro))
+    .slice(0, neededOpenWords);
+}
+
 function getDailyWordList(words = W, options = {}) {
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) return [];
   const includeFallback = options.includeFallback !== false;
@@ -409,19 +434,18 @@ function getDailyWordList(words = W, options = {}) {
     .filter(Boolean)
     .filter(w => !todayQueueCompleted.has(w.ro));
   if (queueWords.length || !includeFallback) return queueWords.slice(0, limit);
+  if (todayQueue.some(ro => !todayQueueCompleted.has(ro))) return [];
+  if (todayNewWords >= dailyGoal) return [];
 
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue]);
-  return buildSmartDailyPlan(scoped, limit)
+  return buildReviewFirstDailyPlan(scoped, Math.min(limit, dailyGoal - todayNewWords))
     .filter(w => !blocked.has(w.ro))
     .slice(0, limit);
 }
 
 function getDailyTaskType(w) {
   if (!w) return '';
-  const p = progressMap[w.ro];
-  if (p && (p.qt || p.known) && isReviewDue(p)) return '到期复习';
-  const score = getDifficultScore(w);
-  if (score.wrong > 0 || score.streak > 0) return '薄弱巩固';
+  if (isDueReviewWord(w)) return '到期复习';
   return '新词';
 }
 
@@ -455,7 +479,8 @@ async function recordTodayWord(wordRo) {
   renderDailyGoal();
   updateTodayCalendarCell();
   renderReviewPanel();
-  if (!wasGoalDone && todayNewWords >= dailyGoal) showToast('今日目标已完成，可以切换到复习');
+  updateReviewBadge();
+  if (!wasGoalDone && todayNewWords >= dailyGoal) showToast('今日任务目标已完成，可以继续测验或复习');
 }
 
 async function completeTodayQueueWord(wordRo) {
@@ -522,10 +547,7 @@ function applyFilters() {
   if (flashMode === 'today') {
     filtered = getDailyWordList(scoped, { includeFallback: true });
   } else if (flashMode === 'review') {
-    filtered = sortReviewDueWithWeakPriority(scoped).filter(w => {
-      const p = progressMap[w.ro];
-      return p && (p.qt || p.known) && isReviewDue(p);
-    });
+    filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueReviewWord);
   } else {
     filtered = sortByReviewPriority(scoped).filter(w => getReviewBucket(w) !== 2);
   }
@@ -548,6 +570,12 @@ async function addWordToTodayQueue(wordRo) {
   const w = getWordByRo(wordRo);
   if (!w) { showToast('找不到该词条'); return; }
   if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习或错题本巩固'); return; }
+  const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
+  const remainingDueReviews = getRemainingDueReviewWords(W).length;
+  if (todayNewWords >= dailyGoal || remainingDueReviews >= remainingSlots) {
+    showToast('请先完成到期复习；提高今日任务目标后可以继续添加新词');
+    return;
+  }
   if (todayQueue.includes(wordRo) && !todayQueueCompleted.has(wordRo)) {
     showToast('这个词已在今日队列中');
     switchPage('flash');
@@ -861,10 +889,12 @@ function renderReviewPanel() {
   const dueEl = document.getElementById('review-due-count');
   if (!dueEl) return;
   const scoped = getCurrentScopeWords();
-  const due = scoped.filter(w => isReviewDue(progressMap[w.ro])).length;
+  const due = getRemainingDueReviewWords(scoped).length;
   const rawUnseenRemaining = getUnseenWords(scoped).filter(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro)).length;
-  const unsavedTodayCount = Math.max(0, todayNewWords - todayQueueCompleted.size);
-  const unseenRemaining = Math.max(0, rawUnseenRemaining - unsavedTodayCount);
+  const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
+  const remainingDueReviews = getRemainingDueReviewWords(W).length;
+  const availableNewSlots = Math.max(0, remainingSlots - remainingDueReviews);
+  const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
   const current = filtered[idx];
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
@@ -872,7 +902,7 @@ function renderReviewPanel() {
   const taskType = current ? getDailyTaskType(current) : '';
   setText('review-note', todayNewWords >= dailyGoal
     ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。可以继续做测验或打开错题本巩固。`
-    : `今日任务会优先安排到期复习和薄弱词，再补充新词。${taskType ? `当前卡片：${taskType}。` : ''}`);
+    : `今日任务先完成到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`);
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
 }
@@ -1120,12 +1150,12 @@ function restoreAdminSections() {
 function updateReviewBadge() {
   const badge = document.getElementById('review-tab-badge') || document.getElementById('flash-tab-badge');
   if (!badge) return;
-  const count = getTodayReviewWords().length;
+  const count = getRemainingDueReviewWords(W).length;
   badge.textContent = count;
   badge.style.display = count > 0 ? 'inline' : 'none';
 }
 
-// ── 每日目标 ──────────────────────────────────────────────
+// ── 每日任务目标 ──────────────────────────────────────────
 
 function renderDailyGoal() {
   const el = document.getElementById('daily-goal-bar');
@@ -1149,24 +1179,14 @@ async function saveGoalSetting() {
   if (!val || val < 1 || val > 100) { showToast('请输入1-100之间的数字'); return; }
   dailyGoal = val;
   await apiSetDailyGoal(currentUser.id, val);
-  const neededOpenWords = Math.max(0, dailyGoal - todayQueueCompleted.size);
-  if (todayQueue.length < neededOpenWords) {
-    const existing = new Set(todayQueue);
-    const extra = buildDailyQueueWords(dailyGoal)
-      .map(w => w.ro)
-      .filter(ro => !existing.has(ro))
-      .slice(0, neededOpenWords - todayQueue.length);
-    todayQueue = [...todayQueue, ...extra];
-  } else if (todayQueue.length > neededOpenWords) {
-    todayQueue = todayQueue.slice(0, neededOpenWords);
-  }
+  todayQueue = buildOpenTodayQueue(dailyGoal);
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
   applyFilters();
   renderCard();
   renderDailyGoal();
   renderCalendar();
-  showToast('每日目标已更新');
+  showToast('每日任务目标已更新');
 }
 
 async function renderCalendar() {
@@ -1195,15 +1215,15 @@ async function renderCalendar() {
     const label = isToday ? '今' : (d.getMonth() + 1) + '/' + d.getDate();
 
     // 今天用实时数据，历史用数据库
-    const newWords = isToday ? todayNewWords : (log?.new_words || 0);
+    const completedTasks = isToday ? todayNewWords : (log?.new_words || 0);
     const goal = isToday ? dailyGoal : (log?.goal || dailyGoal);
-    const completed = isToday ? (todayNewWords >= dailyGoal) : isDailyLogCompleted({ ...log, new_words: newWords, goal });
+    const completed = isToday ? (todayNewWords >= dailyGoal) : isDailyLogCompleted({ ...log, new_words: completedTasks, goal });
 
-    const stateClass = completed ? 'completed' : newWords > 0 ? 'started' : '';
+    const stateClass = completed ? 'completed' : completedTasks > 0 ? 'started' : '';
     const todayAttr = isToday ? 'data-today="1"' : '';
-    days.push(`<div ${todayAttr} class="calendar-cell ${stateClass}${isToday ? ' today' : ''}" title="${label}: ${newWords}词 / 目标${goal}词">
+    days.push(`<div ${todayAttr} class="calendar-cell ${stateClass}${isToday ? ' today' : ''}" title="${label}: ${completedTasks}个任务 / 目标${goal}个">
       <span class="calendar-date">${label}</span>
-      <span class="cal-sub">${newWords > 0 ? newWords : ''}</span>
+      <span class="cal-sub">${completedTasks > 0 ? completedTasks : ''}</span>
     </div>`);
   }
   el.innerHTML = `
@@ -1252,13 +1272,18 @@ function renderCard() {
   if (!filtered.length && !overrideWord) {
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
+    const hasOpenQueue = todayQueue.some(ro => !todayQueueCompleted.has(ro));
+    const hasDueReview = getRemainingDueReviewWords(W).length > 0;
+    const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro));
     const emptyText = {
-      today: todayNewWords >= dailyGoal ? '今日任务已完成' : '今日暂无任务',
+      today: todayNewWords >= dailyGoal ? '今日任务已完成' : (hasDueReview || hasNewWords ? '当前分类没有今日任务' : '今日没有可安排任务'),
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
-      today: todayNewWords >= dailyGoal ? '可以继续做测验，或明天再学新词' : '当前分类没有可安排任务，可以切换分类或去测验',
-      review: '先完成今日新词，系统会安排复习'
+      today: todayNewWords >= dailyGoal
+        ? '可以继续做测验，或明天再学习'
+        : (hasOpenQueue ? '请切换到全部，先完成到期复习' : '可以切换分类、提高今日任务目标或去测验'),
+      review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
@@ -1335,7 +1360,7 @@ function bindFlashcardButtons() {
 }
 
 /**
- * 记录当前词为「今日已学」
+ * 记录当前卡片为「今日已完成任务」
  */
 async function recordDailyWord() {
   const w = getCurrentFlashWord();
@@ -1502,10 +1527,7 @@ function speak(rate) {
 // ── 艾宾浩斯复习页 ────────────────────────────────────────
 
 function getTodayReviewWords() {
-  return W.filter(w => {
-    const p = progressMap[w.ro];
-    return p && (p.qt || p.known) && isReviewDue(p);
-  });
+  return W.filter(isDueReviewWord);
 }
 
 function initReviewQueue() {
@@ -1527,9 +1549,9 @@ function renderReviewCard() {
     empty.style.display = 'flex';
     empty.innerHTML = `
       <div style="font-size:48px">😴</div>
-      <div style="font-size:16px;font-weight:600;color:var(--text)">今日没有待复习词汇</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">先去学新词，系统会按复习间隔安排下一次复习</div>
-      <button class="btn-sm" style="margin-top:12px" onclick="switchPage('flash')">去学新词</button>`;
+      <div style="font-size:16px;font-weight:600;color:var(--text)">当前没有到期复习任务</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">可以回到今日任务学习新词，系统会按复习间隔安排下一次复习</div>
+      <button class="btn-sm" style="margin-top:12px" onclick="switchPage('flash')">去今日任务</button>`;
     return;
   }
 
@@ -1598,8 +1620,8 @@ function showReviewComplete() {
   empty.style.display = 'flex';
   empty.innerHTML = `
       <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">今日复习完成</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">完成了 ${reviewQueue.length} 个词的复习</div>
-      <button class="btn-sm" onclick="switchPage('flash')">去学新词</button>
+      <div style="font-size:14px;color:var(--text2);text-align:center">完成了 ${reviewQueue.length} 个复习任务</div>
+      <button class="btn-sm" onclick="switchPage('flash')">去今日任务</button>
     `;
 }
 
@@ -1958,7 +1980,7 @@ function getMistakeTip(w, context = {}) {
   if (context.type === 'verbConj') return '动词题先识别不定式结尾，再记是否带 -ez 或 -esc。';
   if (context.type === 'stress') return '重音题看下划线音节；不确定时先慢速朗读，再回到词卡。';
   if (isWordUnverified(w)) return '这个词仍有未核对信息，建议打开详情或报错让管理员检查。';
-  return '把这个词加入错题本后，系统会在今日任务和智能练习里提高它的优先级。';
+  return '把这个词加入错题本后，系统会在智能练习里提高它的优先级。';
 }
 
 function buildExercisePool() {
@@ -2219,9 +2241,9 @@ function getDateKey(offset = 0) {
 
 function isDailyLogCompleted(log) {
   if (!log) return false;
-  const newWords = Number(log.new_words || 0);
+  const completedTasks = Number(log.new_words || 0);
   const goal = Number(log.goal || dailyGoal || 20);
-  return !!log.completed || (goal > 0 && newWords >= goal);
+  return !!log.completed || (goal > 0 && completedTasks >= goal);
 }
 
 function buildRecentDays(days) {
@@ -2277,10 +2299,10 @@ async function renderStatsPage() {
     const logs = await apiGetRecentLogs(currentUser.id, 30);
     const filled14 = fillDailyLogs(logs, 14);
     const summary = calcProgressSummary(progressMap);
-    const learned30 = fillDailyLogs(logs, 30).reduce((sum, l) => sum + (l.new_words || 0), 0);
+    const tasks30 = fillDailyLogs(logs, 30).reduce((sum, l) => sum + (l.new_words || 0), 0);
 
     setText('stat-streak', calcStreak(logs));
-    setText('stat-30days', learned30);
+    setText('stat-30days', tasks30);
     setText('stat-accuracy', summary.accuracy + '%');
     renderStudyCoach(summary, logs);
     renderDailyChart(filled14);
@@ -2298,7 +2320,7 @@ async function renderStatsPage() {
 function renderStudyCoach(summary, logs = []) {
   const el = document.getElementById('study-coach');
   if (!el) return;
-  const dueCount = getTodayReviewWords().length;
+  const dueCount = getRemainingDueReviewWords(W).length;
   const wrongCount = getWrongWords().length;
   const weakCat = getWeakestCategory();
   const todayOpen = todayQueue.length;
@@ -2341,15 +2363,15 @@ function getWeakestCategory() {
 function renderAchievements(summary, logs = []) {
   const el = document.getElementById('achievement-list');
   if (!el) return;
-  const dueCount = getTodayReviewWords().length;
+  const dueCount = getRemainingDueReviewWords(W).length;
   const wrongCount = getWrongWords().length;
-  const learned30 = fillDailyLogs(logs, 30).reduce((sum, l) => sum + (l.new_words || 0), 0);
+  const tasks30 = fillDailyLogs(logs, 30).reduce((sum, l) => sum + (l.new_words || 0), 0);
   const badges = [
     { name: '入门 100', done: summary.mastered >= 100, meta: `${summary.mastered}/100 已掌握` },
     { name: '稳定 7 天', done: calcStreak(logs) >= 7, meta: `${calcStreak(logs)} 天连续` },
     { name: '今日清空', done: dueCount === 0, meta: `${dueCount} 个到期` },
     { name: '错题清零', done: wrongCount === 0, meta: `${wrongCount} 个错题` },
-    { name: '近月 300', done: learned30 >= 300, meta: `${learned30}/300 近30天` }
+    { name: '近月 300', done: tasks30 >= 300, meta: `${tasks30}/300 近30天任务` }
   ];
   el.innerHTML = `<div class="manual-grid">${badges.map(b => `
     <div class="manual-item" style="border-color:${b.done ? 'var(--green)' : 'var(--border)'};background:${b.done ? 'var(--green-bg)' : 'var(--bg2)'}">
@@ -2438,7 +2460,7 @@ function renderDailyChart(logs) {
         const h = Math.max(3, Math.round((l.new_words || 0) / max * 120));
         const d = new Date(l.log_date + 'T00:00:00');
         const label = (d.getMonth() + 1) + '/' + d.getDate();
-        return `<div class="day-bar" title="${label}: ${l.new_words || 0}词">
+        return `<div class="day-bar" title="${label}: ${l.new_words || 0}个任务">
           <div style="font-size:10px;color:var(--text2)">${l.new_words || ''}</div>
           <div class="day-fill" style="height:${h}px;background:${l.completed ? 'var(--green)' : 'var(--blue)'}"></div>
           <div class="day-label">${label}</div>

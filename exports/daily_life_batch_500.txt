@@ -1,0 +1,500 @@
+物业通知|notificare de administrație|notificAre de administrAție|s.f.: notificări de administrație|Daily Life|Notificarea de administrație a fost lipită la intrare.|物业通知贴在入口处。
+楼栋群聊|chat de bloc|chAt de blOc|s.n.: chaturi de bloc|Daily Life|Vecinii au scris pe chatul de bloc despre pană.|邻居们在楼栋群聊里写了停电的事。
+维修申请|cerere de reparație|cerEre de reparAție|s.f.: cereri de reparație|Daily Life|Am trimis o cerere de reparație pentru lift.|我提交了一份电梯维修申请。
+门禁卡|cartelă de acces|cartElă de accEs|s.f.: cartele de acces|Daily Life|Cartela de acces nu mai deschide poarta.|门禁卡打不开大门了。
+备用电池|baterie de rezervă|baterIe de rezErvă|s.f.: baterii de rezervă|Daily Life|Țin o baterie de rezervă în sertar.|我在抽屉里放了一块备用电池。
+床罩|cuvertură|cuvertUră|s.f.: cuverturi|Daily Life|Cuvertura se spală separat de cearșafuri.|床罩和床单分开洗。
+衣柜门|ușă de dulap|Ușă de dulAp|s.f.: uși de dulap|Daily Life|Ușa de dulap nu se mai închide bine.|衣柜门关不严了。
+抽屉把手|mâner de sertar|mÂner de sertAr|s.n.: mânere de sertar|Daily Life|Mânerul de sertar s-a slăbit.|抽屉把手松了。
+厨房台面|blat de bucătărie|blAt de bucătărIe|s.n.: blaturi de bucătărie|Daily Life|Șterge blatul de bucătărie după ce gătești.|做饭后擦一下厨房台面。
+垃圾分类桶|container de reciclare|containEr de reciclAre|s.n.: containere de reciclare|Daily Life|Containerul de reciclare este în spatele blocului.|垃圾分类桶在楼后面。
+厨余垃圾|deșeuri alimentare|deșEuri alimentAre|s.n.pl.: deșeuri alimentare|Daily Life|Deșeurile alimentare se strâng într-un sac separat.|厨余垃圾装在单独的袋子里。
+玻璃回收箱|container pentru sticlă|containEr pentru stIclă|s.n.: containere pentru sticlă|Daily Life|Sticlele goale se pun în containerul pentru sticlă.|空瓶放进玻璃回收箱。
+纸类回收箱|container pentru hârtie|containEr pentru hârtIe|s.n.: containere pentru hârtie|Daily Life|Cutia merge la containerul pentru hârtie.|纸盒要放进纸类回收箱。
+塑料回收箱|container pentru plastic|containEr pentru plAstic|s.n.: containere pentru plastic|Daily Life|Ambalajele curate merg la containerul pentru plastic.|干净包装放进塑料回收箱。
+油烟味|miros de prăjeală|mirOs de prăjeAlă|s.n.: mirosuri de prăjeală|Daily Life|În bucătărie a rămas miros de prăjeală.|厨房里还留着油烟味。
+洗碗液|detergent de vase|detergEnt de vAse|s.n.: detergenți de vase|Daily Life|Detergentul de vase s-a terminat.|洗碗液用完了。
+洗碗刷|perie de vase|pErie de vAse|s.f.: perii de vase|Daily Life|Peria de vase stă lângă burete.|洗碗刷放在海绵旁边。
+保鲜膜|folie alimentară|fOlie alimentAră|s.f.: folii alimentare|Daily Life|Acoperă bolul cu folie alimentară.|用保鲜膜盖住碗。
+锡纸|folie de aluminiu|fOlie de alumIniu|s.f.: folii de aluminiu|Daily Life|Peștele se coace în folie de aluminiu.|鱼用锡纸烤。
+烘焙纸|hârtie de copt|hârtIe de cOpt|s.f.: hârtii de copt|Daily Life|Pune hârtie de copt în tavă.|在烤盘里放烘焙纸。
+调味罐|borcan de condimente|borcAn de condimentE|s.n.: borcane de condimente|Daily Life|Borcanul de condimente nu are etichetă.|调味罐没有标签。
+菜刀|cuțit de bucătărie|cuțIt de bucătărIe|s.n.: cuțite de bucătărie|Daily Life|Cuțitul de bucătărie trebuie ascuțit.|菜刀需要磨一下。
+削皮器|curățător de legume|curățătOr de legUme|s.n.: curățătoare de legume|Daily Life|Curățătorul de legume e în sertar.|削皮器在抽屉里。
+量杯|cană gradată|cAnă gradAtă|s.f.: căni gradate|Daily Life|Măsoară laptele cu cana gradată.|用量杯量牛奶。
+量勺|lingură dozatoare|lingUră dozatoAre|s.f.: linguri dozatoare|Daily Life|Lingura dozatoare e pentru cafea.|量勺是用来量咖啡的。
+饭勺|polonic|polOnic|s.n.: polonice|Daily Life|Servește supa cu polonicul.|用饭勺盛汤。
+锅铲|spatulă|spAtulă|s.f.: spatule|Daily Life|Întoarce clătita cu spatula.|用锅铲翻煎饼。
+厨房剪|foarfecă de bucătărie|foArfecă de bucătărIe|s.f.: foarfece de bucătărie|Daily Life|Foarfeca de bucătărie taie ambalajul ușor.|厨房剪能轻松剪开包装。
+杯垫|suport de pahar|supOrt de pahAr|s.n.: suporturi de pahar|Daily Life|Pune cana pe suportul de pahar.|把杯子放在杯垫上。
+餐具抽屉|sertar de tacâmuri|sertAr de tacÂmuri|s.n.: sertare de tacâmuri|Daily Life|Sertarul de tacâmuri e lângă chiuvetă.|餐具抽屉在水槽旁边。
+餐具|tacâmuri|tacÂmuri|s.n.pl.: tacâmuri|Daily Life|Tacâmurile curate sunt pe masă.|干净餐具在桌上。
+早餐盘|farfurie de mic dejun|farfurIe de mIc dejUn|s.f.: farfurii de mic dejun|Daily Life|Farfuria de mic dejun e prea mică.|早餐盘太小了。
+汤碗|bol de supă|bOl de sUpă|s.n.: boluri de supă|Daily Life|Bolul de supă e fierbinte.|汤碗很烫。
+沙拉碗|bol de salată|bOl de salAtă|s.n.: boluri de salată|Daily Life|Bolul de salată rămâne pe masă.|沙拉碗留在桌上。
+玻璃杯|pahar de sticlă|pahAr de stIclă|s.n.: pahare de sticlă|Daily Life|Paharul de sticlă s-a spart.|玻璃杯碎了。
+一次性杯|pahar de unică folosință|pahAr de Unică folosInță|s.n.: pahare de unică folosință|Daily Life|La picnic am luat pahare de unică folosință.|野餐时我们带了一次性杯。
+水瓶盖|capac de sticlă|capAc de stIclă|s.n.: capace de sticlă|Daily Life|Capacul de sticlă a căzut sub masă.|水瓶盖掉到桌子下面了。
+罐头|conservă|consErvă|s.f.: conserve|Daily Life|Am deschis o conservă de ton.|我打开了一罐金枪鱼罐头。
+冷藏室|raft de frigider|rAft de frigidEr|s.n.: rafturi de frigider|Daily Life|Raftul de frigider s-a crăpat.|冰箱隔板裂了。
+冷冻袋|pungă pentru congelator|pUngă pentru congelatOr|s.f.: pungi pentru congelator|Daily Life|Pun carnea în pungă pentru congelator.|我把肉放进冷冻袋。
+餐前小吃|gustare sărată|gustAre sărAtă|s.f.: gustări sărate|Daily Life|Am pus pe masă câteva gustări sărate.|我在桌上放了几样咸味小吃。
+坚果混合|mix de nuci|mIx de nUci|s.n.: mixuri de nuci|Daily Life|Mixul de nuci e bun pentru drum.|坚果混合很适合路上吃。
+水果篮|coș cu fructe|cOș cu frUcte|s.n.: coșuri cu fructe|Daily Life|Coșul cu fructe stă pe masă.|水果篮放在桌上。
+蔬菜袋|sacoșă cu legume|sacOșă cu legUme|s.f.: sacoșe cu legume|Daily Life|Sacoșa cu legume e grea.|蔬菜袋很重。
+外卖菜单|meniu de livrare|menIu de livrAre|s.n.: meniuri de livrare|Daily Life|Meniul de livrare s-a schimbat.|外卖菜单变了。
+今日菜单|meniul zilei|menIul zIlei|s.n.: meniuri ale zilei|Daily Life|Meniul zilei include supă.|今日菜单包括汤。
+餐桌预订|rezervare de masă|rezervAre de mAsă|s.f.: rezervări de masă|Daily Life|Rezervarea de masă este pe numele meu.|餐桌预订用的是我的名字。
+儿童菜单|meniu pentru copii|menIu pentru copIi|s.n.: meniuri pentru copii|Daily Life|Restaurantul are meniu pentru copii.|餐厅有儿童菜单。
+无糖饮料|băutură fără zahăr|băutUră fărĂ zAhăr|s.f.: băuturi fără zahăr|Daily Life|Au și băuturi fără zahăr.|他们也有无糖饮料。
+热饮|băutură caldă|băutUră cAldă|s.f.: băuturi calde|Daily Life|Iarna cer mereu o băutură caldă.|冬天我总点热饮。
+冷饮|băutură rece|băutUră rEce|s.f.: băuturi reci|Daily Life|După plimbare vreau o băutură rece.|散步后我想喝冷饮。
+饮水机|dozator de apă|dozatOr de Apă|s.n.: dozatoare de apă|Daily Life|Dozatorul de apă este pe hol.|饮水机在走廊里。
+咖啡胶囊|capsulă de cafea|cApsulă de cafEa|s.f.: capsule de cafea|Daily Life|Capsulele de cafea sunt în dulap.|咖啡胶囊在柜子里。
+茶包|pliculeț de ceai|pliculEț de ceAi|s.n.: pliculețe de ceai|Daily Life|Pliculețul de ceai a stat prea mult în cană.|茶包在杯子里泡太久了。
+蜂蜜罐|borcan cu miere|borcAn cu miEre|s.n.: borcane cu miere|Daily Life|Borcanul cu miere e lipicios.|蜂蜜罐黏黏的。
+面包片|felie de pâine|felIe de pÂine|s.f.: felii de pâine|Daily Life|Prăjește două felii de pâine.|烤两片面包。
+奶酪片|felie de cașcaval|felIe de cașcavAl|s.f.: felii de cașcaval|Daily Life|Pune o felie de cașcaval în sandviș.|在三明治里放一片奶酪。
+水果皮|coajă de fruct|coAjă de frUct|s.f.: coji de fruct|Daily Life|Coaja de fruct merge la compost.|水果皮可以做堆肥。
+鸡蛋壳|coajă de ou|coAjă de Ou|s.f.: coji de ou|Daily Life|Coaja de ou a căzut în bol.|鸡蛋壳掉进碗里了。
+收货地址|adresă de livrare|adrEsă de livrAre|s.f.: adrese de livrare|Daily Life|Adresa de livrare trebuie corectată.|收货地址需要修改。
+账单地址|adresă de facturare|adrEsă de facturAre|s.f.: adrese de facturare|Daily Life|Adresa de facturare este diferită.|账单地址不一样。
+订单号|număr de comandă|numĂr de comAndă|s.n.: numere de comandă|Daily Life|Numărul de comandă apare în email.|订单号显示在邮件里。
+确认邮件|email de confirmare|email de confirmAre|s.n.: emailuri de confirmare|Daily Life|Emailul de confirmare a intrat în spam.|确认邮件进了垃圾邮件箱。
+配送费|taxă de livrare|tAxă de livrAre|s.f.: taxe de livrare|Daily Life|Taxa de livrare este prea mare.|配送费太高了。
+最低订单|comandă minimă|comAndă mInimă|s.f.: comenzi minime|Daily Life|Restaurantul are comandă minimă de 50 de lei.|餐厅最低订单金额是50列伊。
+付款方式|metodă de plată|metOdă de plAtă|s.f.: metode de plată|Daily Life|Alege metoda de plată înainte de confirmare.|确认前选择付款方式。
+付款确认|confirmare de plată|confirmAre de plAtă|s.f.: confirmări de plată|Daily Life|Confirmarea de plată a venit imediat.|付款确认马上就来了。
+电子收据|bon electronic|bOn electrOnic|s.n.: bonuri electronice|Daily Life|Bonul electronic se trimite pe email.|电子收据通过邮件发送。
+实体收据|bon tipărit|bOn tipărIt|s.n.: bonuri tipărite|Daily Life|Am cerut bon tipărit pentru garanție.|我为了保修要了实体收据。
+商品代码|cod de produs|cOd de prodUs|s.n.: coduri de produs|Daily Life|Codul de produs este sub codul de bare.|商品代码在条形码下面。
+条形码|cod de bare|cOd de bAre|s.n.: coduri de bare|Daily Life|Casierul a scanat codul de bare.|收银员扫描了条形码。
+试用品|mostră|mOstră|s.f.: mostre|Daily Life|Am primit o mostră de cremă.|我收到了一份面霜试用品。
+新品|produs nou|prodUs nOu|s.n.: produse noi|Daily Life|Produsul nou apare lângă casă.|新品摆在收银台旁边。
+缺货|lipsă de stoc|lIpsă de stOc|s.f.: lipsuri de stoc|Daily Life|Lipsa de stoc apare pe site.|网站上显示缺货。
+补货|aprovizionare|aprovizionAre|s.f.: aprovizionări|Daily Life|Aprovizionarea se face joi.|周四补货。
+清仓|lichidare de stoc|lichidAre de stOc|s.f.: lichidări de stoc|Daily Life|Magazinul are lichidare de stoc.|商店在清仓。
+自动续费|reînnoire automată|reînnoIre automAtă|s.f.: reînnoiri automate|Daily Life|Reînnoirea automată poate fi oprită din cont.|自动续费可以在账户里关闭。
+取消订阅|anulare de abonament|anulAre de abonamEnt|s.f.: anulări de abonament|Daily Life|Anularea de abonament se face online.|取消订阅在线办理。
+客户账户|cont de client|cOnt de cliEnt|s.n.: conturi de client|Daily Life|Contul de client păstrează istoricul comenzilor.|客户账户保存订单历史。
+订单历史|istoric de comenzi|istOric de comEnzi|s.n.: istorice de comenzi|Daily Life|Istoricul de comenzi e în aplicație.|订单历史在应用里。
+服务评价|evaluare de serviciu|evaluAre de servIciu|s.f.: evaluări de serviciu|Daily Life|După livrare am primit evaluare de serviciu.|配送后我收到了服务评价。
+投诉编号|număr de sesizare|numĂr de sesizAre|s.n.: numere de sesizare|Daily Life|Păstrează numărul de sesizare.|保留投诉编号。
+等待时间|timp de așteptare|tImp de așteptAre|s.n.: timpi de așteptare|Daily Life|Timpul de așteptare este afișat pe ecran.|等待时间显示在屏幕上。
+休息时间|pauză de masă|pAuză de mAsă|s.f.: pauze de masă|Daily Life|Ghișeul este în pauză de masă.|窗口正在午休。
+服务窗口|birou de relații cu publicul|birOu de relAții cu pUblicul|s.n.: birouri de relații cu publicul|Daily Life|Biroul de relații cu publicul se închide la patru.|服务窗口四点关闭。
+排队系统|sistem de bonuri|sistEm de bOnuri|s.n.: sisteme de bonuri|Daily Life|Sistemul de bonuri nu funcționează azi.|排队系统今天不能用。
+身份证照片|fotografie pentru act|fotografIe pentru Act|s.f.: fotografii pentru act|Daily Life|Fotografia pentru act trebuie să fie recentă.|身份证照片必须是近期的。
+申请表|cerere tip|cerEre tIp|s.f.: cereri tip|Daily Life|Cererea tip se descarcă de pe site.|申请表可从网站下载。
+复印中心|centru de copiere|cEntru de copiEre|s.n.: centre de copiere|Daily Life|Centrul de copiere este lângă primărie.|复印中心在市政厅旁边。
+公证处|birou notarial|birOu notariAl|s.n.: birouri notariale|Daily Life|Biroul notarial cere programare.|公证处需要预约。
+翻译件|traducere autorizată|tradUcere autorizAtă|s.f.: traduceri autorizate|Daily Life|Am nevoie de traducere autorizată pentru diplomă.|我的文凭需要认证翻译件。
+申请进度|stadiul cererii|stAdiul cerErii|s.n.: stadii ale cererii|Daily Life|Stadiul cererii se verifică online.|申请进度可以在线查询。
+取件窗口|ghișeu de ridicare|ghișEu de ridicAre|s.n.: ghișee de ridicare|Daily Life|Actul se ia de la ghișeul de ridicare.|证件从取件窗口领取。
+登记号码|număr de înregistrare|numĂr de înregistrAre|s.n.: numere de înregistrare|Daily Life|Numărul de înregistrare e pe prima pagină.|登记号码在第一页。
+佐证材料|document justificativ|documEnt justificatIv|s.n.: documente justificative|Daily Life|Atașează documentul justificativ la cerere.|把佐证材料附在申请上。
+居住证明|dovadă de domiciliu|dovAdă de domicIliu|s.f.: dovezi de domiciliu|Daily Life|Dovada de domiciliu trebuie actualizată.|居住证明需要更新。
+租房证明|dovadă de chirie|dovAdă de chIrie|s.f.: dovezi de chirie|Daily Life|Proprietarul mi-a dat dovadă de chirie.|房东给了我租房证明。
+挂号预约|programare online|programAre onlIne|s.f.: programări online|Daily Life|Programarea online a durat două minute.|在线预约用了两分钟。
+取消号码|anulare de bon|anulAre de bOn|s.f.: anulări de bon|Daily Life|Anularea de bon se face la aparat.|取消号码在机器上操作。
+智能插座|priză inteligentă|prIză inteligEntă|s.f.: prize inteligente|Daily Life|Priza inteligentă oprește lampa automat.|智能插座会自动关闭台灯。
+台灯罩|abajur|abajUr|s.n.: abajururi|Daily Life|Abajurul filtrează lumina puternică.|台灯罩会柔化强光。
+夜灯|lampă de veghe|lAmpă de vEghe|s.f.: lămpi de veghe|Daily Life|Lampa de veghe rămâne aprinsă pe hol.|夜灯一直在走廊亮着。
+电热水器|boiler|bOiler|s.n.: boilere|Daily Life|Boilerul încălzește apa greu.|电热水器烧水很慢。
+温控器|termostat|termostAt|s.n.: termostate|Daily Life|Termostatul este setat la 22 de grade.|温控器设在22度。
+空气净化器|purificator de aer|purificatOr de Aer|s.n.: purificatoare de aer|Daily Life|Purificatorul de aer merge noaptea.|空气净化器夜里运行。
+加湿器|umidificator|umidificatOr|s.n.: umidificatoare|Daily Life|Umidificatorul ajută când aerul e uscat.|空气干燥时加湿器有帮助。
+除湿机|dezumidificator|dezumidificatOr|s.n.: dezumidificatoare|Daily Life|Dezumidificatorul strânge apă în baie.|除湿机会在浴室里收集水分。
+风扇|ventilator|ventilatOr|s.n.: ventilatoare|Daily Life|Ventilatorul face răcoare în cameră.|风扇让房间凉快些。
+电暖器|radiator electric|radiatOr electrIc|s.n.: radiatoare electrice|Daily Life|Radiatorul electric consumă mult curent.|电暖器耗电很多。
+电热毯|pătură electrică|pătUră electrIcă|s.f.: pături electrice|Daily Life|Pătura electrică se oprește singură.|电热毯会自动关闭。
+吹风机|uscător de păr|uscătOr de pĂr|s.n.: uscătoare de păr|Daily Life|Uscătorul de păr e în baie.|吹风机在浴室里。
+卷发棒|ondulator|ondulatOr|s.n.: ondulatoare|Daily Life|Ondulatorul trebuie lăsat să se răcească.|卷发棒需要放凉。
+直发器|placă de păr|plAcă de pĂr|s.f.: plăci de păr|Daily Life|Placa de păr s-a încins rapid.|直发器很快变热。
+电动牙刷|periuță electrică|periUță electrIcă|s.f.: periuțe electrice|Daily Life|Periuța electrică se încarcă peste noapte.|电动牙刷夜里充电。
+牙线|ață dentară|Ață dentAră|s.f.: ațe dentare|Daily Life|Folosesc ață dentară seara.|我晚上用牙线。
+洗衣凝珠|capsulă de detergent|cApsulă de detergEnt|s.f.: capsule de detergent|Daily Life|O capsulă de detergent ajunge pentru o mașină.|一颗洗衣凝珠够洗一机衣服。
+烘干机|uscător automat|uscătOr automAt|s.n.: uscătoare automate|Daily Life|Uscătorul automat a micșorat puloverul.|烘干机把毛衣烘缩水了。
+除毛器|aparat de epilat|aparAt de epilAt|s.n.: aparate de epilat|Daily Life|Aparatul de epilat e în dulăpior.|除毛器在小柜子里。
+体脂秤|cântar inteligent|cântAr inteligEnt|s.n.: cântare inteligente|Daily Life|Cântarul inteligent trimite datele în aplicație.|体脂秤把数据发送到应用里。
+手环充电器|încărcător de brățară|încărcătOr de brățAră|s.n.: încărcătoare de brățară|Daily Life|Încărcătorul de brățară e pe birou.|手环充电器在书桌上。
+电子书阅读器|cititor electronic|cititOr electrOnic|s.n.: cititoare electronice|Daily Life|Cititorul electronic încape în geantă.|电子书阅读器能放进包里。
+游戏手柄|controller|contrOller|s.n.: controllere|Daily Life|Controllerul nu mai are baterie.|游戏手柄没电了。
+智能电视|televizor smart|televizOr smArt|s.n.: televizoare smart|Daily Life|Televizorul smart cere actualizare.|智能电视要求更新。
+插线板|multipriză|multiplIză|s.f.: multiprize|Daily Life|Multipriza nu trebuie supraîncărcată.|插线板不应过载。
+电源线|cablu de alimentare|cAblu de alimentAre|s.n.: cabluri de alimentare|Daily Life|Cablul de alimentare e sub birou.|电源线在书桌下面。
+网线|cablu de internet|cAblu de internEt|s.n.: cabluri de internet|Daily Life|Cablul de internet s-a desprins din router.|网线从路由器上松开了。
+充电宝|baterie externă|baterIe extErnă|s.f.: baterii externe|Daily Life|Iau o baterie externă la drum lung.|长途出门我带充电宝。
+SIM卡|cartelă SIM|cartElă SIM|s.f.: cartele SIM|Daily Life|Cartela SIM se schimbă la magazin.|SIM卡在店里更换。
+手机套餐|abonament mobil|abonamEnt mobIl|s.n.: abonamente mobile|Daily Life|Abonamentul mobil include internet nelimitat.|手机套餐包括无限流量。
+预付余额|credit prepay|credIt prEpay|s.n.: credite prepay|Daily Life|Creditul prepay expiră luna viitoare.|预付余额下个月到期。
+收件箱|căsuță de email|căsUță de email|s.f.: căsuțe de email|Daily Life|Căsuța de email e plină.|邮箱满了。
+垃圾邮件|email nedorit|email nedorIt|s.n.: emailuri nedorite|Daily Life|Emailul nedorit a fost șters automat.|垃圾邮件被自动删除了。
+附件|atașament|atașamEnt|s.n.: atașamente|Daily Life|Atașamentul nu se deschide pe telefon.|附件在手机上打不开。
+草稿|ciornă|ciOrnă|s.f.: ciorne|Daily Life|Emailul a rămas în ciornă.|邮件留在草稿里。
+通知铃声|sunet de notificare|sunEt de notificAre|s.n.: sunete de notificare|Daily Life|Sunetul de notificare e prea tare.|通知铃声太大。
+静音模式|mod silențios|mOd silențiOs|s.n.: moduri silențioase|Daily Life|Telefonul este pe mod silențios.|手机处于静音模式。
+飞行模式|mod avion|mOd aviOn|s.n.: moduri avion|Daily Life|Pun telefonul pe mod avion în avion.|在飞机上我把手机调成飞行模式。
+定位|locație activă|locAție actIvă|s.f.: locații active|Daily Life|Aplicația cere locație activă.|应用要求开启定位。
+地图应用|aplicație de hărți|aplicAție de hĂrți|s.f.: aplicații de hărți|Daily Life|Aplicația de hărți arată traficul.|地图应用显示交通状况。
+打车应用|aplicație de taxi|aplicAție de tAxi|s.f.: aplicații de taxi|Daily Life|Aplicația de taxi găsește șofer rapid.|打车应用很快找到司机。
+支付应用|aplicație de plată|aplicAție de plAtă|s.f.: aplicații de plată|Daily Life|Aplicația de plată cere confirmare.|支付应用要求确认。
+银行应用|aplicație bancară|aplicAție bancAră|s.f.: aplicații bancare|Daily Life|Aplicația bancară trimite notificări.|银行应用发送通知。
+云备份|backup în cloud|bAckup în clAud|s.n.: backupuri în cloud|Daily Life|Backupul în cloud pornește noaptea.|云备份在夜里启动。
+共享相册|album partajat|AlbUm partajAt|s.n.: albume partajate|Daily Life|Albumul partajat are pozele de la nuntă.|共享相册里有婚礼照片。
+播放列表|listă de redare|lIstă de redAre|s.f.: liste de redare|Daily Life|Lista de redare e pentru drum.|播放列表是路上听的。
+闹钟铃声|sunet de alarmă|sunEt de alArmă|s.n.: sunete de alarmă|Daily Life|Sunetul de alarmă mă trezește imediat.|闹钟铃声能马上把我叫醒。
+屏幕亮度|luminozitate ecran|luminozitAte ecrAn|s.f.: luminozități ecran|Daily Life|Reduc luminozitatea ecranului seara.|晚上我调低屏幕亮度。
+省电模式|mod economisire baterie|mOd economisIre baterIe|s.n.: moduri de economisire baterie|Daily Life|Modul economisire baterie pornește la 20%.|省电模式在20%电量时启动。
+短袖睡衣|pijama de vară|pijamA de vAră|s.f.: pijamale de vară|Daily Life|Pijamaua de vară e în sertarul de jos.|短袖睡衣在下面的抽屉里。
+厚睡衣|pijama groasă|pijamA grOasă|s.f.: pijamale groase|Daily Life|Iarna port pijama groasă.|冬天我穿厚睡衣。
+浴袍|halat de baie|halAt de bAie|s.n.: halate de baie|Daily Life|Halatul de baie e după ușă.|浴袍在门后面。
+睡眠眼罩|mască de somn|mAscă de sOmn|s.f.: măști de somn|Daily Life|Masca de somn blochează lumina.|睡眠眼罩能挡光。
+拖鞋垫|branț|brAnț|s.n.: branțuri|Daily Life|Branțul face pantoful mai comod.|鞋垫让鞋更舒服。
+鞋带|șiret|șirEt|s.n.: șireturi|Daily Life|Șiretul s-a desfăcut pe stradă.|鞋带在街上散开了。
+雨靴|cizme de ploaie|cIzme de plOaie|s.f.pl.: cizme de ploaie|Daily Life|Copilul poartă cizme de ploaie.|孩子穿雨靴。
+运动袜|șosete sport|șosEte spOrt|s.f.pl.: șosete sport|Daily Life|Șosetele sport se usucă repede.|运动袜干得很快。
+内衣|lenjerie intimă|lenjerIe intImă|s.f.: lenjerii intime|Daily Life|Lenjeria intimă se spală separat.|内衣分开洗。
+睡衣裤|pantaloni de pijama|pantalOni de pijamA|s.m.pl.: pantaloni de pijama|Daily Life|Pantalonii de pijama sunt prea largi.|睡衣裤太宽松。
+运动裤|pantaloni de trening|pantalOni de trEning|s.m.pl.: pantaloni de trening|Daily Life|Port pantaloni de trening acasă.|我在家穿运动裤。
+连帽衫|hanorac|hanorAc|s.n.: hanorace|Daily Life|Hanoracul are buzunar mare.|连帽衫有个大口袋。
+背心|vestă|vEstă|s.f.: veste|Daily Life|Vesta ține bine de cald.|背心很保暖。
+西装|costum|costUm|s.n.: costume|Daily Life|Costumul trebuie dus la curățătorie.|西装需要送去干洗店。
+领带|cravată|cravAtă|s.f.: cravate|Daily Life|Cravata e prea strânsă.|领带太紧了。
+手表|ceas de mână|ceAs de mÂnă|s.n.: ceasuri de mână|Daily Life|Ceasul de mână a rămas în baie.|手表落在浴室了。
+戒指|inel|inEl|s.n.: inele|Daily Life|Inelul e puțin larg.|戒指有点松。
+耳环|cercel|cercEl|s.m.: cercei|Daily Life|Cerceii sunt într-o cutie mică.|耳环在一个小盒子里。
+项链|colier|coliEr|s.n.: coliere|Daily Life|Colierul s-a încurcat în geantă.|项链在包里缠住了。
+手链|brățară|brățAră|s.f.: brățări|Daily Life|Brățara e un cadou de la mama.|手链是妈妈送的礼物。
+洗衣店|spălătorie|spălătorIe|s.f.: spălătorii|Daily Life|Spălătoria se închide la opt.|洗衣店八点关门。
+干洗店|curățătorie chimică|curățătorIe chImică|s.f.: curățătorii chimice|Daily Life|Duc paltonul la curățătorie chimică.|我把大衣送到干洗店。
+裁缝店|croitorie|croitorIe|s.f.: croitorii|Daily Life|Croitoria scurtează pantalonii.|裁缝店可以改短裤子。
+鞋匠铺|cizmărie|cizmărIe|s.f.: cizmării|Daily Life|Cizmăria repară talpa pantofului.|鞋匠铺修鞋底。
+钥匙店|atelier de chei|ateliEr de chEi|s.n.: ateliere de chei|Daily Life|Atelierul de chei face copii rapid.|钥匙店很快能配钥匙。
+手机维修店|service de telefoane|sErvice de telefoAne|s.n.: service-uri de telefoane|Daily Life|Service-ul de telefoane schimbă ecranul.|手机维修店更换屏幕。
+眼镜店|optică medicală|Optică medicAlă|s.f.: optici medicale|Daily Life|Optica medicală e lângă farmacie.|眼镜店在药店旁边。
+宠物店|magazin pentru animale|magazIn pentru animAle|s.n.: magazine pentru animale|Daily Life|Magazinul pentru animale are hrană pentru pisici.|宠物店有猫粮。
+儿童用品店|magazin pentru copii|magazIn pentru copIi|s.n.: magazine pentru copii|Daily Life|Magazinul pentru copii vinde scaune auto.|儿童用品店卖儿童汽车座椅。
+二手店|magazin second-hand|magazIn sEcond-hand|s.n.: magazine second-hand|Daily Life|Am găsit o geacă bună la magazin second-hand.|我在二手店找到了一件不错的夹克。
+便利店|magazin de cartier|magazIn de cartiEr|s.n.: magazine de cartier|Daily Life|Magazinul de cartier e deschis târziu.|便利店营业到很晚。
+收银区|zonă de casă|zOnă de cAsă|s.f.: zone de casă|Daily Life|Zona de casă e aglomerată.|收银区很拥挤。
+自助收银|casă self-service|cAsă sElf-service|s.f.: case self-service|Daily Life|Casa self-service acceptă doar card.|自助收银只接受刷卡。
+购物袋架|suport pentru pungi|supOrt pentru pUngi|s.n.: suporturi pentru pungi|Daily Life|Suportul pentru pungi e gol.|购物袋架空了。
+防盗门禁|poartă antifurt|pOartă antifUrt|s.f.: porți antifurt|Daily Life|Poarta antifurt a sunat la ieșire.|出口防盗门禁响了。
+寄存柜|dulap de depozitare|dulAp de depozitAre|s.n.: dulapuri de depozitare|Daily Life|Dulapul de depozitare se deschide cu cod.|寄存柜用密码打开。
+服务台|birou de informații|birOu de informații|s.n.: birouri de informații|Daily Life|Biroul de informații e la intrare.|服务台在入口处。
+失物招领|obiecte pierdute|obiEcte pierdUte|s.n.pl.: obiecte pierdute|Daily Life|Întreabă la obiecte pierdute.|去失物招领处问问。
+购物袋费|taxă pentru pungă|tAxă pentru pUngă|s.f.: taxe pentru pungă|Daily Life|Taxa pentru pungă apare pe bon.|购物袋费显示在收据上。
+价格查询器|verificator de preț|verificatOr de prEț|s.n.: verificatoare de preț|Daily Life|Verificatorul de preț e lângă rafturi.|价格查询器在货架旁边。
+促销牌|afiș de promoție|afIș de promoțIe|s.n.: afișe de promoție|Daily Life|Afișul de promoție era vechi.|促销牌是旧的。
+买一送一|ofertă unu plus unu|ofErtă Unu plUs Unu|s.f.: oferte unu plus unu|Daily Life|Oferta unu plus unu e doar azi.|买一送一优惠只有今天。
+季末折扣|reducere de sezon|reducEre de sezOn|s.f.: reduceri de sezon|Daily Life|Reducerile de sezon încep vineri.|季末折扣周五开始。
+积分|puncte de fidelitate|pUncte de fidelitAte|s.n.pl.: puncte de fidelitate|Daily Life|Punctele de fidelitate se adună la fiecare plată.|每次付款都会累积积分。
+礼品卡|card cadou|cArd cadOu|s.n.: carduri cadou|Daily Life|Cardul cadou este valabil un an.|礼品卡有效期一年。
+购物预算|buget de cumpărături|bugEt de cumpărătUri|s.n.: bugete de cumpărături|Daily Life|Bugetul de cumpărături e mai mic luna asta.|这个月购物预算少一些。
+价格上涨|scumpire|scumpIre|s.f.: scumpiri|Daily Life|Scumpirea se vede la produsele de bază.|基础商品能看出价格上涨。
+价格下降|ieftinire|ieftinIre|s.f.: ieftiniri|Daily Life|Ieftinirea carburanților se simte la pompă.|燃料降价在加油站能感受到。
+普通票|bilet simplu|bilEt sImplu|s.n.: bilete simple|Daily Life|Biletul simplu e valabil o călătorie.|普通票可乘坐一次。
+往返票|bilet dus-întors|bilEt dUs-întOrs|s.n.: bilete dus-întors|Daily Life|Biletul dus-întors e mai convenabil.|往返票更划算。
+电子票|bilet electronic|bilEt electrOnic|s.n.: bilete electronice|Daily Life|Biletul electronic se arată pe telefon.|电子票在手机上出示。
+纸质票|bilet tipărit|bilEt tipărIt|s.n.: bilete tipărite|Daily Life|Biletul tipărit trebuie păstrat până la ieșire.|纸质票要保留到出站。
+检票口|poartă de validare|pOartă de validAre|s.f.: porți de validare|Daily Life|Poarta de validare nu citește cardul.|检票口读不了卡。
+刷卡机|validator|validatOr|s.n.: validatoare|Daily Life|Validatorul din autobuz nu merge.|公交车上的刷卡机坏了。
+换乘站|stație de transfer|stAție de transfEr|s.f.: stații de transfer|Daily Life|Stația de transfer e foarte mare.|换乘站很大。
+终点站|capăt de linie|capĂt de lInie|s.n.: capete de linie|Daily Life|Coborâm la capăt de linie.|我们在终点站下车。
+始发站|stație de plecare|stAție de plecAre|s.f.: stații de plecare|Daily Life|Stația de plecare e lângă gară.|始发站在火车站旁边。
+到达站|stație de sosire|stAție de sosIre|s.f.: stații de sosire|Daily Life|Stația de sosire apare pe ecran.|到达站显示在屏幕上。
+公交站牌|panou de stație|panOu de stAție|s.n.: panouri de stație|Daily Life|Panoul de stație arată timpul rămas.|公交站牌显示剩余时间。
+候车亭|adăpost de stație|adăpOst de stAție|s.n.: adăposturi de stație|Daily Life|Adăpostul de stație ne ferește de ploaie.|候车亭帮我们挡雨。
+车次号|număr de cursă|numĂr de cUrsă|s.n.: numere de cursă|Daily Life|Numărul de cursă e pe bilet.|车次号在车票上。
+登机口|poartă de îmbarcare|pOartă de îmbarcAre|s.f.: porți de îmbarcare|Daily Life|Poarta de îmbarcare s-a schimbat.|登机口变了。
+登机牌|carte de îmbarcare|cArte de îmbarcAre|s.f.: cărți de îmbarcare|Daily Life|Cartea de îmbarcare e în aplicație.|登机牌在应用里。
+手提行李|bagaj de mână|bagAj de mÂnă|s.n.: bagaje de mână|Daily Life|Bagajul de mână încape sub scaun.|手提行李能放在座位下。
+托运行李|bagaj de cală|bagAj de cAlă|s.n.: bagaje de cală|Daily Life|Bagajul de cală se predă la ghișeu.|托运行李在柜台交运。
+行李标签|etichetă de bagaj|etichEtă de bagAj|s.f.: etichete de bagaj|Daily Life|Eticheta de bagaj s-a rupt.|行李标签破了。
+安检|control de securitate|contrOl de securitAte|s.n.: controale de securitate|Daily Life|Controlul de securitate a mers repede.|安检进行得很快。
+候机区|zonă de așteptare|zOnă de așteptAre|s.f.: zone de așteptare|Daily Life|Zona de așteptare e plină.|候机区满了。
+延误通知|anunț de întârziere|anUnț de întârziEre|s.n.: anunțuri de întârziere|Daily Life|Anunțul de întârziere a apărut pe tabelă.|延误通知出现在公告牌上。
+到达大厅|sală de sosiri|sAlă de sosIri|s.f.: săli de sosiri|Daily Life|Ne vedem în sala de sosiri.|我们在到达大厅见。
+出发大厅|sală de plecări|sAlă de plecĂri|s.f.: săli de plecări|Daily Life|Sala de plecări e la etaj.|出发大厅在楼上。
+租车柜台|birou de închirieri auto|birOu de închiriEri Auto|s.n.: birouri de închirieri auto|Daily Life|Biroul de închirieri auto cere permisul.|租车柜台要求出示驾照。
+导航|navigație|navigAție|s.f.: navigații|Daily Life|Navigația a ales un drum mai scurt.|导航选择了一条更短的路。
+停车入口|intrare în parcare|intrAre în parcAre|s.f.: intrări în parcare|Daily Life|Intrarea în parcare e după semafor.|停车场入口在红绿灯后面。
+停车出口|ieșire din parcare|ieșIre din parcAre|s.f.: ieșiri din parcare|Daily Life|Ieșirea din parcare e blocată.|停车场出口被堵住了。
+停车栏杆|barieră de parcare|bariEră de parcAre|s.f.: bariere de parcare|Daily Life|Bariera de parcare nu se ridică.|停车栏杆不抬起。
+车库遥控器|telecomandă de garaj|telecomAndă de garAj|s.f.: telecomenzi de garaj|Daily Life|Telecomanda de garaj nu mai are baterie.|车库遥控器没电了。
+洗车场|spălătorie auto|spălătorIe Auto|s.f.: spălătorii auto|Daily Life|Spălătoria auto e deschisă non-stop.|洗车场24小时营业。
+车检|inspecție tehnică|inspEcție tEhnică|s.f.: inspecții tehnice|Daily Life|Inspecția tehnică expiră luna aceasta.|车检这个月到期。
+汽车保险|asigurare auto|asigurAre Auto|s.f.: asigurări auto|Daily Life|Asigurarea auto se reînnoiește online.|汽车保险可以网上续保。
+行车证|certificat de înmatriculare|certificAt de înmatriculAre|s.n.: certificate de înmatriculare|Daily Life|Certificatul de înmatriculare e în torpedou.|行车证在手套箱里。
+手套箱|torpedou|torpedOu|s.n.: torpedouri|Daily Life|Actele mașinii sunt în torpedou.|车辆文件在手套箱里。
+儿童安全锁|blocare pentru copii|blocAre pentru copIi|s.f.: blocări pentru copii|Daily Life|Blocarea pentru copii e activă la ușa din spate.|后门儿童安全锁已开启。
+安全气囊|airbag|Airbag|s.n.: airbaguri|Daily Life|Airbagul trebuie verificat la service.|安全气囊需要到维修点检查。
+备用轮胎|roată de rezervă|rOată de rezErvă|s.f.: roți de rezervă|Daily Life|Roata de rezervă e în portbagaj.|备用轮胎在后备箱里。
+千斤顶|cric|crIc|s.n.: cricuri|Daily Life|Cricul lipsește din mașină.|车里没有千斤顶。
+反光背心|vestă reflectorizantă|vEstă reflectorizAntă|s.f.: veste reflectorizante|Daily Life|Vesta reflectorizantă e obligatorie în mașină.|车里必须有反光背心。
+三角警示牌|triunghi reflectorizant|triUnghi reflectorizAnt|s.n.: triunghiuri reflectorizante|Daily Life|Triunghiul reflectorizant se pune în spatele mașinii.|三角警示牌放在车后。
+家庭相册|album de familie|AlbUm de famIlie|s.n.: albume de familie|Daily Life|Albumul de familie e pe raft.|家庭相册在架子上。
+纪念品|suvenir|suvenIr|s.n.: suveniruri|Daily Life|Am adus un suvenir mic din excursie.|我从旅行带回了一个小纪念品。
+家庭传统|tradiție de familie|tradIție de famIlie|s.f.: tradiții de familie|Daily Life|Prânzul de duminică e tradiție de familie.|周日午餐是家庭传统。
+家庭预算|buget de familie|bugEt de famIlie|s.n.: bugete de familie|Daily Life|Bugetul de familie se discută lunar.|家庭预算每月讨论一次。
+家务分工|împărțirea treburilor|împărțIrea trebUrilor|s.f.: împărțiri ale treburilor|Daily Life|Împărțirea treburilor evită certurile.|家务分工能避免争吵。
+家务活|treabă casnică|trEabă cAsnică|s.f.: treburi casnice|Daily Life|Fiecare are o treabă casnică de făcut.|每个人都有一项家务要做。
+晚饭计划|plan pentru cină|plAn pentru cInă|s.n.: planuri pentru cină|Daily Life|Planul pentru cină s-a schimbat.|晚饭计划变了。
+探亲|vizită la rude|vizItă la rUde|s.f.: vizite la rude|Daily Life|Vizita la rude durează tot weekendul.|探亲要花整个周末。
+家庭群|grup de familie|grUp de famIlie|s.n.: grupuri de familie|Daily Life|Am trimis poza pe grupul de familie.|我把照片发到家庭群里。
+视频聚会|întâlnire video|întâlnIre vIdeo|s.f.: întâlniri video|Daily Life|Facem întâlnire video cu bunicii.|我们和祖父母视频聚会。
+周年纪念|aniversare de căsătorie|aniversAre de căsătorIe|s.f.: aniversări de căsătorie|Daily Life|Aniversarea de căsătorie e în iunie.|结婚周年纪念在六月。
+婴儿用品|lucruri pentru bebeluș|lUcruri pentru bebelUș|s.n.pl.: lucruri pentru bebeluș|Daily Life|Lucrurile pentru bebeluș ocupă mult loc.|婴儿用品占很多地方。
+儿童餐椅|scaun de masă pentru copil|scAun de mAsă pentru copIl|s.n.: scaune de masă pentru copil|Daily Life|Scaunul de masă pentru copil se pliază.|儿童餐椅可以折叠。
+婴儿监视器|monitor pentru bebeluș|monitOr pentru bebelUș|s.n.: monitoare pentru bebeluș|Daily Life|Monitorul pentru bebeluș e pe noptieră.|婴儿监视器在床头柜上。
+儿童餐具|tacâmuri pentru copii|tacÂmuri pentru copIi|s.n.pl.: tacâmuri pentru copii|Daily Life|Tacâmurile pentru copii sunt colorate.|儿童餐具是彩色的。
+湿巾|șervețele umede|șervețEle Umede|s.n.pl.: șervețele umede|Daily Life|Șervețelele umede sunt în rucsac.|湿巾在背包里。
+婴儿霜|cremă pentru bebeluși|crEmă pentru bebelUși|s.f.: creme pentru bebeluși|Daily Life|Crema pentru bebeluși e fără parfum.|婴儿霜不含香精。
+儿童药水|sirop pentru copii|sirOp pentru copIi|s.n.: siropuri pentru copii|Daily Life|Siropul pentru copii se dă după masă.|儿童药水饭后服用。
+体温贴|plasture pentru febră|plAsture pentru fEbră|s.m.: plasturi pentru febră|Daily Life|Plasturele pentru febră se pune pe frunte.|退热贴贴在额头上。
+午睡时间|ora de somn|Ora de sOmn|s.f.: ore de somn|Daily Life|Ora de somn e după prânz.|午睡时间在午饭后。
+讲故事时间|ora de poveste|Ora de povEste|s.f.: ore de poveste|Daily Life|Ora de poveste e înainte de culcare.|讲故事时间在睡前。
+玩具箱|cutie de jucării|cUtie de jucărIi|s.f.: cutii de jucării|Daily Life|Cutia de jucării e sub pat.|玩具箱在床下。
+积木|cuburi de construit|cUburi de construIt|s.n.pl.: cuburi de construit|Daily Life|Cuburile de construit sunt împrăștiate.|积木散落着。
+彩色铅笔|creioane colorate|creioAne colorAte|s.n.pl.: creioane colorate|Daily Life|Creioanele colorate sunt în penar.|彩色铅笔在笔袋里。
+画纸|hârtie de desen|hârtIe de desEn|s.f.: hârtii de desen|Daily Life|Hârtia de desen e pe birou.|画纸在书桌上。
+儿童剪刀|foarfecă pentru copii|foArfecă pentru copIi|s.f.: foarfece pentru copii|Daily Life|Foarfeca pentru copii are vârf rotund.|儿童剪刀是圆头的。
+水彩笔|cariocă|cariOcă|s.f.: carioci|Daily Life|Cariocile se usucă fără capac.|水彩笔不盖盖会干。
+蜡笔|creion cerat|creiOn cerAt|s.n.: creioane cerate|Daily Life|Creioanele cerate sunt pentru desen.|蜡笔是画画用的。
+贴纸|abțibild|abțibIld|s.n.: abțibilduri|Daily Life|Copilul a lipit abțibilduri pe caiet.|孩子把贴纸贴在本子上。
+图书证|permis de bibliotecă|permIs de bibliotEcă|s.n.: permise de bibliotecă|Daily Life|Permisul de bibliotecă se face gratuit.|图书证可以免费办理。
+借阅期|termen de împrumut|tErmen de împrumUt|s.n.: termene de împrumut|Daily Life|Termenul de împrumut este de două săptămâni.|借阅期是两周。
+逾期费|taxă de întârziere|tAxă de întârziEre|s.f.: taxe de întârziere|Daily Life|Taxa de întârziere se plătește la ghișeu.|逾期费在窗口支付。
+阅读灯|lampă de citit|lAmpă de citIt|s.f.: lămpi de citit|Daily Life|Lampa de citit se prinde de carte.|阅读灯夹在书上。
+笔记本页|pagină de caiet|pAgină de caiEt|s.f.: pagini de caiet|Daily Life|Pagina de caiet s-a rupt.|笔记本页撕破了。
+练习册|caiet de exerciții|caiEt de exerciții|s.n.: caiete de exerciții|Daily Life|Caietul de exerciții e în ghiozdan.|练习册在书包里。
+作业本|caiet de teme|caiEt de tEme|s.n.: caiete de teme|Daily Life|Caietul de teme a rămas la școală.|作业本落在学校了。
+课程表|program de cursuri|progrAm de cUrsuri|s.n.: programe de cursuri|Daily Life|Programul de cursuri e pe frigider.|课程表贴在冰箱上。
+家长群|grup de părinți|grUp de părInți|s.n.: grupuri de părinți|Daily Life|Anunțul a venit pe grupul de părinți.|通知发在家长群里。
+课外班|curs extrașcolar|cUrs extrașcolAr|s.n.: cursuri extrașcolare|Daily Life|Cursul extrașcolar e miercurea.|课外班在周三。
+接送点|punct de întâlnire|pUnct de întâlnIre|s.n.: puncte de întâlnire|Daily Life|Punctul de întâlnire e la poarta școlii.|接送点在学校门口。
+宠物笼|cușcă pentru animale|cUșcă pentru animAle|s.f.: cuști pentru animale|Daily Life|Cușca pentru animale încape în mașină.|宠物笼能放进车里。
+猫抓板|suport de zgâriat|supOrt de zgâriAt|s.n.: suporturi de zgâriat|Daily Life|Pisica folosește suportul de zgâriat.|猫用猫抓板。
+猫砂盆|litieră|litiEră|s.f.: litiere|Daily Life|Litiera trebuie curățată zilnic.|猫砂盆需要每天清理。
+狗碗|bol pentru câine|bOl pentru cÂine|s.n.: boluri pentru câine|Daily Life|Bolul pentru câine e lângă ușă.|狗碗在门旁边。
+猫碗|bol pentru pisică|bOl pentru pisIcă|s.n.: boluri pentru pisică|Daily Life|Bolul pentru pisică e plin cu apă.|猫碗里装满了水。
+宠物玩具|jucărie pentru animale|jucărIe pentru animAle|s.f.: jucării pentru animale|Daily Life|Jucăria pentru animale scârțâie.|宠物玩具会吱吱响。
+狗牌|medalion pentru câine|medaliOn pentru cÂine|s.n.: medalioane pentru câine|Daily Life|Medalionul pentru câine are numărul meu.|狗牌上有我的电话号码。
+兽医预约|programare la veterinar|programAre la veterinAr|s.f.: programări la veterinar|Daily Life|Programarea la veterinar e luni.|兽医预约在周一。
+宠物疫苗本|carnet de vaccinuri pentru animal|carnEt de vaccInuri pentru animAl|s.n.: carnete de vaccinuri pentru animal|Daily Life|Carnetul de vaccinuri pentru animal e la clinică.|宠物疫苗本在诊所。
+鱼食|hrană pentru pești|hrAnă pentru pEști|s.f.: (fără plural)|Daily Life|Hrana pentru pești e lângă acvariu.|鱼食在鱼缸旁边。
+园艺手套|mănuși de grădinărit|mănUși de grădinărIt|s.f.pl.: mănuși de grădinărit|Daily Life|Mănușile de grădinărit sunt murdare.|园艺手套很脏。
+小铲子|lopățică|lopățIcă|s.f.: lopățele|Daily Life|Lopățica e în ghiveciul mare.|小铲子在大花盆里。
+花肥|îngrășământ pentru flori|îngrășămÂnt pentru flOri|s.n.: îngrășăminte pentru flori|Daily Life|Îngrășământul pentru flori se pune lunar.|花肥每月施一次。
+喷壶|pulverizator|pulverizatOr|s.n.: pulverizatoare|Daily Life|Pulverizatorul e pentru frunzele plantelor.|喷壶是给植物叶子喷水用的。
+盆托|farfurie de ghiveci|farfurIe de ghivEci|s.f.: farfurii de ghiveci|Daily Life|Farfuria de ghiveci e plină cu apă.|盆托里满是水。
+阳台花架|suport de flori|supOrt de flOri|s.n.: suporturi de flori|Daily Life|Suportul de flori stă pe balcon.|阳台花架放在阳台上。
+种子包|plic cu semințe|plIc cu semInțe|s.n.: plicuri cu semințe|Daily Life|Plicul cu semințe e pentru busuioc.|种子包是罗勒种子。
+罗勒|busuioc|busuiOc|s.m.: (fără plural)|Daily Life|Busuiocul crește bine la soare.|罗勒在阳光下长得很好。
+薄荷|mentă|mEntă|s.f.: (fără plural)|Daily Life|Menta se pune în ceai rece.|薄荷可放进冰茶里。
+迷迭香|rozmarin|rozmarIn|s.m.: (fără plural)|Daily Life|Rozmarinul merge bine cu cartofi.|迷迭香很配土豆。
+家门口|în fața casei|în fAța cAsei|loc. adv.: invariabil|Daily Life|Ne vedem în fața casei.|我们在家门口见。
+楼后面|în spatele blocului|în spAtele blOcului|loc. adv.: invariabil|Daily Life|Parcarea e în spatele blocului.|停车场在楼后面。
+右边|în dreapta|în drEapta|loc. adv.: invariabil|Daily Life|Liftul este în dreapta.|电梯在右边。
+左边|în stânga|în stÂnga|loc. adv.: invariabil|Daily Life|Cutia poștală e în stânga.|邮箱在左边。
+房间中央|la mijloc|la mijlOc|loc. adv.: invariabil|Daily Life|Masa stă la mijlocul camerei.|桌子在房间中央。
+角落里|în colț|în cOlț|loc. adv.: invariabil|Daily Life|Aspiratorul e în colț.|吸尘器在角落里。
+靠墙|lângă perete|lÂngă perEte|loc. adv.: invariabil|Daily Life|Pune dulapul lângă perete.|把柜子靠墙放。
+窗边|lângă geam|lÂngă gEam|loc. adv.: invariabil|Daily Life|Biroul e lângă geam.|书桌在窗边。
+门后|după ușă|dUpă Ușă|loc. adv.: invariabil|Daily Life|Mătura stă după ușă.|扫帚在门后。
+桌子下面|sub masă|sUb mAsă|loc. adv.: invariabil|Daily Life|Cablul e sub masă.|线缆在桌子下面。
+提前|din timp|dIn tImp|loc. adv.: invariabil|Daily Life|Rezervă masa din timp.|提前订桌。
+准时|la timp|la tImp|loc. adv.: invariabil|Daily Life|Am ajuns la timp la programare.|我准时到了预约地点。
+临时|pe moment|pe momEnt|loc. adv.: invariabil|Daily Life|Am găsit o soluție pe moment.|我临时找到一个解决办法。
+马上|pe loc|pe lOc|loc. adv.: invariabil|Daily Life|Plata se confirmă pe loc.|付款会马上确认。
+偶尔|din când în când|dIn cÂnd în cÂnd|loc. adv.: invariabil|Daily Life|Comand mâncare din când în când.|我偶尔叫外卖。
+通常|de obicei|de obicEi|loc. adv.: invariabil|Daily Life|De obicei plec la opt.|我通常八点出门。
+一整天|toată ziua|toAtă zIua|loc. adv.: invariabil|Daily Life|A plouat toată ziua.|下了一整天雨。
+整晚|toată noaptea|toAtă nOaptea|loc. adv.: invariabil|Daily Life|Vecinii au făcut zgomot toată noaptea.|邻居吵了一整晚。
+早一点|mai devreme|mAi devrEme|loc. adv.: invariabil|Daily Life|Vino mai devreme dacă poți.|如果可以，早点来。
+晚一点|mai târziu|mAi târzIu|loc. adv.: invariabil|Daily Life|Plecăm mai târziu azi.|今天我们晚一点走。
+太贵|prea scump|prEa scUmp|loc. adj.: invariabil|Daily Life|Mi se pare prea scump pentru calitatea asta.|以这个质量来说我觉得太贵。
+很划算|avantajos|avantajOs|adj.: avantajoasă / avantajoși / avantajoase|Daily Life|Abonamentul anual e mai avantajos.|年订阅更划算。
+可靠的|de încredere|de încrEdere|loc. adj.: invariabil|Daily Life|Curierul acesta e de încredere.|这个快递员很可靠。
+紧急的|urgent|urgEnt|adj.: urgentă / urgenți / urgente|Daily Life|Am o problemă urgentă cu apa.|我有一个紧急的用水问题。
+临时的|temporar|temporAr|adj.: temporară / temporari / temporare|Daily Life|Avem o soluție temporară pentru internet.|我们有一个临时的网络解决方案。
+可重复使用的|reutilizabil|reutilizAbil|adj.: reutilizabilă / reutilizabili / reutilizabile|Daily Life|Punga reutilizabilă e în rucsac.|可重复使用的袋子在背包里。
+一次性的|de unică folosință|de Unică folosInță|loc. adj.: invariabil|Daily Life|Nu cumpăr des produse de unică folosință.|我不常买一次性用品。
+环保的|ecologic|ecolOgic|adj.: ecologică / ecologici / ecologice|Daily Life|Detergentul ecologic miroase discret.|环保洗涤剂味道很淡。
+防水的|impermeabil|impermeAbil|adj.: impermeabilă / impermeabili / impermeabile|Daily Life|Geaca impermeabilă e bună pe ploaie.|防水夹克适合雨天。
+耐用的|rezistent|rezistEnt|adj.: rezistentă / rezistenți / rezistente|Daily Life|Materialul pare rezistent.|材料看起来耐用。
+易碎的|fragil|fragIl|adj.: fragilă / fragili / fragile|Daily Life|Pachetul fragil trebuie marcat clar.|易碎包裹需要清楚标记。
+可调节的|reglabil|reglAbil|adj.: reglabilă / reglabili / reglabile|Daily Life|Scaunul reglabil e mai comod.|可调节椅子更舒服。
+折叠的|pliabil|pliAbil|adj.: pliabilă / pliabili / pliabile|Daily Life|Masa pliabilă încape în debara.|折叠桌能放进储藏室。
+便携的|portabil|portAbil|adj.: portabilă / portabili / portabile|Daily Life|Încărcătorul portabil e ușor.|便携充电器很轻。
+无味的|fără miros|fărĂ mirOs|loc. adj.: invariabil|Daily Life|Soluția fără miros e mai plăcută.|无味清洁剂更舒服。
+有香味的|parfumat|parfumAt|adj.: parfumată / parfumați / parfumate|Daily Life|Săpunul parfumat rămâne în baie.|有香味的肥皂留在浴室里。
+低脂的|degresat|degresAt|adj.: degresată / degresați / degresate|Daily Life|Iaurtul degresat e pe raftul de sus.|低脂酸奶在上层架子上。
+全脂的|integral|integrAl|adj.: integrală / integrali / integrale|Daily Life|Laptele integral e mai gustos.|全脂牛奶味道更好。
+无乳糖的|fără lactoză|fărĂ lactOză|loc. adj.: invariabil|Daily Life|Cumpăr lapte fără lactoză.|我买无乳糖牛奶。
+不含麸质的|fără gluten|fărĂ glUten|loc. adj.: invariabil|Daily Life|Au pâine fără gluten?|他们有无麸质面包吗？
+素食的|vegetarian|vegetariAn|adj.: vegetariană / vegetarieni / vegetariene|Daily Life|Meniul vegetarian are supă și salată.|素食菜单有汤和沙拉。
+纯素的|vegan|vegAn|adj.: vegană / vegani / vegane|Daily Life|Desertul vegan nu are lapte.|纯素甜点不含牛奶。
+半熟的|în sânge|în sÂnge|loc. adj.: invariabil|Daily Life|Friptura în sânge nu e pe gustul meu.|半熟牛排不合我的口味。
+全熟的|bine făcut|bIne făcUt|loc. adj.: bine făcută / bine făcuți / bine făcute|Daily Life|Vreau carnea bine făcută.|我要全熟的肉。
+确认收货|a confirma primirea|a confirmA primIrea|verb: conj. I (confirm/confirmi/confirmă)|Daily Life|Confirm primirea coletului în aplicație.|我在应用里确认收货。
+修改地址|a modifica adresa|a modificA adrEsa|verb: conj. I (modific/modifici/modifică)|Daily Life|Modific adresa înainte de livrare.|我在配送前修改地址。
+选择付款方式|a alege metoda de plată|a alEge metOda de plAtă|verb: conj. III (aleg/alegi/alege)|Daily Life|Aleg metoda de plată la final.|我在最后选择付款方式。
+输入密码|a introduce parola|a introdUce parOla|verb: conj. III (introduc/introduci/introduce)|Daily Life|Introdu parola ca să intri în cont.|输入密码登录账户。
+更改密码|a schimba parola|a schimbA parOla|verb: conj. I (schimb/schimbi/schimbă)|Daily Life|Schimb parola o dată la câteva luni.|我每几个月改一次密码。
+开启定位|a activa locația|a activA locAția|verb: conj. I (activez/activezi/activează)|Daily Life|Activează locația pentru hartă.|为地图开启定位。
+关闭通知|a opri notificările|a oprI notificĂrile|verb: conj. IV (opresc/oprești/oprește)|Daily Life|Opresc notificările seara.|我晚上关闭通知。
+调高音量|a mări volumul|a mărI volUmul|verb: conj. IV (măresc/mărești/mărește)|Daily Life|Mărește volumul, nu se aude.|调高音量，听不见。
+调低亮度|a reduce luminozitatea|a redUce luminozitAtea|verb: conj. III (reduc/reduci/reduce)|Daily Life|Reduc luminozitatea înainte de culcare.|睡前我调低亮度。
+重启路由器|a reporni routerul|a repornI rOuterul|verb: conj. IV (repornesc/repornești/repornește)|Daily Life|Repornește routerul dacă nu merge internetul.|如果网络不行就重启路由器。
+清理缓存|a șterge memoria cache|a ștErge memOria cAche|verb: conj. III (șterg/ștergi/șterge)|Daily Life|Șterg memoria cache din browser.|我清理浏览器缓存。
+备份照片|a face backup la poze|a fAce bAckup la pOze|verb: conj. III (fac/faci/face)|Daily Life|Fac backup la poze în fiecare lună.|我每月备份照片。
+转发邮件|a redirecționa emailul|a redirecționA emailul|verb: conj. I (redirecționez/redirecționezi/redirecționează)|Daily Life|Redirecționez emailul către colegă.|我把邮件转发给同事。
+添加附件|a atașa fișierul|a atașA fișiErul|verb: conj. I (atașez/atașezi/atașează)|Daily Life|Atașează fișierul înainte să trimiți.|发送前添加附件。
+下载发票|a descărca factura|a descărcA factUra|verb: conj. I (descarc/descarci/descarcă)|Daily Life|Descarc factura din contul de client.|我从客户账户下载发票。
+上传证件|a încărca actul|a încărcA Actul|verb: conj. I (încarc/încarci/încarcă)|Daily Life|Încarc actul în formularul online.|我把证件上传到在线表格。
+预约窗口|a programa vizita la ghișeu|a programA vizIta la ghișEu|verb: conj. I (programez/programezi/programează)|Daily Life|Programez vizita la ghișeu pentru luni.|我预约周一去窗口。
+领取证件|a ridica actul|a ridicA Actul|verb: conj. I (ridic/ridici/ridică)|Daily Life|Ridic actul după ora două.|我两点后领取证件。
+递交申请表|a depune cererea|a depUne cerErea|verb: conj. III (depun/depui/depune)|Daily Life|Depun cererea la primărie.|我在市政厅递交申请表。
+补交文件|a completa dosarul|a completA dosArul|verb: conj. I (completez/completezi/completează)|Daily Life|Completez dosarul cu o copie nouă.|我补交一份新复印件完善材料。
+查询进度|a verifica stadiul|a verificA stAdiul|verb: conj. I (verific/verifici/verifică)|Daily Life|Verific stadiul cererii online.|我在线查询申请进度。
+打印票据|a tipări biletul|a tipărI bilEtul|verb: conj. IV (tipăresc/tipărești/tipărește)|Daily Life|Tipăresc biletul la automat.|我在机器上打印票据。
+充值公交卡|a încărca abonamentul|a încărcA abonamEntul|verb: conj. I (încarc/încarci/încarcă)|Daily Life|Încarc abonamentul înainte să urc.|我上车前充值公交卡。
+验证车票|a valida biletul|a validA bilEtul|verb: conj. I (validez/validezi/validează)|Daily Life|Validează biletul când urci.|上车时验证车票。
+寻找站台|a căuta peronul|a căutA perOnul|verb: conj. I (caut/cauți/caută)|Daily Life|Caut peronul pe tabela electronică.|我在电子屏上找站台。
+查看延误|a verifica întârzierea|a verificA întârziErea|verb: conj. I (verific/verifici/verifică)|Daily Life|Verific întârzierea trenului pe aplicație.|我在应用里查看火车延误。
+预订座位|a rezerva locul|a rezervA lOcul|verb: conj. I (rezerv/rezervi/rezervă)|Daily Life|Rezerv locul la geam.|我预订靠窗座位。
+办理行李托运|a preda bagajul|a predA bagAjul|verb: conj. I (predau/predai/predă)|Daily Life|Predau bagajul la ghișeu.|我在柜台办理行李托运。
+通过安检|a trece de securitate|a trEce de securitAte|verb: conj. III (trec/treci/trece)|Daily Life|Trecem de securitate în zece minute.|我们十分钟内通过安检。
+出示证件|a arăta actul|a arătA Actul|verb: conj. I (arăt/arăți/arată)|Daily Life|Arată actul la intrare.|在入口出示证件。
+取行李|a lua bagajul|a luA bagAjul|verb: conj. I (iau/iei/ia)|Daily Life|Iau bagajul de pe bandă.|我从传送带上取行李。
+报失物品|a declara obiectul pierdut|a declarA obiEctul pierdUt|verb: conj. I (declar/declară/declară)|Daily Life|Declar obiectul pierdut la birou.|我在办公室报失物品。
+申请赔偿|a cere despăgubire|a cEre despăgubIre|verb: conj. III (cer/ceri/cere)|Daily Life|Cer despăgubire pentru bagajul deteriorat.|我为损坏的行李申请赔偿。
+开空调|a porni aerul|a pornI Aerul|verb: conj. IV (pornesc/pornești/pornește)|Daily Life|Pornesc aerul când se face cald.|变热时我开空调。
+关暖气|a opri căldura|a oprI căldUra|verb: conj. IV (opresc/oprești/oprește)|Daily Life|Oprim căldura primăvara.|春天我们关暖气。
+调温度|a regla temperatura|a reglA temperatUra|verb: conj. I (reglez/reglezi/reglează)|Daily Life|Reglez temperatura din termostat.|我用温控器调温度。
+擦地板|a spăla podeaua|a spălA podEaua|verb: conj. I (spăl/speli/spală)|Daily Life|Spăl podeaua după ce pleacă musafirii.|客人离开后我擦地板。
+清洗水槽|a curăța chiuveta|a curățA chiuvEta|verb: conj. I (curăț/curăți/curăță)|Daily Life|Curăț chiuveta cu soluție specială.|我用专用清洁剂清洗水槽。
+除霉|a îndepărta mucegaiul|a îndepărtA mucegAiul|verb: conj. I (îndepărtez/îndepărtezi/îndepărtează)|Daily Life|Îndepărtez mucegaiul de lângă geam.|我去除窗边的霉斑。
+清空冰箱|a goli frigiderul|a golI frigidErul|verb: conj. IV (golesc/golești/golește)|Daily Life|Golesc frigiderul înainte de concediu.|休假前我清空冰箱。
+解冻冰柜|a dezgheța congelatorul|a dezghețA congelatOrul|verb: conj. I (dezgheț/dezgheți/dezgheață)|Daily Life|Dezgheț congelatorul o dată pe an.|我每年给冰柜除霜一次。
+整理柜子|a aranja dulapul|a aranjA dulApul|verb: conj. I (aranjez/aranjezi/aranjează)|Daily Life|Aranjez dulapul la început de sezon.|换季时我整理柜子。
+收拾阳台杂物|a strânge balconul|a strÂnge balcOnul|verb: conj. III (strâng/strângi/strânge)|Daily Life|Strâng balconul înainte de iarnă.|入冬前我收拾阳台杂物。
+换电池|a schimba bateria|a schimbA baterIa|verb: conj. I (schimb/schimbi/schimbă)|Daily Life|Schimb bateria de la telecomandă.|我换遥控器电池。
+检查烟雾报警器|a verifica detectorul|a verificA detectOrul|verb: conj. I (verific/verifici/verifică)|Daily Life|Verific detectorul de fum lunar.|我每月检查烟雾报警器。
+挂窗帘杆|a monta galeria|a montA galerIa|verb: conj. I (montez/montezi/montează)|Daily Life|Montez galeria deasupra geamului.|我把窗帘杆装在窗户上方。
+装灯具|a monta lustra|a montA lUstra|verb: conj. I (montez/montezi/montează)|Daily Life|Electricianul montează lustra mâine.|电工明天安装吊灯。
+修门把手|a repara clanța|a reparA clAnța|verb: conj. I (repar/repari/repară)|Daily Life|Repar clanța de la dormitor.|我修卧室门把手。
+上润滑油|a unge balamaua|a Unge balamAua|verb: conj. III (ung/ungi/unge)|Daily Life|Ung balamaua ca să nu scârțâie.|我给铰链上油，免得嘎吱响。
+拧开盖子|a deșuruba capacul|a deșurubA capAcul|verb: conj. I (deșurubez/deșurubezi/deșurubează)|Daily Life|Deșurubează capacul încet.|慢慢拧开盖子。
+拧上盖子|a înșuruba capacul|a înșurubA capAcul|verb: conj. I (înșurubez/înșurubezi/înșurubează)|Daily Life|Înșurubează capacul bine.|把盖子拧紧。
+磨刀|a ascuți cuțitul|a ascuțI cuțItul|verb: conj. IV (ascut/ascuți/ascute)|Daily Life|Ascut cuțitul înainte să tai carnea.|切肉前我磨刀。
+洗锅|a spăla oala|a spălA oAla|verb: conj. I (spăl/speli/spală)|Daily Life|Spal oala după ce se răcește.|锅凉了后我洗锅。
+擦台面|a șterge blatul|a ștErge blAtul|verb: conj. III (șterg/ștergi/șterge)|Daily Life|Șterg blatul cu prosop de hârtie.|我用厨房纸擦台面。
+预热烤箱|a preîncălzi cuptorul|a preîncălzI cuptOrul|verb: conj. IV (preîncălzesc/preîncălzești/preîncălzește)|Daily Life|Preîncălzesc cuptorul pentru prăjitură.|我为蛋糕预热烤箱。
+烤蔬菜|a coace legume|a coAce legUme|verb: conj. III (coc/coci/coace)|Daily Life|Coc legume cu ulei de măsline.|我用橄榄油烤蔬菜。
+炖汤|a fierbe supă|a fiErbe sUpă|verb: conj. III (fierb/fierbi/fierbe)|Daily Life|Fierb supă pentru cină.|我炖汤当晚饭。
+沥干意面|a scurge pastele|a scUrge pAstele|verb: conj. III (scurg/scurgi/scurge)|Daily Life|Scurg pastele în strecurătoare.|我用滤勺沥干意面。
+调味|a condimenta|a condimentA|verb: conj. I (condimentez/condimentezi/condimentează)|Daily Life|Condimentez carnea înainte de grătar.|烧烤前我给肉调味。
+腌制|a marina|a marinA|verb: conj. I (marinez/marinezi/marinează)|Daily Life|Marinezi puiul cu usturoi și lămâie.|你用大蒜和柠檬腌鸡肉。
+揉面|a frământa aluatul|a frământA aluAtul|verb: conj. I (frământ/frămânți/frământă)|Daily Life|Frământ aluatul zece minute.|我揉面十分钟。
+发面|a lăsa aluatul la dospit|a lăsA aluAtul la dospIt|verb: conj. I (las/lași/lasă)|Daily Life|Las aluatul la dospit lângă calorifer.|我把面团放在暖气旁发酵。
+切片|a tăia felii|a tăiA felIi|verb: conj. I (tai/tai/taie)|Daily Life|Tai roșiile felii subțiri.|我把番茄切成薄片。
+切丁|a tăia cubulețe|a tăiA cubulEțe|verb: conj. I (tai/tai/taie)|Daily Life|Tai cartofii cubulețe pentru supă.|我把土豆切丁做汤。
+擦丝|a da pe răzătoare|a dA pe răzătoAre|verb: conj. I (dau/dai/dă)|Daily Life|Dau morcovul pe răzătoare.|我把胡萝卜擦丝。
+过滤茶|a strecura ceaiul|a strecurA ceAiul|verb: conj. I (strecor/strecori/strecoară)|Daily Life|Strecor ceaiul înainte să-l servesc.|上茶前我过滤茶。
+收拾厨房|a strânge bucătăria|a strÂnge bucătărIa|verb: conj. III (strâng/strângi/strânge)|Daily Life|Strâng bucătăria după cină.|晚饭后我收拾厨房。
+清理桌面|a elibera masa|a eliberA mAsa|verb: conj. I (eliberez/eliberezi/eliberează)|Daily Life|Eliberez masa înainte de lucru.|工作前我清理桌面。
+预约理发|a se programa la frizer|a se programA la frizEr|verb: conj. I (mă programez/te programezi/se programează)|Daily Life|Mă programez la frizer pentru sâmbătă.|我预约周六理发。
+剪刘海|a tunde bretonul|a tUnde bretOnul|verb: conj. III (tund/tunzi/tunde)|Daily Life|Frizerul tunde bretonul puțin.|理发师稍微剪刘海。
+染头发|a vopsi părul|a vopsI pĂrul|verb: conj. IV (vopsesc/vopsești/vopsește)|Daily Life|Își vopsește părul acasă.|她在家染头发。
+吹干头发|a usca părul|a uscA pĂrul|verb: conj. I (usuc/usuci/usucă)|Daily Life|Usc părul înainte să ies.|出门前我吹干头发。
+梳头发|a pieptăna părul|a pieptănA pĂrul|verb: conj. I (pieptăn/piepteni/pieptănă)|Daily Life|Pieptăn părul copilului dimineața.|我早上给孩子梳头。
+喷香水|a se da cu parfum|a se dA cu parfUm|verb: conj. I (mă dau/te dai/se dă)|Daily Life|Se dă cu parfum înainte să plece.|他出门前喷香水。
+涂唇膏|a folosi balsam de buze|a folosI balsAm de bUze|verb: conj. IV (folosesc/folosești/folosește)|Daily Life|Folosesc balsam de buze iarna.|冬天我用润唇膏。
+戴隐形眼镜|a-și pune lentilele|a-și pUne lentIlele|verb: conj. III (îmi pun/îți pui/își pune)|Daily Life|Îmi pun lentilele înainte de serviciu.|上班前我戴隐形眼镜。
+摘隐形眼镜|a-și scoate lentilele|a-și scoAte lentIlele|verb: conj. III (îmi scot/îți scoți/își scoate)|Daily Life|Îmi scot lentilele seara.|我晚上摘隐形眼镜。
+洗眼镜|a curăța ochelarii|a curățA ochelArii|verb: conj. I (curăț/curăți/curăță)|Daily Life|Curăț ochelarii cu lavetă.|我用擦镜布清洁眼镜。
+摘口罩|a-și scoate masca|a-și scoAte mAsca|verb: conj. III (îmi scot/îți scoți/își scoate)|Daily Life|Își scoate masca afară.|他在外面摘下口罩。
+消毒双手|a-și dezinfecta mâinile|a-și dezinfectA mÂinile|verb: conj. I (îmi dezinfectez/îți dezinfectezi/își dezinfectează)|Daily Life|Îmi dezinfectez mâinile la intrare.|我在入口处消毒双手。
+预约体检|a programa un control|a programA un contrOl|verb: conj. I (programez/programezi/programează)|Daily Life|Programez un control pentru săptămâna viitoare.|我预约下周体检。
+取处方|a ridica rețeta|a ridicA rețEta|verb: conj. I (ridic/ridici/ridică)|Daily Life|Ridic rețeta de la medicul de familie.|我从家庭医生那里取处方。
+量血压|a-și măsura tensiunea|a-și măsurA tensiUnea|verb: conj. I (îmi măsor/îți măsori/își măsoară)|Daily Life|Își măsoară tensiunea dimineața.|他早上量血压。
+涂药膏|a aplica unguent|a aplicA unguEnt|verb: conj. I (aplic/aplici/aplică)|Daily Life|Aplic unguent pe piele.|我在皮肤上涂药膏。
+换绷带|a schimba bandajul|a schimbA bandAjul|verb: conj. I (schimb/schimbi/schimbă)|Daily Life|Schimb bandajul după duș.|洗澡后我换绷带。
+滴眼药水|a pune picături în ochi|a pUne picătUri în Ochi|verb: conj. III (pun/pui/pune)|Daily Life|Pun picături în ochi de două ori pe zi.|我每天滴两次眼药水。
+用鼻喷剂|a folosi spray nazal|a folosI sprAy nazAl|verb: conj. IV (folosesc/folosești/folosește)|Daily Life|Folosesc spray nazal doar seara.|我只在晚上用鼻喷剂。
+喝糖浆|a lua sirop|a luA sirOp|verb: conj. I (iau/iei/ia)|Daily Life|Iau sirop de tuse înainte de somn.|睡前我喝止咳糖浆。
+记录症状|a nota simptomele|a notA simptOmele|verb: conj. I (notez/notezi/notează)|Daily Life|Notez simptomele pentru medic.|我为医生记录症状。
+休病假|a sta în concediu medical|a stA în concEdiu medicAl|verb: conj. I (stau/stai/stă)|Daily Life|Stau în concediu medical două zile.|我休两天病假。
+申请休一天|a cere liber|a cEre lIber|verb: conj. III (cer/ceri/cere)|Daily Life|Cer liber pentru vineri.|我申请周五休一天。
+提交病假条|a trimite concediul medical|a trimIte concEdiul medicAl|verb: conj. III (trimit/trimiți/trimite)|Daily Life|Trimit concediul medical la resurse umane.|我把病假条发给人力资源。
+打卡上班|a ponta intrarea|a pontA intrArea|verb: conj. I (pontez/pontezi/pontează)|Daily Life|Pontez intrarea la recepție.|我在接待处打卡上班。
+打卡下班|a ponta ieșirea|a pontA ieșIrea|verb: conj. I (pontez/pontezi/pontează)|Daily Life|Pontez ieșirea înainte să plec.|离开前我打卡下班。
+申请报销|a cere decont|a cEre decOnt|verb: conj. III (cer/ceri/cere)|Daily Life|Cer decont pentru transport.|我申请交通报销。
+提交收据|a preda bonul|a predA bOnul|verb: conj. I (predau/predai/predă)|Daily Life|Predau bonul la contabilitate.|我把收据交给财务。
+安排会议|a programa ședința|a programA ședInța|verb: conj. I (programez/programezi/programează)|Daily Life|Programez ședința pentru marți.|我把会议安排在周二。
+取消会议|a anula ședința|a anulA ședInța|verb: conj. I (anulez/anulezi/anulează)|Daily Life|Anulez ședința dacă nu avem noutăți.|如果没有新内容，我就取消会议。
+订会议室|a rezerva sala|a rezervA sAla|verb: conj. I (rezerv/rezervi/rezervă)|Daily Life|Rezerv sala pentru ora zece.|我预订十点的会议室。
+分享屏幕|a partaja ecranul|a partajA ecrAnul|verb: conj. I (partajez/partajezi/partajează)|Daily Life|Partajez ecranul în apel.|我在通话中共享屏幕。
+静音麦克风|a opri microfonul|a oprI microfOnul|verb: conj. IV (opresc/oprești/oprește)|Daily Life|Oprește microfonul când nu vorbești.|不说话时关闭麦克风。
+打开摄像头|a porni camera|a pornI cAmera|verb: conj. IV (pornesc/pornești/pornește)|Daily Life|Pornesc camera la începutul ședinței.|会议开始时我打开摄像头。
+发送日程|a trimite agenda|a trimIte agEnda|verb: conj. III (trimit/trimiți/trimite)|Daily Life|Trimit agenda înainte de ședință.|我在会前发送日程。
+更新状态|a actualiza statusul|a actualizA stAtusul|verb: conj. I (actualizez/actualizezi/actualizează)|Daily Life|Actualizez statusul la final de zi.|我在一天结束时更新状态。
+归档文件|a arhiva documentele|a arhivA documentEle|verb: conj. I (arhivez/arhivezi/arhivează)|Daily Life|Arhivez documentele vechi lunar.|我每月归档旧文件。
+整理邮箱|a organiza emailurile|a organizA emailurile|verb: conj. I (organizez/organizezi/organizează)|Daily Life|Organizez emailurile pe foldere.|我按文件夹整理邮件。
+清空桌面|a elibera biroul|a eliberA birOul|verb: conj. I (eliberez/eliberezi/eliberează)|Daily Life|Eliberez biroul înainte de weekend.|周末前我清空办公桌。
+锁电脑|a bloca laptopul|a blocA lAptopul|verb: conj. I (blochez/blochezi/blochează)|Daily Life|Blochează laptopul când pleci.|离开时锁上电脑。
+预约健身课|a rezerva clasa|a rezervA clAsa|verb: conj. I (rezerv/rezervi/rezervă)|Daily Life|Rezerv clasa de yoga din aplicație.|我在应用里预约瑜伽课。
+取消健身课|a anula clasa|a anulA clAsa|verb: conj. I (anulez/anulezi/anulează)|Daily Life|Anulez clasa dacă nu ajung la timp.|如果不能准时到，我就取消课程。
+记录步数|a număra pașii|a numărA pAșii|verb: conj. I (număr/numeri/numără)|Daily Life|Brățara numără pașii automat.|手环自动记录步数。
+测心率|a măsura pulsul|a măsurA pUlsul|verb: conj. I (măsor/măsori/măsoară)|Daily Life|Ceasul măsoară pulsul în timpul alergării.|手表在跑步时测心率。
+做热身|a face încălzire|a fAce încălzIre|verb: conj. III (fac/faci/face)|Daily Life|Fac încălzire cinci minute.|我热身五分钟。
+做拉伸|a face întinderi|a fAce întInderi|verb: conj. III (fac/faci/face)|Daily Life|Fac întinderi după antrenament.|训练后我做拉伸。
+租球场|a închiria terenul|a închiriA terEnul|verb: conj. I (închiriez/închiriezi/închiriază)|Daily Life|Închiriem terenul pentru o oră.|我们租球场一小时。
+预约泳道|a rezerva culoarul|a rezervA culoArul|verb: conj. I (rezerv/rezervi/rezervă)|Daily Life|Rezerv culoarul de înot dimineața.|我早上预约泳道。
+冲澡|a face un duș rapid|a fAce un dUș rapId|verb: conj. III (fac/faci/face)|Daily Life|Fac un duș rapid după sală.|健身后我快速冲澡。
+换运动鞋|a schimba adidașii|a schimbA adidAșii|verb: conj. I (schimb/schimbi/schimbă)|Daily Life|Schimb adidașii înainte de alergare.|跑步前我换运动鞋。
+装水壶|a umple sticla|a Umple stIcla|verb: conj. III (umplu/umpli/umple)|Daily Life|Umplu sticla cu apă înainte de drum.|出门前我把水瓶装满水。
+遛猫|a plimba pisica|a plimbA pisIca|verb: conj. I (plimb/plimbi/plimbă)|Daily Life|Plimb pisica în ham, în curte.|我在院子里用胸背带遛猫。
+刷狗毛|a peria câinele|a periA cÂinele|verb: conj. I (periez/periezi/periază)|Daily Life|Periez câinele pe balcon.|我在阳台给狗梳毛。
+给植物换土|a schimba pământul|a schimbA pămÂntul|verb: conj. I (schimb/schimbi/schimbă)|Daily Life|Schimb pământul florilor primăvara.|春天我给花换土。
+给盆栽施肥|a pune îngrășământ|a pUne îngrășămÂnt|verb: conj. III (pun/pui/pune)|Daily Life|Pun îngrășământ la plante o dată pe lună.|我每月给盆栽施肥一次。
+喷叶子|a pulveriza frunzele|a pulverizA frUnzele|verb: conj. I (pulverizez/pulverizezi/pulverizează)|Daily Life|Pulverizez frunzele dimineața.|我早上给叶子喷水。
+换鱼缸水|a schimba apa din acvariu|a schimbA Apa din acvAriu|verb: conj. I (schimb/schimbi/schimbă)|Daily Life|Schimb apa din acvariu sâmbăta.|我周六换鱼缸水。
+喂鱼|a hrăni peștii|a hrănI pEștii|verb: conj. IV (hrănesc/hrănești/hrănește)|Daily Life|Hrănesc peștii dimineața.|我早上喂鱼。
+收快递|a primi livrarea|a primI livrArea|verb: conj. IV (primesc/primești/primește)|Daily Life|Primesc livrarea între două și patru.|我两点到四点收快递。
+拒收包裹|a refuza coletul|a refuzA colEtul|verb: conj. I (refuz/refuzi/refuză)|Daily Life|Refuz coletul dacă ambalajul e rupt.|如果包装破了，我拒收包裹。
+重新安排配送|a reprograma livrarea|a reprogramA livrArea|verb: conj. I (reprogramez/reprogramezi/reprogramează)|Daily Life|Reprogramez livrarea pentru mâine.|我把配送重新安排到明天。
+标记地址|a marca adresa|a marcA adrEsa|verb: conj. I (marchez/marchezi/marchează)|Daily Life|Marchează adresa corectă pe hartă.|在地图上标记正确地址。
+核对订单|a verifica comanda|a verificA comAnda|verb: conj. I (verific/verifici/verifică)|Daily Life|Verific comanda înainte să plătesc.|付款前我核对订单。
+保存发票|a păstra factura|a păstrA factUra|verb: conj. I (păstrez/păstrezi/păstrează)|Daily Life|Păstrez factura pentru contabilitate.|我保存发票用于财务。
+申请保修|a cere garanție|a cEre garanțIe|verb: conj. III (cer/ceri/cere)|Daily Life|Cer garanție pentru aparatul defect.|我为故障设备申请保修。
+寄回商品|a trimite produsul înapoi|a trimIte prodUsul înapOi|verb: conj. III (trimit/trimiți/trimite)|Daily Life|Trimit produsul înapoi prin curier.|我通过快递寄回商品。
+包装礼物|a ambala cadoul|a ambalA cadOul|verb: conj. I (ambalez/ambalezi/ambalează)|Daily Life|Ambalez cadoul cu hârtie colorată.|我用彩纸包装礼物。
+写贺卡|a scrie felicitarea|a scrIe felicitArea|verb: conj. III (scriu/scrii/scrie)|Daily Life|Scriu felicitarea înainte de petrecere.|聚会前我写贺卡。
+邀请客人|a chema invitați|a chemA invitAți|verb: conj. I (chem/chemi/cheamă)|Daily Life|Chem invitați la cină.|我邀请客人来吃晚饭。
+确认到场|a confirma prezența|a confirmA prezEnța|verb: conj. I (confirm/confirmi/confirmă)|Daily Life|Confirm prezența la nuntă.|我确认出席婚礼。
+推迟聚会|a amâna petrecerea|a amânA petrecErea|verb: conj. I (amân/amâni/amână)|Daily Life|Amân petrecerea din cauza vremii.|因为天气原因我推迟聚会。
+取消聚会|a anula petrecerea|a anulA petrecErea|verb: conj. I (anulez/anulezi/anulează)|Daily Life|Anulăm petrecerea dacă plouă.|如果下雨，我们取消聚会。
+摆放椅子|a aranja scaunele|a aranjA scAunele|verb: conj. I (aranjez/aranjezi/aranjează)|Daily Life|Aranjăm scaunele înainte să vină lumea.|客人来之前我们摆放椅子。
+开瓶酒|a deschide vinul|a deschIde vInul|verb: conj. III (deschid/deschizi/deschide)|Daily Life|Deschid vinul la masă.|我在餐桌上开酒。
+敬酒|a ciocni paharele|a ciocnI pahArele|verb: conj. IV (ciocnesc/ciocnești/ciocnește)|Daily Life|Ciocnim paharele pentru aniversare.|我们为纪念日碰杯。
+整理收到的礼物|a strânge cadourile|a strÂnge cadOurile|verb: conj. III (strâng/strângi/strânge)|Daily Life|Strâng cadourile după petrecere.|聚会后我整理收到的礼物。
+写感谢信息|a trimite mulțumiri|a trimIte mulțumIri|verb: conj. III (trimit/trimiți/trimite)|Daily Life|Trimit mulțumiri după nuntă.|婚礼后我发送感谢信息。
+取暖费用|cost de încălzire|cOst de încălzIre|s.n.: costuri de încălzire|Daily Life|Costul de încălzire a crescut iarna asta.|这个冬天取暖费用上涨了。
+网络密码|parolă de Wi-Fi|parOlă de Wi-Fi|s.f.: parole de Wi-Fi|Daily Life|Parola de Wi-Fi e scrisă pe frigider.|无线网密码写在冰箱上。
+访客停车位|loc de parcare pentru vizitatori|lOc de parcAre pentru vizitatOri|s.n.: locuri de parcare pentru vizitatori|Daily Life|Locul de parcare pentru vizitatori e ocupat.|访客停车位被占了。
+楼栋入口码|cod de intrare|cOd de intrAre|s.n.: coduri de intrare|Daily Life|Codul de intrare se schimbă lunar.|楼栋入口码每月更换。
+快递备注|observație pentru curier|observAție pentru curiEr|s.f.: observații pentru curier|Daily Life|Am lăsat o observație pentru curier.|我给快递员留了备注。
+送货电话|telefon de livrare|telefOn de livrAre|s.n.: telefoane de livrare|Daily Life|Telefonul de livrare trebuie să fie corect.|送货电话必须正确。
+备用手机|telefon de rezervă|telefOn de rezErvă|s.n.: telefoane de rezervă|Daily Life|Țin un telefon de rezervă acasă.|我在家放了一部备用手机。
+电话联系人|persoană de contact|persoAnă de contAct|s.f.: persoane de contact|Daily Life|Persoana de contact răspunde după prânz.|电话联系人午饭后回复。
+紧急联系人|contact de urgență|contAct de urgEnță|s.n.: contacte de urgență|Daily Life|Contactul de urgență este sora mea.|紧急联系人是我姐姐。
+家庭地址|adresă de domiciliu|adrEsă de domicIliu|s.f.: adrese de domiciliu|Daily Life|Adresa de domiciliu apare pe act.|家庭地址显示在证件上。
+临时地址|adresă temporară|adrEsă temporAră|s.f.: adrese temporare|Daily Life|Am trecut o adresă temporară pe formular.|我在表格上填写了临时地址。
+取货点|punct de ridicare|pUnct de ridicAre|s.n.: puncte de ridicare|Daily Life|Punctul de ridicare e lângă metrou.|取货点在地铁旁边。
+退货点|punct de retur|pUnct de retUr|s.n.: puncte de retur|Daily Life|Punctul de retur închide la șase.|退货点六点关闭。
+包裹状态|status de colet|stAtus de colEt|s.n.: statusuri de colet|Daily Life|Statusul de colet nu s-a actualizat.|包裹状态没有更新。
+配送路线|rută de livrare|rUtă de livrAre|s.f.: rute de livrare|Daily Life|Ruta de livrare trece prin centru.|配送路线经过市中心。

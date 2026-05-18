@@ -711,19 +711,19 @@ async function apiGetTodayLog(userId, goal) {
 }
 
 /**
- * 更新今日新词数
+ * 更新今日完成任务数；数据库字段沿用 daily_log.new_words 以保持兼容
  */
-async function apiUpdateTodayLog(userId, newWords, goal) {
+async function apiUpdateTodayLog(userId, completedTasks, goal) {
   const today = getLocalDateKey();
-  const completed = newWords >= goal;
+  const completed = completedTasks >= goal;
   if (isOfflineMode()) {
     const logs = readJson(localKey(userId, 'daily_log'), {});
-    logs[today] = { user_id: userId, log_date: today, new_words: newWords, goal, completed, local: true };
+    logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, local: true };
     writeJson(localKey(userId, 'daily_log'), logs);
     return;
   }
   const { error } = await sb.from('daily_log').upsert(
-    { user_id: userId, log_date: today, new_words: newWords, goal, completed },
+    { user_id: userId, log_date: today, new_words: completedTasks, goal, completed },
     { onConflict: 'user_id,log_date' }
   );
   if (error) throw new Error(error.message);
@@ -762,7 +762,7 @@ async function apiGetClassRecentLogs(days = 30) {
 }
 
 /**
- * 获取用户设置的每日目标（存在 profiles 的 metadata 里）
+ * 获取用户设置的每日任务目标（存在 profiles 的 metadata 里）
  */
 async function apiGetDailyGoal(userId) {
   if (isOfflineMode()) return apiGetLocalDailyGoal(userId);
@@ -771,7 +771,7 @@ async function apiGetDailyGoal(userId) {
 }
 
 /**
- * 保存每日目标
+ * 保存每日任务目标
  */
 async function apiSetDailyGoal(userId, goal) {
   if (isOfflineMode()) {
