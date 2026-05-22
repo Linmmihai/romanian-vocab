@@ -33,6 +33,9 @@ let qRight = 0;       // 本次会话累计答对（不重置）
 let qTotal = 0;       // 本次会话累计答题（不重置）
 let qRoundRight = 0;  // 本轮答对（用于显示结算）
 let qRoundTotal = 0;  // 本轮答题
+let qStarted = false;
+let qScopedPracticePool = null;
+let qScopedPracticePoolKey = '';
 
 let editingWordId = null;
 let editingReportId = null;
@@ -56,6 +59,9 @@ let dailyGoal = 20;
 let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
 let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
 let todayLog = null;
+const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
+let calendarCache = { key: '', logs: null, fetchedAt: 0 };
+let lastProgressWarningAt = 0;
 
 function wrongbookStreakKey() {
   return `wrongbook_streaks:${currentUser?.id || 'local'}`;
@@ -303,6 +309,7 @@ async function loadProgress() {
 async function loadTodayLog() {
   todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
   todayNewWords = todayLog?.new_words || 0;
+  invalidateCalendarCache();
   // 全部数据加载完毕，统一渲染
   upStats();
   renderList();
@@ -353,6 +360,7 @@ async function loadDailyQueue() {
   if (queueChanged) await saveTodayQueue();
   if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+    invalidateCalendarCache();
   }
   if (todayQueueRecord?.local) {
     showToast('每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步');
@@ -475,6 +483,7 @@ async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更�
   todayQueue = buildOpenTodayQueue(dailyGoal);
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  invalidateCalendarCache();
   applyFilters();
   renderCard();
   renderDailyGoal();
@@ -512,6 +521,8 @@ async function saveTodayQueue() {
     completed_word_ro: [...todayQueueCompleted],
     completed: todayNewWords >= dailyGoal
   });
+  invalidateCalendarCache();
+  invalidateQuizPracticePool();
 }
 
 async function recordTodayWord(wordRo) {
@@ -532,6 +543,7 @@ async function recordTodayWord(wordRo) {
   await saveTodayQueue();
 
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  invalidateCalendarCache();
   renderDailyGoal();
   updateTodayCalendarCell();
   renderReviewPanel();
@@ -955,10 +967,17 @@ function renderReviewPanel() {
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
   setText('review-new-remaining', unseenRemaining);
+  const nextBatch = Math.min(20, Math.max(0, remainingDueReviews || remainingSlots));
+  const summaryText = todayNewWords >= dailyGoal
+    ? `已完成 ${todayNewWords}/${dailyGoal}`
+    : (remainingDueReviews > 0 ? `先复习 ${nextBatch} 个` : `继续 ${Math.min(20, remainingSlots)} 个任务`);
+  setText('flash-control-summary', summaryText);
   const taskType = current ? getDailyTaskType(current) : '';
   setText('review-note', todayNewWords >= dailyGoal
     ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
-    : `今日任务先完成到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`);
+    : (remainingDueReviews > 0
+      ? `先完成一组 ${nextBatch} 个到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`
+      : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`));
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
 }
@@ -1007,6 +1026,28 @@ function setSyncBadge(txt, cls) {
   el.className = 'sync-badge ' + (cls || '');
 }
 
+function showProgressSaveWarning(message) {
+  const now = Date.now();
+  if (now - lastProgressWarningAt < 5000) return;
+  lastProgressWarningAt = now;
+  showToast(message);
+}
+
+function handleProgressSaveStatus(status) {
+  if (!status) return false;
+  if (status.memoryBackup?.ok === false) {
+    setSyncBadge('本机备份失败', '');
+    showProgressSaveWarning('本机错题备份保存失败，请导出进度或清理浏览器存储');
+    return true;
+  }
+  if (status.memoryBackedByDb === false) {
+    setSyncBadge('本机备份', 'saved');
+    showProgressSaveWarning('错题记忆暂存在本机；数据库缺少新进度字段');
+    return true;
+  }
+  return false;
+}
+
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
   setSyncBadge(isOfflineMode() ? '保存中...' : '同步中...', '');
   const prev = progressMap[wordRo] || {};
@@ -1032,8 +1073,9 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
   progressMap[wordRo] = nextProgress;
   try {
-    await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
-    setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
+    const saveStatus = await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
+    const warned = handleProgressSaveStatus(saveStatus);
+    if (!warned) setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
   } catch {
     if (Object.keys(prev).length) {
       progressMap[wordRo] = prev;
@@ -1044,6 +1086,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
   applyFilters();
+  invalidateQuizPracticePool();
   upStats();
   updateReviewBadge();
 }
@@ -1145,6 +1188,8 @@ async function recordInteraction(wordRo, interactionType) {
 
 function switchPage(p) {
   if (p === 'review') { qPracticeScope = 'due'; p = 'quiz'; }
+  if (p === 'quiz' && isQuizInProgress()) return;
+  if (p !== 'quiz' && isQuizInProgress() && !confirm('测验进行中，确定离开吗？')) return;
   if (p !== 'wrongbook' && wbAutoAdvanceTimer) {
     clearTimeout(wbAutoAdvanceTimer);
     wbAutoAdvanceTimer = null;
@@ -1175,6 +1220,19 @@ function toggleNavMenu(event) {
 }
 
 document.addEventListener('click', (event) => {
+  const quizOption = event.target.closest?.('.opt[data-quiz-action]');
+  if (quizOption) {
+    if (quizOption.style.pointerEvents === 'none') return;
+    const action = quizOption.dataset.quizAction;
+    const ok = quizOption.dataset.ok === '1';
+    if (action === 'answer') {
+      answerQ(quizOption, ok, quizOption.dataset.ro || '', quizOption.dataset.zh || '');
+    } else if (action === 'exercise') {
+      answerExerciseQ(quizOption, ok);
+    }
+    return;
+  }
+
   const menu = document.getElementById('nav-more');
   if (menu && !menu.contains(event.target)) menu.classList.remove('open');
 });
@@ -1247,10 +1305,25 @@ async function saveGoalSetting() {
   await setDailyGoalAndRebuild(val);
 }
 
-async function renderCalendar() {
+function invalidateCalendarCache() {
+  calendarCache = { key: '', logs: null, fetchedAt: 0 };
+}
+
+async function getCalendarLogs(days, force = false) {
+  const key = `${currentUser?.id || 'local'}:${days}`;
+  const now = Date.now();
+  if (!force && calendarCache.key === key && calendarCache.logs && now - calendarCache.fetchedAt < CALENDAR_CACHE_TTL_MS) {
+    return calendarCache.logs;
+  }
+  const logs = await apiGetRecentLogs(currentUser.id, days);
+  calendarCache = { key, logs, fetchedAt: now };
+  return logs;
+}
+
+async function renderCalendar(force = false) {
   const el = document.getElementById('calendar-container');
   if (!el) return;
-  const logs = await apiGetRecentLogs(currentUser.id, 14);
+  const logs = await getCalendarLogs(14, force);
   const logMap = {};
   logs.forEach(l => { logMap[l.log_date] = l; });
 
@@ -1299,13 +1372,25 @@ function buildCats() {
   const cats = CATEGORY_ORDER
     .filter(c => c === '全部' || present.has(c))
     .concat([...present].filter(c => !CATEGORY_ORDER.includes(c)).sort((a, b) => a.localeCompare(b, 'en')));
-  document.getElementById('cat-bar').innerHTML = cats.map(c =>
-    `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat(decodeURIComponent('${encodedArg(c)}'))">${escapeHtml(c)}</button>`
-  ).join('');
+  const preferred = ['全部', 'Daily Life', 'verb', 'adjective', 'Medicine', 'Law', 'Education', 'Science'];
+  let primary = preferred.filter(c => cats.includes(c));
+  if (curCat && !primary.includes(curCat) && cats.includes(curCat)) primary.push(curCat);
+  primary = primary.slice(0, 9);
+  const secondary = cats.filter(c => !primary.includes(c));
+  const buttonHtml = (c) =>
+    `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat(decodeURIComponent('${encodedArg(c)}'))">${escapeHtml(c)}</button>`;
+  document.getElementById('cat-bar').innerHTML = [
+    ...primary.map(buttonHtml),
+    secondary.length ? `<details class="cat-more">
+      <summary>全部分类</summary>
+      <div class="cat-more-list">${secondary.map(buttonHtml).join('')}</div>
+    </details>` : ''
+  ].join('');
 }
 
 function setCat(c) {
   curCat = c;
+  invalidateQuizPracticePool();
   flashHistory = [];
   flashOverrideRo = null;
   applyFilters();
@@ -1872,8 +1957,19 @@ async function answerWb(correct) {
 
 let qSize = 20; // 每轮题目数，默认20
 
+function isQuizInProgress() {
+  return qStarted && qList.length > 0 && qIdx < qList.length;
+}
+
+function invalidateQuizPracticePool() {
+  qScopedPracticePool = null;
+  qScopedPracticePoolKey = '';
+}
+
 function setQMode(m) {
   qMode = m;
+  qStarted = false;
+  invalidateQuizPracticePool();
   document.getElementById('m-zh').classList.toggle('active', m === 'zh');
   document.getElementById('m-ro').classList.toggle('active', m === 'ro');
   showQuizSetup();
@@ -1881,12 +1977,16 @@ function setQMode(m) {
 
 function setExerciseMode(mode) {
   qExerciseMode = mode;
+  qStarted = false;
+  invalidateQuizPracticePool();
   document.querySelectorAll('.exercise-btn').forEach(b => b.classList.toggle('active', b.dataset.exercise === mode));
   showQuizSetup();
 }
 
 function setPracticeScope(scope) {
   qPracticeScope = scope;
+  qStarted = false;
+  invalidateQuizPracticePool();
   document.querySelectorAll('#quiz-scope-bar .study-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
   showQuizSetup();
 }
@@ -1927,6 +2027,22 @@ function getScopedPracticePool() {
     ...getUnseenWords(scoped),
     ...sortByReviewPriority(scoped)
   ]);
+}
+
+function getCachedScopedPracticePool() {
+  const key = [
+    currentUser?.id || 'local',
+    curCat,
+    qPracticeScope,
+    qExerciseMode,
+    W.length,
+    todayQueue.length,
+    todayQueueCompleted.size
+  ].join('|');
+  if (qScopedPracticePool && qScopedPracticePoolKey === key) return qScopedPracticePool;
+  qScopedPracticePool = getScopedPracticePool();
+  qScopedPracticePoolKey = key;
+  return qScopedPracticePool;
 }
 
 function getPracticeScopeLabel() {
@@ -2100,9 +2216,11 @@ function buildExercisePool() {
 }
 
 function showQuizSetup() {
-  const pool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? getScopedPracticePool() : buildExercisePool();
+  const pool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? getCachedScopedPracticePool() : buildExercisePool();
   const qmodeBar = document.querySelector('.qmode-bar');
+  const directionSection = document.getElementById('quiz-direction-section');
   if (qmodeBar) qmodeBar.style.display = qExerciseMode === 'translation' ? 'flex' : 'none';
+  if (directionSection) directionSection.style.display = qExerciseMode === 'translation' ? 'block' : 'none';
   const modeName = {
     translation: '翻译测验',
     listening: '听力测验',
@@ -2111,10 +2229,10 @@ function showQuizSetup() {
     stress: '重音选择'
   }[qExerciseMode];
   document.getElementById('quiz-area').innerHTML = `
-    <div style="text-align:center;padding:1.5rem 0">
+    <div class="quiz-section quiz-start-panel">
       <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${curCat !== '全部' ? curCat : '全部分类'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:1rem;color:var(--text)">选择本轮题目数</div>
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem">
+      <div class="quiz-size-row">
         <button class="qsize-btn${qSize===20?' active':''}" data-n="20" onclick="setQSize(20)">20题</button>
         <button class="qsize-btn${qSize===50?' active':''}" data-n="50" onclick="setQSize(50)">50题</button>
         <button class="qsize-btn${qSize===100?' active':''}" data-n="100" onclick="setQSize(100)">100题</button>
@@ -2125,14 +2243,26 @@ function showQuizSetup() {
 }
 
 function startQuiz() {
-  const activePool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? getScopedPracticePool() : buildExercisePool();
+  invalidateQuizPracticePool();
+  const activePool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? getCachedScopedPracticePool() : buildExercisePool();
   if (!activePool.length) { showToast('当前模式没有可测验的词'); return; }
   const pool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? buildReviewPriorityPool(activePool) : shuffleGroup(activePool);
   qList = qSize > 0 ? pool.slice(0, qSize) : pool;
   qIdx = 0;
   qRoundRight = 0;
   qRoundTotal = 0;
+  qStarted = true;
   renderQuiz();
+}
+
+function renderQuizAnswerButton(option, answerWord, label) {
+  const ok = option.ro === answerWord.ro;
+  return `<button class="opt" data-quiz-action="answer" data-ok="${ok ? '1' : '0'}" data-ro="${escapeHtml(answerWord.ro)}" data-zh="${escapeHtml(answerWord.zh)}" data-option-ro="${escapeHtml(option.ro)}">${escapeHtml(label)}</button>`;
+}
+
+function renderExerciseAnswerButton(option, answer, label) {
+  const ok = option === answer;
+  return `<button class="opt" data-quiz-action="exercise" data-ok="${ok ? '1' : '0'}" data-option="${escapeHtml(option)}">${label}</button>`;
 }
 
 function renderQuiz() {
@@ -2141,7 +2271,7 @@ function renderQuiz() {
   const livePct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
   if (qExerciseMode === 'listening') {
     const w = qList[qIdx];
-    const optionPool = getScopedPracticePool().filter(x => x.ro !== w.ro);
+    const optionPool = getCachedScopedPracticePool().filter(x => x.ro !== w.ro);
     const fallbackPool = W.filter(x => x.ro !== w.ro && !optionPool.some(o => o.ro === x.ro));
     const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
     const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
@@ -2157,8 +2287,7 @@ function renderQuiz() {
       <div class="quiz-sub">先听罗马尼亚语，再选择对应中文</div>
       <button class="btn-primary" style="max-width:180px;margin:0 auto 1rem;display:block" onclick="speakQuizWord(0.9)">播放</button>
       <div class="opts">${opts.map(o => {
-        const ok = o.ro === w.ro;
-        return `<button class="opt" onclick="answerQ(this,${ok},decodeURIComponent('${encodedArg(w.ro)}'),decodeURIComponent('${encodedArg(w.zh)}'))">${escapeHtml(o.zh)}</button>`;
+        return renderQuizAnswerButton(o, w, o.zh);
       }).join('')}</div>
       <div class="quiz-fb" id="qfb"></div>
       <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
@@ -2179,9 +2308,8 @@ function renderQuiz() {
       <div class="quiz-q">${escapeHtml(ex.question)}</div>
       <div class="quiz-sub">${escapeHtml(ex.sub)}</div>
       <div class="opts">${opts.map(o => {
-        const ok = o === ex.answer;
         const label = ex.type === 'stress' ? stressToHtml(o) : escapeHtml(o);
-        return `<button class="opt" onclick="answerExerciseQ(this,${ok})">${label}</button>`;
+        return renderExerciseAnswerButton(o, ex.answer, label);
       }).join('')}</div>
       <div class="quiz-fb" id="qfb"></div>
       <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
@@ -2189,7 +2317,7 @@ function renderQuiz() {
   }
 
   const w = qList[qIdx];
-  const optionPool = getScopedPracticePool().filter(x => x.ro !== w.ro);
+  const optionPool = getCachedScopedPracticePool().filter(x => x.ro !== w.ro);
   const fallbackPool = W.filter(x => x.ro !== w.ro && !optionPool.some(o => o.ro === x.ro));
   const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
   const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
@@ -2214,8 +2342,7 @@ function renderQuiz() {
     <div class="quiz-sub">${qMode === 'zh' ? '选择对应的罗马尼亚语' : '选择对应的中文'}</div>
     <div class="opts">${opts.map(o => {
       const label = qMode === 'zh' ? o.ro : o.zh;
-      const ok = o.ro === w.ro;
-      return `<button class="opt" onclick="answerQ(this,${ok},decodeURIComponent('${encodedArg(w.ro)}'),decodeURIComponent('${encodedArg(w.zh)}'))">${escapeHtml(label)}</button>`;
+      return renderQuizAnswerButton(o, w, label);
     }).join('')}</div>
     <div class="quiz-fb" id="qfb"></div>
     <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
@@ -2232,10 +2359,8 @@ async function answerQ(btn, ok, ro, zh) {
     qRoundRight++;
   } else {
     btn.classList.add('wrong');
-    // 根据模式匹配正确答案：中文模式按钮显示罗语，罗语模式按钮显示中文
-    const correctLabel = qMode === 'zh' ? ro : zh;
     btn.parentElement.querySelectorAll('.opt').forEach(b => {
-      if (b.textContent === correctLabel) b.classList.add('correct');
+      if (b.dataset.optionRo === ro) b.classList.add('correct');
     });
     document.getElementById('qfb').style.color = 'var(--red-text)';
   }
@@ -2259,7 +2384,7 @@ async function answerExerciseQ(btn, ok) {
     btn.classList.add('wrong');
     const ex = qList[qIdx];
     btn.parentElement.querySelectorAll('.opt').forEach(b => {
-      if (normalizeStressText(b.textContent) === normalizeStressText(ex.answer) || b.textContent === ex.answer) b.classList.add('correct');
+      if (b.dataset.option === ex.answer) b.classList.add('correct');
     });
     document.getElementById('qfb').style.color = 'var(--red-text)';
   }
@@ -2274,6 +2399,7 @@ async function answerExerciseQ(btn, ok) {
 function nextQ() { qIdx++; renderQuiz(); }
 
 function showResult() {
+  qStarted = false;
   const pct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
   const wrongCount = getWrongWords().length;
   document.getElementById('quiz-area').innerHTML = `
@@ -2478,8 +2604,9 @@ async function importProgressBackup(file) {
     const incoming = payload.progress || {};
     progressMap = { ...progressMap, ...incoming };
     const rows = Object.entries(incoming).slice(0, 1000);
+    let importWarningShown = false;
     for (const [wordRo, p] of rows) {
-      await apiSaveProgress(
+      const saveStatus = await apiSaveProgress(
         currentUser.id,
         wordRo,
         !!p.known,
@@ -2498,6 +2625,7 @@ async function importProgressBackup(file) {
           lastWrongAt: p.lastWrongAt || null
         }
       );
+      if (!importWarningShown && handleProgressSaveStatus(saveStatus)) importWarningShown = true;
     }
     if (payload.dailyGoal) {
       dailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(payload.dailyGoal) || dailyGoal));

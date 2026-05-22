@@ -69,15 +69,19 @@ function readProgressMemoryBackup(userId) {
 }
 
 function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
-  if (!wordRo) return;
+  if (!wordRo) return { ok: true, skipped: true };
   const existing = readProgressMemoryBackup(userId);
   const wrongCount = Number(memory.wrongCount || 0);
   const errorStreak = Number(memory.errorStreak || 0);
   const lastWrongAt = memory.lastWrongAt || null;
   if (!wrongCount && !errorStreak && !lastWrongAt) {
     delete existing[wordRo];
-    try { writeJson(progressMemoryKey(userId), existing); } catch {}
-    return;
+    try {
+      writeJson(progressMemoryKey(userId), existing);
+      return { ok: true, cleared: true };
+    } catch (error) {
+      return { ok: false, error };
+    }
   }
   existing[wordRo] = {
     wrongCount,
@@ -88,7 +92,12 @@ function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
   const pruned = Object.fromEntries(Object.entries(existing)
     .sort((a, b) => String(b[1]?.backedUpAt || '').localeCompare(String(a[1]?.backedUpAt || '')))
     .slice(0, 500));
-  try { writeJson(progressMemoryKey(userId), pruned); } catch {}
+  try {
+    writeJson(progressMemoryKey(userId), pruned);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }
 
 async function loadBundledWords() {
@@ -464,26 +473,47 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     const map = readJson(localKey(userId, 'progress'), {});
     map[wordRo] = rowToProgress({ word_ro: wordRo, ...modernPayload });
     writeJson(localKey(userId, 'progress'), map);
-    writeProgressMemoryBackup(userId, wordRo, memory);
-    return;
+    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    return {
+      savedPayload: 'offline',
+      memoryBackedByDb: true,
+      memoryBackup
+    };
   }
 
   let { error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' });
   if (!error) {
-    writeProgressMemoryBackup(userId, wordRo, memory);
-    return;
+    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    return {
+      savedPayload: 'modern',
+      memoryBackedByDb: true,
+      memoryBackup
+    };
   }
 
   const modernError = error;
   ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_ro' }));
   if (!error) {
-    writeProgressMemoryBackup(userId, wordRo, memory);
-    return;
+    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    console.warn('Progress saved without wrongbook memory columns; local backup is being used.', modernError);
+    return {
+      savedPayload: 'reviewOnly',
+      memoryBackedByDb: false,
+      memoryBackup,
+      fallbackWarning: modernError.message
+    };
   }
 
   ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
   if (error) throw new Error(`${modernError.message}; ${error.message}`);
-  writeProgressMemoryBackup(userId, wordRo, memory);
+  const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+  console.warn('Progress saved with legacy review columns; wrongbook memory is local-backup only.', modernError);
+  return {
+    savedPayload: 'legacy',
+    memoryBackedByDb: false,
+    memoryBackup,
+    fallbackWarning: modernError.message
+  };
 }
 
 // ── 每日学习队列 ──────────────────────────────────────────
