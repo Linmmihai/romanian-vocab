@@ -1237,6 +1237,154 @@ document.addEventListener('click', (event) => {
   if (menu && !menu.contains(event.target)) menu.classList.remove('open');
 });
 
+function getActivePageId() {
+  return document.querySelector('.page.active')?.id || '';
+}
+
+function isTextEntryTarget(target) {
+  if (!target) return false;
+  const tag = String(target.tagName || '').toLowerCase();
+  return target.isContentEditable || ['input', 'textarea', 'select'].includes(tag);
+}
+
+function isNativeActivationKeyOnControl(event) {
+  const tag = String(event.target?.tagName || '').toLowerCase();
+  return ['button', 'a', 'summary'].includes(tag) && [' ', 'Enter'].includes(getShortcutKey(event));
+}
+
+function isModalOpen() {
+  return Array.from(document.querySelectorAll('.modal-overlay')).some(modal => modal.style.display !== 'none');
+}
+
+function closeTopModal() {
+  const modals = [
+    ['add-word-modal', closeAddWordModal],
+    ['edit-modal', closeEditModal],
+    ['report-modal', closeReportModal],
+    ['word-detail-modal', closeWordDetail]
+  ];
+  const open = modals.find(([id]) => {
+    const el = document.getElementById(id);
+    return el && el.style.display !== 'none';
+  });
+  if (!open) return false;
+  open[1]();
+  return true;
+}
+
+function clickQuizOption(index) {
+  const options = Array.from(document.querySelectorAll('#quiz-area .opt[data-quiz-action]'))
+    .filter(btn => btn.style.pointerEvents !== 'none');
+  const btn = options[index];
+  if (!btn) return false;
+  btn.click();
+  return true;
+}
+
+function activateVisibleButton(selector) {
+  const btn = document.querySelector(selector);
+  if (!btn || btn.offsetParent === null) return false;
+  btn.click();
+  return true;
+}
+
+function setQuizSizeByShortcut(key) {
+  const map = { '1': 20, '2': 50, '3': 100, '4': 0 };
+  if (!(key in map)) return false;
+  setQSize(map[key]);
+  return true;
+}
+
+function getShortcutKey(event) {
+  if (/^Digit[0-9]$/.test(event.code || '')) return event.code.slice(5);
+  if (/^Numpad[0-9]$/.test(event.code || '')) return event.code.slice(6);
+  if (/^Digit[0-9]$/.test(event.key || '')) return event.key.slice(5);
+  if (/^Numpad[0-9]$/.test(event.key || '')) return event.key.slice(6);
+  if (event.key === 'Left') return 'ArrowLeft';
+  if (event.key === 'Right') return 'ArrowRight';
+  return event.key;
+}
+
+function handleNavigationShortcut(event) {
+  if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+  const key = getShortcutKey(event);
+  const map = {
+    '1': 'flash',
+    '2': 'quiz',
+    '3': 'list',
+    '4': 'stats',
+    '5': 'wrongbook'
+  };
+  const page = map[key];
+  if (!page) return false;
+  switchPage(page);
+  return true;
+}
+
+function handleFlashShortcut(key) {
+  const card = document.getElementById('main-card');
+  if (!card || card.offsetParent === null) return false;
+  if (key === ' ' || key === 'Enter' || key.toLowerCase() === 'f') { flipCard(); return true; }
+  if (key === 'ArrowLeft' || key.toLowerCase() === 'b') { prevCard(); return true; }
+  if (key === 'ArrowRight' || key.toLowerCase() === 'n') { nextCard(); return true; }
+  if (flipped && key === '1') { markCard(false); return true; }
+  if (flipped && key === '2') { markCard(true); return true; }
+  if (key.toLowerCase() === 'p') { speak(1); return true; }
+  return false;
+}
+
+function handleWrongbookShortcut(key) {
+  if (!wbList.length) return false;
+  if (key === ' ' || key === 'Enter' || key.toLowerCase() === 'f') { flipWbCard(); return true; }
+  if (key === 'ArrowLeft' || key.toLowerCase() === 'b') { prevWbCard(); return true; }
+  if (key === 'ArrowRight' || key.toLowerCase() === 'n') { nextWbCard(); return true; }
+  if (wbFlipped && key === '1') { answerWb(false); return true; }
+  if (wbFlipped && key === '2') { answerWb(true); return true; }
+  if (key.toLowerCase() === 'p') { speakWb(1); return true; }
+  return false;
+}
+
+function handleQuizShortcut(key) {
+  const nextBtn = document.getElementById('qnxt');
+  const nextVisible = nextBtn && nextBtn.style.display !== 'none' && nextBtn.offsetParent !== null;
+  if (nextVisible && (key === 'Enter' || key === ' ')) {
+    nextQ();
+    return true;
+  }
+  if (isQuizInProgress()) {
+    if (/^[1-4]$/.test(key)) return clickQuizOption(Number(key) - 1);
+    if (qExerciseMode === 'listening' && key.toLowerCase() === 'p') { speakQuizWord(0.9); return true; }
+    return false;
+  }
+  if (/^[1-4]$/.test(key)) return setQuizSizeByShortcut(key);
+  if (key === 'Enter') return activateVisibleButton('#quiz-area .btn-primary');
+  return false;
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || isTextEntryTarget(event.target) || isNativeActivationKeyOnControl(event)) return;
+  const key = getShortcutKey(event);
+  if (event.key === 'Escape') {
+    const navMore = document.getElementById('nav-more');
+    const hadNavMenu = !!navMore?.classList.contains('open');
+    if (hadNavMenu) navMore.classList.remove('open');
+    const hadCatMenu = Array.from(document.querySelectorAll('.cat-more[open]')).some(el => { el.open = false; return true; });
+    const handled = closeTopModal() || hadNavMenu || hadCatMenu;
+    if (handled) event.preventDefault();
+    return;
+  }
+  if (isModalOpen()) return;
+
+  let handled = handleNavigationShortcut(event);
+  if (!handled && !event.altKey && !event.ctrlKey && !event.metaKey) {
+    const page = getActivePageId();
+    if (page === 'page-flash') handled = handleFlashShortcut(key);
+    else if (page === 'page-wrongbook') handled = handleWrongbookShortcut(key);
+    else if (page === 'page-quiz') handled = handleQuizShortcut(key);
+  }
+  if (handled) event.preventDefault();
+});
+
 function toggleAdminSection(id) {
   const section = document.getElementById(id);
   if (!section) return;
@@ -1477,14 +1625,39 @@ function flipCard() {
 }
 
 function nextCard() {
-  if (!filtered.length) return;
   const current = getCurrentFlashWord();
+  if (flashMode === 'today' && (!filtered.length || filtered.length <= 1)) {
+    const fallback = getNextDailyFallbackWord(current?.ro);
+    if (fallback) {
+      if (current) flashHistory.push(current.ro);
+      flashOverrideRo = fallback.ro;
+      flipped = false;
+      document.getElementById('main-card').classList.remove('flipped');
+      renderCard();
+      return;
+    }
+  }
+  if (!filtered.length) return;
   if (current && !flashOverrideRo) flashHistory.push(current.ro);
   flashOverrideRo = null;
   idx = (idx + 1) % filtered.length;
   flipped = false;
   document.getElementById('main-card').classList.remove('flipped');
   renderCard();
+}
+
+function getNextDailyFallbackWord(currentRo) {
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted]);
+  if (currentRo) blocked.add(currentRo);
+  const openQueue = todayQueue
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(w => !blocked.has(w.ro));
+  const due = sortReviewDueWithWeakPriority(W)
+    .filter(w => !blocked.has(w.ro) && isDueReviewWord(w));
+  const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
+  const unseen = remainingSlots > 0 ? getUnseenWords(W).filter(w => !blocked.has(w.ro)) : [];
+  return uniqueWordsByRo([...openQueue, ...due, ...unseen])[0] || null;
 }
 
 function bindFlashcardButtons() {
