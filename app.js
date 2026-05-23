@@ -1252,6 +1252,14 @@ function isNativeActivationKeyOnControl(event) {
   return ['button', 'a', 'summary'].includes(tag) && [' ', 'Enter'].includes(getShortcutKey(event));
 }
 
+function isAmbiguousStudyActivation(event, key) {
+  if (![' ', 'Enter'].includes(key)) return false;
+  const page = getActivePageId();
+  if (page !== 'page-flash' && page !== 'page-wrongbook') return false;
+  const tag = String(event.target?.tagName || '').toLowerCase();
+  return ['button', 'a', 'summary'].includes(tag);
+}
+
 function isModalOpen() {
   return Array.from(document.querySelectorAll('.modal-overlay')).some(modal => modal.style.display !== 'none');
 }
@@ -1324,7 +1332,7 @@ function handleNavigationShortcut(event) {
 function handleFlashShortcut(key) {
   const card = document.getElementById('main-card');
   if (!card || card.offsetParent === null) return false;
-  if (key === ' ' || key === 'Enter' || key.toLowerCase() === 'f') { flipCard(); return true; }
+  if (key.toLowerCase() === 'f') { flipCard(); return true; }
   if (key === 'ArrowLeft' || key.toLowerCase() === 'b') { prevCard(); return true; }
   if (key === 'ArrowRight' || key.toLowerCase() === 'n') { nextCard(); return true; }
   if (flipped && key === '1') { markCard(false); return true; }
@@ -1335,7 +1343,7 @@ function handleFlashShortcut(key) {
 
 function handleWrongbookShortcut(key) {
   if (!wbList.length) return false;
-  if (key === ' ' || key === 'Enter' || key.toLowerCase() === 'f') { flipWbCard(); return true; }
+  if (key.toLowerCase() === 'f') { flipWbCard(); return true; }
   if (key === 'ArrowLeft' || key.toLowerCase() === 'b') { prevWbCard(); return true; }
   if (key === 'ArrowRight' || key.toLowerCase() === 'n') { nextWbCard(); return true; }
   if (wbFlipped && key === '1') { answerWb(false); return true; }
@@ -1362,8 +1370,13 @@ function handleQuizShortcut(key) {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (event.defaultPrevented || isTextEntryTarget(event.target) || isNativeActivationKeyOnControl(event)) return;
+  if (event.defaultPrevented || isTextEntryTarget(event.target)) return;
   const key = getShortcutKey(event);
+  if (isAmbiguousStudyActivation(event, key)) {
+    event.preventDefault();
+    return;
+  }
+  if (isNativeActivationKeyOnControl(event)) return;
   if (event.key === 'Escape') {
     const navMore = document.getElementById('nav-more');
     const hadNavMenu = !!navMore?.classList.contains('open');
