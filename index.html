@@ -324,6 +324,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .admin-word-meta{font-size:12px;color:var(--text2);margin-top:2px}
 .admin-word-score{text-align:right;font-size:13px;font-weight:800;color:var(--red-text)}
 .admin-word-actions{display:flex;align-items:center;gap:8px}
+.admin-subnav{display:flex;gap:6px;margin:0 auto 1rem;max-width:980px;padding:4px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.admin-subtab{flex:1;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--text2);font-size:13px;font-weight:800;padding:9px 12px;cursor:pointer}
+.admin-subtab.active{background:white;color:var(--blue-text);box-shadow:var(--shadow)}
+.admin-pane{display:none}
+.admin-pane.active{display:block}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
 .modal{background:white;border-radius:14px;padding:1.5rem;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-height:90vh;overflow-y:auto}
@@ -825,6 +830,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- 管理员 -->
   <div class="page" id="page-admin">
+    <div class="admin-subnav" role="tablist" aria-label="管理员后台">
+      <button class="admin-subtab active" id="admin-tab-overview" onclick="switchAdminPanel('overview')">概览</button>
+      <button class="admin-subtab" id="admin-tab-content" onclick="switchAdminPanel('content')">内容</button>
+      <button class="admin-subtab" id="admin-tab-users" onclick="switchAdminPanel('users')">用户</button>
+    </div>
+    <div class="admin-pane active" id="admin-pane-overview">
     <div class="admin-section" id="admin-section-stats">
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-stats')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>📊 词库统计</span>
@@ -836,7 +847,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div id="admin-stats-container"><div class="empty-state">加载中...</div></div>
       </div>
     </div>
+    </div>
 
+    <div class="admin-pane" id="admin-pane-content">
     <div class="admin-section collapsed" id="admin-section-words">
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-words')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>📚 词库管理</span>
@@ -892,6 +905,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div id="reports-container"><div class="empty-state">加载中...</div></div>
       </div>
     </div>
+    </div>
+
+    <div class="admin-pane" id="admin-pane-users">
     <div class="admin-section collapsed" id="admin-section-weekly-summary">
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-weekly-summary')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>📨 用户周报</span>
@@ -917,6 +933,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="admin-section-body">
         <div id="users-container"><div class="empty-state">加载中...</div></div>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -1058,10 +1075,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
-<script src="api.js?v=20260529-account-admin-menu"></script>
-<script src="auth.js?v=20260529-account-admin-menu"></script>
+<script src="api.js?v=20260530-admin-workspace"></script>
+<script src="auth.js?v=20260530-admin-workspace"></script>
 <script src="stress_grammar_patch.js?v=20260516-memory3"></script>
-<script src="app.js?v=20260529-account-admin-menu"></script>
+<script src="app.js?v=20260530-admin-workspace"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {

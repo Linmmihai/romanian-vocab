@@ -1436,6 +1436,18 @@ function toggleAdminSection(id) {
   saveAdminSectionState();
 }
 
+function switchAdminPanel(panel = 'overview') {
+  const allowed = new Set(['overview', 'content', 'users']);
+  const next = allowed.has(panel) ? panel : 'overview';
+  document.querySelectorAll('#page-admin .admin-subtab').forEach(tab => {
+    tab.classList.toggle('active', tab.id === `admin-tab-${next}`);
+  });
+  document.querySelectorAll('#page-admin .admin-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === `admin-pane-${next}`);
+  });
+  try { sessionStorage.setItem('admin-active-panel', next); } catch {}
+}
+
 function saveAdminSectionState() {
   const state = {};
   document.querySelectorAll('#page-admin .admin-section[id]').forEach(section => {
@@ -1447,10 +1459,14 @@ function saveAdminSectionState() {
 function restoreAdminSections() {
   let state = null;
   try { state = JSON.parse(sessionStorage.getItem('admin-section-state') || 'null'); } catch {}
-  if (!state) return;
-  document.querySelectorAll('#page-admin .admin-section[id]').forEach(section => {
-    if (section.id in state) section.classList.toggle('collapsed', !state[section.id]);
-  });
+  if (state) {
+    document.querySelectorAll('#page-admin .admin-section[id]').forEach(section => {
+      if (section.id in state) section.classList.toggle('collapsed', !state[section.id]);
+    });
+  }
+  let panel = 'overview';
+  try { panel = sessionStorage.getItem('admin-active-panel') || 'overview'; } catch {}
+  switchAdminPanel(panel);
 }
 
 function updateReviewBadge() {

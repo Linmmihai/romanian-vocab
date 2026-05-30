@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2563eb">
+<title>English Phrase Trainer</title>
+<style>
+:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#94a3b8;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+button,input{font:inherit}
+button{cursor:pointer}
+.topbar{background:white;border-bottom:1px solid var(--border);padding:0 1rem;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+.topbar::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#2563eb,#10b981,#f59e0b)}
+.brand{font-size:18px;font-weight:800}
+.badge{font-size:11px;background:var(--blue-bg);color:var(--blue-text);padding:2px 8px;border-radius:99px;font-weight:700}
+.top-actions{display:flex;align-items:center;gap:8px}
+.btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;color:var(--text2)}
+.btn-sm:hover{background:var(--bg2)}
+.shell{max-width:860px;margin:0 auto;padding:18px 14px 28px}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.stat{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow)}
+.stat-n{font-size:23px;font-weight:800;line-height:1.1}
+.stat-l{font-size:11px;color:var(--text3);margin-top:4px}
+.controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-bottom:14px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;padding:7px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2)}
+.chip.active{background:var(--text);border-color:var(--text);color:white}
+.tools{display:flex;gap:8px}
+.phrase-card{background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:12px}
+.card-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:grid;gap:10px}
+.meta-row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.category{font-size:12px;font-weight:800;color:var(--blue-text);background:var(--blue-bg);padding:4px 10px;border-radius:99px}
+.tone{font-size:12px;font-weight:800;color:var(--yellow-text);background:var(--yellow-bg);padding:4px 10px;border-radius:99px}
+.phrase{font-size:34px;line-height:1.16;font-weight:850;letter-spacing:0}
+.meaning{font-size:16px;color:var(--text2);font-weight:650}
+.card-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)}
+.block{padding:17px 20px;min-width:0}
+.block+.block{border-left:1px solid var(--border)}
+.label{font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.zh{font-size:15px;color:var(--text);font-weight:650}
+.example{font-size:15px;color:var(--text);font-weight:650}
+.note{font-size:14px;color:var(--text2)}
+.card-actions{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:14px 18px;background:var(--bg2)}
+.nav-group,.mark-group{display:flex;gap:8px;align-items:center}
+.nav-btn,.mark-btn{padding:9px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text);font-size:14px;font-weight:750}
+.mark-btn.learning{border-color:var(--yellow);color:var(--yellow-text)}
+.mark-btn.known{border-color:var(--green);color:var(--green-text)}
+.mark-btn.active.learning{background:var(--yellow-bg)}
+.mark-btn.active.known{background:var(--green-bg)}
+.counter{text-align:center;color:var(--text2);font-size:13px;font-weight:700}
+.library{display:grid;gap:6px}
+.library-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;box-shadow:var(--shadow);text-align:left;color:var(--text)}
+.library-main{min-width:0}
+.library-phrase{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.library-meta{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--bg3)}
+.status-dot.learning{background:var(--yellow)}
+.status-dot.known{background:var(--green)}
+.empty{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:30px;text-align:center;color:var(--text2)}
+@media(max-width:680px){
+  .topbar{height:auto;min-height:54px;padding:10px 12px;gap:8px;align-items:flex-start}
+  .brand{font-size:16px}.top-actions{flex-wrap:wrap;justify-content:flex-end}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .controls{grid-template-columns:1fr}.tools{justify-content:stretch}.tools .btn-sm{flex:1}
+  .phrase{font-size:27px}.card-body{grid-template-columns:1fr}.block+.block{border-left:none;border-top:1px solid var(--border)}
+  .card-actions{grid-template-columns:1fr;gap:12px}.nav-group,.mark-group{justify-content:stretch}.nav-btn,.mark-btn{flex:1}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <div class="brand">English Phrase Trainer</div>
+    <div class="badge">B2-C1 practical expressions</div>
+  </div>
+  <div class="top-actions">
+    <a class="btn-sm" href="index.html">Romanian app</a>
+    <button class="btn-sm" id="reset-btn" type="button">Reset progress</button>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="summary" aria-label="Progress summary">
+    <div class="stat"><div class="stat-n" id="total-count">0</div><div class="stat-l">Total</div></div>
+    <div class="stat"><div class="stat-n" id="known-count" style="color:var(--green-text)">0</div><div class="stat-l">Known</div></div>
+    <div class="stat"><div class="stat-n" id="learning-count" style="color:var(--yellow-text)">0</div><div class="stat-l">Learning</div></div>
+    <div class="stat"><div class="stat-n" id="remaining-count">0</div><div class="stat-l">Remaining</div></div>
+  </section>
+
+  <section class="controls" aria-label="Phrase controls">
+    <div class="chips" id="category-chips"></div>
+    <div class="tools">
+      <button class="btn-sm" id="shuffle-btn" type="button">Shuffle</button>
+      <button class="btn-sm" id="unlearned-btn" type="button">Next unlearned</button>
+    </div>
+  </section>
+
+  <section class="phrase-card" aria-live="polite">
+    <div class="card-head">
+      <div class="meta-row">
+        <span class="category" id="phrase-category"></span>
+        <span class="tone" id="phrase-tone"></span>
+      </div>
+      <h1 class="phrase" id="phrase-text"></h1>
+      <div class="meaning" id="phrase-meaning"></div>
+    </div>
+    <div class="card-body">
+      <div class="block">
+        <div class="label">Chinese explanation</div>
+        <div class="zh" id="phrase-zh"></div>
+      </div>
+      <div class="block">
+        <div class="label">Example</div>
+        <div class="example" id="phrase-example"></div>
+      </div>
+      <div class="block">
+        <div class="label">Usage note</div>
+        <div class="note" id="phrase-note"></div>
+      </div>
+      <div class="block">
+        <div class="label">Useful pattern</div>
+        <div class="note" id="phrase-pattern"></div>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="nav-group">
+        <button class="nav-btn" id="prev-btn" type="button">Previous</button>
+        <button class="nav-btn" id="next-btn" type="button">Next</button>
+      </div>
+      <div class="counter" id="card-counter"></div>
+      <div class="mark-group">
+        <button class="mark-btn learning" id="learning-btn" type="button">Learning</button>
+        <button class="mark-btn known" id="known-btn" type="button">Known</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="library" id="phrase-library" aria-label="Phrase library"></section>
+</main>
+
+<script>
+const STORAGE_KEY = "english_phrase_progress:v1";
+const CATEGORIES = ["All", "Business", "Daily", "Politics", "AI"];
+const PHRASES = [
+  { id:"biz-1", category:"Business", tone:"formal", phrase:"move the needle", meaning:"to make a measurable difference", zh:"带来真正可见的影响，而不只是做了很多动作。", example:"The campaign was well received, but it did not move the needle on revenue.", note:"Use when discussing impact, metrics, growth, or performance.", pattern:"This will / will not move the needle on ..." },
+  { id:"biz-2", category:"Business", tone:"neutral", phrase:"align on priorities", meaning:"to agree on what matters most", zh:"把优先级对齐，确认大家先做什么、后做什么。", example:"Before we allocate budget, we need to align on priorities.", note:"Good for meetings, planning, and cross-team work.", pattern:"Let's align on priorities before ..." },
+  { id:"biz-3", category:"Business", tone:"formal", phrase:"a trade-off worth making", meaning:"a compromise that is acceptable because the benefit is stronger", zh:"值得接受的取舍，常用于解释为什么放弃一部分东西。", example:"A longer onboarding flow is a trade-off worth making if it improves activation.", note:"Useful when defending a decision with costs and benefits.", pattern:"X is a trade-off worth making if ..." },
+  { id:"biz-4", category:"Business", tone:"neutral", phrase:"get buy-in", meaning:"to earn support or agreement from stakeholders", zh:"争取关键人的支持，让他们愿意接受或推动这个方案。", example:"We should get buy-in from legal before announcing the policy.", note:"Common in corporate settings; more natural than simply saying get agreement.", pattern:"get buy-in from ..." },
+  { id:"biz-5", category:"Business", tone:"neutral", phrase:"under pressure to deliver", meaning:"expected to produce results quickly or reliably", zh:"面临交付压力，通常来自时间、预算或业绩目标。", example:"The team is under pressure to deliver before the quarter closes.", note:"Works for teams, leaders, companies, and projects.", pattern:"be under pressure to deliver ..." },
+  { id:"biz-6", category:"Business", tone:"formal", phrase:"a defensible position", meaning:"a view or decision that can be justified with reasons or evidence", zh:"站得住脚的立场或方案，经得起质疑。", example:"Given the data we have, delaying the launch is a defensible position.", note:"Useful in strategy, legal, policy, and executive communication.", pattern:"It is a defensible position to ..." },
+  { id:"daily-1", category:"Daily", tone:"conversational", phrase:"I see where you are coming from", meaning:"I understand your perspective or concern", zh:"我理解你的出发点或担心，但不一定完全同意。", example:"I see where you are coming from, but I think the timeline is still realistic.", note:"A polite way to disagree or soften a response.", pattern:"I see where you are coming from, but ..." },
+  { id:"daily-2", category:"Daily", tone:"neutral", phrase:"to be on the same page", meaning:"to share the same understanding", zh:"大家理解一致，没有信息差。", example:"Let's make sure we are on the same page before we reply.", note:"Very common in work and everyday coordination.", pattern:"make sure we are on the same page about ..." },
+  { id:"daily-3", category:"Daily", tone:"conversational", phrase:"that is fair", meaning:"that is reasonable or acceptable", zh:"这个说法或要求是合理的。", example:"That is fair. I should have shared the context earlier.", note:"Short, natural response when acknowledging a point.", pattern:"That is fair, but ..." },
+  { id:"daily-4", category:"Daily", tone:"neutral", phrase:"take it at face value", meaning:"accept something as it appears without looking for hidden meaning", zh:"按表面意思理解，不去猜背后的动机。", example:"I would take the statement at face value for now.", note:"Useful when evaluating messages, promises, and public statements.", pattern:"take X at face value" },
+  { id:"daily-5", category:"Daily", tone:"conversational", phrase:"it depends on the context", meaning:"the answer changes depending on the situation", zh:"要看具体语境，不能一概而论。", example:"Whether the phrase sounds rude depends on the context.", note:"A precise response for language, culture, and judgment questions.", pattern:"It depends on the context: ..." },
+  { id:"daily-6", category:"Daily", tone:"neutral", phrase:"not necessarily", meaning:"not always; not as a direct conclusion", zh:"不一定，表示对方的推论太快或太绝对。", example:"Higher prices do not necessarily mean better quality.", note:"Useful for careful disagreement.", pattern:"X does not necessarily mean Y." },
+  { id:"pol-1", category:"Politics", tone:"formal", phrase:"shape public opinion", meaning:"to influence how the public thinks about an issue", zh:"影响公众舆论或社会看法。", example:"Media framing can shape public opinion during an election.", note:"Common in politics, communications, and current affairs.", pattern:"shape public opinion on ..." },
+  { id:"pol-2", category:"Politics", tone:"formal", phrase:"a matter of public interest", meaning:"an issue that affects or concerns society broadly", zh:"公共利益相关议题，不只是私人问题。", example:"The use of facial recognition is a matter of public interest.", note:"Useful in policy, journalism, and civic debate.", pattern:"This is a matter of public interest because ..." },
+  { id:"pol-3", category:"Politics", tone:"formal", phrase:"hold someone accountable", meaning:"make someone answer for their actions or decisions", zh:"追责，让相关人对行为或决策负责。", example:"Voters need mechanisms to hold leaders accountable.", note:"Stronger than criticize; it implies responsibility and consequences.", pattern:"hold X accountable for ..." },
+  { id:"pol-4", category:"Politics", tone:"formal", phrase:"draw a clear line", meaning:"set a firm boundary or distinction", zh:"划清界限，明确什么可接受、什么不可接受。", example:"Regulators need to draw a clear line between advice and manipulation.", note:"Works for ethics, law, policy, and social norms.", pattern:"draw a clear line between X and Y" },
+  { id:"pol-5", category:"Politics", tone:"neutral", phrase:"politically sensitive", meaning:"likely to cause public, diplomatic, or ideological tension", zh:"政治敏感，容易引发争议、压力或误解。", example:"The timing of the visit is politically sensitive.", note:"Useful for diplomatic, business, and public communication contexts.", pattern:"a politically sensitive issue / topic / decision" },
+  { id:"pol-6", category:"Politics", tone:"formal", phrase:"the broader implications", meaning:"the wider possible effects beyond the immediate case", zh:"更广泛的影响，尤其是长期或外溢后果。", example:"We should consider the broader implications of the new law.", note:"A strong phrase for analytical speaking and writing.", pattern:"consider the broader implications of ..." },
+  { id:"ai-1", category:"AI", tone:"formal", phrase:"human in the loop", meaning:"a process where humans review, guide, or approve an AI system", zh:"人在环节中参与审核、判断或干预，而不是完全自动化。", example:"For high-risk decisions, we need a human in the loop.", note:"Common in AI governance, automation, and product design.", pattern:"keep a human in the loop for ..." },
+  { id:"ai-2", category:"AI", tone:"formal", phrase:"model behavior", meaning:"how an AI system responds or acts across situations", zh:"模型在不同场景下的表现方式，包括回答风格、偏差和稳定性。", example:"The update changed the model behavior in edge cases.", note:"Use when discussing reliability, safety, and evaluation.", pattern:"evaluate / adjust / observe model behavior" },
+  { id:"ai-3", category:"AI", tone:"formal", phrase:"guardrails", meaning:"rules or constraints that keep a system within acceptable behavior", zh:"安全边界或约束，防止系统输出不合适内容或执行危险操作。", example:"The product needs stronger guardrails before enterprise deployment.", note:"Common in AI safety and product risk conversations.", pattern:"put guardrails around ..." },
+  { id:"ai-4", category:"AI", tone:"neutral", phrase:"garbage in, garbage out", meaning:"poor input data leads to poor output", zh:"输入质量差，输出也不会好。", example:"If the source data is unreliable, it is garbage in, garbage out.", note:"Informal but widely understood in data and AI discussions.", pattern:"It is a case of garbage in, garbage out." },
+  { id:"ai-5", category:"AI", tone:"formal", phrase:"at scale", meaning:"across a large number of users, cases, or operations", zh:"大规模地，不只是小范围测试。", example:"The feature works in demos, but we have not tested it at scale.", note:"Useful for AI deployment, business operations, and infrastructure.", pattern:"work / deploy / evaluate at scale" },
+  { id:"ai-6", category:"AI", tone:"formal", phrase:"the cost of false positives", meaning:"the harm or expense caused when a system wrongly flags something", zh:"误报成本，把正常情况错误识别为异常所造成的损失。", example:"In fraud detection, the cost of false positives can be customer frustration.", note:"Precise phrase for risk, moderation, security, and evaluation.", pattern:"weigh the cost of false positives against ..." }
+];
+
+let progress = {};
+let activeCategory = "All";
+let activeIndex = 0;
+let visiblePhrases = [];
+
+function readProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    progress = raw ? JSON.parse(raw) || {} : {};
+  } catch {
+    progress = {};
+  }
+}
+
+function saveProgress() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+}
+
+function currentPhrase() {
+  return visiblePhrases[activeIndex] || visiblePhrases[0] || PHRASES[0];
+}
+
+function phraseStatus(id) {
+  return progress[id]?.status || "";
+}
+
+function applyFilter() {
+  visiblePhrases = activeCategory === "All"
+    ? [...PHRASES]
+    : PHRASES.filter(item => item.category === activeCategory);
+  activeIndex = Math.min(activeIndex, Math.max(visiblePhrases.length - 1, 0));
+  render();
+}
+
+function renderChips() {
+  const wrap = document.getElementById("category-chips");
+  wrap.innerHTML = CATEGORIES.map(cat => {
+    const count = cat === "All" ? PHRASES.length : PHRASES.filter(item => item.category === cat).length;
+    const active = cat === activeCategory ? " active" : "";
+    return `<button class="chip${active}" type="button" data-category="${cat}">${cat} ${count}</button>`;
+  }).join("");
+}
+
+function renderStats() {
+  const known = PHRASES.filter(item => phraseStatus(item.id) === "known").length;
+  const learning = PHRASES.filter(item => phraseStatus(item.id) === "learning").length;
+  document.getElementById("total-count").textContent = PHRASES.length;
+  document.getElementById("known-count").textContent = known;
+  document.getElementById("learning-count").textContent = learning;
+  document.getElementById("remaining-count").textContent = Math.max(0, PHRASES.length - known - learning);
+}
+
+function renderCard() {
+  if (!visiblePhrases.length) {
+    document.querySelector(".phrase-card").innerHTML = `<div class="empty">No phrases in this category.</div>`;
+    return;
+  }
+  const item = currentPhrase();
+  const status = phraseStatus(item.id);
+  document.getElementById("phrase-category").textContent = item.category;
+  document.getElementById("phrase-tone").textContent = item.tone;
+  document.getElementById("phrase-text").textContent = item.phrase;
+  document.getElementById("phrase-meaning").textContent = item.meaning;
+  document.getElementById("phrase-zh").textContent = item.zh;
+  document.getElementById("phrase-example").textContent = item.example;
+  document.getElementById("phrase-note").textContent = item.note;
+  document.getElementById("phrase-pattern").textContent = item.pattern;
+  document.getElementById("card-counter").textContent = `${activeIndex + 1} / ${visiblePhrases.length}`;
+  document.getElementById("learning-btn").classList.toggle("active", status === "learning");
+  document.getElementById("known-btn").classList.toggle("active", status === "known");
+}
+
+function renderLibrary() {
+  const wrap = document.getElementById("phrase-library");
+  wrap.innerHTML = visiblePhrases.map((item, index) => {
+    const status = phraseStatus(item.id);
+    return `<button class="library-row" type="button" data-index="${index}">
+      <span class="library-main">
+        <span class="library-phrase">${item.phrase}</span>
+        <span class="library-meta">${item.category} · ${item.meaning}</span>
+      </span>
+      <span class="status-dot ${status}" aria-label="${status || "not started"}"></span>
+    </button>`;
+  }).join("");
+}
+
+function render() {
+  renderChips();
+  renderStats();
+  renderCard();
+  renderLibrary();
+}
+
+function move(delta) {
+  if (!visiblePhrases.length) return;
+  activeIndex = (activeIndex + delta + visiblePhrases.length) % visiblePhrases.length;
+  render();
+}
+
+function setStatus(status) {
+  const item = currentPhrase();
+  if (!item) return;
+  if (phraseStatus(item.id) === status) {
+    delete progress[item.id];
+  } else {
+    progress[item.id] = { status, updatedAt: new Date().toISOString() };
+  }
+  saveProgress();
+  render();
+}
+
+function shuffleVisible() {
+  for (let i = visiblePhrases.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [visiblePhrases[i], visiblePhrases[j]] = [visiblePhrases[j], visiblePhrases[i]];
+  }
+  activeIndex = 0;
+  render();
+}
+
+function nextUnlearned() {
+  const next = visiblePhrases.findIndex(item => phraseStatus(item.id) !== "known");
+  activeIndex = next >= 0 ? next : 0;
+  render();
+}
+
+document.getElementById("category-chips").addEventListener("click", event => {
+  const button = event.target.closest("[data-category]");
+  if (!button) return;
+  activeCategory = button.dataset.category;
+  activeIndex = 0;
+  applyFilter();
+});
+
+document.getElementById("phrase-library").addEventListener("click", event => {
+  const row = event.target.closest("[data-index]");
+  if (!row) return;
+  activeIndex = Number(row.dataset.index) || 0;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+document.getElementById("prev-btn").addEventListener("click", () => move(-1));
+document.getElementById("next-btn").addEventListener("click", () => move(1));
+document.getElementById("learning-btn").addEventListener("click", () => setStatus("learning"));
+document.getElementById("known-btn").addEventListener("click", () => setStatus("known"));
+document.getElementById("shuffle-btn").addEventListener("click", shuffleVisible);
+document.getElementById("unlearned-btn").addEventListener("click", nextUnlearned);
+document.getElementById("reset-btn").addEventListener("click", () => {
+  if (!confirm("Reset all English phrase progress on this browser?")) return;
+  progress = {};
+  saveProgress();
+  render();
+});
+
+readProgress();
+applyFilter();
+</script>
+</body>
+</html>
