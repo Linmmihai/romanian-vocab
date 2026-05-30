@@ -58,10 +58,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .topbar-logo{font-size:18px;font-weight:700}
 .topbar-badge{font-size:11px;background:var(--blue-bg);color:var(--blue-text);padding:2px 8px;border-radius:99px;font-weight:500}
 .topbar-right{display:flex;align-items:center;gap:10px}
-.user-chip{font-size:13px;color:var(--text2)}
+.user-chip{font-size:13px;color:var(--text2);display:inline-flex;align-items:center;gap:6px}
+.founder-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;line-height:1;padding:4px 8px;border-radius:99px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-weight:800;white-space:nowrap}
+.bear-face{width:18px;height:18px;border-radius:50%;background:#b7793d;display:inline-block;position:relative;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.08)}
+.bear-face::before,.bear-face::after{content:"";position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#b7793d;border:2px solid #fff7ed}
+.bear-face::before{left:-2px}.bear-face::after{right:-2px}
+.bear-muzzle{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);width:10px;height:7px;border-radius:50%;background:#f6d7b0}
+.bear-muzzle::before{content:"";position:absolute;left:4px;top:1px;width:3px;height:2px;border-radius:50%;background:#5b341b}
+.bear-muzzle::after{content:"";position:absolute;left:2px;top:-5px;width:2px;height:2px;border-radius:50%;background:#1f2937;box-shadow:4px 0 0 #1f2937}
+.account-help{font-size:12px;line-height:1.55;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;margin-bottom:1rem}
+.account-menu-wrap{position:relative}
+.account-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:1001;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 10px 28px rgba(23,32,51,0.14);padding:6px;display:none;min-width:150px}
+.account-menu-wrap.open .account-menu{display:grid;gap:4px}
+.account-menu .btn-sm{width:100%;text-align:left;border:none;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.account-menu .btn-sm:hover{background:var(--bg2)}
 .btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
 .btn-sm:hover{background:var(--bg2)}
-.nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow-x:auto;scrollbar-width:none;position:relative;flex-wrap:nowrap}
+.nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow:visible;scrollbar-width:none;position:relative;flex-wrap:nowrap}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tab{white-space:nowrap;padding:8px 16px;border:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;position:relative}
 .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
@@ -111,6 +124,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .goal-setting-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
 .goal-extend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text2)}
 .goal-extend .btn-sm{padding:5px 9px;font-size:12px}
+.reminder-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text2);border-top:1px solid var(--border);padding-top:10px}
+.reminder-toggle{display:flex;align-items:center;gap:6px;font-weight:650;color:var(--text)}
+.reminder-row input[type=time]{padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;color:var(--text);background:white}
+#reminder-status{line-height:1.4}
 .card.flipped{transform:rotateY(180deg)}
 .card-face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;border-radius:14px}
 .card-back{transform:rotateY(180deg);background:var(--bg2);padding:0;overflow:hidden;justify-content:stretch}
@@ -361,6 +378,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="form-group"><label for="login-email">邮箱</label><input type="email" id="login-email" placeholder="your@email.com" autocomplete="email"></div>
       <div class="form-group"><label for="login-pass">密码</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
       <button type="submit" class="btn-primary">登录</button>
+      <div class="offline-note">忘记密码请联系管理员发送重置密码邮件。</div>
       <button type="button" class="btn-secondary" onclick="doOfflineLogin()">离线使用本机词库</button>
       <div class="offline-note">无需账号即可开始；进度会保存在本设备。</div>
     </form>
@@ -392,6 +410,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="topbar-right">
       <span class="user-chip" id="user-chip"></span>
       <span class="sync-badge" id="sync-badge"></span>
+      <div class="account-menu-wrap" id="account-menu-wrap">
+        <button class="btn-sm" onclick="toggleAccountMenu(event)">账号</button>
+        <div class="account-menu">
+          <button class="btn-sm" onclick="openAccountModal()">账号设置</button>
+          <button class="btn-sm" id="admin-tab" style="display:none" onclick="openAdminFromAccount()">管理员后台</button>
+        </div>
+      </div>
       <button class="btn-sm" onclick="doLogout()">退出</button>
     </div>
   </div>
@@ -407,7 +432,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="nav-menu">
         <button class="nav-tab" data-page="leaderboard" onclick="switchPage('leaderboard')">排行榜</button>
         <button class="nav-tab" data-page="guide" onclick="switchPage('guide')">指南</button>
-        <button class="nav-tab" data-page="admin" id="admin-tab" style="display:none" onclick="switchPage('admin')">管理员</button>
       </div>
     </div>
   </div>
@@ -499,6 +523,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <input type="number" id="goal-input" min="1" max="5000" style="width:72px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="20">
             <span style="font-size:13px;color:var(--text2)">个任务</span>
             <button class="btn-sm" onclick="saveGoalSetting()">保存</button>
+          </div>
+          <div class="reminder-row">
+            <label class="reminder-toggle"><input type="checkbox" id="reminder-enabled" onchange="saveDailyReminderSettings()"> 未完成时提醒</label>
+            <input type="time" id="reminder-time" value="20:30" onchange="saveDailyReminderSettings()">
+            <span id="reminder-status">提醒已关闭</span>
           </div>
         </div>
       </div>
@@ -863,6 +892,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div id="reports-container"><div class="empty-state">加载中...</div></div>
       </div>
     </div>
+    <div class="admin-section collapsed" id="admin-section-weekly-summary">
+      <div class="admin-section-header" onclick="toggleAdminSection('admin-section-weekly-summary')">
+        <span class="admin-section-title"><span class="admin-toggle">⌄</span>📨 用户周报</span>
+        <div class="admin-section-actions">
+          <button class="btn-sm" onclick="event.stopPropagation();copyAdminWeeklySummary()">复制周报</button>
+          <button class="btn-sm" onclick="event.stopPropagation();loadAdminWeeklySummary()">刷新</button>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <div style="padding:12px 14px;font-size:13px;color:var(--text2)">
+          汇总最近 7 天的任务完成、连续学习、正确率和需跟进用户。可复制后发送给管理员。
+        </div>
+        <div id="admin-weekly-summary-container"><div class="empty-state">加载中...</div></div>
+      </div>
+    </div>
     <div class="admin-section collapsed" id="admin-section-users">
       <div class="admin-section-header" onclick="toggleAdminSection('admin-section-users')">
         <span class="admin-section-title"><span class="admin-toggle">⌄</span>👤 用户管理</span>
@@ -882,6 +926,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="modal">
     <div class="modal-title">词条详情 <button class="modal-close" onclick="closeWordDetail()">✕</button></div>
     <div id="word-detail-body"></div>
+  </div>
+</div>
+
+<!-- ── 账号设置 ──────────────────────────────────────── -->
+<div class="modal-overlay" id="account-modal" style="display:none" onclick="if(event.target===this)closeAccountModal()">
+  <div class="modal">
+    <div class="modal-title">账号设置 <button class="modal-close" onclick="closeAccountModal()">✕</button></div>
+    <div class="account-help">
+      <div id="account-name-line" style="font-weight:700;color:var(--text);margin-bottom:4px"></div>
+      <div id="account-email-line"></div>
+      <div id="account-role-line"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAccountModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 重置密码 ──────────────────────────────────────── -->
+<div class="modal-overlay" id="password-reset-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">设置新密码</div>
+    <div class="account-help">请设置一个新的登录密码。完成后下次使用新密码登录。</div>
+    <div class="form-group"><label>新密码（至少 6 位）</label><input type="password" id="reset-new-pass" autocomplete="new-password" placeholder="请输入新密码"></div>
+    <div class="form-group"><label>确认新密码</label><input type="password" id="reset-confirm-pass" autocomplete="new-password" placeholder="再次输入新密码"></div>
+    <div class="modal-footer">
+      <button class="btn-save" id="reset-save" onclick="saveRecoveredPassword()">保存新密码</button>
+    </div>
   </div>
 </div>
 
@@ -986,10 +1058,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
-<script src="api.js?v=20260517-leaderboard-pagination"></script>
-<script src="auth.js?v=20260516-memory3"></script>
+<script src="api.js?v=20260529-account-admin-menu"></script>
+<script src="auth.js?v=20260529-account-admin-menu"></script>
 <script src="stress_grammar_patch.js?v=20260516-memory3"></script>
-<script src="app.js?v=20260517-leaderboard-pagination"></script>
+<script src="app.js?v=20260529-account-admin-menu"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {

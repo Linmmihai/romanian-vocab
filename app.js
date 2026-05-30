@@ -36,6 +36,7 @@ let qRoundTotal = 0;  // 本轮答题
 let qStarted = false;
 let qScopedPracticePool = null;
 let qScopedPracticePoolKey = '';
+let lastLearningHint = '';
 
 let editingWordId = null;
 let editingReportId = null;
@@ -62,6 +63,14 @@ let todayLog = null;
 const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
 let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
+let dailyReminderTimer = null;
+let adminWeeklySummaryText = '';
+
+const DEFAULT_REMINDER_SETTINGS = {
+  enabled: false,
+  time: '20:30',
+  lastSentDate: ''
+};
 
 function wrongbookStreakKey() {
   return `wrongbook_streaks:${currentUser?.id || 'local'}`;
@@ -259,6 +268,7 @@ async function onLogin(user) {
   await loadProgress();
   await loadTodayLog();
   await loadDailyQueue();
+  setupDailyReminderChecks();
 
   if (userRole === 'admin') refreshAdminBadge();
   if (isOfflineMode()) setSyncBadge('本机保存', 'saved');
@@ -438,12 +448,13 @@ function getDailyWordList(words = W, options = {}) {
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
     : words.filter(w => w.cat === curCat);
-  const queueWords = todayQueue
+  const openQueuedRos = todayQueue.filter(ro => !todayQueueCompleted.has(ro));
+  const queueWords = openQueuedRos
     .map(ro => scoped.find(w => w.ro === ro))
     .filter(Boolean)
-    .filter(w => !todayQueueCompleted.has(w.ro));
+    .filter(w => !isRetryDeferred(w));
   if (queueWords.length || !includeFallback) return queueWords.slice(0, limit);
-  if (todayQueue.some(ro => !todayQueueCompleted.has(ro))) return [];
+  if (openQueuedRos.length && curCat !== '全部') return [];
   if (todayNewWords >= dailyGoal) return [];
 
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue]);
@@ -586,6 +597,7 @@ const LEVEL_COLOR = { unknown: 'var(--text3)', learning: 'var(--yellow)', master
 const LEVEL_BG    = { unknown: 'var(--bg3)', learning: '#fffbeb', mastered: 'var(--green-bg)' };
 const LEVEL_TC    = { unknown: 'var(--text2)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
 const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
+const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
 const REVIEW_INTERVALS = [
   { label: '20分钟', ms: 20 * 60 * 1000 },
   { label: '1天', ms: 24 * 60 * 60 * 1000 },
@@ -790,7 +802,7 @@ function getNextReview(progress, success) {
   if (!success) {
     return {
       reviewStage: 0,
-      nextReviewAt: now.toISOString(),
+      nextReviewAt: new Date(now.getTime() + LEARNING_RETRY_INTERVAL.ms).toISOString(),
       lastReviewedAt: now.toISOString()
     };
   }
@@ -802,6 +814,12 @@ function getNextReview(progress, success) {
     nextReviewAt: new Date(now.getTime() + interval.ms).toISOString(),
     lastReviewedAt: now.toISOString()
   };
+}
+
+function isRetryDeferred(w) {
+  const p = progressMap[w?.ro];
+  if (!p || !p.nextReviewAt || !(p.qt || p.known)) return false;
+  return new Date(p.nextReviewAt).getTime() > Date.now();
 }
 
 function formatReviewDue(iso) {
@@ -973,11 +991,12 @@ function renderReviewPanel() {
     : (remainingDueReviews > 0 ? `先复习 ${nextBatch} 个` : `继续 ${Math.min(20, remainingSlots)} 个任务`);
   setText('flash-control-summary', summaryText);
   const taskType = current ? getDailyTaskType(current) : '';
-  setText('review-note', todayNewWords >= dailyGoal
+  const baseNote = todayNewWords >= dailyGoal
     ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
     : (remainingDueReviews > 0
       ? `先完成一组 ${nextBatch} 个到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`
-      : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`));
+      : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`);
+  setText('review-note', lastLearningHint || baseNote);
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
 }
@@ -1125,7 +1144,7 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: { preserveLearningLevel: true, trackWrongbook: true }
+      options: { preserveLearningLevel: true, trackWrongbook: shouldTrackWrongbookForMiss(prev) }
     };
   },
   quiz_correct(prev) {
@@ -1143,7 +1162,7 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: { trackWrongbook: true }
+      options: { trackWrongbook: shouldTrackWrongbookForMiss(prev) }
     };
   },
   wrongbook_correct(prev) {
@@ -1175,6 +1194,10 @@ const INTERACTION_RULES = {
   }
 };
 
+function shouldTrackWrongbookForMiss(prev = {}) {
+  return !!(prev.known || (prev.qr || 0) > 0 || prev.level === 'mastered' || getStoredLevel(prev) === 'mastered');
+}
+
 async function recordInteraction(wordRo, interactionType) {
   const rule = INTERACTION_RULES[interactionType];
   if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
@@ -1201,6 +1224,7 @@ function switchPage(p) {
     if (page) page.classList.toggle('active', s === p);
   });
   document.getElementById('nav-more')?.classList.remove('open');
+  closeAccountMenu?.();
   const reviewPage = document.getElementById('page-review');
   if (reviewPage) reviewPage.classList.remove('active');
   if (p === 'flash') { applyFilters(); renderCard(); renderDailyGoal(); renderCalendar(); }
@@ -1209,7 +1233,7 @@ function switchPage(p) {
   if (p === 'leaderboard') renderLeaderboard();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
-  if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminPendingWords(); loadAdminReports(); loadAdminUsers(); }
+  if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminPendingWords(); loadAdminReports(); loadAdminUsers(); loadAdminWeeklySummary(); }
 }
 
 function toggleNavMenu(event) {
@@ -1235,6 +1259,8 @@ document.addEventListener('click', (event) => {
 
   const menu = document.getElementById('nav-more');
   if (menu && !menu.contains(event.target)) menu.classList.remove('open');
+  const accountMenu = document.getElementById('account-menu-wrap');
+  if (accountMenu && !accountMenu.contains(event.target)) accountMenu.classList.remove('open');
 });
 
 function getActivePageId() {
@@ -1268,6 +1294,8 @@ function closeTopModal() {
   const modals = [
     ['add-word-modal', closeAddWordModal],
     ['edit-modal', closeEditModal],
+    ['account-modal', closeAccountModal],
+    ['password-reset-modal', closePasswordResetModal],
     ['report-modal', closeReportModal],
     ['word-detail-modal', closeWordDetail]
   ];
@@ -1381,8 +1409,11 @@ document.addEventListener('keydown', (event) => {
     const navMore = document.getElementById('nav-more');
     const hadNavMenu = !!navMore?.classList.contains('open');
     if (hadNavMenu) navMore.classList.remove('open');
+    const accountMenu = document.getElementById('account-menu-wrap');
+    const hadAccountMenu = !!accountMenu?.classList.contains('open');
+    if (hadAccountMenu) accountMenu.classList.remove('open');
     const hadCatMenu = Array.from(document.querySelectorAll('.cat-more[open]')).some(el => { el.open = false; return true; });
-    const handled = closeTopModal() || hadNavMenu || hadCatMenu;
+    const handled = closeTopModal() || hadNavMenu || hadAccountMenu || hadCatMenu;
     if (handled) event.preventDefault();
     return;
   }
@@ -1455,6 +1486,7 @@ function renderDailyGoal() {
         <button class="btn-sm" onclick="extendTodayGoal(50)">+50</button>
         <button class="btn-sm" onclick="extendTodayGoalCustom()">自定义</button>
       </div>` : ''}`;
+  renderDailyReminderSettings();
 }
 
 async function saveGoalSetting() {
@@ -1464,6 +1496,99 @@ async function saveGoalSetting() {
     return;
   }
   await setDailyGoalAndRebuild(val);
+}
+
+function reminderSettingsKey() {
+  return `daily_goal_reminder:${currentUser?.id || 'local'}`;
+}
+
+function readReminderSettings() {
+  try {
+    return { ...DEFAULT_REMINDER_SETTINGS, ...(JSON.parse(localStorage.getItem(reminderSettingsKey()) || '{}') || {}) };
+  } catch {
+    return { ...DEFAULT_REMINDER_SETTINGS };
+  }
+}
+
+function writeReminderSettings(settings) {
+  localStorage.setItem(reminderSettingsKey(), JSON.stringify({ ...DEFAULT_REMINDER_SETTINGS, ...settings }));
+}
+
+function renderDailyReminderSettings() {
+  const enabled = document.getElementById('reminder-enabled');
+  const time = document.getElementById('reminder-time');
+  const status = document.getElementById('reminder-status');
+  if (!enabled || !time || !status) return;
+  const settings = readReminderSettings();
+  enabled.checked = !!settings.enabled;
+  time.value = settings.time || DEFAULT_REMINDER_SETTINGS.time;
+  const remaining = Math.max(0, dailyGoal - todayNewWords);
+  const permission = getNotificationPermissionLabel();
+  status.textContent = settings.enabled
+    ? (remaining ? `未完成时 ${settings.time} 提醒；当前剩余 ${remaining} 个。${permission}` : `今日已完成。${permission}`)
+    : '提醒已关闭';
+}
+
+async function saveDailyReminderSettings() {
+  const enabled = document.getElementById('reminder-enabled');
+  const time = document.getElementById('reminder-time');
+  if (!enabled || !time) return;
+  const next = {
+    ...readReminderSettings(),
+    enabled: !!enabled.checked,
+    time: time.value || DEFAULT_REMINDER_SETTINGS.time
+  };
+  if (next.enabled && 'Notification' in window && Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch {}
+  }
+  writeReminderSettings(next);
+  setupDailyReminderChecks();
+  renderDailyReminderSettings();
+  showToast(next.enabled ? '每日提醒已开启' : '每日提醒已关闭');
+}
+
+function getNotificationPermissionLabel() {
+  if (!('Notification' in window)) return '当前设备不支持系统通知。';
+  if (Notification.permission === 'granted') return '系统通知已允许。';
+  if (Notification.permission === 'denied') return '系统通知被浏览器关闭，将只显示应用内提醒。';
+  return '首次提醒前会请求通知权限。';
+}
+
+function setupDailyReminderChecks() {
+  if (dailyReminderTimer) clearInterval(dailyReminderTimer);
+  dailyReminderTimer = setInterval(checkDailyGoalReminder, 60 * 1000);
+  checkDailyGoalReminder();
+}
+
+function checkDailyGoalReminder() {
+  if (!currentUser || userRole === 'pending') return;
+  const settings = readReminderSettings();
+  if (!settings.enabled || todayNewWords >= dailyGoal) return;
+  const now = new Date();
+  const today = getDateKeyFor(now);
+  if (settings.lastSentDate === today) return;
+  const [hour, minute] = String(settings.time || DEFAULT_REMINDER_SETTINGS.time).split(':').map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return;
+  const reminderAt = new Date(now);
+  reminderAt.setHours(hour, minute, 0, 0);
+  if (now < reminderAt) return;
+  sendDailyGoalReminder();
+  writeReminderSettings({ ...settings, lastSentDate: today });
+  renderDailyReminderSettings();
+}
+
+function sendDailyGoalReminder() {
+  const remaining = Math.max(0, dailyGoal - todayNewWords);
+  const message = `今日任务还差 ${remaining} 个，完成后会计入连续学习。`;
+  showToast(message);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('罗语词汇每日提醒', {
+        body: message,
+        tag: `romanian-vocab-daily-${currentUser?.id || 'local'}-${getDateKeyFor(new Date())}`
+      });
+    } catch {}
+  }
 }
 
 function invalidateCalendarCache() {
@@ -1728,7 +1853,18 @@ async function markCard(yes) {
     ? (yes ? 'review_correct' : 'review_wrong')
     : (isReviewTask ? (yes ? 'review_correct' : 'review_wrong') : (yes ? 'flashcard_known' : 'flashcard_unknown'));
   await recordInteraction(w.ro, interaction);
-  if (flashMode === 'today') await completeTodayQueueWord(w.ro);
+  if (flashMode === 'today' && yes) {
+    lastLearningHint = '';
+    await completeTodayQueueWord(w.ro);
+  } else if (flashMode === 'today') {
+    lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；记住后才会计入完成。`;
+    await saveTodayQueue();
+    renderDailyGoal();
+    renderReviewPanel();
+    updateReviewBadge();
+  } else if (!yes) {
+    showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；新词不会进入错题本`);
+  }
   // 跳下一张，重置为中文面
   if (!wasReviewingHistory) flashHistory.push(w.ro);
   flashOverrideRo = null;
@@ -1939,6 +2075,10 @@ async function markReview(yes) {
   const w = reviewQueue[reviewIdx];
   await recordInteraction(w.ro, yes ? 'review_correct' : 'review_wrong');
 
+  if (!yes) {
+    reviewQueue.push(w);
+    showToast('已放回复习队列，稍后会再次出现');
+  }
   reviewIdx++;
   if (reviewIdx >= reviewQueue.length) {
     showReviewComplete();
@@ -1955,7 +2095,7 @@ function showReviewComplete() {
   empty.style.display = 'flex';
   empty.innerHTML = `
       <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">今日复习完成</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">完成了 ${reviewQueue.length} 个复习任务</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">完成了 ${reviewQueue.length} 次复习操作</div>
       <button class="btn-sm" onclick="switchPage('flash')">去今日任务</button>
     `;
 }
@@ -1963,7 +2103,7 @@ function showReviewComplete() {
 // ── 错题本 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否是错题：只统计测验模式中答错过的词。
+ * 判断一个词是否是错题：只统计测验模式或错题本练习中答错过的词。
  */
 function isWrongWord(wordRo) {
   const p = progressMap[wordRo];
@@ -2931,6 +3071,8 @@ async function renderLeaderboard() {
       const s = calcProgressSummary(byUser[u.id] || {});
       return {
         id: u.id,
+        email: u.email || '',
+        isFounder: typeof isFounderAccount === 'function' && isFounderAccount(u),
         name: u.nickname || (u.email ? u.email.split('@')[0] : '同学'),
         ...s,
         streak: calcStreak(logsByUser[u.id] || [])
@@ -2946,7 +3088,7 @@ async function renderLeaderboard() {
       <div class="rank-row${u.id === currentUser.id ? ' me' : ''}">
         <div class="rank-no">${i + 1}</div>
         <div>
-          <div class="rank-name">${escapeHtml(u.name)}${u.id === currentUser.id ? ' · 我' : ''}</div>
+          <div class="rank-name">${escapeHtml(u.name)}${u.id === currentUser.id ? ' · 我' : ''}${u.isFounder && typeof founderBadgeHtml === 'function' ? ' ' + founderBadgeHtml() : ''}</div>
           <div class="rank-meta">正确率 ${u.accuracy}% · 连续 ${u.streak} 天 · 练习 ${u.qt} 次</div>
         </div>
         <div class="rank-score"><strong>${u.mastered}</strong>已掌握</div>
@@ -3885,6 +4027,7 @@ async function refreshAdminBadge() {
   ]);
   const count = (reports.status === 'fulfilled' ? reports.value : 0) + (words.status === 'fulfilled' ? words.value : 0);
   const tab = document.getElementById('admin-tab');
+  if (!tab) return;
   let badge = tab.querySelector('.badge');
   if (count > 0) {
     if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; tab.appendChild(badge); }
@@ -3945,15 +4088,27 @@ async function loadAdminUsers() {
     document.getElementById('users-container').innerHTML = data.map(u => `
       <div class="user-row">
         <div style="flex:1;min-width:0">
-          <div class="user-email">${escapeHtml(u.email || '')}</div>
+          <div class="user-email">${escapeHtml(u.email || '')}${typeof isFounderAccount === 'function' && isFounderAccount(u) && typeof founderBadgeHtml === 'function' ? ' ' + founderBadgeHtml() : ''}</div>
           <div class="user-nickname">${escapeHtml(u.nickname || '未设昵称')} · ${new Date(u.created_at).toLocaleDateString('zh')}</div>
         </div>
         <span class="role-badge role-${escapeHtml(u.role)}">${escapeHtml({ admin: '管理员', user: '已通过', pending: '待审批' }[u.role] || u.role)}</span>
+        ${u.email && u.role !== 'pending' ? `<button class="admin-btn edit" onclick="sendUserPasswordReset(decodeURIComponent('${encodedArg(u.email)}'))">重置密码邮件</button>` : ''}
         ${u.role === 'pending' ? `<button class="admin-btn approve" onclick="setUserRole(decodeURIComponent('${encodedArg(u.id)}'),'user')">✓ 通过</button><button class="admin-btn revoke" onclick="rejectUserProfile(decodeURIComponent('${encodedArg(u.id)}'),decodeURIComponent('${encodedArg(u.email || u.nickname || '')}'))">拒绝</button>` : ''}
         ${u.role === 'user' ? `<button class="admin-btn revoke" onclick="setUserRole(decodeURIComponent('${encodedArg(u.id)}'),'pending')">撤销</button>` : ''}
       </div>`).join('');
   } catch (e) {
     document.getElementById('users-container').innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
+
+async function sendUserPasswordReset(email) {
+  if (userRole !== 'admin') { showToast('只有管理员可以发送重置邮件'); return; }
+  if (!confirm(`向 ${email} 发送重置密码邮件？`)) return;
+  try {
+    await sendPasswordResetEmail(email);
+    showToast('重置密码邮件已发送');
+  } catch (e) {
+    showToast('发送失败：' + (e.message || '未知错误'));
   }
 }
 
@@ -3972,6 +4127,171 @@ async function rejectUserProfile(uid, label) {
   } catch (e) {
     showToast('拒绝失败：' + e.message);
   }
+}
+
+// ── 管理员：用户周报 ──────────────────────────────────────
+
+async function loadAdminWeeklySummary() {
+  const el = document.getElementById('admin-weekly-summary-container');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">加载中...</div>';
+  try {
+    const [usersResult, progressResult, logsResult] = await Promise.allSettled([
+      apiLoadLeaderboardUsers(),
+      apiLoadAllProgress(),
+      apiGetClassRecentLogs(30)
+    ]);
+    if (usersResult.status === 'rejected') throw usersResult.reason;
+    const users = (usersResult.value || []).filter(u => ['user', 'admin'].includes(u.role));
+    const progressRows = progressResult.status === 'fulfilled' ? progressResult.value : [];
+    const logs = logsResult.status === 'fulfilled' ? logsResult.value : [];
+    const rows = buildWeeklyUserRows(users, progressRows, logs);
+    adminWeeklySummaryText = buildWeeklySummaryText(rows);
+    renderAdminWeeklySummaryRows(rows, { progressFailed: progressResult.status === 'rejected', logsFailed: logsResult.status === 'rejected' });
+    maybeShowAdminWeeklyNudge(rows);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state">周报暂时无法读取：${escapeHtml(e.message || '未知错误')}</div>`;
+  }
+}
+
+function buildWeeklyUserRows(users, progressRows, logs) {
+  const progressByUser = {};
+  (progressRows || []).forEach(r => {
+    if (!progressByUser[r.user_id]) progressByUser[r.user_id] = {};
+    progressByUser[r.user_id][r.word_ro] = rowToProgress(r);
+  });
+  const logsByUser = {};
+  (logs || []).forEach(l => {
+    if (!logsByUser[l.user_id]) logsByUser[l.user_id] = [];
+    logsByUser[l.user_id].push(l);
+  });
+  const recentDates = buildRecentDays(7);
+  return users.map(u => {
+    const userLogs = logsByUser[u.id] || [];
+    const logByDate = {};
+    userLogs.forEach(l => { logByDate[l.log_date] = l; });
+    const filled = recentDates.map(date => {
+      const raw = logByDate[date];
+      const goal = Number(raw?.goal || u.daily_goal || 20);
+      const newWords = Number(raw?.new_words || 0);
+      const completed = isDailyLogCompleted({ ...raw, new_words: newWords, goal });
+      return { log_date: date, new_words: newWords, goal, completed };
+    });
+    const summary = calcProgressSummary(progressByUser[u.id] || {});
+    const tasks7 = filled.reduce((sum, l) => sum + Number(l.new_words || 0), 0);
+    const completedDays = filled.filter(l => l.completed).length;
+    const activeDays = filled.filter(l => Number(l.new_words || 0) > 0).length;
+    const missedDays = filled.filter(l => !l.completed).length;
+    const today = filled[filled.length - 1];
+    const yesterday = filled[filled.length - 2];
+    const risk = missedDays >= 5 || (!today?.completed && !yesterday?.completed);
+    return {
+      id: u.id,
+      name: u.nickname || (u.email ? u.email.split('@')[0] : '同学'),
+      email: u.email || '',
+      role: u.role,
+      dailyGoal: u.daily_goal || 20,
+      tasks7,
+      completedDays,
+      activeDays,
+      missedDays,
+      streak: calcStreak(userLogs),
+      accuracy: summary.accuracy,
+      mastered: summary.mastered,
+      qt: summary.qt,
+      risk
+    };
+  }).sort((a, b) =>
+    Number(b.risk) - Number(a.risk) ||
+    a.completedDays - b.completedDays ||
+    b.tasks7 - a.tasks7 ||
+    b.mastered - a.mastered
+  );
+}
+
+function renderAdminWeeklySummaryRows(rows, state = {}) {
+  const el = document.getElementById('admin-weekly-summary-container');
+  if (!el) return;
+  const active = rows.filter(r => r.activeDays > 0).length;
+  const needsAttention = rows.filter(r => r.risk).length;
+  const totalTasks = rows.reduce((sum, r) => sum + r.tasks7, 0);
+  const avgCompletedDays = rows.length ? (rows.reduce((sum, r) => sum + r.completedDays, 0) / rows.length).toFixed(1) : '0.0';
+  const topRows = [...rows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
+  const attentionRows = rows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
+  el.innerHTML = `
+    <div class="admin-stat-grid">
+      <div class="admin-stat"><div class="admin-stat-n">${rows.length}</div><div class="admin-stat-l">已通过用户</div></div>
+      <div class="admin-stat"><div class="admin-stat-n">${active}</div><div class="admin-stat-l">本周活跃</div></div>
+      <div class="admin-stat"><div class="admin-stat-n">${totalTasks}</div><div class="admin-stat-l">本周任务</div></div>
+      <div class="admin-stat"><div class="admin-stat-n">${avgCompletedDays}</div><div class="admin-stat-l">平均达标天</div></div>
+      <div class="admin-stat"><div class="admin-stat-n">${needsAttention}</div><div class="admin-stat-l">需关注</div></div>
+    </div>
+    <div class="admin-chart">
+      <div class="admin-chart-title">需要关注的用户</div>
+      ${attentionRows.length ? attentionRows.map(renderWeeklyUserRow).join('') : '<div class="empty-state">本周没有明显掉队用户</div>'}
+    </div>
+    <div class="admin-chart">
+      <div class="admin-chart-title">本周完成度最高</div>
+      ${topRows.length ? topRows.map(renderWeeklyUserRow).join('') : '<div class="empty-state">暂时没有用户数据</div>'}
+    </div>
+    ${(state.progressFailed || state.logsFailed) ? `<div class="empty-state">部分数据暂时无法读取：${state.logsFailed ? 'daily_log ' : ''}${state.progressFailed ? 'progress' : ''}</div>` : ''}`;
+}
+
+function renderWeeklyUserRow(row) {
+  const tag = row.risk ? '<span class="issue-tag">需跟进</span>' : '';
+  return `<div class="admin-word-row">
+    <div>
+      <div class="admin-word-name">${tag}${escapeHtml(row.name)}</div>
+      <div class="admin-word-meta">${escapeHtml(row.email)} · 达标 ${row.completedDays}/7 天 · 活跃 ${row.activeDays} 天 · 连续 ${row.streak} 天 · 正确率 ${row.accuracy}%</div>
+    </div>
+    <div class="admin-word-score">${row.tasks7}个</div>
+  </div>`;
+}
+
+function buildWeeklySummaryText(rows) {
+  const totalTasks = rows.reduce((sum, r) => sum + r.tasks7, 0);
+  const active = rows.filter(r => r.activeDays > 0).length;
+  const attention = rows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
+  const top = [...rows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
+  return [
+    `罗语词汇用户周报（${buildRecentDays(7)[0]} 至 ${buildRecentDays(7)[6]}）`,
+    `已通过用户：${rows.length}；本周活跃：${active}；本周任务总数：${totalTasks}`,
+    '',
+    '需要关注：',
+    ...(attention.length ? attention.map(r => `- ${r.name}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，连续 ${r.streak} 天，正确率 ${r.accuracy}%`) : ['- 暂无']),
+    '',
+    '完成度最高：',
+    ...(top.length ? top.map(r => `- ${r.name}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，已掌握 ${r.mastered} 个`) : ['- 暂无'])
+  ].join('\n');
+}
+
+async function copyAdminWeeklySummary() {
+  if (!adminWeeklySummaryText) await loadAdminWeeklySummary();
+  try {
+    await navigator.clipboard.writeText(adminWeeklySummaryText);
+    showToast('周报已复制');
+  } catch {
+    showToast('复制失败，请刷新后重试');
+  }
+}
+
+function maybeShowAdminWeeklyNudge(rows) {
+  if (userRole !== 'admin' || !rows.length) return;
+  const now = new Date();
+  const weekKey = `${now.getFullYear()}-W${getWeekNumber(now)}`;
+  const key = `admin_weekly_summary_seen:${currentUser?.id || 'admin'}`;
+  if (localStorage.getItem(key) === weekKey) return;
+  if (now.getDay() !== 1) return;
+  localStorage.setItem(key, weekKey);
+  showToast('本周用户周报已更新，可复制给管理员留档');
+}
+
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
 // ── Toast 提示 ────────────────────────────────────────────

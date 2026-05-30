@@ -3,6 +3,27 @@
 //  如需修改登录逻辑，只改这个文件
 // ============================================================
 
+const FOUNDER_EMAILS = ['linmihai2004@gmail.com'];
+const FOUNDER_BADGE_HTML = '<span class="founder-badge"><span class="bear-face"><span class="bear-muzzle"></span></span><span>创始人</span></span>';
+
+function isFounderAccount(user = currentUser) {
+  const email = String(user?.email || '').toLowerCase();
+  return FOUNDER_EMAILS.includes(email);
+}
+
+function founderBadgeHtml() {
+  return FOUNDER_BADGE_HTML;
+}
+
+function setUserChipName(nickname) {
+  const userChip = document.getElementById('user-chip');
+  if (!userChip) return;
+  userChip.textContent = nickname;
+  if (isFounderAccount()) {
+    userChip.insertAdjacentHTML('beforeend', FOUNDER_BADGE_HTML);
+  }
+}
+
 /**
  * 切换登录/注册标签
  */
@@ -72,9 +93,110 @@ function showAuthScreen() {
 function showAppScreen(nickname, isAdmin) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
-  document.getElementById('user-chip').textContent = nickname;
+  setUserChipName(nickname);
   document.getElementById('admin-tab').style.display = isAdmin ? '' : 'none';
 }
+
+function openAccountModal() {
+  if (!currentUser) return;
+  closeAccountMenu();
+  const modal = document.getElementById('account-modal');
+  if (!modal) return;
+  const nickname = document.getElementById('user-chip')?.childNodes?.[0]?.textContent || currentUser.email?.split('@')[0] || '当前账号';
+  document.getElementById('account-name-line').textContent = nickname;
+  document.getElementById('account-email-line').textContent = currentUser.email || '本机离线账号';
+  document.getElementById('account-role-line').textContent = `${isFounderAccount() ? '创始人 · ' : ''}${userRole === 'admin' ? '管理员' : '普通用户'}`;
+  modal.style.display = 'flex';
+}
+
+function toggleAccountMenu(event) {
+  event?.stopPropagation();
+  const menu = document.getElementById('account-menu-wrap');
+  if (!menu) return;
+  menu.classList.toggle('open');
+}
+
+function closeAccountMenu() {
+  document.getElementById('account-menu-wrap')?.classList.remove('open');
+}
+
+function openAdminFromAccount() {
+  closeAccountMenu();
+  switchPage('admin');
+}
+
+function closeAccountModal() {
+  const modal = document.getElementById('account-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function sendPasswordResetEmail(email) {
+  if (!email) { showToast('该用户没有邮箱'); return; }
+  if (isOfflineMode()) { showToast('离线模式下无法发送重置邮件'); return; }
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+function openPasswordResetModal() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  const modal = document.getElementById('password-reset-modal');
+  if (!modal) return;
+  ['reset-new-pass', 'reset-confirm-pass'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  modal.style.display = 'flex';
+}
+
+function closePasswordResetModal() {
+  const modal = document.getElementById('password-reset-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function saveRecoveredPassword() {
+  const newPass = document.getElementById('reset-new-pass').value;
+  const confirmPass = document.getElementById('reset-confirm-pass').value;
+  if (!newPass || !confirmPass) { showToast('请填写新密码'); return; }
+  if (newPass.length < 6) { showToast('新密码至少 6 位'); return; }
+  if (newPass !== confirmPass) { showToast('两次输入的新密码不一致'); return; }
+  const btn = document.getElementById('reset-save');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try {
+    const { data, error } = await sb.auth.updateUser({ password: newPass });
+    if (error) throw error;
+    if (data?.user) currentUser = data.user;
+    closePasswordResetModal();
+    showToast('密码已重置');
+    if (currentUser) await onLogin(currentUser);
+  } catch (error) {
+    showToast('重置失败：' + authErrorMessage(error));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存新密码';
+  }
+}
+
+window.openAccountModal = openAccountModal;
+window.closeAccountModal = closeAccountModal;
+window.toggleAccountMenu = toggleAccountMenu;
+window.closeAccountMenu = closeAccountMenu;
+window.openAdminFromAccount = openAdminFromAccount;
+window.sendPasswordResetEmail = sendPasswordResetEmail;
+window.openPasswordResetModal = openPasswordResetModal;
+window.closePasswordResetModal = closePasswordResetModal;
+window.saveRecoveredPassword = saveRecoveredPassword;
+window.isFounderAccount = isFounderAccount;
+window.founderBadgeHtml = founderBadgeHtml;
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY' && session?.user) {
+    currentUser = session.user;
+    openPasswordResetModal();
+  }
+});
 
 /**
  * 登录
