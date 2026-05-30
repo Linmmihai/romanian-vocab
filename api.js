@@ -60,6 +60,21 @@ function hideRejectedProfileLocally(userId) {
   try { writeJson(rejectedProfilesKey(), [...ids]); } catch {}
 }
 
+function userWatchSettingsKey() {
+  return localKey(currentUser?.id || 'admin', 'user_watch_settings');
+}
+
+function readLocalUserWatchSettings() {
+  return readJson(userWatchSettingsKey(), {});
+}
+
+function writeLocalUserWatchSetting(userId, watched) {
+  const settings = readLocalUserWatchSettings();
+  settings[userId] = watched !== false;
+  writeJson(userWatchSettingsKey(), settings);
+  return settings[userId];
+}
+
 function progressMemoryKey(userId) {
   return localKey(userId, 'progress_memory');
 }
@@ -716,6 +731,28 @@ async function apiUpdateNickname(userId, nickname) {
   }
   const { error } = await sb.from('profiles').update({ nickname }).eq('id', userId);
   if (error) throw new Error(error.message);
+}
+
+async function apiLoadUserWatchSettings(userIds = []) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  const local = readLocalUserWatchSettings();
+  const defaults = Object.fromEntries(ids.map(id => [id, local[id] !== false]));
+  if (!ids.length || isOfflineMode()) return defaults;
+  const { data, error } = await sb.from('profiles').select('id,watch_enabled').in('id', ids);
+  if (error) return defaults;
+  (data || []).forEach(row => {
+    defaults[row.id] = row.watch_enabled !== false;
+  });
+  return defaults;
+}
+
+async function apiSetUserWatch(userId, watched) {
+  const value = watched !== false;
+  writeLocalUserWatchSetting(userId, value);
+  if (isOfflineMode()) return { saved: 'local' };
+  const { error } = await sb.from('profiles').update({ watch_enabled: value }).eq('id', userId);
+  if (error) return { saved: 'local', warning: error.message };
+  return { saved: 'database' };
 }
 
 // ── 每日学习记录 ──────────────────────────────────────────

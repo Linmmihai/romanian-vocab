@@ -65,6 +65,7 @@ let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
 let dailyReminderTimer = null;
 let adminWeeklySummaryText = '';
+let adminWatchSettings = {};
 
 const DEFAULT_REMINDER_SETTINGS = {
   enabled: false,
@@ -4101,19 +4102,34 @@ async function loadAdminUsers() {
   document.getElementById('users-container').innerHTML = '<div class="empty-state">加载中...</div>';
   try {
     const data = await apiLoadUsers();
+    adminWatchSettings = await apiLoadUserWatchSettings(data.map(u => u.id));
     document.getElementById('users-container').innerHTML = data.map(u => `
       <div class="user-row">
         <div style="flex:1;min-width:0">
           <div class="user-email">${escapeHtml(u.email || '')}${typeof isFounderAccount === 'function' && isFounderAccount(u) && typeof founderBadgeHtml === 'function' ? ' ' + founderBadgeHtml() : ''}</div>
-          <div class="user-nickname">${escapeHtml(u.nickname || '未设昵称')} · ${new Date(u.created_at).toLocaleDateString('zh')}</div>
+          <div class="user-nickname">${escapeHtml(u.nickname || '未设昵称')} · ${new Date(u.created_at).toLocaleDateString('zh')} · ${adminWatchSettings[u.id] === false ? '未关注' : '关注对象'}</div>
         </div>
         <span class="role-badge role-${escapeHtml(u.role)}">${escapeHtml({ admin: '管理员', user: '已通过', pending: '待审批' }[u.role] || u.role)}</span>
+        ${['user', 'admin'].includes(u.role) ? `<button class="admin-btn ${adminWatchSettings[u.id] === false ? 'approve' : 'revoke'}" onclick="toggleUserWatch(decodeURIComponent('${encodedArg(u.id)}'),${adminWatchSettings[u.id] === false ? 'true' : 'false'})">${adminWatchSettings[u.id] === false ? '设为关注' : '取消关注'}</button>` : ''}
         ${u.email && u.role !== 'pending' ? `<button class="admin-btn edit" onclick="sendUserPasswordReset(decodeURIComponent('${encodedArg(u.email)}'))">重置密码邮件</button>` : ''}
         ${u.role === 'pending' ? `<button class="admin-btn approve" onclick="setUserRole(decodeURIComponent('${encodedArg(u.id)}'),'user')">✓ 通过</button><button class="admin-btn revoke" onclick="rejectUserProfile(decodeURIComponent('${encodedArg(u.id)}'),decodeURIComponent('${encodedArg(u.email || u.nickname || '')}'))">拒绝</button>` : ''}
         ${u.role === 'user' ? `<button class="admin-btn revoke" onclick="setUserRole(decodeURIComponent('${encodedArg(u.id)}'),'pending')">撤销</button>` : ''}
       </div>`).join('');
   } catch (e) {
     document.getElementById('users-container').innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
+
+async function toggleUserWatch(userId, watched) {
+  if (userRole !== 'admin') { showToast('只有管理员可以设置关注对象'); return; }
+  try {
+    const result = await apiSetUserWatch(userId, watched);
+    showToast(watched ? '已设为关注对象' : '已取消关注');
+    if (result.warning) showToast('已在本设备保存；如需多设备同步，请运行 tools/user_watch_schema.sql');
+    await loadAdminUsers();
+    await loadAdminWeeklySummary();
+  } catch (e) {
+    showToast('设置失败：' + (e.message || '未知错误'));
   }
 }
 
@@ -4161,7 +4177,8 @@ async function loadAdminWeeklySummary() {
     const users = (usersResult.value || []).filter(u => ['user', 'admin'].includes(u.role));
     const progressRows = progressResult.status === 'fulfilled' ? progressResult.value : [];
     const logs = logsResult.status === 'fulfilled' ? logsResult.value : [];
-    const rows = buildWeeklyUserRows(users, progressRows, logs);
+    adminWatchSettings = await apiLoadUserWatchSettings(users.map(u => u.id));
+    const rows = buildWeeklyUserRows(users, progressRows, logs, adminWatchSettings);
     adminWeeklySummaryText = buildWeeklySummaryText(rows);
     renderAdminWeeklySummaryRows(rows, { progressFailed: progressResult.status === 'rejected', logsFailed: logsResult.status === 'rejected' });
     maybeShowAdminWeeklyNudge(rows);
@@ -4170,7 +4187,7 @@ async function loadAdminWeeklySummary() {
   }
 }
 
-function buildWeeklyUserRows(users, progressRows, logs) {
+function buildWeeklyUserRows(users, progressRows, logs, watchSettings = {}) {
   const progressByUser = {};
   (progressRows || []).forEach(r => {
     if (!progressByUser[r.user_id]) progressByUser[r.user_id] = {};
@@ -4200,7 +4217,8 @@ function buildWeeklyUserRows(users, progressRows, logs) {
     const missedDays = filled.filter(l => !l.completed).length;
     const today = filled[filled.length - 1];
     const yesterday = filled[filled.length - 2];
-    const risk = missedDays >= 5 || (!today?.completed && !yesterday?.completed);
+    const followUpReason = getWeeklyFollowUpReason({ completedDays, missedDays, today, yesterday });
+    const watched = watchSettings[u.id] !== false;
     return {
       id: u.id,
       name: u.nickname || (u.email ? u.email.split('@')[0] : '同学'),
@@ -4215,9 +4233,12 @@ function buildWeeklyUserRows(users, progressRows, logs) {
       accuracy: summary.accuracy,
       mastered: summary.mastered,
       qt: summary.qt,
-      risk
+      watched,
+      followUpReason,
+      risk: watched && !!followUpReason
     };
   }).sort((a, b) =>
+    Number(b.watched) - Number(a.watched) ||
     Number(b.risk) - Number(a.risk) ||
     a.completedDays - b.completedDays ||
     b.tasks7 - a.tasks7 ||
@@ -4225,23 +4246,33 @@ function buildWeeklyUserRows(users, progressRows, logs) {
   );
 }
 
+function getWeeklyFollowUpReason({ completedDays, missedDays, today, yesterday }) {
+  if (!today?.completed && !yesterday?.completed) return '连续2天未达标';
+  if (missedDays >= 5) return '7天内5天未达标';
+  if (completedDays < 3) return '本周达标少于3天';
+  return '';
+}
+
 function renderAdminWeeklySummaryRows(rows, state = {}) {
   const el = document.getElementById('admin-weekly-summary-container');
   if (!el) return;
-  const active = rows.filter(r => r.activeDays > 0).length;
-  const needsAttention = rows.filter(r => r.risk).length;
-  const totalTasks = rows.reduce((sum, r) => sum + r.tasks7, 0);
-  const avgCompletedDays = rows.length ? (rows.reduce((sum, r) => sum + r.completedDays, 0) / rows.length).toFixed(1) : '0.0';
-  const topRows = [...rows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
-  const attentionRows = rows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
+  const watchedRows = rows.filter(r => r.watched);
+  const active = watchedRows.filter(r => r.activeDays > 0).length;
+  const needsAttention = watchedRows.filter(r => r.risk).length;
+  const totalTasks = watchedRows.reduce((sum, r) => sum + r.tasks7, 0);
+  const avgCompletedDays = watchedRows.length ? (watchedRows.reduce((sum, r) => sum + r.completedDays, 0) / watchedRows.length).toFixed(1) : '0.0';
+  const topRows = [...watchedRows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
+  const attentionRows = watchedRows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
+  const ignored = rows.length - watchedRows.length;
   el.innerHTML = `
     <div class="admin-stat-grid">
-      <div class="admin-stat"><div class="admin-stat-n">${rows.length}</div><div class="admin-stat-l">已通过用户</div></div>
+      <div class="admin-stat"><div class="admin-stat-n">${watchedRows.length}</div><div class="admin-stat-l">关注对象</div></div>
       <div class="admin-stat"><div class="admin-stat-n">${active}</div><div class="admin-stat-l">本周活跃</div></div>
       <div class="admin-stat"><div class="admin-stat-n">${totalTasks}</div><div class="admin-stat-l">本周任务</div></div>
       <div class="admin-stat"><div class="admin-stat-n">${avgCompletedDays}</div><div class="admin-stat-l">平均达标天</div></div>
       <div class="admin-stat"><div class="admin-stat-n">${needsAttention}</div><div class="admin-stat-l">需关注</div></div>
     </div>
+    ${ignored ? `<div class="empty-state" style="padding:10px;font-size:12px">已排除 ${ignored} 个未关注用户；可在“用户管理”里切换关注状态。</div>` : ''}
     <div class="admin-chart">
       <div class="admin-chart-title">需要关注的用户</div>
       ${attentionRows.length ? attentionRows.map(renderWeeklyUserRow).join('') : '<div class="empty-state">本周没有明显掉队用户</div>'}
@@ -4254,7 +4285,7 @@ function renderAdminWeeklySummaryRows(rows, state = {}) {
 }
 
 function renderWeeklyUserRow(row) {
-  const tag = row.risk ? '<span class="issue-tag">需跟进</span>' : '';
+  const tag = row.followUpReason ? `<span class="issue-tag">${escapeHtml(row.followUpReason)}</span>` : '';
   return `<div class="admin-word-row">
     <div>
       <div class="admin-word-name">${tag}${escapeHtml(row.name)}</div>
@@ -4265,16 +4296,17 @@ function renderWeeklyUserRow(row) {
 }
 
 function buildWeeklySummaryText(rows) {
-  const totalTasks = rows.reduce((sum, r) => sum + r.tasks7, 0);
-  const active = rows.filter(r => r.activeDays > 0).length;
-  const attention = rows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
-  const top = [...rows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
+  const watchedRows = rows.filter(r => r.watched);
+  const totalTasks = watchedRows.reduce((sum, r) => sum + r.tasks7, 0);
+  const active = watchedRows.filter(r => r.activeDays > 0).length;
+  const attention = watchedRows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
+  const top = [...watchedRows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
   return [
     `罗语词汇用户周报（${buildRecentDays(7)[0]} 至 ${buildRecentDays(7)[6]}）`,
-    `已通过用户：${rows.length}；本周活跃：${active}；本周任务总数：${totalTasks}`,
+    `关注对象：${watchedRows.length}；本周活跃：${active}；本周任务总数：${totalTasks}`,
     '',
     '需要关注：',
-    ...(attention.length ? attention.map(r => `- ${r.name}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，连续 ${r.streak} 天，正确率 ${r.accuracy}%`) : ['- 暂无']),
+    ...(attention.length ? attention.map(r => `- ${r.name}${r.followUpReason ? `（${r.followUpReason}）` : ''}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，连续 ${r.streak} 天，正确率 ${r.accuracy}%`) : ['- 暂无']),
     '',
     '完成度最高：',
     ...(top.length ? top.map(r => `- ${r.name}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，已掌握 ${r.mastered} 个`) : ['- 暂无'])

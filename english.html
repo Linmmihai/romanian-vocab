@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#2563eb">
 <title>English Phrase Trainer</title>
 <style>
-:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#94a3b8;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,.08)}
+:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#94a3b8;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--red:#dc2626;--red-bg:#fef2f2;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,.08);--shadow-lg:0 16px 40px rgba(23,32,51,.12)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
 button,input{font:inherit}
@@ -18,7 +18,7 @@ button{cursor:pointer}
 .top-actions{display:flex;align-items:center;gap:8px}
 .btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;color:var(--text2)}
 .btn-sm:hover{background:var(--bg2)}
-.shell{max-width:860px;margin:0 auto;padding:18px 14px 28px}
+.shell{max-width:920px;margin:0 auto;padding:18px 14px 28px}
 .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
 .stat{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow)}
 .stat-n{font-size:23px;font-weight:800;line-height:1.1}
@@ -29,12 +29,16 @@ button{cursor:pointer}
 .chip{white-space:nowrap;padding:7px 12px;border-radius:99px;border:1px solid var(--border2);background:white;font-size:13px;color:var(--text2)}
 .chip.active{background:var(--text);border-color:var(--text);color:white}
 .tools{display:flex;gap:8px}
-.phrase-card{background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:12px}
-.card-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:grid;gap:10px}
+.progress-track{height:8px;background:var(--bg3);border-radius:99px;overflow:hidden;margin:-2px 0 14px}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:99px;transition:width .2s ease}
+.study-frame{position:relative}
+.phrase-card{background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);overflow:hidden;margin-bottom:12px;transition:opacity .16s ease,transform .16s ease}
+.phrase-card.is-changing{opacity:.2;transform:translateX(14px)}
+.card-head{padding:22px 24px 16px;border-bottom:1px solid var(--border);display:grid;gap:10px}
 .meta-row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .category{font-size:12px;font-weight:800;color:var(--blue-text);background:var(--blue-bg);padding:4px 10px;border-radius:99px}
 .tone{font-size:12px;font-weight:800;color:var(--yellow-text);background:var(--yellow-bg);padding:4px 10px;border-radius:99px}
-.phrase{font-size:34px;line-height:1.16;font-weight:850;letter-spacing:0}
+.phrase{font-size:38px;line-height:1.12;font-weight:850;letter-spacing:0}
 .meaning{font-size:16px;color:var(--text2);font-weight:650}
 .card-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)}
 .block{padding:17px 20px;min-width:0}
@@ -45,13 +49,21 @@ button{cursor:pointer}
 .note{font-size:14px;color:var(--text2)}
 .card-actions{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:14px 18px;background:var(--bg2)}
 .nav-group,.mark-group{display:flex;gap:8px;align-items:center}
-.nav-btn,.mark-btn{padding:9px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text);font-size:14px;font-weight:750}
+.nav-btn,.mark-btn{padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text);font-size:14px;font-weight:750}
+.nav-btn.primary{background:var(--text);border-color:var(--text);color:white;min-width:110px}
 .mark-btn.learning{border-color:var(--yellow);color:var(--yellow-text)}
 .mark-btn.known{border-color:var(--green);color:var(--green-text)}
 .mark-btn.active.learning{background:var(--yellow-bg)}
 .mark-btn.active.known{background:var(--green-bg)}
 .counter{text-align:center;color:var(--text2);font-size:13px;font-weight:700}
-.library{display:grid;gap:6px}
+.study-hint{font-size:12px;color:var(--text3);text-align:center;margin:-2px 0 14px}
+.library-panel{display:none;background:white;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;margin-top:14px}
+.library-panel.open{display:block}
+.library-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:10px}
+.library-title{font-size:14px;font-weight:800}
+.search-input{width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;background:white;color:var(--text);outline:none;margin-bottom:10px}
+.search-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.library{display:grid;gap:6px;max-height:360px;overflow:auto;padding-right:2px}
 .library-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;box-shadow:var(--shadow);text-align:left;color:var(--text)}
 .library-main{min-width:0}
 .library-phrase{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -65,8 +77,9 @@ button{cursor:pointer}
   .brand{font-size:16px}.top-actions{flex-wrap:wrap;justify-content:flex-end}
   .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   .controls{grid-template-columns:1fr}.tools{justify-content:stretch}.tools .btn-sm{flex:1}
-  .phrase{font-size:27px}.card-body{grid-template-columns:1fr}.block+.block{border-left:none;border-top:1px solid var(--border)}
+  .phrase{font-size:29px}.card-head{padding:18px 18px 14px}.card-body{grid-template-columns:1fr}.block+.block{border-left:none;border-top:1px solid var(--border)}
   .card-actions{grid-template-columns:1fr;gap:12px}.nav-group,.mark-group{justify-content:stretch}.nav-btn,.mark-btn{flex:1}
+  .library-head{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -95,56 +108,72 @@ button{cursor:pointer}
     <div class="tools">
       <button class="btn-sm" id="shuffle-btn" type="button">Shuffle</button>
       <button class="btn-sm" id="unlearned-btn" type="button">Next unlearned</button>
+      <button class="btn-sm" id="browse-btn" type="button">Browse</button>
     </div>
   </section>
 
-  <section class="phrase-card" aria-live="polite">
-    <div class="card-head">
-      <div class="meta-row">
-        <span class="category" id="phrase-category"></span>
-        <span class="tone" id="phrase-tone"></span>
+  <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <section class="study-frame" aria-live="polite">
+    <div class="phrase-card" id="phrase-card">
+      <div class="card-head">
+        <div class="meta-row">
+          <span class="category" id="phrase-category"></span>
+          <span class="tone" id="phrase-tone"></span>
+        </div>
+        <h1 class="phrase" id="phrase-text"></h1>
+        <div class="meaning" id="phrase-meaning"></div>
       </div>
-      <h1 class="phrase" id="phrase-text"></h1>
-      <div class="meaning" id="phrase-meaning"></div>
-    </div>
-    <div class="card-body">
-      <div class="block">
-        <div class="label">Chinese explanation</div>
-        <div class="zh" id="phrase-zh"></div>
+      <div class="card-body">
+        <div class="block">
+          <div class="label">Chinese explanation</div>
+          <div class="zh" id="phrase-zh"></div>
+        </div>
+        <div class="block">
+          <div class="label">Example</div>
+          <div class="example" id="phrase-example"></div>
+        </div>
+        <div class="block">
+          <div class="label">Usage note</div>
+          <div class="note" id="phrase-note"></div>
+        </div>
+        <div class="block">
+          <div class="label">Useful pattern</div>
+          <div class="note" id="phrase-pattern"></div>
+        </div>
       </div>
-      <div class="block">
-        <div class="label">Example</div>
-        <div class="example" id="phrase-example"></div>
-      </div>
-      <div class="block">
-        <div class="label">Usage note</div>
-        <div class="note" id="phrase-note"></div>
-      </div>
-      <div class="block">
-        <div class="label">Useful pattern</div>
-        <div class="note" id="phrase-pattern"></div>
-      </div>
-    </div>
-    <div class="card-actions">
-      <div class="nav-group">
-        <button class="nav-btn" id="prev-btn" type="button">Previous</button>
-        <button class="nav-btn" id="next-btn" type="button">Next</button>
-      </div>
-      <div class="counter" id="card-counter"></div>
-      <div class="mark-group">
-        <button class="mark-btn learning" id="learning-btn" type="button">Learning</button>
-        <button class="mark-btn known" id="known-btn" type="button">Known</button>
+      <div class="card-actions">
+        <div class="nav-group">
+          <button class="nav-btn" id="prev-btn" type="button">Previous</button>
+          <button class="nav-btn primary" id="next-btn" type="button">Next</button>
+        </div>
+        <div class="counter" id="card-counter"></div>
+        <div class="mark-group">
+          <button class="mark-btn learning" id="learning-btn" type="button">Learning</button>
+          <button class="mark-btn known" id="known-btn" type="button">Known</button>
+        </div>
       </div>
     </div>
   </section>
+  <div class="study-hint">Use Left / Right to move cards. Marking a card advances automatically.</div>
 
-  <section class="library" id="phrase-library" aria-label="Phrase library"></section>
+  <section class="library-panel" id="library-panel">
+    <div class="library-head">
+      <div>
+        <div class="library-title">Phrase library</div>
+        <div class="library-meta" id="library-count"></div>
+      </div>
+      <button class="btn-sm" id="close-library-btn" type="button">Close</button>
+    </div>
+    <input class="search-input" id="search-input" type="search" placeholder="Search phrase, meaning, Chinese, example...">
+    <div class="library" id="phrase-library" aria-label="Phrase library"></div>
+  </section>
 </main>
 
 <script>
 const STORAGE_KEY = "english_phrase_progress:v1";
 const CATEGORIES = ["All", "Business", "Daily", "Politics", "AI"];
-const PHRASES = [
+const BASE_PHRASES = [
   { id:"biz-1", category:"Business", tone:"formal", phrase:"move the needle", meaning:"to make a measurable difference", zh:"带来真正可见的影响，而不只是做了很多动作。", example:"The campaign was well received, but it did not move the needle on revenue.", note:"Use when discussing impact, metrics, growth, or performance.", pattern:"This will / will not move the needle on ..." },
   { id:"biz-2", category:"Business", tone:"neutral", phrase:"align on priorities", meaning:"to agree on what matters most", zh:"把优先级对齐，确认大家先做什么、后做什么。", example:"Before we allocate budget, we need to align on priorities.", note:"Good for meetings, planning, and cross-team work.", pattern:"Let's align on priorities before ..." },
   { id:"biz-3", category:"Business", tone:"formal", phrase:"a trade-off worth making", meaning:"a compromise that is acceptable because the benefit is stronger", zh:"值得接受的取舍，常用于解释为什么放弃一部分东西。", example:"A longer onboarding flow is a trade-off worth making if it improves activation.", note:"Useful when defending a decision with costs and benefits.", pattern:"X is a trade-off worth making if ..." },
@@ -171,10 +200,61 @@ const PHRASES = [
   { id:"ai-6", category:"AI", tone:"formal", phrase:"the cost of false positives", meaning:"the harm or expense caused when a system wrongly flags something", zh:"误报成本，把正常情况错误识别为异常所造成的损失。", example:"In fraud detection, the cost of false positives can be customer frustration.", note:"Precise phrase for risk, moderation, security, and evaluation.", pattern:"weigh the cost of false positives against ..." }
 ];
 
+const EXTRA_PHRASES = [
+  { id:"biz-7", category:"Business", tone:"formal", phrase:"low-hanging fruit", meaning:"the easiest opportunities to act on first", zh:"最容易先做、最快见效的事情。", example:"Let's start with the low-hanging fruit before rebuilding the whole process.", note:"Useful in prioritization; avoid overusing it in very formal writing.", pattern:"start with / identify the low-hanging fruit" },
+  { id:"biz-8", category:"Business", tone:"neutral", phrase:"a bottleneck in the process", meaning:"a point that slows everything else down", zh:"流程中的卡点，导致整体速度变慢。", example:"Manual approval has become a bottleneck in the process.", note:"Good for operations, product, and project management.", pattern:"X is a bottleneck in the process." },
+  { id:"biz-9", category:"Business", tone:"formal", phrase:"set clear expectations", meaning:"make responsibilities, standards, or timing explicit", zh:"把预期讲清楚，包括责任、标准和时间。", example:"We need to set clear expectations with the client from day one.", note:"Very useful for client work and management.", pattern:"set clear expectations around ..." },
+  { id:"biz-10", category:"Business", tone:"formal", phrase:"scope creep", meaning:"uncontrolled growth in the size or complexity of a project", zh:"项目范围不断膨胀，原本没包含的需求越来越多。", example:"Without a firm approval process, we will run into scope creep.", note:"Common project-management phrase.", pattern:"avoid / manage / prevent scope creep" },
+  { id:"biz-11", category:"Business", tone:"neutral", phrase:"push back on", meaning:"challenge or resist an idea, request, or deadline", zh:"对某个要求或观点提出反对或质疑。", example:"We should push back on the deadline if quality is at risk.", note:"Natural in meetings; less aggressive than reject.", pattern:"push back on a request / timeline / assumption" },
+  { id:"biz-12", category:"Business", tone:"formal", phrase:"a strong value proposition", meaning:"a clear reason why something is useful or worth buying", zh:"有说服力的价值主张，说明为什么值得选择。", example:"The product has a strong value proposition for small businesses.", note:"Useful in marketing, product, and strategy.", pattern:"a strong value proposition for ..." },
+  { id:"biz-13", category:"Business", tone:"formal", phrase:"operational overhead", meaning:"extra work required to run or maintain something", zh:"运营或维护带来的额外负担。", example:"Adding another tool may increase operational overhead.", note:"Precise phrase for process and systems decisions.", pattern:"reduce / increase operational overhead" },
+  { id:"biz-14", category:"Business", tone:"neutral", phrase:"keep stakeholders in the loop", meaning:"keep important people informed", zh:"让相关方持续知道进展，不要信息断层。", example:"Please keep stakeholders in the loop as the timeline changes.", note:"Polite and practical for work messages.", pattern:"keep X in the loop on ..." },
+  { id:"biz-15", category:"Business", tone:"formal", phrase:"a viable path forward", meaning:"a realistic way to continue or solve a problem", zh:"可行的下一步路径。", example:"Given the budget cuts, this is the most viable path forward.", note:"Good for difficult discussions and decision memos.", pattern:"find / propose a viable path forward" },
+  { id:"biz-16", category:"Business", tone:"formal", phrase:"make a compelling case", meaning:"present strong reasons for a decision or proposal", zh:"提出有说服力的理由。", example:"The data makes a compelling case for expanding the pilot.", note:"Useful in presentations and written recommendations.", pattern:"make a compelling case for ..." },
+
+  { id:"daily-7", category:"Daily", tone:"conversational", phrase:"I am not following", meaning:"I do not understand the logic or explanation", zh:"我没跟上，不太理解你刚才的意思。", example:"I am not following. Could you explain the last part again?", note:"Polite and natural when you need clarification.", pattern:"I am not following. Could you ..." },
+  { id:"daily-8", category:"Daily", tone:"neutral", phrase:"that is beside the point", meaning:"that is not relevant to the main issue", zh:"这不是重点，偏离了核心问题。", example:"Whether he meant well is beside the point; the result was harmful.", note:"Can sound direct; use carefully.", pattern:"X is beside the point." },
+  { id:"daily-9", category:"Daily", tone:"conversational", phrase:"give someone the benefit of the doubt", meaning:"assume someone has good intentions until proven otherwise", zh:"先往好处想，暂时相信对方不是故意的。", example:"I would give her the benefit of the doubt until we know more.", note:"Common in interpersonal situations.", pattern:"give X the benefit of the doubt" },
+  { id:"daily-10", category:"Daily", tone:"neutral", phrase:"read between the lines", meaning:"notice the implied meaning, not just the literal words", zh:"读出话里隐含的意思。", example:"If you read between the lines, the message is actually a warning.", note:"Useful for emails, speeches, and social situations.", pattern:"read between the lines of ..." },
+  { id:"daily-11", category:"Daily", tone:"conversational", phrase:"easier said than done", meaning:"simple to say but difficult to do", zh:"说起来容易，做起来难。", example:"Changing habits is easier said than done.", note:"Short, natural comment on practical difficulty.", pattern:"X is easier said than done." },
+  { id:"daily-12", category:"Daily", tone:"neutral", phrase:"a matter of timing", meaning:"success depends on when something happens", zh:"关键在时机。", example:"The idea is good; it is really a matter of timing.", note:"Useful in work, relationships, and planning.", pattern:"It is a matter of timing." },
+  { id:"daily-13", category:"Daily", tone:"conversational", phrase:"I would not go that far", meaning:"I partly disagree because the statement is too strong", zh:"我不会说到那个程度，表示温和反驳。", example:"The movie was disappointing, but I would not go that far.", note:"Good for nuanced disagreement.", pattern:"I agree partly, but I would not go that far." },
+  { id:"daily-14", category:"Daily", tone:"neutral", phrase:"put things into perspective", meaning:"help someone judge something more realistically", zh:"把事情放到更合理的背景下看。", example:"The historical data puts this year's numbers into perspective.", note:"Useful for analysis and emotional balance.", pattern:"put X into perspective" },
+  { id:"daily-15", category:"Daily", tone:"conversational", phrase:"for what it is worth", meaning:"used before offering a modest opinion or piece of information", zh:"不一定很重要，但我提供这个看法给你参考。", example:"For what it is worth, I think your first draft is stronger.", note:"Softens advice or disagreement.", pattern:"For what it is worth, ..." },
+  { id:"daily-16", category:"Daily", tone:"neutral", phrase:"miss the bigger picture", meaning:"focus on details while ignoring the main issue", zh:"只看细节，忽略大局。", example:"If we only discuss price, we may miss the bigger picture.", note:"Useful in analysis and discussion.", pattern:"miss / see the bigger picture" },
+
+  { id:"pol-7", category:"Politics", tone:"formal", phrase:"a shift in the political landscape", meaning:"a meaningful change in political conditions or power", zh:"政治格局发生变化。", example:"The election marked a shift in the political landscape.", note:"Good for analytical writing and news discussion.", pattern:"a shift in the political landscape" },
+  { id:"pol-8", category:"Politics", tone:"formal", phrase:"public trust", meaning:"citizens' confidence in institutions or leaders", zh:"公众对机构或领导者的信任。", example:"A lack of transparency can damage public trust.", note:"Core phrase in politics and governance.", pattern:"build / restore / undermine public trust" },
+  { id:"pol-9", category:"Politics", tone:"formal", phrase:"policy trade-offs", meaning:"the costs and benefits that come with policy choices", zh:"政策选择中的利弊取舍。", example:"Climate policy involves difficult policy trade-offs.", note:"Useful for balanced political analysis.", pattern:"discuss / weigh policy trade-offs" },
+  { id:"pol-10", category:"Politics", tone:"formal", phrase:"regulatory scrutiny", meaning:"close examination by regulators", zh:"监管审查，通常意味着政府或监管机构更仔细地检查。", example:"The merger is likely to face regulatory scrutiny.", note:"Common in business, AI, finance, and politics.", pattern:"face / attract regulatory scrutiny" },
+  { id:"pol-11", category:"Politics", tone:"formal", phrase:"a polarizing issue", meaning:"an issue that divides people strongly", zh:"高度分化、容易引发对立的议题。", example:"Immigration remains a polarizing issue in many countries.", note:"Use for public debate and social issues.", pattern:"a polarizing issue / figure / debate" },
+  { id:"pol-12", category:"Politics", tone:"formal", phrase:"set the agenda", meaning:"decide what topics receive attention", zh:"设定议程，决定大家讨论什么。", example:"Major events can set the agenda for an entire campaign.", note:"Strong phrase for media and politics.", pattern:"set the agenda for ..." },
+  { id:"pol-13", category:"Politics", tone:"formal", phrase:"checks and balances", meaning:"systems that prevent one institution from having too much power", zh:"制衡机制，防止权力过度集中。", example:"Independent courts are part of checks and balances.", note:"Important phrase in constitutional politics.", pattern:"protect / weaken checks and balances" },
+  { id:"pol-14", category:"Politics", tone:"formal", phrase:"a diplomatic balancing act", meaning:"a situation requiring careful management of competing relationships", zh:"外交上的平衡动作，需要小心处理各方关系。", example:"The visit is a diplomatic balancing act between two allies.", note:"Useful for international relations.", pattern:"perform / manage a diplomatic balancing act" },
+  { id:"pol-15", category:"Politics", tone:"formal", phrase:"an unintended consequence", meaning:"an unexpected result, often negative", zh:"非预期后果，政策或决定带来的意外影响。", example:"One unintended consequence of the policy was higher housing demand.", note:"Common in policy analysis.", pattern:"an unintended consequence of ..." },
+  { id:"pol-16", category:"Politics", tone:"neutral", phrase:"the court of public opinion", meaning:"public judgment outside formal legal or institutional processes", zh:"公众舆论的审判，不是法律法庭但会影响声誉。", example:"The company won in court but lost in the court of public opinion.", note:"Useful for scandals, reputation, and media debates.", pattern:"win / lose in the court of public opinion" },
+
+  { id:"ai-7", category:"AI", tone:"formal", phrase:"training data", meaning:"data used to teach a model patterns", zh:"训练模型所用的数据。", example:"The quality of training data affects the model's output.", note:"Basic but essential in AI conversations.", pattern:"training data quality / bias / coverage" },
+  { id:"ai-8", category:"AI", tone:"formal", phrase:"edge cases", meaning:"unusual situations that test system limits", zh:"边缘情况，少见但容易暴露问题的场景。", example:"The demo worked, but we still need to test edge cases.", note:"Useful in software, AI, and product testing.", pattern:"handle / test edge cases" },
+  { id:"ai-9", category:"AI", tone:"formal", phrase:"hallucinate facts", meaning:"produce information that sounds true but is false", zh:"编造事实，模型生成听起来真实但实际错误的信息。", example:"The model may hallucinate facts if the prompt asks for obscure details.", note:"Common phrase in generative AI.", pattern:"reduce / detect hallucinated facts" },
+  { id:"ai-10", category:"AI", tone:"formal", phrase:"prompt injection", meaning:"an attack that tries to override a model's instructions", zh:"提示注入，试图让模型忽略原有规则或泄露信息。", example:"The agent must be protected against prompt injection.", note:"Important for AI safety and agents.", pattern:"defend against prompt injection" },
+  { id:"ai-11", category:"AI", tone:"formal", phrase:"retrieval-augmented generation", meaning:"generation supported by retrieving external information", zh:"检索增强生成，用外部资料辅助模型回答。", example:"Retrieval-augmented generation can reduce factual errors.", note:"Often shortened to RAG.", pattern:"use retrieval-augmented generation to ..." },
+  { id:"ai-12", category:"AI", tone:"formal", phrase:"benchmark performance", meaning:"measured performance on standard tests", zh:"基准测试表现。", example:"Benchmark performance does not always reflect real user experience.", note:"Useful for evaluating models.", pattern:"benchmark performance on ..." },
+  { id:"ai-13", category:"AI", tone:"formal", phrase:"model drift", meaning:"a decline or change in performance over time", zh:"模型漂移，随着环境或数据变化表现变差或偏移。", example:"We monitor model drift after deployment.", note:"Common in production ML.", pattern:"detect / monitor model drift" },
+  { id:"ai-14", category:"AI", tone:"formal", phrase:"explainability", meaning:"the ability to understand why a model made a decision", zh:"可解释性，能说明模型为什么这样判断。", example:"Explainability is critical in healthcare and finance.", note:"Useful in AI governance and high-risk systems.", pattern:"improve / require explainability" },
+  { id:"ai-15", category:"AI", tone:"formal", phrase:"bias mitigation", meaning:"reducing unfair or systematic bias in a model", zh:"偏见缓解，减少模型中的不公平偏差。", example:"Bias mitigation should be part of the evaluation plan.", note:"Useful for responsible AI discussions.", pattern:"bias mitigation strategy / technique" },
+  { id:"ai-16", category:"AI", tone:"formal", phrase:"deployment risk", meaning:"risk that appears when a system is used in the real world", zh:"部署风险，系统真正上线后出现的问题。", example:"A small error rate can still create serious deployment risk at scale.", note:"Good phrase for enterprise AI and product reviews.", pattern:"assess / reduce deployment risk" }
+];
+
+const PHRASES = [...BASE_PHRASES, ...EXTRA_PHRASES];
+
 let progress = {};
 let activeCategory = "All";
 let activeIndex = 0;
 let visiblePhrases = [];
+let searchTerm = "";
+let libraryOpen = false;
+let advanceTimer = null;
 
 function readProgress() {
   try {
@@ -205,6 +285,19 @@ function applyFilter() {
   render();
 }
 
+function transitionTo(index) {
+  if (!visiblePhrases.length) return;
+  const nextIndex = (index + visiblePhrases.length) % visiblePhrases.length;
+  const card = document.getElementById("phrase-card");
+  card.classList.add("is-changing");
+  window.setTimeout(() => {
+    activeIndex = nextIndex;
+    renderCard();
+    renderLibrary();
+    card.classList.remove("is-changing");
+  }, 120);
+}
+
 function renderChips() {
   const wrap = document.getElementById("category-chips");
   wrap.innerHTML = CATEGORIES.map(cat => {
@@ -221,6 +314,7 @@ function renderStats() {
   document.getElementById("known-count").textContent = known;
   document.getElementById("learning-count").textContent = learning;
   document.getElementById("remaining-count").textContent = Math.max(0, PHRASES.length - known - learning);
+  document.getElementById("progress-fill").style.width = `${Math.round((known / PHRASES.length) * 100)}%`;
 }
 
 function renderCard() {
@@ -245,7 +339,18 @@ function renderCard() {
 
 function renderLibrary() {
   const wrap = document.getElementById("phrase-library");
-  wrap.innerHTML = visiblePhrases.map((item, index) => {
+  const q = searchTerm.trim().toLocaleLowerCase();
+  const rows = visiblePhrases
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => {
+      if (!q) return true;
+      return [item.phrase, item.meaning, item.zh, item.example, item.note, item.pattern]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(q);
+    });
+  document.getElementById("library-count").textContent = `${rows.length} shown from ${visiblePhrases.length} in this deck`;
+  wrap.innerHTML = rows.length ? rows.map(({ item, index }) => {
     const status = phraseStatus(item.id);
     return `<button class="library-row" type="button" data-index="${index}">
       <span class="library-main">
@@ -254,20 +359,20 @@ function renderLibrary() {
       </span>
       <span class="status-dot ${status}" aria-label="${status || "not started"}"></span>
     </button>`;
-  }).join("");
+  }).join("") : `<div class="empty">No matching phrases.</div>`;
 }
 
 function render() {
   renderChips();
   renderStats();
   renderCard();
-  renderLibrary();
+  document.getElementById("library-panel").classList.toggle("open", libraryOpen);
+  if (libraryOpen) renderLibrary();
 }
 
 function move(delta) {
   if (!visiblePhrases.length) return;
-  activeIndex = (activeIndex + delta + visiblePhrases.length) % visiblePhrases.length;
-  render();
+  transitionTo(activeIndex + delta);
 }
 
 function setStatus(status) {
@@ -280,6 +385,8 @@ function setStatus(status) {
   }
   saveProgress();
   render();
+  window.clearTimeout(advanceTimer);
+  advanceTimer = window.setTimeout(() => move(1), 220);
 }
 
 function shuffleVisible() {
@@ -297,6 +404,11 @@ function nextUnlearned() {
   render();
 }
 
+function toggleLibrary(forceOpen) {
+  libraryOpen = typeof forceOpen === "boolean" ? forceOpen : !libraryOpen;
+  render();
+}
+
 document.getElementById("category-chips").addEventListener("click", event => {
   const button = event.target.closest("[data-category]");
   if (!button) return;
@@ -309,6 +421,7 @@ document.getElementById("phrase-library").addEventListener("click", event => {
   const row = event.target.closest("[data-index]");
   if (!row) return;
   activeIndex = Number(row.dataset.index) || 0;
+  toggleLibrary(false);
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
@@ -319,11 +432,22 @@ document.getElementById("learning-btn").addEventListener("click", () => setStatu
 document.getElementById("known-btn").addEventListener("click", () => setStatus("known"));
 document.getElementById("shuffle-btn").addEventListener("click", shuffleVisible);
 document.getElementById("unlearned-btn").addEventListener("click", nextUnlearned);
+document.getElementById("browse-btn").addEventListener("click", () => toggleLibrary());
+document.getElementById("close-library-btn").addEventListener("click", () => toggleLibrary(false));
+document.getElementById("search-input").addEventListener("input", event => {
+  searchTerm = event.target.value || "";
+  renderLibrary();
+});
 document.getElementById("reset-btn").addEventListener("click", () => {
   if (!confirm("Reset all English phrase progress on this browser?")) return;
   progress = {};
   saveProgress();
   render();
+});
+document.addEventListener("keydown", event => {
+  if (event.target.matches("input")) return;
+  if (event.key === "ArrowRight") move(1);
+  if (event.key === "ArrowLeft") move(-1);
 });
 
 readProgress();
