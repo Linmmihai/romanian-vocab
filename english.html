@@ -40,6 +40,7 @@ button{cursor:pointer}
 .tone{font-size:12px;font-weight:800;color:var(--yellow-text);background:var(--yellow-bg);padding:4px 10px;border-radius:99px}
 .phrase{font-size:38px;line-height:1.12;font-weight:850;letter-spacing:0}
 .meaning{font-size:16px;color:var(--text2);font-weight:650}
+.review-info{font-size:13px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px}
 .card-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)}
 .block{padding:17px 20px;min-width:0}
 .block+.block{border-left:1px solid var(--border)}
@@ -70,7 +71,9 @@ button{cursor:pointer}
 .library-meta{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
 .status-dot{width:10px;height:10px;border-radius:50%;background:var(--bg3)}
 .status-dot.learning{background:var(--yellow)}
-.status-dot.known{background:var(--green)}
+.status-dot.reviewing{background:var(--blue)}
+.status-dot.mastered{background:var(--green)}
+.status-dot.due{background:var(--red)}
 .empty{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:30px;text-align:center;color:var(--text2)}
 @media(max-width:680px){
   .topbar{height:auto;min-height:54px;padding:10px 12px;gap:8px;align-items:flex-start}
@@ -98,16 +101,16 @@ button{cursor:pointer}
 <main class="shell">
   <section class="summary" aria-label="Progress summary">
     <div class="stat"><div class="stat-n" id="total-count">0</div><div class="stat-l">Total</div></div>
-    <div class="stat"><div class="stat-n" id="known-count" style="color:var(--green-text)">0</div><div class="stat-l">Known</div></div>
+    <div class="stat"><div class="stat-n" id="known-count" style="color:var(--red)">0</div><div class="stat-l">Due now</div></div>
     <div class="stat"><div class="stat-n" id="learning-count" style="color:var(--yellow-text)">0</div><div class="stat-l">Learning</div></div>
-    <div class="stat"><div class="stat-n" id="remaining-count">0</div><div class="stat-l">Remaining</div></div>
+    <div class="stat"><div class="stat-n" id="remaining-count" style="color:var(--green-text)">0</div><div class="stat-l">Long-term</div></div>
   </section>
 
   <section class="controls" aria-label="Phrase controls">
     <div class="chips" id="category-chips"></div>
     <div class="tools">
       <button class="btn-sm" id="shuffle-btn" type="button">Shuffle</button>
-      <button class="btn-sm" id="unlearned-btn" type="button">Next unlearned</button>
+      <button class="btn-sm" id="unlearned-btn" type="button">Due / new</button>
       <button class="btn-sm" id="browse-btn" type="button">Browse</button>
     </div>
   </section>
@@ -123,6 +126,7 @@ button{cursor:pointer}
         </div>
         <h1 class="phrase" id="phrase-text"></h1>
         <div class="meaning" id="phrase-meaning"></div>
+        <div class="review-info" id="review-info"></div>
       </div>
       <div class="card-body">
         <div class="block">
@@ -149,13 +153,13 @@ button{cursor:pointer}
         </div>
         <div class="counter" id="card-counter"></div>
         <div class="mark-group">
-          <button class="mark-btn learning" id="learning-btn" type="button">Learning</button>
-          <button class="mark-btn known" id="known-btn" type="button">Known</button>
+          <button class="mark-btn learning" id="learning-btn" type="button">Still learning</button>
+          <button class="mark-btn known" id="known-btn" type="button">Remembered</button>
         </div>
       </div>
     </div>
   </section>
-  <div class="study-hint">Use Left / Right to move cards. Marking a card advances automatically.</div>
+  <div class="study-hint">Use Left / Right to move cards. Remembered schedules the next review; Still learning brings it back soon.</div>
 
   <section class="library-panel" id="library-panel">
     <div class="library-head">
@@ -173,6 +177,17 @@ button{cursor:pointer}
 <script>
 const STORAGE_KEY = "english_phrase_progress:v1";
 const CATEGORIES = ["All", "Business", "Daily", "Politics", "AI"];
+const REVIEW_INTERVALS = [
+  { label: "20 min", ms: 20 * 60 * 1000 },
+  { label: "1 day", ms: 24 * 60 * 60 * 1000 },
+  { label: "2 days", ms: 2 * 24 * 60 * 60 * 1000 },
+  { label: "4 days", ms: 4 * 24 * 60 * 60 * 1000 },
+  { label: "7 days", ms: 7 * 24 * 60 * 60 * 1000 },
+  { label: "15 days", ms: 15 * 24 * 60 * 60 * 1000 },
+  { label: "30 days", ms: 30 * 24 * 60 * 60 * 1000 },
+  { label: "90 days", ms: 90 * 24 * 60 * 60 * 1000 }
+];
+const LEARNING_RETRY = { label: "10 min", ms: 10 * 60 * 1000 };
 const BASE_PHRASES = [
   { id:"biz-1", category:"Business", tone:"formal", phrase:"move the needle", meaning:"to make a measurable difference", zh:"带来真正可见的影响，而不只是做了很多动作。", example:"The campaign was well received, but it did not move the needle on revenue.", note:"Use when discussing impact, metrics, growth, or performance.", pattern:"This will / will not move the needle on ..." },
   { id:"biz-2", category:"Business", tone:"neutral", phrase:"align on priorities", meaning:"to agree on what matters most", zh:"把优先级对齐，确认大家先做什么、后做什么。", example:"Before we allocate budget, we need to align on priorities.", note:"Good for meetings, planning, and cross-team work.", pattern:"Let's align on priorities before ..." },
@@ -260,6 +275,7 @@ function readProgress() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     progress = raw ? JSON.parse(raw) || {} : {};
+    progress = Object.fromEntries(Object.entries(progress).map(([id, value]) => [id, normalizeProgress(value)]));
   } catch {
     progress = {};
   }
@@ -273,14 +289,102 @@ function currentPhrase() {
   return visiblePhrases[activeIndex] || visiblePhrases[0] || PHRASES[0];
 }
 
+function normalizeProgress(value = {}) {
+  if (!value || typeof value !== "object") return {};
+  const stage = Math.max(0, Number(value.reviewStage || 0));
+  if (value.status === "known") {
+    return {
+      status: "reviewing",
+      reviewStage: Math.max(stage, 1),
+      nextReviewAt: value.nextReviewAt || new Date(Date.now() + REVIEW_INTERVALS[1].ms).toISOString(),
+      lastReviewedAt: value.updatedAt || new Date().toISOString(),
+      correctCount: Number(value.correctCount || 1),
+      lapseCount: Number(value.lapseCount || 0)
+    };
+  }
+  if (value.status === "learning") {
+    return {
+      status: "learning",
+      reviewStage: stage,
+      nextReviewAt: value.nextReviewAt || new Date(Date.now() + LEARNING_RETRY.ms).toISOString(),
+      lastReviewedAt: value.lastReviewedAt || value.updatedAt || null,
+      correctCount: Number(value.correctCount || 0),
+      lapseCount: Number(value.lapseCount || 0)
+    };
+  }
+  return {
+    status: value.status || "",
+    reviewStage: stage,
+    nextReviewAt: value.nextReviewAt || null,
+    lastReviewedAt: value.lastReviewedAt || value.updatedAt || null,
+    correctCount: Number(value.correctCount || 0),
+    lapseCount: Number(value.lapseCount || 0)
+  };
+}
+
+function phraseProgress(id) {
+  return progress[id] || {};
+}
+
+function isDue(item, now = Date.now()) {
+  const p = phraseProgress(item.id);
+  return !!p.nextReviewAt && new Date(p.nextReviewAt).getTime() <= now;
+}
+
 function phraseStatus(id) {
-  return progress[id]?.status || "";
+  const item = PHRASES.find(p => p.id === id);
+  const p = phraseProgress(id);
+  if (item && isDue(item)) return "due";
+  return p.status || "";
+}
+
+function phrasePriority(item) {
+  const p = phraseProgress(item.id);
+  if (isDue(item)) return 0;
+  if (!p.status) return 1;
+  if (p.status === "learning") return 2;
+  if (p.status === "reviewing") return 3;
+  return 4;
+}
+
+function comparePhrasePriority(a, b) {
+  const pa = phrasePriority(a);
+  const pb = phrasePriority(b);
+  if (pa !== pb) return pa - pb;
+  const da = phraseProgress(a.id).nextReviewAt || "";
+  const db = phraseProgress(b.id).nextReviewAt || "";
+  if (da || db) return String(da).localeCompare(String(db));
+  return a.phrase.localeCompare(b.phrase);
+}
+
+function formatRelativeTime(iso) {
+  if (!iso) return "not scheduled";
+  const diff = new Date(iso).getTime() - Date.now();
+  const abs = Math.abs(diff);
+  const units = [
+    ["day", 24 * 60 * 60 * 1000],
+    ["hour", 60 * 60 * 1000],
+    ["min", 60 * 1000]
+  ];
+  const [unit, ms] = units.find(([, size]) => abs >= size) || units[2];
+  const value = Math.max(1, Math.round(abs / ms));
+  return diff <= 0 ? `due now` : `in ${value} ${unit}${value > 1 ? "s" : ""}`;
+}
+
+function reviewLabel(item) {
+  const p = phraseProgress(item.id);
+  if (!p.status) return "New phrase. First remembered answer starts the review schedule.";
+  if (isDue(item)) return `Due now. Current stage ${p.reviewStage || 0}/${REVIEW_INTERVALS.length}.`;
+  if (p.status === "learning") return `Learning retry scheduled ${formatRelativeTime(p.nextReviewAt)}.`;
+  if (p.status === "mastered") return `Long-term memory. Next review ${formatRelativeTime(p.nextReviewAt)}.`;
+  return `Review stage ${p.reviewStage || 0}/${REVIEW_INTERVALS.length}. Next review ${formatRelativeTime(p.nextReviewAt)}.`;
 }
 
 function applyFilter() {
   visiblePhrases = activeCategory === "All"
     ? [...PHRASES]
     : PHRASES.filter(item => item.category === activeCategory);
+  visiblePhrases.sort(comparePhrasePriority);
   activeIndex = Math.min(activeIndex, Math.max(visiblePhrases.length - 1, 0));
   render();
 }
@@ -308,13 +412,15 @@ function renderChips() {
 }
 
 function renderStats() {
-  const known = PHRASES.filter(item => phraseStatus(item.id) === "known").length;
-  const learning = PHRASES.filter(item => phraseStatus(item.id) === "learning").length;
+  const due = PHRASES.filter(item => isDue(item)).length;
+  const learning = PHRASES.filter(item => phraseProgress(item.id).status === "learning").length;
+  const mastered = PHRASES.filter(item => phraseProgress(item.id).status === "mastered").length;
+  const touched = PHRASES.filter(item => phraseProgress(item.id).status).length;
   document.getElementById("total-count").textContent = PHRASES.length;
-  document.getElementById("known-count").textContent = known;
+  document.getElementById("known-count").textContent = due;
   document.getElementById("learning-count").textContent = learning;
-  document.getElementById("remaining-count").textContent = Math.max(0, PHRASES.length - known - learning);
-  document.getElementById("progress-fill").style.width = `${Math.round((known / PHRASES.length) * 100)}%`;
+  document.getElementById("remaining-count").textContent = mastered;
+  document.getElementById("progress-fill").style.width = `${Math.round((touched / PHRASES.length) * 100)}%`;
 }
 
 function renderCard() {
@@ -324,17 +430,19 @@ function renderCard() {
   }
   const item = currentPhrase();
   const status = phraseStatus(item.id);
+  const p = phraseProgress(item.id);
   document.getElementById("phrase-category").textContent = item.category;
   document.getElementById("phrase-tone").textContent = item.tone;
   document.getElementById("phrase-text").textContent = item.phrase;
   document.getElementById("phrase-meaning").textContent = item.meaning;
+  document.getElementById("review-info").textContent = reviewLabel(item);
   document.getElementById("phrase-zh").textContent = item.zh;
   document.getElementById("phrase-example").textContent = item.example;
   document.getElementById("phrase-note").textContent = item.note;
   document.getElementById("phrase-pattern").textContent = item.pattern;
   document.getElementById("card-counter").textContent = `${activeIndex + 1} / ${visiblePhrases.length}`;
-  document.getElementById("learning-btn").classList.toggle("active", status === "learning");
-  document.getElementById("known-btn").classList.toggle("active", status === "known");
+  document.getElementById("learning-btn").classList.toggle("active", p.status === "learning");
+  document.getElementById("known-btn").classList.toggle("active", ["reviewing", "mastered"].includes(p.status) && status !== "due");
 }
 
 function renderLibrary() {
@@ -352,10 +460,11 @@ function renderLibrary() {
   document.getElementById("library-count").textContent = `${rows.length} shown from ${visiblePhrases.length} in this deck`;
   wrap.innerHTML = rows.length ? rows.map(({ item, index }) => {
     const status = phraseStatus(item.id);
+    const p = phraseProgress(item.id);
     return `<button class="library-row" type="button" data-index="${index}">
       <span class="library-main">
         <span class="library-phrase">${item.phrase}</span>
-        <span class="library-meta">${item.category} · ${item.meaning}</span>
+        <span class="library-meta">${item.category} · ${item.meaning} · ${status || "new"}${p.nextReviewAt ? ` · ${formatRelativeTime(p.nextReviewAt)}` : ""}</span>
       </span>
       <span class="status-dot ${status}" aria-label="${status || "not started"}"></span>
     </button>`;
@@ -375,18 +484,54 @@ function move(delta) {
   transitionTo(activeIndex + delta);
 }
 
+function nextWorkIndex(excludeId) {
+  const dueOrNew = visiblePhrases.findIndex(item => item.id !== excludeId && (isDue(item) || !phraseProgress(item.id).status));
+  if (dueOrNew >= 0) return dueOrNew;
+  const anyOther = visiblePhrases.findIndex(item => item.id !== excludeId);
+  return anyOther >= 0 ? anyOther : 0;
+}
+
+function nextWorkIdAfterCurrent(excludeId) {
+  const rotated = [...visiblePhrases.slice(activeIndex + 1), ...visiblePhrases.slice(0, activeIndex)];
+  const dueOrNew = rotated.find(item => item.id !== excludeId && (isDue(item) || !phraseProgress(item.id).status));
+  if (dueOrNew) return dueOrNew.id;
+  const anyOther = rotated.find(item => item.id !== excludeId);
+  return anyOther?.id || excludeId;
+}
+
 function setStatus(status) {
   const item = currentPhrase();
   if (!item) return;
-  if (phraseStatus(item.id) === status) {
-    delete progress[item.id];
+  const currentId = item.id;
+  const prev = phraseProgress(item.id);
+  const now = new Date();
+  if (status === "known") {
+    const nextStage = Math.min((Number(prev.reviewStage) || 0) + 1, REVIEW_INTERVALS.length);
+    const interval = REVIEW_INTERVALS[Math.max(0, nextStage - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
+    progress[item.id] = {
+      status: nextStage >= REVIEW_INTERVALS.length ? "mastered" : "reviewing",
+      reviewStage: nextStage,
+      nextReviewAt: new Date(now.getTime() + interval.ms).toISOString(),
+      lastReviewedAt: now.toISOString(),
+      correctCount: Number(prev.correctCount || 0) + 1,
+      lapseCount: Number(prev.lapseCount || 0)
+    };
   } else {
-    progress[item.id] = { status, updatedAt: new Date().toISOString() };
+    progress[item.id] = {
+      status: "learning",
+      reviewStage: Math.max(0, Number(prev.reviewStage || 0) - 1),
+      nextReviewAt: new Date(now.getTime() + LEARNING_RETRY.ms).toISOString(),
+      lastReviewedAt: now.toISOString(),
+      correctCount: Number(prev.correctCount || 0),
+      lapseCount: Number(prev.lapseCount || 0) + 1
+    };
   }
+  const targetId = nextWorkIdAfterCurrent(currentId);
   saveProgress();
+  applyFilter();
+  const targetIndex = visiblePhrases.findIndex(phrase => phrase.id === targetId);
+  if (targetIndex >= 0) activeIndex = targetIndex;
   render();
-  window.clearTimeout(advanceTimer);
-  advanceTimer = window.setTimeout(() => move(1), 220);
 }
 
 function shuffleVisible() {
@@ -399,7 +544,7 @@ function shuffleVisible() {
 }
 
 function nextUnlearned() {
-  const next = visiblePhrases.findIndex(item => phraseStatus(item.id) !== "known");
+  const next = visiblePhrases.findIndex(item => isDue(item) || !phraseProgress(item.id).status);
   activeIndex = next >= 0 ? next : 0;
   render();
 }

@@ -1218,30 +1218,55 @@ function switchPage(p) {
     clearTimeout(wbAutoAdvanceTimer);
     wbAutoAdvanceTimer = null;
   }
-  const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'leaderboard', 'guide', 'admin'];
+  const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'guide', 'admin'];
   pages.forEach((s) => {
     document.querySelectorAll(`.nav-tab[data-page="${s}"]`).forEach(tab => tab.classList.toggle('active', s === p));
     const page = document.getElementById('page-' + s);
     if (page) page.classList.toggle('active', s === p);
   });
-  document.getElementById('nav-more')?.classList.remove('open');
   closeAccountMenu?.();
   const reviewPage = document.getElementById('page-review');
   if (reviewPage) reviewPage.classList.remove('active');
   if (p === 'flash') { applyFilters(); renderCard(); renderDailyGoal(); renderCalendar(); }
   if (p === 'quiz') showQuizSetup();
   if (p === 'stats') renderStatsPage();
-  if (p === 'leaderboard') renderLeaderboard();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
   if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminPendingWords(); loadAdminReports(); loadAdminUsers(); loadAdminWeeklySummary(); }
 }
 
-function toggleNavMenu(event) {
-  event?.stopPropagation();
-  const menu = document.getElementById('nav-more');
-  if (!menu) return;
-  menu.classList.toggle('open');
+function switchStatsPanel(panel = 'personal') {
+  const allowed = new Set(['personal', 'leaderboard']);
+  const next = allowed.has(panel) ? panel : 'personal';
+  const statsPage = document.getElementById('page-stats');
+  if (!statsPage) return;
+  document.querySelectorAll('#page-stats .stats-subtab').forEach(tab => {
+    tab.classList.toggle('active', tab.id === `stats-tab-${next}`);
+  });
+  document.querySelectorAll('#page-stats .stats-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === `stats-pane-${next}`);
+  });
+  try { sessionStorage.setItem('stats-active-panel', next); } catch {}
+  if (next === 'leaderboard') renderLeaderboard();
+  if (next === 'personal') {
+    let personalPanel = 'overview';
+    try { personalPanel = sessionStorage.getItem('personal-stats-active-panel') || 'overview'; } catch {}
+    switchPersonalStatsPanel(personalPanel);
+  }
+}
+
+function switchPersonalStatsPanel(panel = 'overview') {
+  const allowed = new Set(['overview', 'practice', 'words', 'backup']);
+  const next = allowed.has(panel) ? panel : 'overview';
+  const statsPage = document.getElementById('page-stats');
+  if (!statsPage) return;
+  document.querySelectorAll('#page-stats .stats-subtab[id^="personal-stats-tab-"]').forEach(tab => {
+    tab.classList.toggle('active', tab.id === `personal-stats-tab-${next}`);
+  });
+  document.querySelectorAll('#page-stats .stats-pane[id^="personal-stats-pane-"]').forEach(pane => {
+    pane.classList.toggle('active', pane.id === `personal-stats-pane-${next}`);
+  });
+  try { sessionStorage.setItem('personal-stats-active-panel', next); } catch {}
 }
 
 document.addEventListener('click', (event) => {
@@ -1258,8 +1283,6 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  const menu = document.getElementById('nav-more');
-  if (menu && !menu.contains(event.target)) menu.classList.remove('open');
   const accountMenu = document.getElementById('account-menu-wrap');
   if (accountMenu && !accountMenu.contains(event.target)) accountMenu.classList.remove('open');
 });
@@ -1407,14 +1430,11 @@ document.addEventListener('keydown', (event) => {
   }
   if (isNativeActivationKeyOnControl(event)) return;
   if (event.key === 'Escape') {
-    const navMore = document.getElementById('nav-more');
-    const hadNavMenu = !!navMore?.classList.contains('open');
-    if (hadNavMenu) navMore.classList.remove('open');
     const accountMenu = document.getElementById('account-menu-wrap');
     const hadAccountMenu = !!accountMenu?.classList.contains('open');
     if (hadAccountMenu) accountMenu.classList.remove('open');
     const hadCatMenu = Array.from(document.querySelectorAll('.cat-more[open]')).some(el => { el.open = false; return true; });
-    const handled = closeTopModal() || hadNavMenu || hadAccountMenu || hadCatMenu;
+    const handled = closeTopModal() || hadAccountMenu || hadCatMenu;
     if (handled) event.preventDefault();
     return;
   }
@@ -2011,6 +2031,68 @@ function speak(rate) {
   if (rv) u.voice = rv;
   speechSynthesis.speak(u);
 }
+
+let guidePronunciationText = '';
+let guidePronunciationLabel = '';
+let guidePronunciationTts = '';
+
+function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '') {
+  const value = String(text || '').trim();
+  if (!value) return;
+  const ttsValue = String(ttsText || value).trim();
+  guidePronunciationText = value;
+  guidePronunciationLabel = String(label || value).trim();
+  guidePronunciationTts = ttsValue;
+  document.querySelectorAll('.alphabet-item.active,.ph-item.active').forEach(el => el.classList.remove('active'));
+  if (sourceEl) sourceEl.classList.add('active');
+  const status = document.getElementById('pronunciation-status');
+  if (status) status.innerHTML = `正在播放 <strong>${escapeHtml(guidePronunciationLabel)}</strong> · ${escapeHtml(value)}`;
+  const repeat = document.getElementById('pronunciation-repeat');
+  if (repeat) repeat.disabled = false;
+  if (!('speechSynthesis' in window)) {
+    showToast('当前浏览器不支持发音播放');
+    return;
+  }
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(ttsValue);
+  utterance.lang = 'ro-RO';
+  utterance.rate = 0.8;
+  const roVoice = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
+  if (roVoice) utterance.voice = roVoice;
+  if (!roVoice) {
+    const status = document.getElementById('pronunciation-status');
+    if (status) status.innerHTML += ' <span style="font-size:12px;color:var(--yellow-text)">未检测到罗马尼亚语语音，系统发音可能偏差</span>';
+  }
+  speechSynthesis.speak(utterance);
+}
+
+function repeatGuidePronunciation() {
+  speakGuidePronunciation(guidePronunciationText, guidePronunciationLabel, document.querySelector('.alphabet-item.active,.ph-item.active'), guidePronunciationTts);
+}
+
+function initGuidePronunciation() {
+  document.querySelectorAll('.alphabet-item[data-speak],.ph-item[data-speak]').forEach((el) => {
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    const label = el.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || el.dataset.speak || '发音';
+    el.setAttribute('aria-label', `播放 ${label} 的发音`);
+  });
+}
+
+document.addEventListener('click', (event) => {
+  const item = event.target.closest?.('.alphabet-item[data-speak],.ph-item[data-speak]');
+  if (!item) return;
+  const label = item.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || item.dataset.speak;
+  speakGuidePronunciation(item.dataset.speak, label, item, item.dataset.tts);
+});
+
+document.addEventListener('keydown', (event) => {
+  const item = event.target.closest?.('.alphabet-item[data-speak],.ph-item[data-speak]');
+  if (!item || (event.key !== 'Enter' && event.key !== ' ')) return;
+  event.preventDefault();
+  const label = item.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || item.dataset.speak;
+  speakGuidePronunciation(item.dataset.speak, label, item, item.dataset.tts);
+});
 
 // ── 艾宾浩斯复习页 ────────────────────────────────────────
 
@@ -2821,6 +2903,9 @@ function calcProgressSummary(map) {
 }
 
 async function renderStatsPage() {
+  let activePanel = 'personal';
+  try { activePanel = sessionStorage.getItem('stats-active-panel') || 'personal'; } catch {}
+  switchStatsPanel(activePanel);
   const dailyEl = document.getElementById('daily-chart');
   const catEl = document.getElementById('cat-mastery');
   const hardEl = document.getElementById('hardest-words');
@@ -4352,5 +4437,8 @@ function showToast(msg) {
 
 // ── 启动 ─────────────────────────────────────────────────
 if (window.speechSynthesis) { speechSynthesis.onvoiceschanged = () => {}; }
+window.repeatGuidePronunciation = repeatGuidePronunciation;
+window.speakGuidePronunciation = speakGuidePronunciation;
 bindCardGestures();
+initGuidePronunciation();
 init();

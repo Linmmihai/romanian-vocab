@@ -125,6 +125,11 @@ function openAdminFromAccount() {
   switchPage('admin');
 }
 
+function openGuideFromAccount() {
+  closeAccountMenu();
+  switchPage('guide');
+}
+
 function closeAccountModal() {
   const modal = document.getElementById('account-modal');
   if (modal) modal.style.display = 'none';
@@ -184,6 +189,7 @@ window.closeAccountModal = closeAccountModal;
 window.toggleAccountMenu = toggleAccountMenu;
 window.closeAccountMenu = closeAccountMenu;
 window.openAdminFromAccount = openAdminFromAccount;
+window.openGuideFromAccount = openGuideFromAccount;
 window.sendPasswordResetEmail = sendPasswordResetEmail;
 window.openPasswordResetModal = openPasswordResetModal;
 window.closePasswordResetModal = closePasswordResetModal;
