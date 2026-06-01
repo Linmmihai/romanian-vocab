@@ -26,7 +26,7 @@ let exampleBank = {};
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qExerciseMode = 'translation'; // translation | nounPlural | verbConj | stress | listening
-let qPracticeScope = 'smart'; // smart | today | wrong | due | new | all
+let qPracticeScope = 'smart'; // smart | today | weak | wrong | due | new | all
 let qList = [];
 let qIdx = 0;
 let qRight = 0;       // 本次会话累计答对（不重置）
@@ -56,7 +56,8 @@ const WB_GRADUATE = 3;
 const DAILY_GOAL_MAX = 5000;
 
 // 每日任务目标状态
-let dailyGoal = 20;
+let dailyGoal = 20;        // 今天实际任务量，允许临时扩展
+let defaultDailyGoal = 20; // 用户主动保存的每日固定目标
 let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
 let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
 let todayLog = null;
@@ -256,11 +257,12 @@ async function onLogin(user) {
   if (userRole === 'pending') { showPendingScreen(); return; }
 
   const nickname = profile?.nickname || user.email.split('@')[0];
-  dailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(profile?.daily_goal) || 20));
+  defaultDailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(profile?.daily_goal) || 20));
+  dailyGoal = defaultDailyGoal;
 
   // 先设置目标输入框
   const goalInput = document.getElementById('goal-input');
-  if (goalInput) goalInput.value = dailyGoal;
+  if (goalInput) goalInput.value = defaultDailyGoal;
 
   showAppScreen(nickname, userRole === 'admin');
 
@@ -336,6 +338,9 @@ async function loadDailyQueue() {
   let queueChanged = false;
   if (saved?.word_ro?.length || saved?.completed_word_ro?.length) {
     todayQueueRecord = saved;
+    const savedGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(saved.goal) || defaultDailyGoal || dailyGoal || 20));
+    dailyGoal = Math.max(savedGoal, defaultDailyGoal || 20);
+    setGoalInputValue(defaultDailyGoal);
     const savedCompleted = new Set(saved.completed_word_ro || []);
     const originalQueueLength = saved.word_ro.length;
     const uniqueSavedQueue = [...new Set(saved.word_ro)];
@@ -472,7 +477,7 @@ function getDailyTaskType(w) {
 
 function getContinueAfterGoalText() {
   if (dailyGoal < DAILY_GOAL_MAX) {
-    return '想继续学习，可以点下方 +10、+50，或自定义扩展今天的任务量。';
+    return '想继续学习，可以点下方 +30、+50，或自定义扩展今天的任务量。';
   }
   return '今日任务已到上限，可以继续做测验或打开错题本巩固。';
 }
@@ -489,6 +494,7 @@ function setGoalInputValue(value) {
 
 async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更新') {
   const nextGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(goal || 0)));
+  defaultDailyGoal = nextGoal;
   dailyGoal = nextGoal;
   setGoalInputValue(nextGoal);
   await apiSetDailyGoal(currentUser.id, nextGoal);
@@ -512,7 +518,17 @@ async function extendTodayGoal(amount) {
     showToast(`每日任务目标最高为 ${DAILY_GOAL_MAX}`);
     return;
   }
-  await setDailyGoalAndRebuild(nextGoal, `已扩展今日任务到 ${nextGoal} 个`);
+  dailyGoal = nextGoal;
+  setGoalInputValue(defaultDailyGoal);
+  todayQueue = buildOpenTodayQueue(dailyGoal);
+  await saveTodayQueue();
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  invalidateCalendarCache();
+  applyFilters();
+  renderCard();
+  renderDailyGoal();
+  renderCalendar();
+  showToast(`今天临时扩展到 ${nextGoal} 个，明天仍按 ${defaultDailyGoal} 个`);
 }
 
 async function extendTodayGoalCustom() {
@@ -746,7 +762,7 @@ function getDifficultScore(w) {
   const p = progressMap[w.ro] || {};
   const qt = p.qt || 0;
   const qr = p.qr || 0;
-  const wrong = p.wrongCount ?? Math.max(0, qt - qr);
+  const wrong = Math.max(Number(p.wrongCount || 0), Math.max(0, qt - qr));
   const rate = qt ? wrong / qt : 0;
   return {
     wrong,
@@ -769,6 +785,27 @@ function getDifficultWords(words = W) {
       return sb.rate - sa.rate ||
         sb.streak - sa.streak ||
         sb.lastWrong - sa.lastWrong ||
+        sb.wrong - sa.wrong ||
+        sb.qt - sa.qt ||
+        String(a.ro).localeCompare(String(b.ro), 'ro');
+    });
+}
+
+function isWeakLearningWord(wordRo) {
+  const p = progressMap[wordRo] || {};
+  const qt = p.qt || 0;
+  const qr = p.qr || 0;
+  return qt > 0 && Math.max(0, qt - qr) > 0 && getStoredLevel(p) !== 'mastered';
+}
+
+function getWeakLearningWords(words = W) {
+  return [...words]
+    .filter(w => isWeakLearningWord(w.ro))
+    .sort((a, b) => {
+      const sa = getDifficultScore(a);
+      const sb = getDifficultScore(b);
+      return sb.streak - sa.streak ||
+        sb.rate - sa.rate ||
         sb.wrong - sa.wrong ||
         sb.qt - sa.qt ||
         String(a.ro).localeCompare(String(b.ro), 'ro');
@@ -1163,7 +1200,7 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: { trackWrongbook: shouldTrackWrongbookForMiss(prev) }
+      options: { preserveLearningLevel: shouldTrackWrongbookForMiss(prev), trackWrongbook: shouldTrackWrongbookForMiss(prev) }
     };
   },
   wrongbook_correct(prev) {
@@ -1196,7 +1233,7 @@ const INTERACTION_RULES = {
 };
 
 function shouldTrackWrongbookForMiss(prev = {}) {
-  return !!(prev.known || (prev.qr || 0) > 0 || prev.level === 'mastered' || getStoredLevel(prev) === 'mastered');
+  return !!(prev.level === 'mastered' || getStoredLevel(prev) === 'mastered');
 }
 
 async function recordInteraction(wordRo, interactionType) {
@@ -1506,6 +1543,7 @@ function renderDailyGoal() {
   const pct = Math.min(100, Math.round(todayNewWords / dailyGoal * 100));
   const done = todayNewWords >= dailyGoal;
   const canExtend = done && dailyGoal < DAILY_GOAL_MAX;
+  const isTemporaryExtended = dailyGoal > defaultDailyGoal;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">
@@ -1516,10 +1554,11 @@ function renderDailyGoal() {
     <div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${done ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
     </div>
+    ${isTemporaryExtended ? `<div style="font-size:12px;color:var(--text2);margin-top:6px">今天临时加量；每日固定目标仍是 ${defaultDailyGoal} 个</div>` : ''}
     ${canExtend ? `
       <div class="goal-extend">
         <span>继续今天：</span>
-        <button class="btn-sm" onclick="extendTodayGoal(10)">+10</button>
+        <button class="btn-sm" onclick="extendTodayGoal(30)">+30</button>
         <button class="btn-sm" onclick="extendTodayGoal(50)">+50</button>
         <button class="btn-sm" onclick="extendTodayGoalCustom()">自定义</button>
       </div>` : ''}`;
@@ -2035,14 +2074,17 @@ function speak(rate) {
 let guidePronunciationText = '';
 let guidePronunciationLabel = '';
 let guidePronunciationTts = '';
+let guidePronunciationLang = 'ro-RO';
 
-function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '') {
+function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '', ttsLang = 'ro-RO') {
   const value = String(text || '').trim();
   if (!value) return;
   const ttsValue = String(ttsText || value).trim();
+  const lang = String(ttsLang || 'ro-RO').trim();
   guidePronunciationText = value;
   guidePronunciationLabel = String(label || value).trim();
   guidePronunciationTts = ttsValue;
+  guidePronunciationLang = lang;
   document.querySelectorAll('.alphabet-item.active,.ph-item.active').forEach(el => el.classList.remove('active'));
   if (sourceEl) sourceEl.classList.add('active');
   const status = document.getElementById('pronunciation-status');
@@ -2055,11 +2097,12 @@ function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '') {
   }
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(ttsValue);
-  utterance.lang = 'ro-RO';
+  utterance.lang = lang;
   utterance.rate = 0.8;
-  const roVoice = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
-  if (roVoice) utterance.voice = roVoice;
-  if (!roVoice) {
+  const voices = speechSynthesis.getVoices();
+  const preferredVoice = voices.find(v => v.lang === lang) || voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+  if (preferredVoice) utterance.voice = preferredVoice;
+  if (lang.startsWith('ro') && !preferredVoice) {
     const status = document.getElementById('pronunciation-status');
     if (status) status.innerHTML += ' <span style="font-size:12px;color:var(--yellow-text)">未检测到罗马尼亚语语音，系统发音可能偏差</span>';
   }
@@ -2067,7 +2110,7 @@ function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '') {
 }
 
 function repeatGuidePronunciation() {
-  speakGuidePronunciation(guidePronunciationText, guidePronunciationLabel, document.querySelector('.alphabet-item.active,.ph-item.active'), guidePronunciationTts);
+  speakGuidePronunciation(guidePronunciationText, guidePronunciationLabel, document.querySelector('.alphabet-item.active,.ph-item.active'), guidePronunciationTts, guidePronunciationLang);
 }
 
 function initGuidePronunciation() {
@@ -2083,7 +2126,8 @@ document.addEventListener('click', (event) => {
   const item = event.target.closest?.('.alphabet-item[data-speak],.ph-item[data-speak]');
   if (!item) return;
   const label = item.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || item.dataset.speak;
-  speakGuidePronunciation(item.dataset.speak, label, item, item.dataset.tts);
+  const ttsText = item.dataset.ttsMode === 'override' ? item.dataset.tts : '';
+  speakGuidePronunciation(item.dataset.speak, label, item, ttsText, item.dataset.ttsLang || 'ro-RO');
 });
 
 document.addEventListener('keydown', (event) => {
@@ -2091,7 +2135,8 @@ document.addEventListener('keydown', (event) => {
   if (!item || (event.key !== 'Enter' && event.key !== ' ')) return;
   event.preventDefault();
   const label = item.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || item.dataset.speak;
-  speakGuidePronunciation(item.dataset.speak, label, item, item.dataset.tts);
+  const ttsText = item.dataset.ttsMode === 'override' ? item.dataset.tts : '';
+  speakGuidePronunciation(item.dataset.speak, label, item, ttsText, item.dataset.ttsLang || 'ro-RO');
 });
 
 // ── 艾宾浩斯复习页 ────────────────────────────────────────
@@ -2202,11 +2247,11 @@ function showReviewComplete() {
 // ── 错题本 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否是错题：只统计测验模式或错题本练习中答错过的词。
+ * 判断一个词是否是错题：只有已掌握后又答错的词进入错题本。
  */
 function isWrongWord(wordRo) {
   const p = progressMap[wordRo];
-  return !!p && (p.wrongCount || 0) > 0;
+  return !!p && (p.wrongCount || 0) > 0 && getStoredLevel(p) === 'mastered';
 }
 
 /**
@@ -2434,7 +2479,8 @@ function getScopedPracticePool() {
     const todaySet = new Set([...todayQueue, ...todayQueueCompleted]);
     return sortByReviewPriority(scoped.filter(w => todaySet.has(w.ro)));
   }
-  if (qPracticeScope === 'wrong') return getDifficultWords(scoped);
+  if (qPracticeScope === 'weak') return getWeakLearningWords(scoped);
+  if (qPracticeScope === 'wrong') return getWrongWords().filter(w => curCat === '全部' || w.cat === curCat);
   if (qPracticeScope === 'due') {
     return sortReviewDueWithWeakPriority(scoped).filter(w => {
       const p = progressMap[w.ro];
@@ -2448,7 +2494,8 @@ function getScopedPracticePool() {
       const p = progressMap[w.ro];
       return p && (p.qt || p.known) && isReviewDue(p);
     }),
-    ...getDifficultWords(scoped),
+    ...getWrongWords().filter(w => curCat === '全部' || w.cat === curCat),
+    ...getWeakLearningWords(scoped),
     ...getUnseenWords(scoped),
     ...sortByReviewPriority(scoped)
   ]);
@@ -2474,6 +2521,7 @@ function getPracticeScopeLabel() {
   return {
     smart: '智能练习',
     today: '今日任务',
+    weak: '薄弱新词',
     wrong: '错题',
     due: '到期复习',
     new: '新词',
@@ -2940,11 +2988,13 @@ function renderStudyCoach(summary, logs = []) {
   if (!el) return;
   const dueCount = getRemainingDueReviewWords(W).length;
   const wrongCount = getWrongWords().length;
+  const weakCount = getWeakLearningWords(W).length;
   const weakCat = getWeakestCategory();
   const todayOpen = todayQueue.length;
   const items = [];
   if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, kind: 'due' });
   if (wrongCount) items.push({ title: `再清理 ${wrongCount} 个错题`, kind: 'wrong' });
+  if (weakCount) items.push({ title: `重点练 ${weakCount} 个薄弱新词`, kind: 'weak' });
   if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, kind: 'today' });
   if (weakCat) items.push({ title: `薄弱分类：${weakCat.cat}（掌握率 ${weakCat.pct}%）`, kind: 'cat', arg: weakCat.cat });
   if (!items.length) items.push({ title: `状态稳定。可以做一轮智能测验，当前正确率 ${summary.accuracy}%`, kind: 'quiz' });
@@ -2958,6 +3008,7 @@ function renderStudyCoach(summary, logs = []) {
 function startCoachAction(kind, arg = '') {
   if (kind === 'due') { setPracticeScope('due'); switchPage('quiz'); return; }
   if (kind === 'wrong') { switchPage('wrongbook'); return; }
+  if (kind === 'weak') { setPracticeScope('weak'); switchPage('quiz'); return; }
   if (kind === 'today') { setFlashMode('today'); switchPage('flash'); return; }
   if (kind === 'cat') { setCat(arg); switchPage('flash'); return; }
   setPracticeScope('smart');
@@ -3004,7 +3055,8 @@ function exportProgressBackup() {
     version: 1,
     exportedAt: new Date().toISOString(),
     user: { id: currentUser?.id || null, email: currentUser?.email || null },
-    dailyGoal,
+    dailyGoal: defaultDailyGoal,
+    todayGoal: dailyGoal,
     progress: progressMap,
     dailyQueue: {
       word_ro: todayQueue,
@@ -3056,10 +3108,11 @@ async function importProgressBackup(file) {
       if (!importWarningShown && handleProgressSaveStatus(saveStatus)) importWarningShown = true;
     }
     if (payload.dailyGoal) {
-      dailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(payload.dailyGoal) || dailyGoal));
+      defaultDailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(payload.dailyGoal) || defaultDailyGoal));
+      dailyGoal = defaultDailyGoal;
       const input = document.getElementById('goal-input');
-      if (input) input.value = dailyGoal;
-      await apiSetDailyGoal(currentUser.id, dailyGoal);
+      if (input) input.value = defaultDailyGoal;
+      await apiSetDailyGoal(currentUser.id, defaultDailyGoal);
     }
     applyFilters();
     upStats();
@@ -4264,8 +4317,9 @@ async function loadAdminWeeklySummary() {
     const logs = logsResult.status === 'fulfilled' ? logsResult.value : [];
     adminWatchSettings = await apiLoadUserWatchSettings(users.map(u => u.id));
     const rows = buildWeeklyUserRows(users, progressRows, logs, adminWatchSettings);
-    adminWeeklySummaryText = buildWeeklySummaryText(rows);
-    renderAdminWeeklySummaryRows(rows, { progressFailed: progressResult.status === 'rejected', logsFailed: logsResult.status === 'rejected' });
+    const weeklyWrongWords = buildWeeklyWrongWords(users, progressRows, adminWatchSettings);
+    adminWeeklySummaryText = buildWeeklySummaryText(rows, weeklyWrongWords);
+    renderAdminWeeklySummaryRows(rows, { progressFailed: progressResult.status === 'rejected', logsFailed: logsResult.status === 'rejected', weeklyWrongWords });
     maybeShowAdminWeeklyNudge(rows);
   } catch (e) {
     el.innerHTML = `<div class="empty-state">周报暂时无法读取：${escapeHtml(e.message || '未知错误')}</div>`;
@@ -4338,6 +4392,42 @@ function getWeeklyFollowUpReason({ completedDays, missedDays, today, yesterday }
   return '';
 }
 
+function buildWeeklyWrongWords(users, progressRows, watchSettings = {}) {
+  const watchedUserIds = new Set(users.filter(u => watchSettings[u.id] !== false).map(u => u.id));
+  const wordMap = new Map(W.map(w => [w.ro, w]));
+  const start = new Date(`${buildRecentDays(7)[0]}T00:00:00`).getTime();
+  const byWord = {};
+  (progressRows || []).forEach((row) => {
+    if (!watchedUserIds.has(row.user_id)) return;
+    const updated = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    const lastWrong = row.last_wrong_at ? new Date(row.last_wrong_at).getTime() : 0;
+    if (Math.max(updated, lastWrong) < start) return;
+    const p = rowToProgress(row);
+    const qt = Number(p.qt || 0);
+    const qr = Number(p.qr || 0);
+    const misses = Math.max(Number(p.wrongCount || 0), Math.max(0, qt - qr));
+    if (!qt || misses <= 0) return;
+    const word = wordMap.get(row.word_ro) || {};
+    if (!byWord[row.word_ro]) {
+      byWord[row.word_ro] = {
+        ro: row.word_ro,
+        zh: word.zh || '',
+        cat: word.cat || '',
+        misses: 0,
+        attempts: 0,
+        users: new Set()
+      };
+    }
+    byWord[row.word_ro].misses += misses;
+    byWord[row.word_ro].attempts += qt;
+    byWord[row.word_ro].users.add(row.user_id);
+  });
+  return Object.values(byWord)
+    .map(item => ({ ...item, users: item.users.size, rate: item.attempts ? Math.round(item.misses / item.attempts * 100) : 0 }))
+    .sort((a, b) => b.users - a.users || b.misses - a.misses || b.rate - a.rate || String(a.ro).localeCompare(String(b.ro), 'ro'))
+    .slice(0, 8);
+}
+
 function renderAdminWeeklySummaryRows(rows, state = {}) {
   const el = document.getElementById('admin-weekly-summary-container');
   if (!el) return;
@@ -4348,6 +4438,7 @@ function renderAdminWeeklySummaryRows(rows, state = {}) {
   const avgCompletedDays = watchedRows.length ? (watchedRows.reduce((sum, r) => sum + r.completedDays, 0) / watchedRows.length).toFixed(1) : '0.0';
   const topRows = [...watchedRows].sort((a, b) => b.completedDays - a.completedDays || b.tasks7 - a.tasks7).slice(0, 5);
   const attentionRows = watchedRows.filter(r => r.risk || r.completedDays < 3).slice(0, 8);
+  const weeklyWrongWords = state.weeklyWrongWords || [];
   const ignored = rows.length - watchedRows.length;
   el.innerHTML = `
     <div class="admin-stat-grid">
@@ -4366,6 +4457,10 @@ function renderAdminWeeklySummaryRows(rows, state = {}) {
       <div class="admin-chart-title">本周完成度最高</div>
       ${topRows.length ? topRows.map(renderWeeklyUserRow).join('') : '<div class="empty-state">暂时没有用户数据</div>'}
     </div>
+    <div class="admin-chart">
+      <div class="admin-chart-title">本周高错词</div>
+      ${weeklyWrongWords.length ? weeklyWrongWords.map(renderWeeklyWrongWordRow).join('') : '<div class="empty-state">本周暂无明显高错词</div>'}
+    </div>
     ${(state.progressFailed || state.logsFailed) ? `<div class="empty-state">部分数据暂时无法读取：${state.logsFailed ? 'daily_log ' : ''}${state.progressFailed ? 'progress' : ''}</div>` : ''}`;
 }
 
@@ -4380,7 +4475,18 @@ function renderWeeklyUserRow(row) {
   </div>`;
 }
 
-function buildWeeklySummaryText(rows) {
+function renderWeeklyWrongWordRow(row) {
+  const title = row.zh ? `${row.zh} → ${row.ro}` : row.ro;
+  return `<div class="admin-word-row">
+    <div>
+      <div class="admin-word-name">${escapeHtml(title)}</div>
+      <div class="admin-word-meta">${row.cat ? `${escapeHtml(row.cat)} · ` : ''}${row.users} 人出错 · 错 ${row.misses}/${row.attempts} 次 · 错误率 ${row.rate}%</div>
+    </div>
+    <div class="admin-word-score">${row.misses}错</div>
+  </div>`;
+}
+
+function buildWeeklySummaryText(rows, weeklyWrongWords = []) {
   const watchedRows = rows.filter(r => r.watched);
   const totalTasks = watchedRows.reduce((sum, r) => sum + r.tasks7, 0);
   const active = watchedRows.filter(r => r.activeDays > 0).length;
@@ -4394,7 +4500,10 @@ function buildWeeklySummaryText(rows) {
     ...(attention.length ? attention.map(r => `- ${r.name}${r.followUpReason ? `（${r.followUpReason}）` : ''}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，连续 ${r.streak} 天，正确率 ${r.accuracy}%`) : ['- 暂无']),
     '',
     '完成度最高：',
-    ...(top.length ? top.map(r => `- ${r.name}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，已掌握 ${r.mastered} 个`) : ['- 暂无'])
+    ...(top.length ? top.map(r => `- ${r.name}：达标 ${r.completedDays}/7 天，完成 ${r.tasks7} 个，已掌握 ${r.mastered} 个`) : ['- 暂无']),
+    '',
+    '本周高错词：',
+    ...(weeklyWrongWords.length ? weeklyWrongWords.map(w => `- ${w.zh ? `${w.zh} → ` : ''}${w.ro}：${w.users} 人出错，错 ${w.misses}/${w.attempts} 次，错误率 ${w.rate}%`) : ['- 暂无'])
   ].join('\n');
 }
 

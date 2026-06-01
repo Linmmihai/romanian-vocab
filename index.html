@@ -664,6 +664,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="study-mode-bar" id="quiz-scope-bar">
           <button class="study-mode-btn active" data-scope="smart" onclick="setPracticeScope('smart')">智能</button>
           <button class="study-mode-btn" data-scope="today" onclick="setPracticeScope('today')">今日</button>
+          <button class="study-mode-btn" data-scope="weak" onclick="setPracticeScope('weak')">薄弱新词</button>
           <button class="study-mode-btn" data-scope="wrong" onclick="setPracticeScope('wrong')">错题</button>
           <button class="study-mode-btn" data-scope="due" onclick="setPracticeScope('due')">到期</button>
           <button class="study-mode-btn" data-scope="new" onclick="setPracticeScope('new')">新词</button>
@@ -758,7 +759,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="guide-subtitle">罗马尼亚语使用拉丁字母。点击任意字母或特殊读音，可以听对应发音。</div>
       <div class="alphabet-grid">
         <div class="alphabet-item" data-speak="a" data-tts="Litera A se pronunță a."><div class="alphabet-letter">A</div><div class="alphabet-read">a</div></div>
-        <div class="alphabet-item" data-speak="ă" data-tts="Sunetul ă, ca în măr."><div class="alphabet-letter">Ă</div><div class="alphabet-read">ă</div></div>
+        <div class="alphabet-item" data-speak="ă" data-tts="Sunetul ă, ca în măr." data-tts-mode="override"><div class="alphabet-letter">Ă</div><div class="alphabet-read">ă</div></div>
         <div class="alphabet-item" data-speak="â din a" data-tts="Litera Â se numește â din a. Sunetul este ca în român."><div class="alphabet-letter">Â</div><div class="alphabet-read">â din a</div></div>
         <div class="alphabet-item" data-speak="be" data-tts="Litera B se pronunță be."><div class="alphabet-letter">B</div><div class="alphabet-read">be</div></div>
         <div class="alphabet-item" data-speak="ce" data-tts="Litera C se pronunță ce."><div class="alphabet-letter">C</div><div class="alphabet-read">ce</div></div>
@@ -785,7 +786,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="alphabet-item" data-speak="u" data-tts="Litera U se pronunță u."><div class="alphabet-letter">U</div><div class="alphabet-read">u</div></div>
         <div class="alphabet-item" data-speak="ve" data-tts="Litera V se pronunță ve."><div class="alphabet-letter">V</div><div class="alphabet-read">ve</div></div>
         <div class="alphabet-item" data-speak="dublu ve" data-tts="Litera W se pronunță dublu ve."><div class="alphabet-letter">W</div><div class="alphabet-read">dublu ve</div></div>
-        <div class="alphabet-item" data-speak="ics" data-tts="ix. ix."><div class="alphabet-letter">X</div><div class="alphabet-read">ics</div></div>
+        <div class="alphabet-item" data-speak="ics" data-tts="X" data-tts-lang="en-US" data-tts-mode="override"><div class="alphabet-letter">X</div><div class="alphabet-read">ics</div></div>
         <div class="alphabet-item" data-speak="igrec" data-tts="Litera Y se pronunță igrec."><div class="alphabet-letter">Y</div><div class="alphabet-read">igrec</div></div>
         <div class="alphabet-item" data-speak="zet" data-tts="Litera Z se pronunță zet."><div class="alphabet-letter">Z</div><div class="alphabet-read">zet</div></div>
       </div>
@@ -794,7 +795,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button class="btn-sm" id="pronunciation-repeat" onclick="repeatGuidePronunciation()" disabled>重播</button>
       </div>
       <div class="ph-grid">
-        <div class="ph-item" data-speak="ă" data-tts="Sunetul ă, ca în măr."><div class="ph-letter">ă</div><div class="ph-sound">类似"呃"，短促</div></div>
+        <div class="ph-item" data-speak="ă" data-tts="Sunetul ă, ca în măr." data-tts-mode="override"><div class="ph-letter">ă</div><div class="ph-sound">类似"呃"，短促</div></div>
         <div class="ph-item" data-speak="î" data-tts="Sunetul î, ca în învăț. Sunetul â, ca în român."><div class="ph-letter">â / î</div><div class="ph-sound">类似"嗯"，舌后</div></div>
         <div class="ph-item" data-speak="ș" data-tts="Sunetul ș, ca în șase."><div class="ph-letter">ș</div><div class="ph-sound">类似"sh"（师）</div></div>
         <div class="ph-item" data-speak="ț" data-tts="Sunetul ț, ca în țară."><div class="ph-letter">ț</div><div class="ph-sound">类似"ts"（次）</div></div>
