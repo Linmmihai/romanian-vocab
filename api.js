@@ -127,15 +127,27 @@ function rowToProgress(r) {
   const reviewStage = r.review_stage ?? r.review_count ?? r.reviewStage ?? 0;
   const qr = r.quiz_right ?? r.qr ?? 0;
   const qt = r.quiz_total ?? r.qt ?? 0;
+  const nextReviewAt = r.next_review_at || r.nextReviewAt || legacyNextReviewAt;
+  const lastReviewedAt = r.last_reviewed_at || r.lastReviewedAt || null;
+  const seen = r.seen ?? !!(
+    r.known ||
+    qr ||
+    qt ||
+    reviewStage ||
+    nextReviewAt ||
+    lastReviewedAt ||
+    r.updated_at ||
+    r.updatedAt
+  );
   return {
-    seen: r.seen ?? !!(r.known || qr || qt),
+    seen,
     known: r.known,
     qr,
     qt,
     level: r.level || 'unknown',
     reviewStage,
-    nextReviewAt: r.next_review_at || r.nextReviewAt || legacyNextReviewAt,
-    lastReviewedAt: r.last_reviewed_at || r.lastReviewedAt || null,
+    nextReviewAt,
+    lastReviewedAt,
     reviewCount: reviewStage,
     nextReview: r.next_review || r.nextReview || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
     wrongCount: r.wrong_count ?? r.wrongCount,
@@ -404,7 +416,8 @@ async function apiDeleteWord(wordId) {
  */
 async function apiLoadProgress(userId) {
   if (isOfflineMode()) return readJson(localKey(userId, 'progress'), {});
-  const { data } = await sb.from('progress').select('*').eq('user_id', userId);
+  const { data, error } = await sb.from('progress').select('*').eq('user_id', userId);
+  if (error) throw new Error(error.message);
   const memoryBackup = readProgressMemoryBackup(userId);
   const map = {};
   (data || []).forEach(r => {
@@ -594,8 +607,19 @@ async function apiGetDailyQueue(userId, goal) {
         completed_word_ro: data.completed_word_ro || []
       };
     }
+    if (error && error.code !== 'PGRST116') {
+      return {
+        user_id: userId,
+        queue_date: today,
+        goal: goal || 20,
+        word_ro: [],
+        completed_word_ro: [],
+        completed: false,
+        syncError: error.message
+      };
+    }
   } catch {}
-  return readLocalQueue(userId, goal, today);
+  return null;
 }
 
 async function apiSaveDailyQueue(userId, queue) {
@@ -613,8 +637,9 @@ async function apiSaveDailyQueue(userId, queue) {
   try {
     const { error } = await sb.from('daily_queue').upsert(payload, { onConflict: 'user_id,queue_date' });
     if (!error) return payload;
+    return { ...payload, syncError: error.message };
   } catch {}
-  return writeLocalQueue(userId, payload, today);
+  return { ...payload, syncError: '每日队列云端同步失败' };
 }
 
 // ── 报错反馈 ──────────────────────────────────────────────
@@ -770,19 +795,24 @@ async function apiGetTodayLog(userId, goal) {
     }
     return logs[today];
   }
-  const { data } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
+  const { data, error } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
   if (data) return data;
+  if (error && error.code !== 'PGRST116') throw new Error(error.message);
   // 创建今日记录
-  const { data: created } = await sb.from('daily_log').insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false }).select().single();
+  const { data: created, error: createError } = await sb.from('daily_log')
+    .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false })
+    .select()
+    .single();
+  if (createError) throw new Error(createError.message);
   return created;
 }
 
 /**
  * 更新今日完成任务数；数据库字段沿用 daily_log.new_words 以保持兼容
  */
-async function apiUpdateTodayLog(userId, completedTasks, goal) {
+async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal) {
   const today = getLocalDateKey();
-  const completed = completedTasks >= goal;
+  const completed = completedTasks >= completionGoal;
   if (isOfflineMode()) {
     const logs = readJson(localKey(userId, 'daily_log'), {});
     logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, local: true };

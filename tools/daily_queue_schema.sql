@@ -15,6 +15,11 @@ create table if not exists public.daily_queue (
 
 alter table public.daily_queue enable row level security;
 
+grant select, insert, update on public.daily_queue to authenticated;
+grant select, insert, update on public.daily_log to authenticated;
+grant select, insert, update on public.progress to authenticated;
+grant select, update on public.profiles to authenticated;
+
 do $$
 begin
   if exists (

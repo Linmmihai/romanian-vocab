@@ -74,6 +74,121 @@ const DEFAULT_REMINDER_SETTINGS = {
   lastSentDate: ''
 };
 
+function normalizeDailyGoalValue(value, fallback = 20) {
+  return Math.max(1, Math.min(DAILY_GOAL_MAX, Number(value) || fallback || 20));
+}
+
+function normalizeWordText(value) {
+  return String(value || '').normalize('NFC').trim().replace(/\s+/g, ' ');
+}
+
+function roKey(value) {
+  return normalizeWordText(value).toLocaleLowerCase('ro');
+}
+
+function normalizeProgressMap(map = {}) {
+  const normalized = {};
+  Object.entries(map || {}).forEach(([wordRo, progress]) => {
+    const key = roKey(wordRo);
+    if (!key) return;
+    const existing = normalized[key];
+    const existingQt = Number(existing?.qt || 0);
+    const nextQt = Number(progress?.qt || 0);
+    normalized[key] = nextQt >= existingQt ? progress : existing;
+  });
+  return normalized;
+}
+
+function getProgress(wordRo) {
+  return progressMap[roKey(wordRo)] || null;
+}
+
+function setProgress(wordRo, progress) {
+  const key = roKey(wordRo);
+  if (key) progressMap[key] = progress;
+}
+
+function deleteProgress(wordRo) {
+  delete progressMap[roKey(wordRo)];
+}
+
+function canonicalWordRo(wordRo) {
+  const key = roKey(wordRo);
+  const word = W.find(w => roKey(w.ro) === key);
+  return word?.ro || normalizeWordText(wordRo);
+}
+
+function normalizeWordRoList(list = []) {
+  const seen = new Set();
+  const normalized = [];
+  (Array.isArray(list) ? list : []).forEach(ro => {
+    const canonical = canonicalWordRo(ro);
+    const key = roKey(canonical);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    normalized.push(canonical);
+  });
+  return normalized;
+}
+
+function setHasRo(set, wordRo) {
+  const key = roKey(wordRo);
+  return [...set].some(ro => roKey(ro) === key);
+}
+
+function setAddRo(set, wordRo) {
+  const canonical = canonicalWordRo(wordRo);
+  const key = roKey(canonical);
+  [...set].forEach(ro => {
+    if (roKey(ro) === key) set.delete(ro);
+  });
+  if (key) set.add(canonical);
+}
+
+function setDeleteRo(set, wordRo) {
+  const key = roKey(wordRo);
+  [...set].forEach(ro => {
+    if (roKey(ro) === key) set.delete(ro);
+  });
+}
+
+function roListIncludes(list, wordRo) {
+  const key = roKey(wordRo);
+  return (list || []).some(ro => roKey(ro) === key);
+}
+
+function roListWithout(list, wordRo) {
+  const key = roKey(wordRo);
+  return (list || []).filter(ro => roKey(ro) !== key);
+}
+
+function todayTemporaryGoalKey() {
+  return `daily_goal_today:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
+}
+
+function readTodayTemporaryGoal() {
+  try {
+    const raw = localStorage.getItem(todayTemporaryGoalKey());
+    return raw ? normalizeDailyGoalValue(raw, 0) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeTodayTemporaryGoal(goal) {
+  try {
+    localStorage.setItem(todayTemporaryGoalKey(), String(normalizeDailyGoalValue(goal, defaultDailyGoal)));
+  } catch {}
+}
+
+function isDefaultGoalDone() {
+  return todayNewWords >= defaultDailyGoal;
+}
+
+function isCurrentTodayGoalDone() {
+  return todayNewWords >= dailyGoal;
+}
+
 function wrongbookStreakKey() {
   return `wrongbook_streaks:${currentUser?.id || 'local'}`;
 }
@@ -257,7 +372,7 @@ async function onLogin(user) {
   if (userRole === 'pending') { showPendingScreen(); return; }
 
   const nickname = profile?.nickname || user.email.split('@')[0];
-  defaultDailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(profile?.daily_goal) || 20));
+  defaultDailyGoal = normalizeDailyGoalValue(profile?.daily_goal, 20);
   dailyGoal = defaultDailyGoal;
 
   // 先设置目标输入框
@@ -313,15 +428,35 @@ async function loadExampleBank() {
 }
 
 async function loadProgress() {
-  progressMap = await apiLoadProgress(currentUser.id);
-  applyFilters();
-  renderCard();
-  upStats();
+  try {
+    progressMap = normalizeProgressMap(await apiLoadProgress(currentUser.id));
+    setSyncBadge(isOfflineMode() ? '本机保存' : '', isOfflineMode() ? 'saved' : '');
+    applyFilters();
+    renderCard();
+    upStats();
+  } catch (error) {
+    progressMap = {};
+    setSyncBadge('进度读取失败', '');
+    showToast(`进度读取失败：${error.message || '请刷新重试'}`);
+    applyFilters();
+    renderCard();
+    upStats();
+  }
 }
 
 async function loadTodayLog() {
-  todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
+  try {
+    todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
+  } catch (error) {
+    todayLog = { new_words: 0, goal: dailyGoal, completed: false, syncError: error.message };
+    setSyncBadge('今日记录读取失败', '');
+    showToast(`今日记录读取失败：${error.message || '请刷新重试'}`);
+  }
   todayNewWords = todayLog?.new_words || 0;
+  const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
+  const localTemporaryGoal = readTodayTemporaryGoal();
+  dailyGoal = Math.max(defaultDailyGoal, logGoal, localTemporaryGoal);
+  setGoalInputValue(defaultDailyGoal);
   invalidateCalendarCache();
   // 全部数据加载完毕，统一渲染
   upStats();
@@ -336,26 +471,34 @@ async function loadDailyQueue() {
   const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
   let queueChanged = false;
+  const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
+  const localTemporaryGoal = readTodayTemporaryGoal();
+  if (saved?.syncError) {
+    showToast(`每日队列未能云端同步：${saved.syncError}`);
+    setSyncBadge('队列同步失败', '');
+  }
   if (saved?.word_ro?.length || saved?.completed_word_ro?.length) {
     todayQueueRecord = saved;
-    const savedGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(saved.goal) || defaultDailyGoal || dailyGoal || 20));
-    dailyGoal = Math.max(savedGoal, defaultDailyGoal || 20);
+    const savedGoal = normalizeDailyGoalValue(saved.goal, defaultDailyGoal);
+    dailyGoal = Math.max(savedGoal, logGoal, localTemporaryGoal, defaultDailyGoal);
     setGoalInputValue(defaultDailyGoal);
-    const savedCompleted = new Set(saved.completed_word_ro || []);
+    const savedCompleted = new Set(normalizeWordRoList(saved.completed_word_ro || []));
     const originalQueueLength = saved.word_ro.length;
-    const uniqueSavedQueue = [...new Set(saved.word_ro)];
-    todayQueueCompleted = new Set([...savedCompleted].filter(ro => W.some(w => w.ro === ro)));
+    const uniqueSavedQueue = normalizeWordRoList(saved.word_ro);
+    todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
     todayQueue = uniqueSavedQueue.filter(ro => {
-      const word = W.find(w => w.ro === ro);
+      const word = getWordByRo(ro);
       if (!word) return false;
       if (!isDailyQueueCandidate(word)) {
-        todayQueueCompleted.add(ro);
+        setAddRo(todayQueueCompleted, ro);
         return false;
       }
-      return !todayQueueCompleted.has(ro);
+      return !setHasRo(todayQueueCompleted, ro);
     });
     queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
+    dailyGoal = Math.max(logGoal, localTemporaryGoal, defaultDailyGoal);
+    setGoalInputValue(defaultDailyGoal);
     todayQueueCompleted = new Set();
     todaySeenWords = new Set();
     todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
@@ -375,10 +518,13 @@ async function loadDailyQueue() {
   }
   if (queueChanged) await saveTodayQueue();
   if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
-    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
     invalidateCalendarCache();
   }
-  if (todayQueueRecord?.local) {
+  if (todayQueueRecord?.syncError) {
+    showToast(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
+    setSyncBadge('队列同步失败', '');
+  } else if (todayQueueRecord?.local) {
     showToast('每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步');
   }
   dailyQueueLoaded = true;
@@ -405,24 +551,36 @@ function uniqueWordsByRo(words) {
 
 function buildSmartDailyPlan(words = W, limit = dailyGoal) {
   const cap = Math.max(1, Number(limit || dailyGoal || 20));
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted]);
-  const usable = words.filter(w => w?.ro && !blocked.has(w.ro));
-  const due = sortReviewDueWithWeakPriority(usable).filter(w => {
-    const p = progressMap[w.ro];
-    return p && (p.qt || p.known) && isReviewDue(p);
-  });
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
+  const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
+  const due = sortReviewDueWithWeakPriority(usable).filter(isDueReviewWord);
   const weak = getDifficultWords(usable).filter(w => !due.some(d => d.ro === w.ro));
   const unseen = getUnseenWords(usable);
   return uniqueWordsByRo([...due, ...weak, ...unseen]).slice(0, cap);
 }
 
+function hasWordProgress(progress) {
+  return !!(progress && (
+    progress.seen ||
+    progress.known ||
+    progress.qt ||
+    progress.qr ||
+    progress.reviewStage ||
+    progress.reviewCount ||
+    progress.nextReviewAt ||
+    progress.nextReview ||
+    progress.lastReviewedAt ||
+    (progress.level && progress.level !== 'unknown')
+  ));
+}
+
 function isDueReviewWord(w) {
-  const p = progressMap[w?.ro];
-  return !!(p && (p.qt || p.known) && isReviewDue(p));
+  const p = getProgress(w?.ro);
+  return !!(hasWordProgress(p) && isReviewDue(p));
 }
 
 function getRemainingDueReviewWords(words = W) {
-  return words.filter(w => !todayQueueCompleted.has(w.ro) && isDueReviewWord(w));
+  return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueReviewWord(w));
 }
 
 function isDailyQueueCandidate(w) {
@@ -431,8 +589,8 @@ function isDailyQueueCandidate(w) {
 
 function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
   const cap = Math.max(1, Number(limit || dailyGoal || 20));
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted]);
-  const usable = words.filter(w => w?.ro && !blocked.has(w.ro));
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
+  const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
   const due = sortReviewDueWithWeakPriority(usable).filter(isDueReviewWord);
   const dueSet = new Set(due.map(w => w.ro));
   const unseen = getUnseenWords(usable).filter(w => !dueSet.has(w.ro));
@@ -443,7 +601,7 @@ function buildOpenTodayQueue(goal = dailyGoal) {
   const neededOpenWords = Math.max(0, Number(goal || dailyGoal || 20) - todayNewWords);
   return buildDailyQueueWords(goal)
     .map(w => w.ro)
-    .filter(ro => !todayQueueCompleted.has(ro))
+    .filter(ro => !setHasRo(todayQueueCompleted, ro))
     .slice(0, neededOpenWords);
 }
 
@@ -454,18 +612,18 @@ function getDailyWordList(words = W, options = {}) {
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
     : words.filter(w => w.cat === curCat);
-  const openQueuedRos = todayQueue.filter(ro => !todayQueueCompleted.has(ro));
+  const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
   const queueWords = openQueuedRos
-    .map(ro => scoped.find(w => w.ro === ro))
+    .map(ro => scoped.find(w => roKey(w.ro) === roKey(ro)))
     .filter(Boolean)
     .filter(w => !isRetryDeferred(w));
   if (queueWords.length || !includeFallback) return queueWords.slice(0, limit);
   if (openQueuedRos.length && curCat !== '全部') return [];
   if (todayNewWords >= dailyGoal) return [];
 
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue]);
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue].map(roKey));
   return buildReviewFirstDailyPlan(scoped, Math.min(limit, dailyGoal - todayNewWords))
-    .filter(w => !blocked.has(w.ro))
+    .filter(w => !blocked.has(roKey(w.ro)))
     .slice(0, limit);
 }
 
@@ -493,14 +651,15 @@ function setGoalInputValue(value) {
 }
 
 async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更新') {
-  const nextGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(goal || 0)));
+  const nextGoal = normalizeDailyGoalValue(goal, defaultDailyGoal);
   defaultDailyGoal = nextGoal;
   dailyGoal = nextGoal;
   setGoalInputValue(nextGoal);
+  writeTodayTemporaryGoal(nextGoal);
   await apiSetDailyGoal(currentUser.id, nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
   await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
   invalidateCalendarCache();
   applyFilters();
   renderCard();
@@ -520,9 +679,10 @@ async function extendTodayGoal(amount) {
   }
   dailyGoal = nextGoal;
   setGoalInputValue(defaultDailyGoal);
+  writeTodayTemporaryGoal(nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
   await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
   invalidateCalendarCache();
   applyFilters();
   renderCard();
@@ -543,40 +703,46 @@ async function extendTodayGoalCustom() {
 }
 
 async function saveTodayQueue() {
+  if (dailyGoal > defaultDailyGoal) writeTodayTemporaryGoal(dailyGoal);
   todayQueueRecord = await apiSaveDailyQueue(currentUser.id, {
     goal: dailyGoal,
     word_ro: todayQueue,
     completed_word_ro: [...todayQueueCompleted],
     completed: todayNewWords >= dailyGoal
   });
+  if (todayQueueRecord?.syncError) {
+    setSyncBadge('队列同步失败', '');
+    showProgressSaveWarning(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
+  }
   invalidateCalendarCache();
   invalidateQuizPracticePool();
 }
 
 async function recordTodayWord(wordRo) {
-  if (!wordRo || todaySeenWords.has(wordRo)) return;
-  const wasGoalDone = todayNewWords >= dailyGoal;
-  const isQueuedWord = todayQueue.includes(wordRo);
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!canonicalRo || setHasRo(todaySeenWords, canonicalRo)) return;
+  const wasGoalDone = isDefaultGoalDone();
+  const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
-  todaySeenWords.add(wordRo);
+  setAddRo(todaySeenWords, canonicalRo);
   todayNewWords += 1;
   todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
-  if (!todayQueueCompleted.has(wordRo)) {
-    todayQueueCompleted.add(wordRo);
+  if (!setHasRo(todayQueueCompleted, canonicalRo)) {
+    setAddRo(todayQueueCompleted, canonicalRo);
   }
   if (isQueuedWord) {
-    todayQueue = todayQueue.filter(ro => ro !== wordRo);
+    todayQueue = roListWithout(todayQueue, canonicalRo);
     todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
   }
   await saveTodayQueue();
 
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal);
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
   invalidateCalendarCache();
   renderDailyGoal();
   updateTodayCalendarCell();
   renderReviewPanel();
   updateReviewBadge();
-  if (!wasGoalDone && todayNewWords >= dailyGoal) showToast('今日任务目标已完成，可以继续测验或复习');
+  if (!wasGoalDone && isDefaultGoalDone()) showToast('今日固定目标已完成，可以继续测验或临时加量');
 }
 
 async function completeTodayQueueWord(wordRo) {
@@ -653,8 +819,8 @@ function applyFilters() {
 }
 
 function isUnseenWord(w) {
-  const p = progressMap[w.ro];
-  return !p || (!p.seen && !p.qt && !p.known);
+  const p = getProgress(w.ro);
+  return !hasWordProgress(p);
 }
 
 function getUnseenWords(words = W) {
@@ -673,16 +839,16 @@ async function addWordToTodayQueue(wordRo) {
     showToast('请先完成到期复习；提高今日任务目标后可以继续添加新词');
     return;
   }
-  if (todayQueue.includes(wordRo) && !todayQueueCompleted.has(wordRo)) {
+  if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
     showToast('这个词已在今日队列中');
     switchPage('flash');
     return;
   }
 
-  const completed = todayQueue.filter(ro => todayQueueCompleted.has(ro));
-  const open = todayQueue.filter(ro => !todayQueueCompleted.has(ro) && ro !== wordRo);
-  todayQueue = [...completed, wordRo, ...open];
-  todayQueueCompleted.delete(wordRo);
+  const completed = todayQueue.filter(ro => setHasRo(todayQueueCompleted, ro));
+  const open = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro) && roKey(ro) !== roKey(w.ro));
+  todayQueue = normalizeWordRoList([...completed, w.ro, ...open]);
+  setDeleteRo(todayQueueCompleted, w.ro);
   await saveTodayQueue();
   flashMode = 'today';
   curCat = '全部';
@@ -707,7 +873,7 @@ function normalizeCategory(cat) {
 }
 
 function normalizeWordCategory(word) {
-  return { ...word, rawCat: word.rawCat ?? word.cat, cat: normalizeCategory(word.cat) };
+  return { ...word, ro: normalizeWordText(word.ro), rawCat: word.rawCat ?? word.cat, cat: normalizeCategory(word.cat) };
 }
 
 function categoryRank(cat) {
@@ -728,8 +894,8 @@ function isReviewDue(progress) {
 }
 
 function getReviewBucket(w) {
-  const p = progressMap[w.ro];
-  if (!p || !p.qt && !p.known) return 1;
+  const p = getProgress(w.ro);
+  if (!hasWordProgress(p)) return 1;
   return isReviewDue(p) ? 0 : 2;
 }
 
@@ -738,8 +904,8 @@ function sortByReviewPriority(words) {
     const ba = getReviewBucket(a);
     const bb = getReviewBucket(b);
     if (ba !== bb) return ba - bb;
-    const pa = progressMap[a.ro] || {};
-    const pb = progressMap[b.ro] || {};
+    const pa = getProgress(a.ro) || {};
+    const pb = getProgress(b.ro) || {};
     const da = pa.nextReviewAt ? new Date(pa.nextReviewAt).getTime() : 0;
     const db = pb.nextReviewAt ? new Date(pb.nextReviewAt).getTime() : 0;
     return da - db || String(a.ro).localeCompare(String(b.ro), 'ro');
@@ -747,19 +913,19 @@ function sortByReviewPriority(words) {
 }
 
 function getProgressLevel(wordRo) {
-  const p = progressMap[wordRo] || {};
+  const p = getProgress(wordRo) || {};
   return getStoredLevel(p);
 }
 
 function getLevelLabel(wordRo) {
-  const p = progressMap[wordRo] || {};
+  const p = getProgress(wordRo) || {};
   const lv = getProgressLevel(wordRo);
   if (lv === 'mastered' && isReviewDue(p)) return DUE_MASTERED_LABEL;
   return LEVEL_LABEL[lv] || LEVEL_LABEL.unknown;
 }
 
 function getDifficultScore(w) {
-  const p = progressMap[w.ro] || {};
+  const p = getProgress(w.ro) || {};
   const qt = p.qt || 0;
   const qr = p.qr || 0;
   const wrong = Math.max(Number(p.wrongCount || 0), Math.max(0, qt - qr));
@@ -792,7 +958,7 @@ function getDifficultWords(words = W) {
 }
 
 function isWeakLearningWord(wordRo) {
-  const p = progressMap[wordRo] || {};
+  const p = getProgress(wordRo) || {};
   const qt = p.qt || 0;
   const qr = p.qr || 0;
   return qt > 0 && Math.max(0, qt - qr) > 0 && getStoredLevel(p) !== 'mastered';
@@ -817,8 +983,8 @@ function sortReviewDueWithWeakPriority(words) {
     const ba = getReviewBucket(a);
     const bb = getReviewBucket(b);
     if (ba !== bb) return ba - bb;
-    const pa = progressMap[a.ro] || {};
-    const pb = progressMap[b.ro] || {};
+    const pa = getProgress(a.ro) || {};
+    const pb = getProgress(b.ro) || {};
     const sa = getDifficultScore(a);
     const sb = getDifficultScore(b);
     const da = pa.nextReviewAt ? new Date(pa.nextReviewAt).getTime() : 0;
@@ -855,7 +1021,7 @@ function getNextReview(progress, success) {
 }
 
 function isRetryDeferred(w) {
-  const p = progressMap[w?.ro];
+  const p = getProgress(w?.ro);
   if (!p || !p.nextReviewAt || !(p.qt || p.known)) return false;
   return new Date(p.nextReviewAt).getTime() > Date.now();
 }
@@ -1014,7 +1180,7 @@ function renderReviewPanel() {
   if (!dueEl) return;
   const scoped = getCurrentScopeWords();
   const due = getRemainingDueReviewWords(scoped).length;
-  const rawUnseenRemaining = getUnseenWords(scoped).filter(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro)).length;
+  const rawUnseenRemaining = getUnseenWords(scoped).filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro)).length;
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
   const remainingDueReviews = getRemainingDueReviewWords(W).length;
   const availableNewSlots = Math.max(0, remainingSlots - remainingDueReviews);
@@ -1024,16 +1190,20 @@ function renderReviewPanel() {
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
   setText('review-new-remaining', unseenRemaining);
   const nextBatch = Math.min(20, Math.max(0, remainingDueReviews || remainingSlots));
-  const summaryText = todayNewWords >= dailyGoal
+  const currentGoalDone = isCurrentTodayGoalDone();
+  const baseGoalDone = isDefaultGoalDone();
+  const summaryText = currentGoalDone
     ? `已完成 ${todayNewWords}/${dailyGoal}`
     : (remainingDueReviews > 0 ? `先复习 ${nextBatch} 个` : `继续 ${Math.min(20, remainingSlots)} 个任务`);
   setText('flash-control-summary', summaryText);
   const taskType = current ? getDailyTaskType(current) : '';
-  const baseNote = todayNewWords >= dailyGoal
+  const baseNote = currentGoalDone
     ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
-    : (remainingDueReviews > 0
-      ? `先完成一组 ${nextBatch} 个到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`
-      : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`);
+    : (baseGoalDone
+      ? `今日固定目标已完成：${todayNewWords}/${defaultDailyGoal} 个；临时加量进度 ${todayNewWords}/${dailyGoal}。`
+      : (remainingDueReviews > 0
+        ? `先完成一组 ${nextBatch} 个到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`
+        : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`));
   setText('review-note', lastLearningHint || baseNote);
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
@@ -1107,7 +1277,8 @@ function handleProgressSaveStatus(status) {
 
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
   setSyncBadge(isOfflineMode() ? '保存中...' : '同步中...', '');
-  const prev = progressMap[wordRo] || {};
+  const canonicalRo = canonicalWordRo(wordRo);
+  const prev = getProgress(canonicalRo) || {};
   const calculatedLevel = calcLevel(qr, qt, known);
   const level = options.preserveLearningLevel && (prev.qt || prev.known)
     ? getStoredLevel(prev)
@@ -1128,16 +1299,16 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
     : (shouldTrackWrongbook && !success ? new Date().toISOString() : (prev.lastWrongAt || null));
   const memory = { wrongCount, errorStreak, lastWrongAt };
   const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
-  progressMap[wordRo] = nextProgress;
+  setProgress(canonicalRo, nextProgress);
   try {
-    const saveStatus = await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
+    const saveStatus = await apiSaveProgress(currentUser.id, canonicalRo, known, qr, qt, level, review, null, memory);
     const warned = handleProgressSaveStatus(saveStatus);
     if (!warned) setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
   } catch {
     if (Object.keys(prev).length) {
-      progressMap[wordRo] = prev;
+      setProgress(canonicalRo, prev);
     } else {
-      delete progressMap[wordRo];
+      deleteProgress(canonicalRo);
     }
     setSyncBadge('同步失败', '');
   }
@@ -1239,10 +1410,10 @@ function shouldTrackWrongbookForMiss(prev = {}) {
 async function recordInteraction(wordRo, interactionType) {
   const rule = INTERACTION_RULES[interactionType];
   if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
-  const prev = progressMap[wordRo] || { known: false, qr: 0, qt: 0 };
+  const prev = getProgress(wordRo) || { known: false, qr: 0, qt: 0 };
   const next = rule(prev);
   await syncProgress(wordRo, next.known, next.qr, next.qt, next.success, next.options);
-  return progressMap[wordRo] || {};
+  return getProgress(wordRo) || {};
 }
 
 // ── 导航 ─────────────────────────────────────────────────
@@ -1541,20 +1712,21 @@ function renderDailyGoal() {
   const el = document.getElementById('daily-goal-bar');
   if (!el) return;
   const pct = Math.min(100, Math.round(todayNewWords / dailyGoal * 100));
-  const done = todayNewWords >= dailyGoal;
-  const canExtend = done && dailyGoal < DAILY_GOAL_MAX;
+  const baseDone = isDefaultGoalDone();
+  const currentDone = isCurrentTodayGoalDone();
+  const canExtend = currentDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">
-        ${done ? '今日任务完成' : '今日任务'}
+        ${baseDone ? '今日固定目标已完成' : '今日任务'}
       </span>
       <span style="font-size:13px;color:var(--text2)">${todayNewWords} / ${dailyGoal} 个</span>
     </div>
     <div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${done ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
+      <div style="height:100%;width:${pct}%;background:${baseDone ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
     </div>
-    ${isTemporaryExtended ? `<div style="font-size:12px;color:var(--text2);margin-top:6px">今天临时加量；每日固定目标仍是 ${defaultDailyGoal} 个</div>` : ''}
+    ${isTemporaryExtended ? `<div style="font-size:12px;color:var(--text2);margin-top:6px">固定目标 ${defaultDailyGoal} 个${baseDone ? '已达成' : '未达成'}；今天临时加量目标 ${dailyGoal} 个</div>` : ''}
     ${canExtend ? `
       <div class="goal-extend">
         <span>继续今天：</span>
@@ -1639,7 +1811,7 @@ function setupDailyReminderChecks() {
 function checkDailyGoalReminder() {
   if (!currentUser || userRole === 'pending') return;
   const settings = readReminderSettings();
-  if (!settings.enabled || todayNewWords >= dailyGoal) return;
+  if (!settings.enabled || isDefaultGoalDone()) return;
   const now = new Date();
   const today = getDateKeyFor(now);
   if (settings.lastSentDate === today) return;
@@ -1710,7 +1882,7 @@ async function renderCalendar(force = false) {
     // 今天用实时数据，历史用数据库
     const completedTasks = isToday ? todayNewWords : (log?.new_words || 0);
     const goal = isToday ? dailyGoal : (log?.goal || dailyGoal);
-    const completed = isToday ? (todayNewWords >= dailyGoal) : isDailyLogCompleted({ ...log, new_words: completedTasks, goal });
+    const completed = isToday ? isDefaultGoalDone() : isDailyLogCompleted({ ...log, new_words: completedTasks, goal });
 
     const stateClass = completed ? 'completed' : completedTasks > 0 ? 'started' : '';
     const todayAttr = isToday ? 'data-today="1"' : '';
@@ -1763,7 +1935,8 @@ function setCat(c) {
 }
 
 function getWordByRo(wordRo) {
-  return W.find(w => w.ro === wordRo) || null;
+  const key = roKey(wordRo);
+  return W.find(w => roKey(w.ro) === key) || null;
 }
 
 function getCurrentFlashWord() {
@@ -1778,9 +1951,9 @@ function renderCard() {
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
     const frontHint = document.getElementById('fc-front-hint');
-    const hasOpenQueue = todayQueue.some(ro => !todayQueueCompleted.has(ro));
+    const hasOpenQueue = todayQueue.some(ro => !setHasRo(todayQueueCompleted, ro));
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
-    const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !todaySeenWords.has(w.ro) && !todayQueueCompleted.has(w.ro));
+    const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
     const emptyText = {
       today: todayNewWords >= dailyGoal ? '今日任务已完成' : (hasDueReview || hasNewWords ? '当前分类没有今日任务' : '今日没有可安排任务'),
       review: '当前没有到期复习词',
@@ -1825,7 +1998,7 @@ function renderCard() {
   const example = buildExampleSentence(w);
   renderExampleBlock('fc-example', example);
   // 显示熟练度
-  const p = progressMap[w.ro] || {};
+  const p = getProgress(w.ro) || {};
   const lv = getProgressLevel(w.ro);
   const lvEl = document.getElementById('fc-level');
   if (lvEl) { lvEl.textContent = getLevelLabel(w.ro); lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
@@ -1910,7 +2083,7 @@ async function recordDailyWord() {
 function updateTodayCalendarCell() {
   const cells = document.querySelectorAll('#calendar-container [data-today]');
   cells.forEach(cell => {
-    const done = todayNewWords >= dailyGoal;
+    const done = isDefaultGoalDone();
     cell.classList.toggle('completed', done);
     cell.classList.toggle('started', !done && todayNewWords > 0);
     const sub = cell.querySelector('.cal-sub');
@@ -1923,7 +2096,7 @@ async function markCard(yes) {
   const w = getCurrentFlashWord();
   if (!w) return;
   const wasReviewingHistory = !!flashOverrideRo;
-  const p = progressMap[w.ro];
+  const p = getProgress(w.ro);
   const isReviewTask = flashMode === 'review' || (flashMode === 'today' && p && (p.qt || p.known));
   const interaction = flashMode === 'review'
     ? (yes ? 'review_correct' : 'review_wrong')
@@ -2147,8 +2320,8 @@ function getTodayReviewWords() {
 
 function initReviewQueue() {
   reviewQueue = getTodayReviewWords().sort((a, b) => {
-    const pa = progressMap[a.ro] || {};
-    const pb = progressMap[b.ro] || {};
+    const pa = getProgress(a.ro) || {};
+    const pb = getProgress(b.ro) || {};
     return new Date(pa.nextReviewAt || 0) - new Date(pb.nextReviewAt || 0);
   });
   reviewIdx = 0;
@@ -2174,7 +2347,7 @@ function renderReviewCard() {
   empty.style.display = 'none';
 
   const w = reviewQueue[reviewIdx];
-  const p = progressMap[w.ro] || {};
+  const p = getProgress(w.ro) || {};
   const stress = getStressDisplay(w);
   const stage = Number(p.reviewStage || p.reviewCount || 0);
   const nextInterval = REVIEW_INTERVALS[Math.min(stage, REVIEW_INTERVALS.length - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
@@ -2250,7 +2423,7 @@ function showReviewComplete() {
  * 判断一个词是否是错题：只有已掌握后又答错的词进入错题本。
  */
 function isWrongWord(wordRo) {
-  const p = progressMap[wordRo];
+  const p = getProgress(wordRo);
   return !!p && (p.wrongCount || 0) > 0 && getStoredLevel(p) === 'mastered';
 }
 
@@ -2301,7 +2474,7 @@ function renderWrongbookCard() {
 
   const w = wbList[wbIdx];
   const stress = getStressDisplay(w);
-  const p = progressMap[w.ro] || {};
+  const p = getProgress(w.ro) || {};
   const wrongCount = p.wrongCount || 0;
   const streak = wbStreaks[w.ro] || 0;
 
@@ -2476,14 +2649,14 @@ function getActiveStudyPool() {
 function getScopedPracticePool() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (qPracticeScope === 'today') {
-    const todaySet = new Set([...todayQueue, ...todayQueueCompleted]);
-    return sortByReviewPriority(scoped.filter(w => todaySet.has(w.ro)));
+    const todaySet = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
+    return sortByReviewPriority(scoped.filter(w => todaySet.has(roKey(w.ro))));
   }
   if (qPracticeScope === 'weak') return getWeakLearningWords(scoped);
   if (qPracticeScope === 'wrong') return getWrongWords().filter(w => curCat === '全部' || w.cat === curCat);
   if (qPracticeScope === 'due') {
     return sortReviewDueWithWeakPriority(scoped).filter(w => {
-      const p = progressMap[w.ro];
+      const p = getProgress(w.ro);
       return p && (p.qt || p.known) && isReviewDue(p);
     });
   }
@@ -2491,7 +2664,7 @@ function getScopedPracticePool() {
   if (qPracticeScope === 'all') return sortByReviewPriority(scoped);
   return uniqueWordsByRo([
     ...sortReviewDueWithWeakPriority(scoped).filter(w => {
-      const p = progressMap[w.ro];
+      const p = getProgress(w.ro);
       return p && (p.qt || p.known) && isReviewDue(p);
     }),
     ...getWrongWords().filter(w => curCat === '全部' || w.cat === curCat),
@@ -2744,8 +2917,9 @@ function renderQuiz() {
   const livePct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
   if (qExerciseMode === 'listening') {
     const w = qList[qIdx];
-    const optionPool = getCachedScopedPracticePool().filter(x => x.ro !== w.ro);
-    const fallbackPool = W.filter(x => x.ro !== w.ro && !optionPool.some(o => o.ro === x.ro));
+    const optionPool = getCachedScopedPracticePool().filter(x => roKey(x.ro) !== roKey(w.ro));
+    const optionPoolKeys = new Set(optionPool.map(o => roKey(o.ro)));
+    const fallbackPool = W.filter(x => roKey(x.ro) !== roKey(w.ro) && !optionPoolKeys.has(roKey(x.ro)));
     const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
     const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
     document.getElementById('quiz-area').innerHTML = `
@@ -2790,8 +2964,9 @@ function renderQuiz() {
   }
 
   const w = qList[qIdx];
-  const optionPool = getCachedScopedPracticePool().filter(x => x.ro !== w.ro);
-  const fallbackPool = W.filter(x => x.ro !== w.ro && !optionPool.some(o => o.ro === x.ro));
+  const optionPool = getCachedScopedPracticePool().filter(x => roKey(x.ro) !== roKey(w.ro));
+  const optionPoolKeys = new Set(optionPool.map(o => roKey(o.ro)));
+  const fallbackPool = W.filter(x => roKey(x.ro) !== roKey(w.ro) && !optionPoolKeys.has(roKey(x.ro)));
   const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
   const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
   if (opts.length < 2) {
@@ -3021,7 +3196,7 @@ function getWeakestCategory() {
     const cat = normalizeCategory(w.cat);
     if (!groups[cat]) groups[cat] = { cat, total: 0, mastered: 0 };
     groups[cat].total++;
-    if (getStoredLevel(progressMap[w.ro]) === 'mastered') groups[cat].mastered++;
+    if (getStoredLevel(getProgress(w.ro)) === 'mastered') groups[cat].mastered++;
   });
   return Object.values(groups)
     .filter(g => g.total >= 10)
@@ -3082,13 +3257,13 @@ async function importProgressBackup(file) {
     const payload = JSON.parse(await file.text());
     if (!payload || payload.app !== 'romanian-vocab' || !payload.progress) throw new Error('文件格式不正确');
     const incoming = payload.progress || {};
-    progressMap = { ...progressMap, ...incoming };
+    progressMap = normalizeProgressMap({ ...progressMap, ...incoming });
     const rows = Object.entries(incoming).slice(0, 1000);
     let importWarningShown = false;
     for (const [wordRo, p] of rows) {
       const saveStatus = await apiSaveProgress(
         currentUser.id,
-        wordRo,
+        canonicalWordRo(wordRo),
         !!p.known,
         p.qr || 0,
         p.qt || 0,
@@ -3108,7 +3283,7 @@ async function importProgressBackup(file) {
       if (!importWarningShown && handleProgressSaveStatus(saveStatus)) importWarningShown = true;
     }
     if (payload.dailyGoal) {
-      defaultDailyGoal = Math.max(1, Math.min(DAILY_GOAL_MAX, Number(payload.dailyGoal) || defaultDailyGoal));
+      defaultDailyGoal = normalizeDailyGoalValue(payload.dailyGoal, defaultDailyGoal);
       dailyGoal = defaultDailyGoal;
       const input = document.getElementById('goal-input');
       if (input) input.value = defaultDailyGoal;
@@ -3148,7 +3323,7 @@ function renderCategoryMastery() {
     const cat = normalizeCategory(w.cat);
     if (!groups[cat]) groups[cat] = { total: 0, mastered: 0, learning: 0 };
     groups[cat].total++;
-    const lv = getStoredLevel(progressMap[w.ro]);
+    const lv = getStoredLevel(getProgress(w.ro));
     if (lv === 'mastered') groups[cat].mastered++;
     if (lv === 'learning') groups[cat].learning++;
   });
@@ -3173,7 +3348,7 @@ function renderHardestWords() {
   el.innerHTML = rows.length ? rows.map(w => {
     const s = getDifficultScore(w);
     const rate = Math.round(s.rate * 100);
-    const p = progressMap[w.ro] || {};
+    const p = getProgress(w.ro) || {};
     const stage = Number(p.reviewStage || p.reviewCount || 0);
     return `<div class="hard-row">
       <div class="hard-main">
@@ -3288,12 +3463,12 @@ function closeWordDetail() {
 }
 
 function renderWordDetail(w) {
-  const p = progressMap[w.ro] || {};
+  const p = getProgress(w.ro) || {};
   const s = getDifficultScore(w);
   const stress = getStressDisplay(w);
   const nextReview = p.nextReviewAt ? formatReviewDue(p.nextReviewAt) : '未安排';
   const example = buildExampleSentence(w);
-  const canQueue = isUnseenWord(w) && !(todayQueue.includes(w.ro) && !todayQueueCompleted.has(w.ro));
+  const canQueue = isUnseenWord(w) && !(roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
   document.getElementById('word-detail-body').innerHTML = `
     <div class="detail-head">
       <div class="detail-zh">${escapeHtml(w.zh || '')}</div>
@@ -3498,7 +3673,7 @@ function deleteWordById(id) {
 
 function listQueueAction(w) {
   if (!isUnseenWord(w)) return '';
-  if (todayQueue.includes(w.ro) && !todayQueueCompleted.has(w.ro)) {
+  if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
     return '<span class="word-queued">已在队列</span>';
   }
   return `<button class="queue-btn" onclick="addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入学习</button>`;
@@ -4124,7 +4299,7 @@ function getAdminWrongStats(rows) {
   });
   return Object.values(map)
     .map(s => {
-      const word = W.find(w => w.ro === s.ro) || {};
+      const word = getWordByRo(s.ro) || {};
       const wrong = Math.max(0, s.qt - s.qr);
       return { ...s, zh: word.zh || '', cat: word.cat || '', wrong, rate: s.qt ? Math.round(wrong / s.qt * 100) : 0 };
     })
@@ -4222,7 +4397,7 @@ async function loadAdminReports() {
 }
 
 function openEditFromReport(reportId, wordRo) {
-  const word = W.find(w => w.ro === wordRo);
+  const word = getWordByRo(wordRo);
   if (!word) { showToast('找不到该词条'); return; }
   openEditModal(word, reportId);
 }
