@@ -79,8 +79,40 @@ function progressMemoryKey(userId) {
   return localKey(userId, 'progress_memory');
 }
 
+function progressPendingKey(userId) {
+  return localKey(userId, 'progress_pending');
+}
+
 function readProgressMemoryBackup(userId) {
   return readJson(progressMemoryKey(userId), {});
+}
+
+function readPendingProgress(userId) {
+  return readJson(progressPendingKey(userId), {});
+}
+
+function writePendingProgress(userId, wordRo, progress = {}) {
+  if (!wordRo) return { ok: true, skipped: true };
+  const pending = readPendingProgress(userId);
+  pending[wordRo] = {
+    ...progress,
+    pendingSync: true,
+    pendingSyncAt: new Date().toISOString()
+  };
+  try {
+    writeJson(progressPendingKey(userId), pending);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+function clearPendingProgress(userId, wordRo) {
+  if (!wordRo) return;
+  const pending = readPendingProgress(userId);
+  if (!(wordRo in pending)) return;
+  delete pending[wordRo];
+  try { writeJson(progressPendingKey(userId), pending); } catch {}
 }
 
 function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
@@ -419,10 +451,14 @@ async function apiLoadProgress(userId) {
   const { data, error } = await sb.from('progress').select('*').eq('user_id', userId);
   if (error) throw new Error(error.message);
   const memoryBackup = readProgressMemoryBackup(userId);
+  const pendingProgress = readPendingProgress(userId);
   const map = {};
   (data || []).forEach(r => {
     const progress = rowToProgress(r);
     map[r.word_ro] = mergeProgressMemory(progress, memoryBackup[r.word_ro]);
+  });
+  Object.entries(pendingProgress).forEach(([wordRo, progress]) => {
+    map[wordRo] = mergeProgressMemory({ ...progress, pendingSync: true }, memoryBackup[wordRo]);
   });
   return map;
 }
@@ -511,6 +547,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
 
   let { error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' });
   if (!error) {
+    clearPendingProgress(userId, wordRo);
     const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
     return {
       savedPayload: 'modern',
@@ -522,6 +559,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
   const modernError = error;
   ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_ro' }));
   if (!error) {
+    clearPendingProgress(userId, wordRo);
     const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
     console.warn('Progress saved without wrongbook memory columns; local backup is being used.', modernError);
     return {
@@ -534,6 +572,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
 
   ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
   if (error) throw new Error(`${modernError.message}; ${error.message}`);
+  clearPendingProgress(userId, wordRo);
   const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
   console.warn('Progress saved with legacy review columns; wrongbook memory is local-backup only.', modernError);
   return {

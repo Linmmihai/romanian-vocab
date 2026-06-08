@@ -1339,6 +1339,23 @@ function handleProgressSaveStatus(status) {
   return false;
 }
 
+async function apiSaveProgressWithSessionRetry(userId, wordRo, known, qr, qt, level, review, memory) {
+  try {
+    return await apiSaveProgress(userId, wordRo, known, qr, qt, level, review, null, memory);
+  } catch (firstError) {
+    if (isOfflineMode()) throw firstError;
+    try {
+      const { data, error } = await sb.auth.refreshSession();
+      if (error) throw error;
+      if (data?.user) currentUser = data.user;
+      return await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
+    } catch (retryError) {
+      retryError.firstError = firstError;
+      throw retryError;
+    }
+  }
+}
+
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
   setSyncBadge(isOfflineMode() ? '保存中...' : '同步中...', '');
   const canonicalRo = canonicalWordRo(wordRo);
@@ -1365,17 +1382,29 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
   setProgress(canonicalRo, nextProgress);
   try {
-    const saveStatus = await apiSaveProgress(currentUser.id, canonicalRo, known, qr, qt, level, review, null, memory);
+    const saveStatus = await apiSaveProgressWithSessionRetry(currentUser.id, canonicalRo, known, qr, qt, level, review, memory);
     const warned = handleProgressSaveStatus(saveStatus);
     if (!warned) setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
     await reconcileTodayQueueAfterProgress(canonicalRo);
-  } catch {
-    if (Object.keys(prev).length) {
-      setProgress(canonicalRo, prev);
+  } catch (error) {
+    console.warn('Cloud progress sync failed; keeping local pending progress.', error?.firstError || error, error);
+    const pendingStatus = typeof writePendingProgress === 'function'
+      ? writePendingProgress(currentUser.id, canonicalRo, nextProgress)
+      : { ok: false };
+    const memoryBackup = writeProgressMemoryBackup(currentUser.id, canonicalRo, memory);
+    if (pendingStatus.ok && memoryBackup.ok !== false) {
+      setProgress(canonicalRo, { ...nextProgress, pendingSync: true });
+      setSyncBadge('本机待同步', '');
+      showProgressSaveWarning(`云端同步失败，已先保存到本机：${error?.message || error?.firstError?.message || '请稍后重试'}`);
     } else {
-      deleteProgress(canonicalRo);
+      if (Object.keys(prev).length) {
+        setProgress(canonicalRo, prev);
+      } else {
+        deleteProgress(canonicalRo);
+      }
+      setSyncBadge('同步失败', '');
+      showProgressSaveWarning('本机备份也失败，请导出进度或清理浏览器存储');
     }
-    setSyncBadge('同步失败', '');
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
   applyFilters();
