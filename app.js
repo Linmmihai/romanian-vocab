@@ -814,11 +814,11 @@ function isStartedNotMastered(progress) {
   return getStoredLevel(progress) !== 'mastered';
 }
 
-const LEVEL_LABEL = { unknown: '未学', learning: '学习中', mastered: '已掌握' };
+const LEVEL_LABEL = { unknown: '未学', queued: '待学习', learning: '学习中', mastered: '已掌握' };
 const DUE_MASTERED_LABEL = '已掌握 · 待复习';
-const LEVEL_COLOR = { unknown: 'var(--text3)', learning: 'var(--yellow)', mastered: 'var(--green)' };
-const LEVEL_BG    = { unknown: 'var(--bg3)', learning: '#fffbeb', mastered: 'var(--green-bg)' };
-const LEVEL_TC    = { unknown: 'var(--text2)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
+const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', mastered: 'var(--green)' };
+const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', mastered: 'var(--green-bg)' };
+const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
 const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
 const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
 const REVIEW_INTERVALS = [
@@ -954,6 +954,7 @@ function sortByReviewPriority(words) {
 
 function getProgressLevel(wordRo) {
   const p = getProgress(wordRo) || {};
+  if (!hasWordProgress(p) && roListIncludes(todayQueue, wordRo) && !setHasRo(todayQueueCompleted, wordRo)) return 'queued';
   if (!hasWordProgress(p) && setHasRo(todayQueueCompleted, wordRo)) return 'learning';
   return getStoredLevel(p);
 }
@@ -3757,7 +3758,7 @@ function deleteWordById(id) {
 function listQueueAction(w) {
   if (!isUnseenWord(w)) return '';
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
-    return '<span class="word-queued">已在队列</span>';
+    return '<span class="word-queued">今日队列</span>';
   }
   return `<button class="queue-btn" onclick="addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入学习</button>`;
 }
