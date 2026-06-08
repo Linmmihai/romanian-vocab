@@ -579,12 +579,18 @@ function isDueReviewWord(w) {
   return !!(hasWordProgress(p) && isReviewDue(p));
 }
 
+function isPendingLearningRetryWord(w) {
+  const p = getProgress(w?.ro);
+  if (!hasWordProgress(p) || isReviewDue(p)) return false;
+  return !p.known && getStoredLevel(p) !== 'mastered';
+}
+
 function getRemainingDueReviewWords(words = W) {
   return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueReviewWord(w));
 }
 
 function isDailyQueueCandidate(w) {
-  return isDueReviewWord(w) || isUnseenWord(w);
+  return isDueReviewWord(w) || isPendingLearningRetryWord(w) || isUnseenWord(w);
 }
 
 function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
@@ -630,6 +636,7 @@ function getDailyWordList(words = W, options = {}) {
 function getDailyTaskType(w) {
   if (!w) return '';
   if (isDueReviewWord(w)) return '到期复习';
+  if (hasWordProgress(getProgress(w.ro))) return getStoredLevel(getProgress(w.ro)) === 'mastered' ? '已掌握' : '学习中';
   return '新词';
 }
 
@@ -747,6 +754,25 @@ async function recordTodayWord(wordRo) {
 
 async function completeTodayQueueWord(wordRo) {
   await recordTodayWord(wordRo);
+}
+
+function shouldCompleteQueuedWordFromProgress(wordRo) {
+  const p = getProgress(wordRo);
+  if (!hasWordProgress(p) || isReviewDue(p)) return false;
+  return !!(p.known || Number(p.qr || 0) > 0 || getStoredLevel(p) === 'mastered');
+}
+
+async function reconcileTodayQueueAfterProgress(wordRo) {
+  if (!dailyQueueLoaded) return;
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!roListIncludes(todayQueue, canonicalRo) || setHasRo(todayQueueCompleted, canonicalRo)) return;
+  if (shouldCompleteQueuedWordFromProgress(canonicalRo)) {
+    try {
+      await recordTodayWord(canonicalRo);
+    } catch (error) {
+      console.warn('Daily queue reconciliation failed', error);
+    }
+  }
 }
 
 // ── 熟练度计算 ────────────────────────────────────────────
@@ -1304,6 +1330,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
     const saveStatus = await apiSaveProgress(currentUser.id, canonicalRo, known, qr, qt, level, review, null, memory);
     const warned = handleProgressSaveStatus(saveStatus);
     if (!warned) setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
+    await reconcileTodayQueueAfterProgress(canonicalRo);
   } catch {
     if (Object.keys(prev).length) {
       setProgress(canonicalRo, prev);
