@@ -68,6 +68,7 @@ const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
 let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
 let dailyReminderTimer = null;
+let dailyCheckinPromptShown = false;
 let adminWeeklySummaryText = '';
 let adminWatchSettings = {};
 
@@ -178,6 +179,10 @@ function todayTemporaryGoalKey() {
   return `daily_goal_today:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
 }
 
+function dailyCheckinKey() {
+  return `daily_checkin:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
+}
+
 function readTodayTemporaryGoal() {
   try {
     const raw = localStorage.getItem(todayTemporaryGoalKey());
@@ -199,6 +204,20 @@ function isDefaultGoalDone() {
 
 function isCurrentTodayGoalDone() {
   return todayNewWords >= dailyGoal;
+}
+
+function isDailyCheckinDone() {
+  try {
+    return localStorage.getItem(dailyCheckinKey()) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeDailyCheckinDone() {
+  try {
+    localStorage.setItem(dailyCheckinKey(), '1');
+  } catch {}
 }
 
 function wrongbookStreakKey() {
@@ -689,6 +708,10 @@ async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更�
 }
 
 async function extendTodayGoal(amount) {
+  if (isDefaultGoalDone() && !isDailyCheckinDone()) {
+    openDailyCheckinModal();
+    return;
+  }
   const extra = Number(amount || 0);
   if (!extra || extra < 1) return;
   const base = Math.max(dailyGoal, todayNewWords);
@@ -712,6 +735,10 @@ async function extendTodayGoal(amount) {
 }
 
 async function extendTodayGoalCustom() {
+  if (isDefaultGoalDone() && !isDailyCheckinDone()) {
+    openDailyCheckinModal();
+    return;
+  }
   const raw = prompt('这次想额外增加多少个任务？', '20');
   if (raw === null) return;
   const extra = parseInt(raw, 10);
@@ -763,7 +790,10 @@ async function recordTodayWord(wordRo) {
   updateTodayCalendarCell();
   renderReviewPanel();
   updateReviewBadge();
-  if (!wasGoalDone && isDefaultGoalDone()) showToast('今日固定目标已完成，可以继续测验或临时加量');
+  if (!wasGoalDone && isDefaultGoalDone()) {
+    showToast('今日固定目标已完成');
+    openDailyCheckinModal();
+  }
 }
 
 async function completeTodayQueueWord(wordRo) {
@@ -1802,13 +1832,43 @@ function updateReviewBadge() {
 
 // ── 每日任务目标 ──────────────────────────────────────────
 
+function openDailyCheckinModal() {
+  if (!isDefaultGoalDone() || isDailyCheckinDone()) return;
+  const modal = document.getElementById('daily-checkin-modal');
+  if (!modal) return;
+  setText('checkin-fixed-goal', defaultDailyGoal);
+  setText('checkin-today-count', todayNewWords);
+  setText('checkin-accuracy', `${calcProgressSummary(progressMap).accuracy}%`);
+  modal.style.display = 'flex';
+}
+
+function closeDailyCheckinModal() {
+  const modal = document.getElementById('daily-checkin-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function completeDailyCheckin() {
+  writeDailyCheckinDone();
+  closeDailyCheckinModal();
+  renderDailyGoal();
+  renderReviewPanel();
+  showToast('今日已打卡，可以临时加量继续学习');
+}
+
+function maybePromptDailyCheckin() {
+  if (dailyCheckinPromptShown || !isDefaultGoalDone() || isDailyCheckinDone()) return;
+  dailyCheckinPromptShown = true;
+  openDailyCheckinModal();
+}
+
 function renderDailyGoal() {
   const el = document.getElementById('daily-goal-bar');
   if (!el) return;
   const pct = Math.min(100, Math.round(todayNewWords / dailyGoal * 100));
   const baseDone = isDefaultGoalDone();
   const currentDone = isCurrentTodayGoalDone();
-  const canExtend = currentDone && dailyGoal < DAILY_GOAL_MAX;
+  const checkinDone = isDailyCheckinDone();
+  const canExtend = currentDone && checkinDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1821,6 +1881,11 @@ function renderDailyGoal() {
       <div style="height:100%;width:${pct}%;background:${baseDone ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
     </div>
     ${isTemporaryExtended ? `<div style="font-size:12px;color:var(--text2);margin-top:6px">固定目标 ${defaultDailyGoal} 个${baseDone ? '已达成' : '未达成'}；今天临时加量目标 ${dailyGoal} 个</div>` : ''}
+    ${baseDone && !checkinDone ? `
+      <div class="goal-extend">
+        <span>固定目标已完成，先打卡再继续加量。</span>
+        <button class="btn-sm" onclick="openDailyCheckinModal()">去打卡</button>
+      </div>` : ''}
     ${canExtend ? `
       <div class="goal-extend">
         <span>继续今天：</span>
@@ -1829,6 +1894,7 @@ function renderDailyGoal() {
         <button class="btn-sm" onclick="extendTodayGoalCustom()">自定义</button>
       </div>` : ''}`;
   renderDailyReminderSettings();
+  maybePromptDailyCheckin();
 }
 
 async function saveGoalSetting() {
