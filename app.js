@@ -37,6 +37,9 @@ let qStarted = false;
 let qScopedPracticePool = null;
 let qScopedPracticePoolKey = '';
 let lastLearningHint = '';
+let progressVersion = 0;
+let dailyQueueVersion = 0;
+let reviewPanelMetricsCache = { key: '', metrics: null };
 
 let editingWordId = null;
 let editingReportId = null;
@@ -99,17 +102,26 @@ function normalizeProgressMap(map = {}) {
   return normalized;
 }
 
+function replaceProgressMap(map = {}) {
+  progressMap = normalizeProgressMap(map);
+  progressVersion++;
+}
+
 function getProgress(wordRo) {
   return progressMap[roKey(wordRo)] || null;
 }
 
 function setProgress(wordRo, progress) {
   const key = roKey(wordRo);
-  if (key) progressMap[key] = progress;
+  if (key) {
+    progressMap[key] = progress;
+    progressVersion++;
+  }
 }
 
 function deleteProgress(wordRo) {
   delete progressMap[roKey(wordRo)];
+  progressVersion++;
 }
 
 function canonicalWordRo(wordRo) {
@@ -429,13 +441,13 @@ async function loadExampleBank() {
 
 async function loadProgress() {
   try {
-    progressMap = normalizeProgressMap(await apiLoadProgress(currentUser.id));
+    replaceProgressMap(await apiLoadProgress(currentUser.id));
     setSyncBadge(isOfflineMode() ? '本机保存' : '', isOfflineMode() ? 'saved' : '');
     applyFilters();
     renderCard();
     upStats();
   } catch (error) {
-    progressMap = {};
+    replaceProgressMap({});
     setSyncBadge('进度读取失败', '');
     showToast(`进度读取失败：${error.message || '请刷新重试'}`);
     applyFilters();
@@ -528,6 +540,7 @@ async function loadDailyQueue() {
     showToast('每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步');
   }
   dailyQueueLoaded = true;
+  dailyQueueVersion++;
   applyFilters();
   renderCard();
   renderDailyGoal();
@@ -721,6 +734,7 @@ async function saveTodayQueue() {
     setSyncBadge('队列同步失败', '');
     showProgressSaveWarning(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
   }
+  dailyQueueVersion++;
   invalidateCalendarCache();
   invalidateQuizPracticePool();
 }
@@ -846,7 +860,7 @@ function applyFilters() {
 
 function isUnseenWord(w) {
   const p = getProgress(w.ro);
-  return !hasWordProgress(p);
+  return !hasWordProgress(p) && !setHasRo(todayQueueCompleted, w.ro);
 }
 
 function getUnseenWords(words = W) {
@@ -940,6 +954,7 @@ function sortByReviewPriority(words) {
 
 function getProgressLevel(wordRo) {
   const p = getProgress(wordRo) || {};
+  if (!hasWordProgress(p) && setHasRo(todayQueueCompleted, wordRo)) return 'learning';
   return getStoredLevel(p);
 }
 
@@ -1201,16 +1216,38 @@ function getCurrentScopeWords() {
   return curCat === '全部' ? W : W.filter(w => w.cat === curCat);
 }
 
-function renderReviewPanel() {
-  const dueEl = document.getElementById('review-due-count');
-  if (!dueEl) return;
-  const scoped = getCurrentScopeWords();
+function getReviewPanelMetrics(scoped) {
+  const key = [
+    curCat,
+    W.length,
+    scoped.length,
+    dailyGoal,
+    todayNewWords,
+    defaultDailyGoal,
+    progressVersion,
+    dailyQueueVersion
+  ].join('|');
+  if (reviewPanelMetricsCache.key === key && reviewPanelMetricsCache.metrics) {
+    return reviewPanelMetricsCache.metrics;
+  }
   const due = getRemainingDueReviewWords(scoped).length;
-  const rawUnseenRemaining = getUnseenWords(scoped).filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro)).length;
+  const rawUnseenRemaining = getUnseenWords(scoped)
+    .filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
+    .length;
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
   const remainingDueReviews = getRemainingDueReviewWords(W).length;
   const availableNewSlots = Math.max(0, remainingSlots - remainingDueReviews);
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
+  const metrics = { due, remainingSlots, remainingDueReviews, unseenRemaining };
+  reviewPanelMetricsCache = { key, metrics };
+  return metrics;
+}
+
+function renderReviewPanel() {
+  const dueEl = document.getElementById('review-due-count');
+  if (!dueEl) return;
+  const scoped = getCurrentScopeWords();
+  const { due, remainingSlots, remainingDueReviews, unseenRemaining } = getReviewPanelMetrics(scoped);
   const current = filtered[idx];
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
@@ -2447,18 +2484,18 @@ function showReviewComplete() {
 // ── 错题本 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否是错题：只有已掌握后又答错的词进入错题本。
+ * 判断一个词是否是薄弱词：包含已掌握后又答错的词，以及尚未掌握但已经答错过的词。
  */
 function isWrongWord(wordRo) {
   const p = getProgress(wordRo);
-  return !!p && (p.wrongCount || 0) > 0 && getStoredLevel(p) === 'mastered';
+  return !!p && ((p.wrongCount || 0) > 0 || (p.errorStreak || 0) > 0 || isWeakLearningWord(wordRo));
 }
 
 /**
- * 获取当前错题列表
+ * 获取当前薄弱词列表
  */
 function getWrongWords() {
-  return W.filter(w => isWrongWord(w.ro));
+  return getDifficultWords(W).filter(w => isWrongWord(w.ro));
 }
 
 /**
@@ -2512,7 +2549,8 @@ function renderWrongbookCard() {
   setStressHtml('wb-ipa', w);
   setGrammarText('wb-phint', w, stress);
   document.getElementById('wb-count').textContent = (wbIdx + 1) + ' / ' + wbList.length;
-  document.getElementById('wb-wrong-count').textContent = `答错 ${wrongCount} 次`;
+  const missed = Math.max(0, Number(p.qt || 0) - Number(p.qr || 0));
+  document.getElementById('wb-wrong-count').textContent = `累计错 ${Math.max(wrongCount, missed)} 次`;
   document.getElementById('wb-streak').textContent = streak > 0 ? `连续答对 ${streak}/${WB_GRADUATE}` : '';
   document.getElementById('wb-streak').style.color = streak > 0 ? 'var(--green-text)' : '';
 
@@ -2573,6 +2611,24 @@ function speakQuizWord(rate = 0.9) {
   const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
   if (rv) u.voice = rv;
   speechSynthesis.speak(u);
+}
+
+function startWrongbookQuiz() {
+  qPracticeScope = 'wrong';
+  qStarted = false;
+  invalidateQuizPracticePool();
+  document.querySelectorAll('#quiz-scope-bar .study-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === 'wrong'));
+  switchPage('quiz');
+}
+
+function startWrongbookTranslationQuiz() {
+  qPracticeScope = 'wrong';
+  qExerciseMode = 'translation';
+  qStarted = false;
+  invalidateQuizPracticePool();
+  document.querySelectorAll('#quiz-scope-bar .study-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === 'wrong'));
+  document.querySelectorAll('.exercise-btn').forEach(b => b.classList.toggle('active', b.dataset.exercise === 'translation'));
+  switchPage('quiz');
 }
 
 /**
@@ -3284,7 +3340,7 @@ async function importProgressBackup(file) {
     const payload = JSON.parse(await file.text());
     if (!payload || payload.app !== 'romanian-vocab' || !payload.progress) throw new Error('文件格式不正确');
     const incoming = payload.progress || {};
-    progressMap = normalizeProgressMap({ ...progressMap, ...incoming });
+    replaceProgressMap({ ...progressMap, ...incoming });
     const rows = Object.entries(incoming).slice(0, 1000);
     let importWarningShown = false;
     for (const [wordRo, p] of rows) {

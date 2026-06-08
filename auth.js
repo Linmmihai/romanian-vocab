@@ -263,7 +263,8 @@ async function doLogout() {
   try { await sb.auth.signOut(); } catch {}
   currentUser = null;
   userRole = null;
-  progressMap = {};
+  if (typeof replaceProgressMap === 'function') replaceProgressMap({});
+  else progressMap = {};
   W = [];
   showAuthScreen();
 }
