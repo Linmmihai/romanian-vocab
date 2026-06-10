@@ -894,6 +894,14 @@ function applyFilters() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (flashMode === 'today') {
     filtered = getDailyWordList(scoped, { includeFallback: true });
+    if (!filtered.length && curCat !== '全部') {
+      const allDailyWords = getDailyWordList(W, { includeFallback: true, ignoreCategory: true });
+      if (allDailyWords.length) {
+        curCat = '全部';
+        filtered = allDailyWords;
+        buildCats();
+      }
+    }
   } else if (flashMode === 'review') {
     filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueReviewWord);
   } else {
