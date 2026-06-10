@@ -541,6 +541,7 @@ async function loadDailyQueue() {
     });
   }
   todaySeenWords = new Set(todayQueueCompleted);
+  await repairStartedProgressForCompletedTodayWords();
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
   const normalizedQueue = buildOpenTodayQueue(dailyGoal);
   if (normalizedQueue.join('|') !== todayQueue.join('|')) {
@@ -769,6 +770,7 @@ async function saveTodayQueue() {
 async function recordTodayWord(wordRo) {
   const canonicalRo = canonicalWordRo(wordRo);
   if (!canonicalRo || setHasRo(todaySeenWords, canonicalRo)) return;
+  await ensureStartedProgressForTodayWord(canonicalRo);
   const wasGoalDone = isDefaultGoalDone();
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
@@ -798,6 +800,19 @@ async function recordTodayWord(wordRo) {
 
 async function completeTodayQueueWord(wordRo) {
   await recordTodayWord(wordRo);
+}
+
+async function ensureStartedProgressForTodayWord(wordRo) {
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!canonicalRo || hasWordProgress(getProgress(canonicalRo))) return;
+  await syncProgress(canonicalRo, true, 1, 1, true, { skipDailyQueueReconcile: true });
+}
+
+async function repairStartedProgressForCompletedTodayWords() {
+  const missingProgress = [...todayQueueCompleted].filter(ro => !hasWordProgress(getProgress(ro)));
+  for (const ro of missingProgress) {
+    await ensureStartedProgressForTodayWord(ro);
+  }
 }
 
 function shouldCompleteQueuedWordFromProgress(wordRo) {
@@ -1415,7 +1430,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
     const saveStatus = await apiSaveProgressWithSessionRetry(currentUser.id, canonicalRo, known, qr, qt, level, review, memory);
     const warned = handleProgressSaveStatus(saveStatus);
     if (!warned) setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
-    await reconcileTodayQueueAfterProgress(canonicalRo);
+    if (!options.skipDailyQueueReconcile) await reconcileTodayQueueAfterProgress(canonicalRo);
   } catch (error) {
     console.warn('Cloud progress sync failed; keeping local pending progress.', error?.firstError || error, error);
     const pendingStatus = typeof writePendingProgress === 'function'

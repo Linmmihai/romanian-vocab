@@ -34,6 +34,10 @@ begin
     add constraint daily_queue_goal_check check (goal > 0 and goal <= 5000);
 end $$;
 
+drop policy if exists "Users can read own daily queues" on public.daily_queue;
+drop policy if exists "Users can insert own daily queues" on public.daily_queue;
+drop policy if exists "Users can update own daily queues" on public.daily_queue;
+
 create policy "Users can read own daily queues"
 on public.daily_queue for select
 to authenticated
