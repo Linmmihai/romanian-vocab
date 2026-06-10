@@ -660,7 +660,12 @@ function getDailyWordList(words = W, options = {}) {
   if (openQueuedRos.length && curCat !== '全部') return [];
   if (todayNewWords >= dailyGoal) return [];
 
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...todayQueue].map(roKey));
+  const displayableQueuedRos = openQueuedRos
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(w => !isRetryDeferred(w))
+    .map(w => w.ro);
+  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...displayableQueuedRos].map(roKey));
   return buildReviewFirstDailyPlan(scoped, Math.min(limit, dailyGoal - todayNewWords))
     .filter(w => !blocked.has(roKey(w.ro)))
     .slice(0, limit);
@@ -2138,7 +2143,7 @@ function renderCard() {
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
     const emptyText = {
-      today: todayNewWords >= dailyGoal ? '今日任务已完成' : (hasDueReview || hasNewWords ? '当前分类没有今日任务' : '今日没有可安排任务'),
+      today: todayNewWords >= dailyGoal ? '今日任务已完成' : (curCat !== '全部' && (hasDueReview || hasNewWords) ? '当前分类没有今日任务' : '今日没有可安排任务'),
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
@@ -2222,6 +2227,7 @@ function getNextDailyFallbackWord(currentRo) {
   const openQueue = todayQueue
     .map(ro => getWordByRo(ro))
     .filter(Boolean)
+    .filter(w => !isRetryDeferred(w))
     .filter(w => !blocked.has(w.ro));
   const due = sortReviewDueWithWeakPriority(W)
     .filter(w => !blocked.has(w.ro) && isDueReviewWord(w));
