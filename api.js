@@ -166,10 +166,7 @@ function rowToProgress(r) {
     qr ||
     qt ||
     reviewStage ||
-    nextReviewAt ||
-    lastReviewedAt ||
-    r.updated_at ||
-    r.updatedAt
+    (r.level && r.level !== 'unknown')
   );
   return {
     seen,

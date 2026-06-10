@@ -576,8 +576,9 @@ function buildDailyQueueWords(goal) {
 function uniqueWordsByRo(words) {
   const seen = new Set();
   return words.filter(w => {
-    if (!w?.ro || seen.has(w.ro)) return false;
-    seen.add(w.ro);
+    const key = roKey(w?.ro);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -600,9 +601,6 @@ function hasWordProgress(progress) {
     progress.qr ||
     progress.reviewStage ||
     progress.reviewCount ||
-    progress.nextReviewAt ||
-    progress.nextReview ||
-    progress.lastReviewedAt ||
     (progress.level && progress.level !== 'unknown')
   ));
 }
@@ -854,13 +852,22 @@ function calcLevel(qr, qt, known = false) {
   return 'learning';
 }
 
+function normalizeStoredProgressLevel(level) {
+  return ['unknown', 'learning', 'mastered'].includes(level) ? level : 'unknown';
+}
+
 function getStoredLevel(progress) {
   if (!progress) return 'unknown';
-  return calcLevel(progress.qr, progress.qt, progress.known);
+  const computed = calcLevel(progress.qr, progress.qt, progress.known);
+  if (computed !== 'unknown') return computed;
+  const stored = normalizeStoredProgressLevel(progress.level);
+  if (stored !== 'unknown') return stored;
+  if (progress.seen || progress.reviewStage || progress.reviewCount) return 'learning';
+  return 'unknown';
 }
 
 function isStartedNotMastered(progress) {
-  if (!progress || (!progress.qt && !progress.known)) return false;
+  if (!hasWordProgress(progress)) return false;
   return getStoredLevel(progress) !== 'mastered';
 }
 
