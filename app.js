@@ -878,6 +878,7 @@ const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning:
 const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
 const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
 const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
+const REINFORCEMENT_MIN_LEARNING_MISSES = 2;
 const REVIEW_INTERVALS = [
   { label: '20分钟', ms: 20 * 60 * 1000 },
   { label: '1天', ms: 24 * 60 * 60 * 1000 },
@@ -1066,9 +1067,18 @@ function getDifficultWords(words = W) {
 
 function isWeakLearningWord(wordRo) {
   const p = getProgress(wordRo) || {};
+  return hasWordProgress(p) && getStoredLevel(p) !== 'mastered';
+}
+
+function isUnclearedWeakLearningMiss(wordRo) {
+  const p = getProgress(wordRo) || {};
   const qt = p.qt || 0;
   const qr = p.qr || 0;
-  return qt > 0 && Math.max(0, qt - qr) > 0 && getStoredLevel(p) !== 'mastered';
+  const misses = Math.max(0, qt - qr);
+  if (!(qt > 0 && misses >= REINFORCEMENT_MIN_LEARNING_MISSES && getStoredLevel(p) !== 'mastered')) return false;
+  if (!p.weakClearedAt) return true;
+  if (!p.lastWrongAt) return false;
+  return new Date(p.lastWrongAt).getTime() > new Date(p.weakClearedAt).getTime();
 }
 
 function getWeakLearningWords(words = W) {
@@ -1432,6 +1442,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const review = getNextReview(prev, success);
   const shouldTrackWrongbook = options.trackWrongbook === true;
   const shouldClearWrongbook = options.clearWrongbook === true;
+  const nowIso = new Date().toISOString();
   const wrongCount = shouldClearWrongbook
     ? 0
     : (prev.wrongCount || 0) + (shouldTrackWrongbook && !success ? 1 : 0);
@@ -1442,8 +1453,11 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
         : (prev.errorStreak || 0));
   const lastWrongAt = shouldClearWrongbook
     ? null
-    : (shouldTrackWrongbook && !success ? new Date().toISOString() : (prev.lastWrongAt || null));
-  const memory = { wrongCount, errorStreak, lastWrongAt };
+    : (shouldTrackWrongbook && !success ? nowIso : (prev.lastWrongAt || null));
+  const weakClearedAt = shouldClearWrongbook
+    ? nowIso
+    : (!success ? null : (prev.weakClearedAt || null));
+  const memory = { wrongCount, errorStreak, lastWrongAt, weakClearedAt };
   const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
   setProgress(canonicalRo, nextProgress);
   try {
@@ -2308,7 +2322,7 @@ async function markCard(yes) {
     renderReviewPanel();
     updateReviewBadge();
   } else if (!yes) {
-    showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；新词不会进入需加强列表`);
+    showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
   }
   // 跳下一张，重置为中文面
   if (!wasReviewingHistory) flashHistory.push(w.ro);
@@ -2620,7 +2634,7 @@ function showReviewComplete() {
  */
 function isWrongWord(wordRo) {
   const p = getProgress(wordRo);
-  return !!p && ((p.wrongCount || 0) > 0 || (p.errorStreak || 0) > 0 || isWeakLearningWord(wordRo));
+  return !!p && ((p.wrongCount || 0) > 0 || (p.errorStreak || 0) > 0 || isUnclearedWeakLearningMiss(wordRo));
 }
 
 /**
@@ -2909,7 +2923,7 @@ function getPracticeScopeLabel() {
   return {
     smart: '智能练习',
     today: '今日任务',
-    weak: '薄弱词',
+    weak: '学习中',
     wrong: '需加强',
     due: '到期复习',
     new: '新词',
@@ -3384,7 +3398,7 @@ function renderStudyCoach(summary, logs = []) {
   const items = [];
   if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, kind: 'due' });
   if (wrongCount) items.push({ title: `再练 ${wrongCount} 个需加强词`, kind: 'wrong' });
-  if (weakCount) items.push({ title: `重点练 ${weakCount} 个薄弱词`, kind: 'weak' });
+  if (weakCount) items.push({ title: `继续练 ${weakCount} 个学习中词`, kind: 'weak' });
   if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, kind: 'today' });
   if (weakCat) items.push({ title: `薄弱分类：${weakCat.cat}（掌握率 ${weakCat.pct}%）`, kind: 'cat', arg: weakCat.cat });
   if (!items.length) items.push({ title: `状态稳定。可以做一轮智能测验，当前正确率 ${summary.accuracy}%`, kind: 'quiz' });
@@ -3492,7 +3506,8 @@ async function importProgressBackup(file) {
         {
           wrongCount: p.wrongCount || 0,
           errorStreak: p.errorStreak || 0,
-          lastWrongAt: p.lastWrongAt || null
+          lastWrongAt: p.lastWrongAt || null,
+          weakClearedAt: p.weakClearedAt || null
         }
       );
       if (!importWarningShown && handleProgressSaveStatus(saveStatus)) importWarningShown = true;

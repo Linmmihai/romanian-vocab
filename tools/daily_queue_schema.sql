@@ -57,7 +57,8 @@ with check (auth.uid() = user_id);
 alter table public.progress
   add column if not exists wrong_count integer not null default 0,
   add column if not exists error_streak integer not null default 0,
-  add column if not exists last_wrong_at timestamptz;
+  add column if not exists last_wrong_at timestamptz,
+  add column if not exists weak_cleared_at timestamptz;
 
 alter table public.profiles
   alter column daily_goal set default 20;

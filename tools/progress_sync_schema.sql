@@ -13,6 +13,7 @@ alter table public.progress
   add column if not exists wrong_count integer not null default 0,
   add column if not exists error_streak integer not null default 0,
   add column if not exists last_wrong_at timestamptz,
+  add column if not exists weak_cleared_at timestamptz,
   add column if not exists review_count integer not null default 0,
   add column if not exists next_review date;
 

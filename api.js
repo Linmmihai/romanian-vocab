@@ -121,7 +121,8 @@ function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
   const wrongCount = Number(memory.wrongCount || 0);
   const errorStreak = Number(memory.errorStreak || 0);
   const lastWrongAt = memory.lastWrongAt || null;
-  if (!wrongCount && !errorStreak && !lastWrongAt) {
+  const weakClearedAt = memory.weakClearedAt || null;
+  if (!wrongCount && !errorStreak && !lastWrongAt && !weakClearedAt) {
     delete existing[wordRo];
     try {
       writeJson(progressMemoryKey(userId), existing);
@@ -134,6 +135,7 @@ function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
     wrongCount,
     errorStreak,
     lastWrongAt,
+    weakClearedAt,
     backedUpAt: new Date().toISOString()
   };
   const pruned = Object.fromEntries(Object.entries(existing)
@@ -181,7 +183,8 @@ function rowToProgress(r) {
     nextReview: r.next_review || r.nextReview || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
     wrongCount: r.wrong_count ?? r.wrongCount,
     errorStreak: r.error_streak ?? r.errorStreak,
-    lastWrongAt: r.last_wrong_at || r.lastWrongAt || null
+    lastWrongAt: r.last_wrong_at || r.lastWrongAt || null,
+    weakClearedAt: r.weak_cleared_at || r.weakClearedAt || null
   };
 }
 
@@ -190,7 +193,8 @@ function mergeProgressMemory(progress, backup = {}) {
     ...progress,
     wrongCount: progress.wrongCount ?? backup.wrongCount ?? 0,
     errorStreak: progress.errorStreak ?? backup.errorStreak ?? 0,
-    lastWrongAt: progress.lastWrongAt || backup.lastWrongAt || null
+    lastWrongAt: progress.lastWrongAt || backup.lastWrongAt || null,
+    weakClearedAt: progress.weakClearedAt || backup.weakClearedAt || null
   };
 }
 
@@ -516,7 +520,8 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     last_reviewed_at: normalized.lastReviewedAt || now,
     wrong_count: memory.wrongCount || 0,
     error_streak: memory.errorStreak || 0,
-    last_wrong_at: memory.lastWrongAt || null
+    last_wrong_at: memory.lastWrongAt || null,
+    weak_cleared_at: memory.weakClearedAt || null
   };
   const reviewOnlyPayload = {
     ...basePayload,
