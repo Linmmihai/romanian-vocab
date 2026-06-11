@@ -429,7 +429,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="nav-tab" data-page="quiz" onclick="switchPage('quiz')">测验</button>
     <button class="nav-tab" data-page="list" onclick="switchPage('list')">词汇</button>
     <button class="nav-tab" data-page="stats" onclick="switchPage('stats')">统计</button>
-    <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">薄弱词 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">需加强 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
     <button class="nav-tab hidden-tab" onclick="switchPage('review')">复习</button>
   </div>
 
@@ -492,8 +492,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stats-grid">
           <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
           <div class="stat"><div class="stat-n" id="s-mastered" style="color:var(--green-text)">0</div><div class="stat-l">已掌握</div></div>
-          <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">待掌握</div></div>
-          <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">薄弱词</div></div>
+          <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">学习中</div></div>
+          <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">需加强</div></div>
         </div>
         <div class="review-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -585,11 +585,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
-  <!-- 薄弱词 -->
+  <!-- 需加强 -->
   <div class="page" id="page-wrongbook">
     <!-- 统计栏 -->
     <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
-      <div class="stat"><div class="stat-n" id="wb-total">0</div><div class="stat-l">薄弱词</div></div>
+      <div class="stat"><div class="stat-n" id="wb-total">0</div><div class="stat-l">需加强</div></div>
       <div class="stat"><div class="stat-n" style="font-size:14px;padding-top:4px">连对3次</div><div class="stat-l">移出条件</div></div>
       <div class="stat"><div class="stat-n" id="wb-graduated" style="color:var(--green-text)">0</div><div class="stat-l">已毕业</div></div>
     </div>
@@ -597,15 +597,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <!-- 空状态 -->
     <div id="wb-empty" class="loading-screen" style="display:none">
       <div style="font-size:48px">🎉</div>
-      <div style="font-size:16px;font-weight:600;color:var(--text)">暂时没有薄弱词</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">测验或复习中答错的词会自动进入这里</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text)">暂时没有需要加强的词</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">去测验里复盘已学词，反复薄弱的词会出现在这里</div>
       <button class="btn-sm" style="margin-top:8px" onclick="switchPage('quiz')">去测验 →</button>
     </div>
 
     <!-- 卡片内容 -->
     <div id="wb-content" style="display:none">
       <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap">
-        <button class="btn-sm" onclick="startWrongbookQuiz()">错题测验</button>
+        <button class="btn-sm" onclick="startWrongbookQuiz()">加强测验</button>
         <button class="btn-sm" onclick="startWrongbookTranslationQuiz()">翻译专项</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -668,8 +668,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="study-mode-bar" id="quiz-scope-bar">
           <button class="study-mode-btn active" data-scope="smart" onclick="setPracticeScope('smart')">智能</button>
           <button class="study-mode-btn" data-scope="today" onclick="setPracticeScope('today')">今日</button>
-          <button class="study-mode-btn" data-scope="weak" onclick="setPracticeScope('weak')">薄弱新词</button>
-          <button class="study-mode-btn" data-scope="wrong" onclick="setPracticeScope('wrong')">错题</button>
+          <button class="study-mode-btn" data-scope="weak" onclick="setPracticeScope('weak')">薄弱词</button>
+          <button class="study-mode-btn" data-scope="wrong" onclick="setPracticeScope('wrong')">需加强</button>
           <button class="study-mode-btn" data-scope="due" onclick="setPracticeScope('due')">到期</button>
           <button class="study-mode-btn" data-scope="new" onclick="setPracticeScope('new')">新词</button>
           <button class="study-mode-btn" data-scope="all" onclick="setPracticeScope('all')">全部</button>
@@ -812,7 +812,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="guide-card">
       <div class="guide-title">使用手册</div>
-      <div class="guide-subtitle">建议按“学习 → 测验 → 错题本 → 统计复盘”的节奏学习；指南、管理员后台和退出入口已集中到右上角账号菜单。</div>
+      <div class="guide-subtitle">建议按“学习 → 测验 → 加强薄弱词 → 统计复盘”的节奏学习；指南、管理员后台和退出入口已集中到右上角账号菜单。</div>
       <div class="manual-grid">
         <div class="manual-item">
           <div class="manual-title">学习</div>
@@ -824,11 +824,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div class="manual-item">
           <div class="manual-title">测验</div>
-          <div class="manual-text">用翻译、名词复数、动词变位和重音题检查记忆。已学词答错后会进入错题本，新词会按复习间隔重新出现。</div>
+          <div class="manual-text">用翻译、名词复数、动词变位和重音题检查记忆。已掌握的词答错后会进入需加强，新词会按复习间隔重新出现。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">错题本</div>
-          <div class="manual-text">集中练习薄弱词。连续答对 3 次后，词条会从错题本移出。</div>
+          <div class="manual-title">需加强</div>
+          <div class="manual-text">集中练习薄弱词。连续答对 3 次后，词条会从需加强列表移出。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">统计</div>
@@ -1121,7 +1121,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
 <script src="api.js?v=20260602-daily-goal-fix"></script>
 <script src="auth.js?v=20260602-daily-goal-fix"></script>
-<script src="stress_grammar_patch.js?v=20260516-memory3"></script>
 <script src="app.js?v=20260602-daily-goal-fix"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);

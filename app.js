@@ -48,7 +48,7 @@ let detailWordRo = null;
 let flashcardButtonsBound = false;
 let cardGesturesBound = false;
 
-// 错题本状态
+// 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
 let wbIdx = 0;
 let wbFlipped = false;
@@ -680,7 +680,7 @@ function getContinueAfterGoalText() {
   if (dailyGoal < DAILY_GOAL_MAX) {
     return '想继续学习，可以点下方 +30、+50，或自定义扩展今天的任务量。';
   }
-  return '今日任务已到上限，可以继续做测验或打开错题本巩固。';
+  return '今日任务已到上限，可以继续做测验或打开需加强列表巩固。';
 }
 
 function getGoalInputValue() {
@@ -937,7 +937,7 @@ function getUnseenWords(words = W) {
 async function addWordToTodayQueue(wordRo) {
   const w = getWordByRo(wordRo);
   if (!w) { showToast('找不到该词条'); return; }
-  if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习或错题本巩固'); return; }
+  if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习或需加强列表巩固'); return; }
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
   const remainingDueReviews = getRemainingDueReviewWords(W).length;
   if (todayNewWords >= dailyGoal || remainingDueReviews >= remainingSlots) {
@@ -1393,12 +1393,12 @@ function handleProgressSaveStatus(status) {
   if (!status) return false;
   if (status.memoryBackup?.ok === false) {
     setSyncBadge('本机备份失败', '');
-    showProgressSaveWarning('本机错题备份保存失败，请导出进度或清理浏览器存储');
+    showProgressSaveWarning('本机加强记录备份保存失败，请导出进度或清理浏览器存储');
     return true;
   }
   if (status.memoryBackedByDb === false) {
     setSyncBadge('本机备份', 'saved');
-    showProgressSaveWarning('错题记忆暂存在本机；数据库缺少新进度字段');
+    showProgressSaveWarning('需加强记录暂存在本机；数据库缺少新进度字段');
     return true;
   }
   return false;
@@ -2308,7 +2308,7 @@ async function markCard(yes) {
     renderReviewPanel();
     updateReviewBadge();
   } else if (!yes) {
-    showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；新词不会进入错题本`);
+    showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；新词不会进入需加强列表`);
   }
   // 跳下一张，重置为中文面
   if (!wasReviewingHistory) flashHistory.push(w.ro);
@@ -2613,10 +2613,10 @@ function showReviewComplete() {
     `;
 }
 
-// ── 错题本 ────────────────────────────────────────────────
+// ── 需加强 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否是薄弱词：包含已掌握后又答错的词，以及尚未掌握但已经答错过的词。
+ * 判断一个词是否需要加强：包含已掌握后又答错的词，以及尚未掌握但已经答错过的词。
  */
 function isWrongWord(wordRo) {
   const p = getProgress(wordRo);
@@ -2624,14 +2624,14 @@ function isWrongWord(wordRo) {
 }
 
 /**
- * 获取当前薄弱词列表
+ * 获取当前需加强列表
  */
 function getWrongWords() {
   return getDifficultWords(W).filter(w => isWrongWord(w.ro));
 }
 
 /**
- * 初始化/刷新错题本
+ * 初始化/刷新需加强列表
  */
 function initWrongbook() {
   if (wbAutoAdvanceTimer) {
@@ -2764,7 +2764,7 @@ function startWrongbookTranslationQuiz() {
 }
 
 /**
- * 在错题本中答题
+ * 在需加强列表中答题
  * @param {boolean} correct
  */
 async function answerWb(correct) {
@@ -2775,12 +2775,12 @@ async function answerWb(correct) {
     // 连击+1
     wbStreaks[w.ro] = (wbStreaks[w.ro] || 0) + 1;
     if (wbStreaks[w.ro] >= WB_GRADUATE) {
-      // 毕业！移出错题本
+      // 毕业！移出需加强列表
       wbGraduated++;
       await recordInteraction(w.ro, 'wrongbook_clear');
       delete wbStreaks[w.ro];
       saveWrongbookStreaks();
-      showToast(`🎓 "${w.zh}" 已从错题本移出！`);
+      showToast(`🎓 "${w.zh}" 已从需加强列表移出！`);
       wbList.splice(wbIdx, 1);
       if (wbList.length === 0) { renderWrongbookCard(); renderWrongbookStats(); return; }
       wbIdx = wbIdx % wbList.length;
@@ -2909,8 +2909,8 @@ function getPracticeScopeLabel() {
   return {
     smart: '智能练习',
     today: '今日任务',
-    weak: '薄弱新词',
-    wrong: '错题',
+    weak: '薄弱词',
+    wrong: '需加强',
     due: '到期复习',
     new: '新词',
     all: '全部'
@@ -3021,7 +3021,7 @@ function getMistakeTip(w, context = {}) {
   if (context.type === 'verbConj') return '动词题先识别不定式结尾，再记是否带 -ez 或 -esc。';
   if (context.type === 'stress') return '重音题看下划线音节；不确定时先慢速朗读，再回到词卡。';
   if (isWordUnverified(w)) return '这个词仍有未核对信息，建议打开详情或报错让管理员检查。';
-  return '把这个词加入错题本后，系统会在智能练习里提高它的优先级。';
+  return '把这个词加入需加强列表后，系统会在智能练习里提高它的优先级。';
 }
 
 function buildExercisePool() {
@@ -3269,10 +3269,10 @@ function showResult() {
     <div class="result-box">
       <div class="result-score">${qRoundRight}/${qRoundTotal}</div>
       <div class="result-label">本轮正确率 ${pct}% · ${pct >= 80 ? '优秀🎉' : pct >= 60 ? '良好👍' : '继续加油💪'}</div>
-      ${wrongCount > 0 ? `<div style="font-size:13px;color:var(--red-text);margin-bottom:16px">错题本有 ${wrongCount} 个词待练习</div>` : ''}
+      ${wrongCount > 0 ? `<div style="font-size:13px;color:var(--red-text);margin-bottom:16px">需加强列表有 ${wrongCount} 个词待练习</div>` : ''}
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         <button class="restart-btn" onclick="startQuiz()">再来一轮</button>
-        ${wrongCount > 0 ? `<button class="restart-btn" style="border-color:var(--red);color:var(--red-text)" onclick="switchPage('wrongbook')">去错题本 →</button>` : ''}
+        ${wrongCount > 0 ? `<button class="restart-btn" style="border-color:var(--red);color:var(--red-text)" onclick="switchPage('wrongbook')">去需加强 →</button>` : ''}
       </div>
     </div>`;
 }
@@ -3383,8 +3383,8 @@ function renderStudyCoach(summary, logs = []) {
   const todayOpen = todayQueue.length;
   const items = [];
   if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, kind: 'due' });
-  if (wrongCount) items.push({ title: `再清理 ${wrongCount} 个错题`, kind: 'wrong' });
-  if (weakCount) items.push({ title: `重点练 ${weakCount} 个薄弱新词`, kind: 'weak' });
+  if (wrongCount) items.push({ title: `再练 ${wrongCount} 个需加强词`, kind: 'wrong' });
+  if (weakCount) items.push({ title: `重点练 ${weakCount} 个薄弱词`, kind: 'weak' });
   if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, kind: 'today' });
   if (weakCat) items.push({ title: `薄弱分类：${weakCat.cat}（掌握率 ${weakCat.pct}%）`, kind: 'cat', arg: weakCat.cat });
   if (!items.length) items.push({ title: `状态稳定。可以做一轮智能测验，当前正确率 ${summary.accuracy}%`, kind: 'quiz' });
@@ -3429,7 +3429,7 @@ function renderAchievements(summary, logs = []) {
     { name: '入门 100', done: summary.mastered >= 100, meta: `${summary.mastered}/100 已掌握` },
     { name: '稳定 7 天', done: calcStreak(logs) >= 7, meta: `${calcStreak(logs)} 天连续` },
     { name: '今日清空', done: dueCount === 0, meta: `${dueCount} 个到期` },
-    { name: '错题清零', done: wrongCount === 0, meta: `${wrongCount} 个错题` },
+    { name: '加强清零', done: wrongCount === 0, meta: `${wrongCount} 个需加强` },
     { name: '近月 300', done: tasks30 >= 300, meta: `${tasks30}/300 近30天任务` }
   ];
   el.innerHTML = `<div class="manual-grid">${badges.map(b => `
@@ -3572,7 +3572,7 @@ function renderHardestWords() {
       </div>
       <div class="hard-score">${s.wrong}错 · ${rate}%</div>
     </div>`;
-  }).join('') : '<div class="empty-state">还没有错题记录</div>';
+  }).join('') : '<div class="empty-state">还没有需加强记录</div>';
 }
 
 async function renderLeaderboard() {
