@@ -460,18 +460,57 @@ async function loadExampleBank() {
 
 async function loadProgress() {
   try {
-    replaceProgressMap(await apiLoadProgress(currentUser.id));
-    setSyncBadge(isOfflineMode() ? '本机保存' : '', isOfflineMode() ? 'saved' : '');
+    const loadedProgress = await apiLoadProgress(currentUser.id);
+    const progressSource = loadedProgress.__progressSource || 'cloud';
+    const progressError = loadedProgress.__progressError || '';
+    replaceProgressMap(loadedProgress);
+    if (progressSource === 'localFallback') {
+      setSyncBadge('本机待同步', '');
+      showProgressSaveWarning(`云端进度读取失败，已显示本机保存的进度：${progressError || '请稍后重试'}`);
+    } else if (progressSource === 'cloudWithPending') {
+      setSyncBadge('本机待同步', '');
+    } else {
+      setSyncBadge(isOfflineMode() ? '本机保存' : '', isOfflineMode() ? 'saved' : '');
+    }
     applyFilters();
     renderCard();
     upStats();
+    if (progressSource === 'cloudWithPending' && typeof apiRetryPendingProgress === 'function') {
+      retryPendingProgressAfterLoad();
+    }
   } catch (error) {
-    replaceProgressMap({});
-    setSyncBadge('进度读取失败', '');
-    showToast(`进度读取失败：${error.message || '请刷新重试'}`);
+    const fallback = typeof readLocalProgressFallback === 'function'
+      ? readLocalProgressFallback(currentUser.id)
+      : {};
+    replaceProgressMap(fallback);
+    setSyncBadge(Object.keys(fallback).length ? '本机待同步' : '进度读取失败', '');
+    showToast(Object.keys(fallback).length
+      ? `进度读取失败，已显示本机保存的进度：${error.message || '请稍后重试'}`
+      : `进度读取失败：${error.message || '请刷新重试'}`);
     applyFilters();
     renderCard();
     upStats();
+  }
+}
+
+async function retryPendingProgressAfterLoad() {
+  try {
+    const result = await apiRetryPendingProgress(currentUser.id);
+    if (!result.attempted) return;
+    if (result.failed) {
+      setSyncBadge('本机待同步', '');
+      return;
+    }
+    const refreshed = await apiLoadProgress(currentUser.id);
+    replaceProgressMap(refreshed);
+    setSyncBadge('已同步', 'saved');
+    applyFilters();
+    renderCard();
+    upStats();
+    updateReviewBadge();
+  } catch (error) {
+    console.warn('Pending progress retry after load failed', error);
+    setSyncBadge('本机待同步', '');
   }
 }
 

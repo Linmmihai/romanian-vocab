@@ -91,6 +91,28 @@ function readPendingProgress(userId) {
   return readJson(progressPendingKey(userId), {});
 }
 
+function markProgressSource(map, source, error = null) {
+  try {
+    Object.defineProperty(map, '__progressSource', { value: source, enumerable: false });
+    if (error) Object.defineProperty(map, '__progressError', { value: error, enumerable: false });
+  } catch {}
+  return map;
+}
+
+function readLocalProgressFallback(userId) {
+  const memoryBackup = readProgressMemoryBackup(userId);
+  const localProgress = readJson(localKey(userId, 'progress'), {});
+  const pendingProgress = readPendingProgress(userId);
+  const map = {};
+  Object.entries(localProgress).forEach(([wordRo, progress]) => {
+    map[wordRo] = mergeProgressMemory(progress || {}, memoryBackup[wordRo]);
+  });
+  Object.entries(pendingProgress).forEach(([wordRo, progress]) => {
+    map[wordRo] = mergeProgressMemory({ ...(progress || {}), pendingSync: true }, memoryBackup[wordRo]);
+  });
+  return map;
+}
+
 function writePendingProgress(userId, wordRo, progress = {}) {
   if (!wordRo) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);
@@ -448,9 +470,13 @@ async function apiDeleteWord(wordId) {
  * @returns {Promise<object>} { word_ro: { known, qr, qt } }
  */
 async function apiLoadProgress(userId) {
-  if (isOfflineMode()) return readJson(localKey(userId, 'progress'), {});
+  if (isOfflineMode()) return markProgressSource(readJson(localKey(userId, 'progress'), {}), 'offline');
   const { data, error } = await sb.from('progress').select('*').eq('user_id', userId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    const fallback = readLocalProgressFallback(userId);
+    if (Object.keys(fallback).length) return markProgressSource(fallback, 'localFallback', error.message);
+    throw new Error(error.message);
+  }
   const memoryBackup = readProgressMemoryBackup(userId);
   const pendingProgress = readPendingProgress(userId);
   const map = {};
@@ -461,7 +487,42 @@ async function apiLoadProgress(userId) {
   Object.entries(pendingProgress).forEach(([wordRo, progress]) => {
     map[wordRo] = mergeProgressMemory({ ...progress, pendingSync: true }, memoryBackup[wordRo]);
   });
-  return map;
+  return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
+}
+
+async function apiRetryPendingProgress(userId) {
+  if (isOfflineMode()) return { attempted: 0, saved: 0, failed: 0 };
+  const pendingProgress = readPendingProgress(userId);
+  const entries = Object.entries(pendingProgress);
+  let saved = 0;
+  for (const [wordRo, p] of entries) {
+    try {
+      await apiSaveProgress(
+        userId,
+        wordRo,
+        !!p.known,
+        p.qr || 0,
+        p.qt || 0,
+        p.level || 'unknown',
+        {
+          reviewStage: p.reviewStage || p.reviewCount || 0,
+          nextReviewAt: p.nextReviewAt || p.nextReview || new Date().toISOString(),
+          lastReviewedAt: p.lastReviewedAt || new Date().toISOString()
+        },
+        null,
+        {
+          wrongCount: p.wrongCount || 0,
+          errorStreak: p.errorStreak || 0,
+          lastWrongAt: p.lastWrongAt || null,
+          weakClearedAt: p.weakClearedAt || null
+        }
+      );
+      saved++;
+    } catch (error) {
+      console.warn('Pending progress retry failed', wordRo, error);
+    }
+  }
+  return { attempted: entries.length, saved, failed: entries.length - saved };
 }
 
 /**
