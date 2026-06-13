@@ -58,6 +58,7 @@ let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
 const DAILY_GOAL_MAX = 5000;
 const PENDING_PROGRESS_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
+const CLOUD_PROGRESS_REFRESH_COOLDOWN_MS = 60 * 1000;
 
 // 每日任务目标状态
 let dailyGoal = 20;        // 今天实际任务量，允许临时扩展
@@ -460,6 +461,18 @@ async function loadExampleBank() {
 }
 
 async function loadProgress() {
+  if (!isOfflineMode() && typeof readLocalProgressFallback === 'function') {
+    const localProgress = readLocalProgressFallback(currentUser.id);
+    if (Object.keys(localProgress).length) {
+      replaceProgressMap(localProgress);
+      setSyncBadge(hasPendingProgress(localProgress) ? '本机待同步' : '本机进度', hasPendingProgress(localProgress) ? '' : 'saved');
+      applyFilters();
+      renderCard();
+      upStats();
+      refreshCloudProgressAfterLocalLoad();
+      return;
+    }
+  }
   try {
     const loadedProgress = await apiLoadProgress(currentUser.id);
     const progressSource = loadedProgress.__progressSource || 'cloud';
@@ -491,6 +504,34 @@ async function loadProgress() {
     applyFilters();
     renderCard();
     upStats();
+  }
+}
+
+function hasPendingProgress(map = progressMap) {
+  return Object.values(map || {}).some(progress => progress?.pendingSync);
+}
+
+async function refreshCloudProgressAfterLocalLoad() {
+  try {
+    const refreshKey = `progress_cloud_refresh_at:${currentUser.id}`;
+    const lastRefreshAt = Number(localStorage.getItem(refreshKey) || 0);
+    if (Date.now() - lastRefreshAt < CLOUD_PROGRESS_REFRESH_COOLDOWN_MS) return;
+    localStorage.setItem(refreshKey, String(Date.now()));
+    const loadedProgress = await apiLoadProgress(currentUser.id);
+    const progressSource = loadedProgress.__progressSource || 'cloud';
+    replaceProgressMap(loadedProgress);
+    const stillPending = progressSource === 'cloudWithPending' || hasPendingProgress(loadedProgress);
+    setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
+    applyFilters();
+    renderCard();
+    upStats();
+    updateReviewBadge();
+    if (progressSource === 'cloudWithPending' && typeof apiRetryPendingProgress === 'function') {
+      retryPendingProgressAfterLoad();
+    }
+  } catch (error) {
+    console.warn('Cloud progress refresh after local load failed', error);
+    setSyncBadge(hasPendingProgress() ? '本机待同步' : '本机进度', hasPendingProgress() ? '' : 'saved');
   }
 }
 

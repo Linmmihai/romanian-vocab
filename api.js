@@ -123,6 +123,22 @@ function readLocalProgressFallback(userId) {
   return map;
 }
 
+function writeLocalProgressSnapshot(userId, progressMap = {}) {
+  if (!userId) return { ok: true, skipped: true };
+  const snapshot = {};
+  Object.entries(progressMap || {}).forEach(([wordRo, progress]) => {
+    if (!wordRo || wordRo.startsWith('__')) return;
+    snapshot[wordRo] = { ...(progress || {}) };
+    delete snapshot[wordRo].pendingSync;
+  });
+  try {
+    writeJson(localKey(userId, 'progress'), snapshot);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
 function writePendingProgress(userId, wordRo, progress = {}) {
   if (!wordRo) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);
@@ -507,6 +523,7 @@ async function apiLoadProgress(userId) {
   Object.entries(pendingProgress).forEach(([wordRo, progress]) => {
     map[wordRo] = mergeProgressMemory({ ...progress, pendingSync: true }, memoryBackup[wordRo]);
   });
+  writeLocalProgressSnapshot(userId, map);
   return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
 }
 

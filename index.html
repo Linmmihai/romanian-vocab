@@ -1119,9 +1119,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
-<script src="api.js?v=20260613-progress-fallback"></script>
-<script src="auth.js?v=20260613-progress-fallback"></script>
-<script src="app.js?v=20260613-progress-fallback"></script>
+<script src="api.js?v=20260613-fast-sync"></script>
+<script src="auth.js?v=20260613-fast-sync"></script>
+<script src="app.js?v=20260613-fast-sync"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
