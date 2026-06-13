@@ -20,6 +20,7 @@ const OFFLINE_PROFILE = {
 };
 const PROGRESS_LOAD_TIMEOUT_MS = 3500;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
+const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
 
 function isOfflineMode() {
   return currentUser?.id === OFFLINE_USER_ID || localStorage.getItem('offline-mode') === '1';
@@ -155,12 +156,46 @@ function writePendingProgress(userId, wordRo, progress = {}) {
   }
 }
 
+function writePendingProgressBatch(userId, entries = []) {
+  if (!entries.length) return { ok: true, skipped: true };
+  const pending = readPendingProgress(userId);
+  const now = new Date().toISOString();
+  entries.forEach(([wordRo, progress]) => {
+    if (!wordRo) return;
+    pending[wordRo] = {
+      ...(progress || {}),
+      pendingSync: true,
+      pendingSyncAt: progress?.pendingSyncAt || now
+    };
+  });
+  try {
+    writeJson(progressPendingKey(userId), pending);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
 function clearPendingProgress(userId, wordRo) {
   if (!wordRo) return;
   const pending = readPendingProgress(userId);
   if (!(wordRo in pending)) return;
   delete pending[wordRo];
   try { writeJson(progressPendingKey(userId), pending); } catch {}
+}
+
+function clearPendingProgressBatch(userId, wordRos = []) {
+  const pending = readPendingProgress(userId);
+  let changed = false;
+  wordRos.forEach(wordRo => {
+    if (wordRo in pending) {
+      delete pending[wordRo];
+      changed = true;
+    }
+  });
+  if (changed) {
+    try { writeJson(progressPendingKey(userId), pending); } catch {}
+  }
 }
 
 function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
@@ -534,8 +569,9 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
     .sort((a, b) => String(a[1]?.pendingSyncAt || '').localeCompare(String(b[1]?.pendingSyncAt || '')));
   const batch = entries.slice(0, Math.max(1, Number(limit || PENDING_PROGRESS_RETRY_LIMIT)));
   let saved = 0;
-  for (const [wordRo, p] of batch) {
-    try {
+  for (let i = 0; i < batch.length; i += PENDING_PROGRESS_RETRY_CONCURRENCY) {
+    const chunk = batch.slice(i, i + PENDING_PROGRESS_RETRY_CONCURRENCY);
+    const results = await Promise.allSettled(chunk.map(async ([wordRo, p]) => {
       await apiSaveProgress(
         userId,
         wordRo,
@@ -556,10 +592,17 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
           weakClearedAt: p.weakClearedAt || null
         }
       );
-      saved++;
-    } catch (error) {
-      console.warn('Pending progress retry failed', wordRo, error);
-    }
+    }));
+    const savedWordRos = [];
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        saved++;
+        savedWordRos.push(chunk[index][0]);
+      } else {
+        console.warn('Pending progress retry failed', chunk[index][0], result.reason);
+      }
+    });
+    clearPendingProgressBatch(userId, savedWordRos);
   }
   const failed = batch.length - saved;
   const remaining = Math.max(0, entries.length - saved);

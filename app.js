@@ -414,10 +414,9 @@ async function onLogin(user) {
 
   showAppScreen(nickname, userRole === 'admin');
 
-  // 按顺序加载：词库 → 进度 → 今日记录，避免互相等待
+  // 词库先加载；进度和今日记录互不依赖，可以并行。
   await loadWords();
-  await loadProgress();
-  await loadTodayLog();
+  await Promise.all([loadProgress(), loadTodayLog()]);
   await loadDailyQueue();
   setupDailyReminderChecks();
 
@@ -899,6 +898,7 @@ async function ensureStartedProgressForTodayWord(wordRo) {
 
 function repairStartedProgressForCompletedTodayWords() {
   const missingProgress = [...todayQueueCompleted].filter(ro => !hasWordProgress(getProgress(ro)));
+  const pendingEntries = [];
   for (const ro of missingProgress) {
     const canonicalRo = canonicalWordRo(ro);
     if (!canonicalRo) continue;
@@ -920,9 +920,10 @@ function repairStartedProgressForCompletedTodayWords() {
       pendingSync: true
     };
     setProgress(canonicalRo, repairedProgress);
-    if (typeof writePendingProgress === 'function') {
-      writePendingProgress(currentUser.id, canonicalRo, repairedProgress);
-    }
+    pendingEntries.push([canonicalRo, repairedProgress]);
+  }
+  if (pendingEntries.length && typeof writePendingProgressBatch === 'function') {
+    writePendingProgressBatch(currentUser.id, pendingEntries);
   }
   if (missingProgress.length && typeof writeLocalProgressSnapshot === 'function') {
     writeLocalProgressSnapshot(currentUser.id, progressMap);
