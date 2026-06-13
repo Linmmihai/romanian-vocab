@@ -18,6 +18,8 @@ const OFFLINE_PROFILE = {
   daily_goal: 20,
   offline: true
 };
+const PROGRESS_LOAD_TIMEOUT_MS = 3500;
+const PENDING_PROGRESS_RETRY_LIMIT = 25;
 
 function isOfflineMode() {
   return currentUser?.id === OFFLINE_USER_ID || localStorage.getItem('offline-mode') === '1';
@@ -34,6 +36,14 @@ function readJson(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function writeJson(key, value) {
@@ -471,7 +481,17 @@ async function apiDeleteWord(wordId) {
  */
 async function apiLoadProgress(userId) {
   if (isOfflineMode()) return markProgressSource(readJson(localKey(userId, 'progress'), {}), 'offline');
-  const { data, error } = await sb.from('progress').select('*').eq('user_id', userId);
+  let data = null;
+  let error = null;
+  try {
+    ({ data, error } = await withTimeout(
+      sb.from('progress').select('*').eq('user_id', userId),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '云端进度读取超时'
+    ));
+  } catch (loadError) {
+    error = loadError;
+  }
   if (error) {
     const fallback = readLocalProgressFallback(userId);
     if (Object.keys(fallback).length) return markProgressSource(fallback, 'localFallback', error.message);
@@ -490,12 +510,14 @@ async function apiLoadProgress(userId) {
   return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
 }
 
-async function apiRetryPendingProgress(userId) {
+async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LIMIT) {
   if (isOfflineMode()) return { attempted: 0, saved: 0, failed: 0 };
   const pendingProgress = readPendingProgress(userId);
-  const entries = Object.entries(pendingProgress);
+  const entries = Object.entries(pendingProgress)
+    .sort((a, b) => String(a[1]?.pendingSyncAt || '').localeCompare(String(b[1]?.pendingSyncAt || '')));
+  const batch = entries.slice(0, Math.max(1, Number(limit || PENDING_PROGRESS_RETRY_LIMIT)));
   let saved = 0;
-  for (const [wordRo, p] of entries) {
+  for (const [wordRo, p] of batch) {
     try {
       await apiSaveProgress(
         userId,
@@ -522,7 +544,9 @@ async function apiRetryPendingProgress(userId) {
       console.warn('Pending progress retry failed', wordRo, error);
     }
   }
-  return { attempted: entries.length, saved, failed: entries.length - saved };
+  const failed = batch.length - saved;
+  const remaining = Math.max(0, entries.length - saved);
+  return { attempted: batch.length, saved, failed, remaining, totalPending: entries.length };
 }
 
 /**

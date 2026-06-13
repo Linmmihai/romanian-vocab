@@ -57,6 +57,7 @@ let wbGraduated = 0;
 let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
 const DAILY_GOAL_MAX = 5000;
+const PENDING_PROGRESS_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 
 // 每日任务目标状态
 let dailyGoal = 20;        // 今天实际任务量，允许临时扩展
@@ -495,14 +496,19 @@ async function loadProgress() {
 
 async function retryPendingProgressAfterLoad() {
   try {
-    const result = await apiRetryPendingProgress(currentUser.id);
-    if (!result.attempted) return;
-    if (result.failed) {
+    const retryKey = `progress_pending_retry_at:${currentUser.id}`;
+    const lastRetryAt = Number(localStorage.getItem(retryKey) || 0);
+    if (Date.now() - lastRetryAt < PENDING_PROGRESS_RETRY_COOLDOWN_MS) {
       setSyncBadge('本机待同步', '');
       return;
     }
-    const refreshed = await apiLoadProgress(currentUser.id);
-    replaceProgressMap(refreshed);
+    localStorage.setItem(retryKey, String(Date.now()));
+    const result = await apiRetryPendingProgress(currentUser.id);
+    if (!result.attempted) return;
+    if (result.failed || result.remaining) {
+      setSyncBadge('本机待同步', '');
+      return;
+    }
     setSyncBadge('已同步', 'saved');
     applyFilters();
     renderCard();
