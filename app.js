@@ -627,7 +627,7 @@ async function loadDailyQueue() {
     });
   }
   todaySeenWords = new Set(todayQueueCompleted);
-  await repairStartedProgressForCompletedTodayWords();
+  repairStartedProgressForCompletedTodayWords();
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
   const normalizedQueue = buildOpenTodayQueue(dailyGoal);
   if (normalizedQueue.join('|') !== todayQueue.join('|')) {
@@ -897,10 +897,35 @@ async function ensureStartedProgressForTodayWord(wordRo) {
   await syncProgress(canonicalRo, true, 1, 1, true, { skipDailyQueueReconcile: true });
 }
 
-async function repairStartedProgressForCompletedTodayWords() {
+function repairStartedProgressForCompletedTodayWords() {
   const missingProgress = [...todayQueueCompleted].filter(ro => !hasWordProgress(getProgress(ro)));
   for (const ro of missingProgress) {
-    await ensureStartedProgressForTodayWord(ro);
+    const canonicalRo = canonicalWordRo(ro);
+    if (!canonicalRo) continue;
+    const nowIso = new Date().toISOString();
+    const repairedProgress = {
+      seen: true,
+      known: true,
+      qr: 1,
+      qt: 1,
+      level: 'learning',
+      reviewStage: 0,
+      reviewCount: 0,
+      nextReviewAt: nowIso,
+      lastReviewedAt: nowIso,
+      wrongCount: 0,
+      errorStreak: 0,
+      lastWrongAt: null,
+      weakClearedAt: null,
+      pendingSync: true
+    };
+    setProgress(canonicalRo, repairedProgress);
+    if (typeof writePendingProgress === 'function') {
+      writePendingProgress(currentUser.id, canonicalRo, repairedProgress);
+    }
+  }
+  if (missingProgress.length && typeof writeLocalProgressSnapshot === 'function') {
+    writeLocalProgressSnapshot(currentUser.id, progressMap);
   }
 }
 
