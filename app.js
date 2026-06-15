@@ -59,6 +59,7 @@ const WB_GRADUATE = 3;
 const DAILY_GOAL_MAX = 5000;
 const PENDING_PROGRESS_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 const CLOUD_PROGRESS_REFRESH_COOLDOWN_MS = 60 * 1000;
+const IDLE_PROGRESS_BACKUP_MS = 150 * 1000;
 
 // 每日任务目标状态
 let dailyGoal = 20;        // 今天实际任务量，允许临时扩展
@@ -69,6 +70,8 @@ let todayLog = null;
 const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
 let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
+let progressCloudSyncInFlight = null;
+let progressCloudSyncTimer = null;
 let dailyReminderTimer = null;
 let dailyCheckinPromptShown = false;
 let adminWeeklySummaryText = '';
@@ -419,6 +422,7 @@ async function onLogin(user) {
   await Promise.all([loadProgress(), loadTodayLog()]);
   await loadDailyQueue();
   setupDailyReminderChecks();
+  setupProgressAutoBackup();
 
   if (userRole === 'admin') refreshAdminBadge();
   if (isOfflineMode()) setSyncBadge('本机保存', 'saved');
@@ -489,7 +493,7 @@ async function loadProgress() {
     renderCard();
     upStats();
     if (progressSource === 'cloudWithPending' && typeof apiRetryPendingProgress === 'function') {
-      retryPendingProgressAfterLoad();
+      setSyncBadge('本机待同步', '');
     }
   } catch (error) {
     const fallback = typeof readLocalProgressFallback === 'function'
@@ -526,7 +530,7 @@ async function refreshCloudProgressAfterLocalLoad() {
     upStats();
     updateReviewBadge();
     if (progressSource === 'cloudWithPending' && typeof apiRetryPendingProgress === 'function') {
-      retryPendingProgressAfterLoad();
+      setSyncBadge('本机待同步', '');
     }
   } catch (error) {
     console.warn('Cloud progress refresh after local load failed', error);
@@ -558,6 +562,96 @@ async function retryPendingProgressAfterLoad() {
     console.warn('Pending progress retry after load failed', error);
     setSyncBadge('本机待同步', '');
   }
+}
+
+function setupProgressAutoBackup() {
+  if (setupProgressAutoBackup.bound) return;
+  setupProgressAutoBackup.bound = true;
+  const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+  activityEvents.forEach(eventName => {
+    window.addEventListener(eventName, scheduleIdleProgressBackup, { passive: true });
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') triggerCloudProgressBackup('页面隐藏', { limit: 100 });
+    else scheduleIdleProgressBackup();
+  });
+  window.addEventListener('pagehide', () => triggerCloudProgressBackup('退出页面', { limit: 100 }));
+  window.addEventListener('beforeunload', () => triggerCloudProgressBackup('退出页面', { limit: 100 }));
+  scheduleIdleProgressBackup();
+}
+
+function scheduleIdleProgressBackup() {
+  if (progressCloudSyncTimer) clearTimeout(progressCloudSyncTimer);
+  progressCloudSyncTimer = setTimeout(() => {
+    triggerCloudProgressBackup('空闲备份', { limit: 100 });
+  }, IDLE_PROGRESS_BACKUP_MS);
+}
+
+async function triggerCloudProgressBackup(reason = '备份', options = {}) {
+  if (isOfflineMode() || !currentUser?.id || typeof apiRetryPendingProgress !== 'function') return null;
+  if (!hasPendingProgress() && !options.force) return syncDailyStateToCloud();
+  if (progressCloudSyncInFlight) return progressCloudSyncInFlight;
+  setSyncBadge(`${reason}中...`, '');
+  progressCloudSyncInFlight = (async () => {
+    try {
+      const [progressResult, dailyResult] = await Promise.allSettled([
+        apiRetryPendingProgress(currentUser.id, options.limit || 100),
+        syncDailyStateToCloud()
+      ]);
+      const result = progressResult.status === 'fulfilled'
+        ? progressResult.value
+        : { failed: true, error: progressResult.reason };
+      if (dailyResult.status === 'rejected') {
+        result.failed = true;
+        result.dailyError = dailyResult.reason;
+      }
+      if (!result.attempted) {
+        setSyncBadge(result.failed ? '本机待同步' : '已同步', result.failed ? '' : 'saved');
+        return result;
+      }
+      if (result.failed || result.remaining) {
+        setSyncBadge('本机待同步', '');
+      } else {
+        Object.keys(progressMap).forEach((wordRo) => {
+          if (progressMap[wordRo]?.pendingSync) {
+            progressMap[wordRo] = { ...progressMap[wordRo] };
+            delete progressMap[wordRo].pendingSync;
+          }
+        });
+        if (typeof writeLocalProgressSnapshot === 'function') writeLocalProgressSnapshot(currentUser.id, progressMap);
+        progressVersion++;
+        setSyncBadge('已同步', 'saved');
+      }
+      return result;
+    } catch (error) {
+      console.warn('Progress cloud backup failed', reason, error);
+      setSyncBadge('本机待同步', '');
+      return { failed: true, error };
+    } finally {
+      progressCloudSyncInFlight = null;
+      setTimeout(() => {
+        if (!hasPendingProgress()) setSyncBadge('', '');
+      }, 2000);
+    }
+  })();
+  return progressCloudSyncInFlight;
+}
+
+async function syncDailyStateToCloud() {
+  if (isOfflineMode() || !currentUser?.id) return null;
+  const queuePayload = {
+    goal: dailyGoal,
+    word_ro: todayQueue,
+    completed_word_ro: [...todayQueueCompleted],
+    completed: todayNewWords >= dailyGoal
+  };
+  const results = await Promise.allSettled([
+    apiSaveDailyQueue(currentUser.id, queuePayload),
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal)
+  ]);
+  const rejected = results.find(result => result.status === 'rejected');
+  if (rejected) throw rejected.reason;
+  return { saved: true };
 }
 
 async function loadTodayLog() {
@@ -838,14 +932,30 @@ async function extendTodayGoalCustom() {
   await extendTodayGoal(extra);
 }
 
-async function saveTodayQueue() {
+async function saveTodayQueue(options = {}) {
   if (dailyGoal > defaultDailyGoal) writeTodayTemporaryGoal(dailyGoal);
-  todayQueueRecord = await apiSaveDailyQueue(currentUser.id, {
+  const payload = {
     goal: dailyGoal,
     word_ro: todayQueue,
     completed_word_ro: [...todayQueueCompleted],
     completed: todayNewWords >= dailyGoal
-  });
+  };
+  const savePromise = apiSaveDailyQueue(currentUser.id, payload);
+  if (options.background) {
+    todayQueueRecord = { user_id: currentUser.id, queue_date: getLocalDateKey(), ...payload, local: true };
+    savePromise.then((record) => {
+      todayQueueRecord = record;
+      if (record?.syncError) {
+        setSyncBadge('队列同步失败', '');
+        showProgressSaveWarning(`每日队列未能云端保存：${record.syncError}`);
+      }
+    }).catch((error) => {
+      console.warn('Daily queue background save failed', error);
+      setSyncBadge('队列待同步', '');
+    });
+  } else {
+    todayQueueRecord = await savePromise;
+  }
   if (todayQueueRecord?.syncError) {
     setSyncBadge('队列同步失败', '');
     showProgressSaveWarning(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
@@ -853,6 +963,7 @@ async function saveTodayQueue() {
   dailyQueueVersion++;
   invalidateCalendarCache();
   invalidateQuizPracticePool();
+  return todayQueueRecord;
 }
 
 async function recordTodayWord(wordRo) {
@@ -872,9 +983,13 @@ async function recordTodayWord(wordRo) {
     todayQueue = roListWithout(todayQueue, canonicalRo);
     todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
   }
-  await saveTodayQueue();
+  await saveTodayQueue({ background: true });
 
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
+  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: todayNewWords >= defaultDailyGoal };
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
+    console.warn('Today log background save failed', error);
+    setSyncBadge('今日记录待同步', '');
+  });
   invalidateCalendarCache();
   renderDailyGoal();
   updateTodayCalendarCell();
@@ -1544,7 +1659,7 @@ async function apiSaveProgressWithSessionRetry(userId, wordRo, known, qr, qt, le
 }
 
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
-  setSyncBadge(isOfflineMode() ? '保存中...' : '同步中...', '');
+  setSyncBadge('保存中...', '');
   const canonicalRo = canonicalWordRo(wordRo);
   const prev = getProgress(canonicalRo) || {};
   const calculatedLevel = calcLevel(qr, qt, known);
@@ -1572,30 +1687,21 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const memory = { wrongCount, errorStreak, lastWrongAt, weakClearedAt };
   const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
   setProgress(canonicalRo, nextProgress);
-  try {
-    const saveStatus = await apiSaveProgressWithSessionRetry(currentUser.id, canonicalRo, known, qr, qt, level, review, memory);
-    const warned = handleProgressSaveStatus(saveStatus);
-    if (!warned) setSyncBadge(isOfflineMode() ? '已存本机' : '已保存', 'saved');
+  const localStatus = typeof queueProgressForSync === 'function'
+    ? queueProgressForSync(currentUser.id, canonicalRo, { ...nextProgress, pendingSync: true }, memory)
+    : { ok: false };
+  if (localStatus.ok) {
+    setProgress(canonicalRo, { ...nextProgress, pendingSync: !isOfflineMode() });
+    setSyncBadge(isOfflineMode() ? '已存本机' : '本机待同步', isOfflineMode() ? 'saved' : '');
     if (!options.skipDailyQueueReconcile) await reconcileTodayQueueAfterProgress(canonicalRo);
-  } catch (error) {
-    console.warn('Cloud progress sync failed; keeping local pending progress.', error?.firstError || error, error);
-    const pendingStatus = typeof writePendingProgress === 'function'
-      ? writePendingProgress(currentUser.id, canonicalRo, nextProgress)
-      : { ok: false };
-    const memoryBackup = writeProgressMemoryBackup(currentUser.id, canonicalRo, memory);
-    if (pendingStatus.ok && memoryBackup.ok !== false) {
-      setProgress(canonicalRo, { ...nextProgress, pendingSync: true });
-      setSyncBadge('本机待同步', '');
-      showProgressSaveWarning(`云端同步失败，已先保存到本机：${error?.message || error?.firstError?.message || '请稍后重试'}`);
+  } else {
+    if (Object.keys(prev).length) {
+      setProgress(canonicalRo, prev);
     } else {
-      if (Object.keys(prev).length) {
-        setProgress(canonicalRo, prev);
-      } else {
-        deleteProgress(canonicalRo);
-      }
-      setSyncBadge('同步失败', '');
-      showProgressSaveWarning('本机备份也失败，请导出进度或清理浏览器存储');
+      deleteProgress(canonicalRo);
     }
+    setSyncBadge('本机保存失败', '');
+    showProgressSaveWarning('本机保存失败，请导出进度或清理浏览器存储');
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
   applyFilters();
@@ -2014,6 +2120,7 @@ function completeDailyCheckin() {
   renderDailyGoal();
   renderReviewPanel();
   showToast('今日已打卡，可以临时加量继续学习');
+  triggerCloudProgressBackup('打卡同步', { force: true, limit: 250 });
 }
 
 function maybePromptDailyCheckin() {

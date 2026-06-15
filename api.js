@@ -156,6 +156,31 @@ function writePendingProgress(userId, wordRo, progress = {}) {
   }
 }
 
+function writeLocalProgressEntry(userId, wordRo, progress = {}) {
+  if (!userId || !wordRo) return { ok: true, skipped: true };
+  const map = readJson(localKey(userId, 'progress'), {});
+  map[wordRo] = { ...(progress || {}) };
+  delete map[wordRo].pendingSync;
+  try {
+    writeJson(localKey(userId, 'progress'), map);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+function queueProgressForSync(userId, wordRo, progress = {}, memory = {}) {
+  const localStatus = writeLocalProgressEntry(userId, wordRo, progress);
+  const pendingStatus = writePendingProgress(userId, wordRo, progress);
+  const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+  return {
+    ok: localStatus.ok && pendingStatus.ok && memoryBackup.ok !== false,
+    localStatus,
+    pendingStatus,
+    memoryBackup
+  };
+}
+
 function writePendingProgressBatch(userId, entries = []) {
   if (!entries.length) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);
@@ -819,7 +844,8 @@ async function apiSaveDailyQueue(userId, queue) {
     completed: !!queue.completed,
     updated_at: new Date().toISOString()
   };
-  if (isOfflineMode()) return writeLocalQueue(userId, payload, today);
+  writeLocalQueue(userId, payload, today);
+  if (isOfflineMode()) return { ...payload, local: true };
   try {
     const { error } = await sb.from('daily_queue').upsert(payload, { onConflict: 'user_id,queue_date' });
     if (!error) return payload;
@@ -973,16 +999,21 @@ async function apiSetUserWatch(userId, watched) {
  */
 async function apiGetTodayLog(userId, goal) {
   const today = getLocalDateKey();
+  const localLogs = readJson(localKey(userId, 'daily_log'), {});
   if (isOfflineMode()) {
-    const logs = readJson(localKey(userId, 'daily_log'), {});
-    if (!logs[today]) {
-      logs[today] = { user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false, local: true };
-      writeJson(localKey(userId, 'daily_log'), logs);
+    if (!localLogs[today]) {
+      localLogs[today] = { user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false, local: true };
+      writeJson(localKey(userId, 'daily_log'), localLogs);
     }
-    return logs[today];
+    return localLogs[today];
   }
   const { data, error } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
-  if (data) return data;
+  if (data) {
+    const local = localLogs[today];
+    if (local && Number(local.new_words || 0) > Number(data.new_words || 0)) return local;
+    return data;
+  }
+  if (localLogs[today]) return localLogs[today];
   if (error && error.code !== 'PGRST116') throw new Error(error.message);
   // 创建今日记录
   const { data: created, error: createError } = await sb.from('daily_log')
@@ -999,17 +1030,20 @@ async function apiGetTodayLog(userId, goal) {
 async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal) {
   const today = getLocalDateKey();
   const completed = completedTasks >= completionGoal;
+  const logs = readJson(localKey(userId, 'daily_log'), {});
+  logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, local: true };
+  writeJson(localKey(userId, 'daily_log'), logs);
   if (isOfflineMode()) {
-    const logs = readJson(localKey(userId, 'daily_log'), {});
-    logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, local: true };
-    writeJson(localKey(userId, 'daily_log'), logs);
-    return;
+    return { saved: 'local' };
   }
   const { error } = await sb.from('daily_log').upsert(
     { user_id: userId, log_date: today, new_words: completedTasks, goal, completed },
     { onConflict: 'user_id,log_date' }
   );
   if (error) throw new Error(error.message);
+  logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed };
+  writeJson(localKey(userId, 'daily_log'), logs);
+  return { saved: 'database' };
 }
 
 /**
