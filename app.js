@@ -47,6 +47,9 @@ let editingPendingWordId = null;
 let detailWordRo = null;
 let flashcardButtonsBound = false;
 let cardGesturesBound = false;
+let flashCardRenderTimer = null;
+let wrongbookCardRenderTimer = null;
+const CARD_CONTENT_SWAP_DELAY_MS = 230;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -1811,8 +1814,7 @@ async function recordInteraction(wordRo, interactionType) {
 
 function switchPage(p) {
   if (p === 'review') { qPracticeScope = 'due'; p = 'quiz'; }
-  if (p === 'quiz' && isQuizInProgress()) return;
-  if (p !== 'quiz' && isQuizInProgress() && !confirm('测验进行中，确定离开吗？')) return;
+  if (p !== 'quiz' && isQuizInProgress()) resetQuizSession();
   if (p !== 'wrongbook' && wbAutoAdvanceTimer) {
     clearTimeout(wbAutoAdvanceTimer);
     wbAutoAdvanceTimer = null;
@@ -2372,6 +2374,10 @@ function getCurrentFlashWord() {
 }
 
 function renderCard() {
+  if (flashCardRenderTimer) {
+    clearTimeout(flashCardRenderTimer);
+    flashCardRenderTimer = null;
+  }
   const overrideWord = flashOverrideRo ? getWordByRo(flashOverrideRo) : null;
   if (flashOverrideRo && !overrideWord) flashOverrideRo = null;
 
@@ -2439,6 +2445,21 @@ function flipCard() {
   document.getElementById('main-card').classList.toggle('flipped', flipped);
 }
 
+function renderFlashCardAfterFrontReset() {
+  const card = document.getElementById('main-card');
+  if (!card || !card.classList.contains('flipped')) {
+    renderCard();
+    return;
+  }
+  flipped = false;
+  card.classList.remove('flipped');
+  if (flashCardRenderTimer) clearTimeout(flashCardRenderTimer);
+  flashCardRenderTimer = setTimeout(() => {
+    flashCardRenderTimer = null;
+    renderCard();
+  }, CARD_CONTENT_SWAP_DELAY_MS);
+}
+
 function nextCard() {
   const current = getCurrentFlashWord();
   if (flashMode === 'today' && (!filtered.length || filtered.length <= 1)) {
@@ -2446,9 +2467,7 @@ function nextCard() {
     if (fallback) {
       if (current) flashHistory.push(current.ro);
       flashOverrideRo = fallback.ro;
-      flipped = false;
-      document.getElementById('main-card').classList.remove('flipped');
-      renderCard();
+      renderFlashCardAfterFrontReset();
       return;
     }
   }
@@ -2456,9 +2475,7 @@ function nextCard() {
   if (current && !flashOverrideRo) flashHistory.push(current.ro);
   flashOverrideRo = null;
   idx = (idx + 1) % filtered.length;
-  flipped = false;
-  document.getElementById('main-card').classList.remove('flipped');
-  renderCard();
+  renderFlashCardAfterFrontReset();
 }
 
 function getNextDailyFallbackWord(currentRo) {
@@ -2549,9 +2566,7 @@ async function markCard(yes) {
   applyFilters();
   const nextIdx = filtered.findIndex(item => item.ro !== w.ro);
   idx = nextIdx >= 0 ? nextIdx : 0;
-  flipped = false;
-  document.getElementById('main-card').classList.remove('flipped');
-  renderCard();
+  renderFlashCardAfterFrontReset();
 }
 
 // 「上一个」— 回到上一张的罗语面
@@ -2889,6 +2904,10 @@ function renderWrongbookStats() {
 }
 
 function renderWrongbookCard() {
+  if (wrongbookCardRenderTimer) {
+    clearTimeout(wrongbookCardRenderTimer);
+    wrongbookCardRenderTimer = null;
+  }
   const empty = document.getElementById('wb-empty');
   const content = document.getElementById('wb-content');
 
@@ -2929,6 +2948,21 @@ function flipWbCard() {
   document.getElementById('wb-card').classList.toggle('flipped', wbFlipped);
 }
 
+function renderWrongbookCardAfterFrontReset() {
+  const card = document.getElementById('wb-card');
+  if (!card || !card.classList.contains('flipped')) {
+    renderWrongbookCard();
+    return;
+  }
+  wbFlipped = false;
+  card.classList.remove('flipped');
+  if (wrongbookCardRenderTimer) clearTimeout(wrongbookCardRenderTimer);
+  wrongbookCardRenderTimer = setTimeout(() => {
+    wrongbookCardRenderTimer = null;
+    renderWrongbookCard();
+  }, CARD_CONTENT_SWAP_DELAY_MS);
+}
+
 function nextWbCard() {
   if (wbAutoAdvanceTimer) {
     clearTimeout(wbAutoAdvanceTimer);
@@ -2936,9 +2970,7 @@ function nextWbCard() {
   }
   if (!wbList.length) return;
   wbIdx = (wbIdx + 1) % wbList.length;
-  wbFlipped = false;
-  document.getElementById('wb-card').classList.remove('flipped');
-  renderWrongbookCard();
+  renderWrongbookCardAfterFrontReset();
 }
 
 function prevWbCard() {
@@ -2948,9 +2980,7 @@ function prevWbCard() {
   }
   if (!wbList.length) return;
   wbIdx = (wbIdx - 1 + wbList.length) % wbList.length;
-  wbFlipped = false;
-  document.getElementById('wb-card').classList.remove('flipped');
-  renderWrongbookCard();
+  renderWrongbookCardAfterFrontReset();
 }
 
 function speakWb(rate) {
@@ -3018,7 +3048,7 @@ async function answerWb(correct) {
       if (wbList.length === 0) { renderWrongbookCard(); renderWrongbookStats(); return; }
       wbIdx = wbIdx % wbList.length;
       renderWrongbookStats();
-      renderWrongbookCard();
+      renderWrongbookCardAfterFrontReset();
       return;
     } else {
       saveWrongbookStreaks();
@@ -3038,9 +3068,7 @@ async function answerWb(correct) {
     wbAutoAdvanceTimer = null;
     if (!wbList.length) return;
     wbIdx = (wbIdx + 1) % wbList.length;
-    wbFlipped = false;
-    document.getElementById('wb-card').classList.remove('flipped');
-    renderWrongbookCard();
+    renderWrongbookCardAfterFrontReset();
   }, 800);
 }
 
@@ -3050,6 +3078,14 @@ let qSize = 20; // 每轮题目数，默认20
 
 function isQuizInProgress() {
   return qStarted && qList.length > 0 && qIdx < qList.length;
+}
+
+function resetQuizSession() {
+  qStarted = false;
+  qList = [];
+  qIdx = 0;
+  qRoundRight = 0;
+  qRoundTotal = 0;
 }
 
 function invalidateQuizPracticePool() {
