@@ -191,6 +191,14 @@ function dailyCheckinKey() {
   return `daily_checkin:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
 }
 
+function todaySeenWordsKey() {
+  return `daily_seen_words:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
+}
+
+function todayAccuracyKey() {
+  return `daily_accuracy:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
+}
+
 function readTodayTemporaryGoal() {
   try {
     const raw = localStorage.getItem(todayTemporaryGoalKey());
@@ -226,6 +234,56 @@ function writeDailyCheckinDone() {
   try {
     localStorage.setItem(dailyCheckinKey(), '1');
   } catch {}
+}
+
+function readTodaySeenWords() {
+  try {
+    return new Set(normalizeWordRoList(JSON.parse(localStorage.getItem(todaySeenWordsKey()) || '[]')));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeTodaySeenWords() {
+  try {
+    localStorage.setItem(todaySeenWordsKey(), JSON.stringify([...todaySeenWords]));
+  } catch {}
+}
+
+function readTodayAccuracyStats() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(todayAccuracyKey()) || '{}');
+    return {
+      correct: Math.max(0, Number(raw.correct || 0)),
+      total: Math.max(0, Number(raw.total || 0))
+    };
+  } catch {
+    return { correct: 0, total: 0 };
+  }
+}
+
+function writeTodayAccuracyStats(stats) {
+  try {
+    localStorage.setItem(todayAccuracyKey(), JSON.stringify({
+      correct: Math.max(0, Number(stats.correct || 0)),
+      total: Math.max(0, Number(stats.total || 0))
+    }));
+  } catch {}
+}
+
+function recordTodayAccuracyAttempt(correct) {
+  const stats = readTodayAccuracyStats();
+  stats.total += 1;
+  if (correct) stats.correct += 1;
+  writeTodayAccuracyStats(stats);
+  return stats;
+}
+
+function getTodayCheckinAccuracy() {
+  const stats = readTodayAccuracyStats();
+  if (stats.total > 0) return Math.round(stats.correct / stats.total * 100);
+  const base = Math.max(1, Number(defaultDailyGoal || dailyGoal || 20));
+  return Math.min(100, Math.round(Math.min(todayNewWords, base) / base * 100));
 }
 
 function wrongbookStreakKey() {
@@ -713,7 +771,7 @@ async function loadDailyQueue() {
     dailyGoal = Math.max(logGoal, localTemporaryGoal, defaultDailyGoal);
     setGoalInputValue(defaultDailyGoal);
     todayQueueCompleted = new Set();
-    todaySeenWords = new Set();
+    todaySeenWords = readTodaySeenWords();
     todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
     todayQueueRecord = await apiSaveDailyQueue(currentUser.id, {
       goal: dailyGoal,
@@ -722,7 +780,8 @@ async function loadDailyQueue() {
       completed: false
     });
   }
-  todaySeenWords = new Set(todayQueueCompleted);
+  todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
+  writeTodaySeenWords();
   repairStartedProgressForCompletedTodayWords();
   todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
   const normalizedQueue = buildOpenTodayQueue(dailyGoal);
@@ -853,9 +912,22 @@ function getDailyWordList(words = W, options = {}) {
 
 function getDailyTaskType(w) {
   if (!w) return '';
-  if (isDueReviewWord(w)) return '到期复习';
-  if (hasWordProgress(getProgress(w.ro))) return getStoredLevel(getProgress(w.ro)) === 'mastered' ? '已掌握' : '学习中';
-  return '新词';
+  return getLevelLabel(w.ro);
+}
+
+function getAuxiliaryLabels(w) {
+  if (!w) return [];
+  const labels = [];
+  if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) labels.push('今日任务');
+  if (!hasWordProgress(getProgress(w.ro)) && !setHasRo(todaySeenWords, w.ro)) labels.push('新词');
+  if (isDueReviewWord(w)) labels.push('到期复习');
+  if (isWrongWord(w.ro)) labels.push('需加强');
+  return labels;
+}
+
+function getAuxiliaryLabelText(w) {
+  const labels = getAuxiliaryLabels(w);
+  return labels.length ? labels.join(' · ') : '无';
 }
 
 function getContinueAfterGoalText() {
@@ -977,6 +1049,7 @@ async function recordTodayWord(wordRo) {
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
   setAddRo(todaySeenWords, canonicalRo);
+  writeTodaySeenWords();
   todayNewWords += 1;
   todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
   if (!setHasRo(todayQueueCompleted, canonicalRo)) {
@@ -1101,11 +1174,10 @@ function isStartedNotMastered(progress) {
   return getStoredLevel(progress) !== 'mastered';
 }
 
-const LEVEL_LABEL = { unknown: '未学', queued: '待学习', learning: '学习中', mastered: '已掌握' };
-const DUE_MASTERED_LABEL = '已掌握 · 待复习';
-const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', mastered: 'var(--green)' };
-const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', mastered: 'var(--green-bg)' };
-const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', mastered: 'var(--green-text)' };
+const LEVEL_LABEL = { unknown: '未学', queued: '今日待学', learning: '学习中', review: '待复习', mastered: '已掌握' };
+const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', review: 'var(--red)', mastered: 'var(--green)' };
+const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', review: 'var(--red-bg)', mastered: 'var(--green-bg)' };
+const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', review: 'var(--red-text)', mastered: 'var(--green-text)' };
 const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
 const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
 const REINFORCEMENT_MIN_LEARNING_MISSES = 2;
@@ -1156,7 +1228,7 @@ function applyFilters() {
 
 function isUnseenWord(w) {
   const p = getProgress(w.ro);
-  return !hasWordProgress(p) && !setHasRo(todayQueueCompleted, w.ro);
+  return !hasWordProgress(p) && !setHasRo(todayQueueCompleted, w.ro) && !setHasRo(todaySeenWords, w.ro);
 }
 
 function getUnseenWords(words = W) {
@@ -1251,14 +1323,14 @@ function sortByReviewPriority(words) {
 function getProgressLevel(wordRo) {
   const p = getProgress(wordRo) || {};
   if (!hasWordProgress(p) && roListIncludes(todayQueue, wordRo) && !setHasRo(todayQueueCompleted, wordRo)) return 'queued';
+  if (hasWordProgress(p) && isReviewDue(p)) return 'review';
   if (!hasWordProgress(p) && setHasRo(todayQueueCompleted, wordRo)) return 'learning';
+  if (!hasWordProgress(p) && setHasRo(todaySeenWords, wordRo)) return 'learning';
   return getStoredLevel(p);
 }
 
 function getLevelLabel(wordRo) {
-  const p = getProgress(wordRo) || {};
   const lv = getProgressLevel(wordRo);
-  if (lv === 'mastered' && isReviewDue(p)) return DUE_MASTERED_LABEL;
   return LEVEL_LABEL[lv] || LEVEL_LABEL.unknown;
 }
 
@@ -1596,11 +1668,12 @@ function upStats() {
   const vals = Object.values(progressMap);
   const mastered = vals.filter(p => getStoredLevel(p) === 'mastered').length;
   const learning = vals.filter(isStartedNotMastered).length;
+  const dueCount = getRemainingDueReviewWords(W).length;
   const wbCount = getWrongWords().length;
 
   setText('s-mastered', mastered);
   setText('s-learning', learning);
-  setText('s-wrong', wbCount);
+  setText('s-wrong', dueCount);
   const masteryPct = W.length > 0 ? Math.round(mastered / W.length * 100) : 0;
   setText('s-pct', masteryPct + '%');
 
@@ -2107,7 +2180,7 @@ function openDailyCheckinModal() {
   if (!modal) return;
   setText('checkin-fixed-goal', defaultDailyGoal);
   setText('checkin-today-count', todayNewWords);
-  setText('checkin-accuracy', `${calcProgressSummary(progressMap).accuracy}%`);
+  setText('checkin-accuracy', `${getTodayCheckinAccuracy()}%`);
   modal.style.display = 'flex';
 }
 
@@ -2547,6 +2620,7 @@ async function markCard(yes) {
   const interaction = flashMode === 'review'
     ? (yes ? 'review_correct' : 'review_wrong')
     : (isReviewTask ? (yes ? 'review_correct' : 'review_wrong') : (yes ? 'flashcard_known' : 'flashcard_unknown'));
+  if (flashMode === 'today') recordTodayAccuracyAttempt(yes);
   await recordInteraction(w.ro, interaction);
   if (flashMode === 'today' && yes) {
     lastLearningHint = '';
@@ -3166,7 +3240,10 @@ function getCachedScopedPracticePool() {
     qExerciseMode,
     W.length,
     todayQueue.length,
-    todayQueueCompleted.size
+    todayQueueCompleted.size,
+    todaySeenWords.size,
+    progressVersion,
+    dailyQueueVersion
   ].join('|');
   if (qScopedPracticePool && qScopedPracticePoolKey === key) return qScopedPracticePool;
   qScopedPracticePool = getScopedPracticePool();
@@ -3181,7 +3258,7 @@ function getPracticeScopeLabel() {
     weak: '学习中',
     wrong: '需加强',
     due: '到期复习',
-    new: '新词',
+    new: '未学',
     all: '全部'
   }[qPracticeScope] || '智能练习';
 }
@@ -3967,7 +4044,7 @@ function renderWordDetail(w) {
       <div class="detail-chip"><div class="detail-label">语法</div><div class="detail-value">${escapeHtml(getGrammarInfo(w))}${stress.auto ? ' · 自动重音待校对' : ''}</div></div>
       <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${Number(p.reviewStage || p.reviewCount || 0)}</div></div>
       <div class="detail-chip"><div class="detail-label">练习记录</div><div class="detail-value">正确 ${p.qr || 0}/${p.qt || 0} · 答错 ${s.wrong} · 连错 ${s.streak}</div></div>
-      <div class="detail-chip"><div class="detail-label">今日类型</div><div class="detail-value">${escapeHtml(getDailyTaskType(w))}</div></div>
+      <div class="detail-chip"><div class="detail-label">辅助标签</div><div class="detail-value">${escapeHtml(getAuxiliaryLabelText(w))}</div></div>
     </div>
     <div class="detail-chip" style="${example ? '' : 'display:none'}">
       <div class="detail-label">例句</div>
