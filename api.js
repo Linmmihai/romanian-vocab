@@ -306,6 +306,127 @@ function mergeProgressMemory(progress, backup = {}) {
   };
 }
 
+function validIso(value) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
+function newerIso(a, b) {
+  const aIso = validIso(a);
+  const bIso = validIso(b);
+  if (!aIso) return bIso;
+  if (!bIso) return aIso;
+  return new Date(aIso).getTime() >= new Date(bIso).getTime() ? aIso : bIso;
+}
+
+function laterReviewIso(a, b, fallback = new Date().toISOString()) {
+  return newerIso(a, b) || fallback;
+}
+
+function normalizeProgressLevel(progress = {}) {
+  const qt = Number(progress.qt || 0);
+  const qr = Number(progress.qr || 0);
+  if (qt >= 3 && qr / qt >= 0.8) return 'mastered';
+  if (
+    progress.seen ||
+    progress.known ||
+    qt ||
+    qr ||
+    Number(progress.reviewStage || progress.reviewCount || 0) ||
+    progress.lastReviewedAt
+  ) return 'learning';
+  return 'unknown';
+}
+
+function mergeCloudProgress(localProgress = {}, cloudRow = null) {
+  const cloudProgress = cloudRow ? rowToProgress(cloudRow) : {};
+  const qr = Math.max(Number(localProgress.qr || 0), Number(cloudProgress.qr || 0));
+  const qt = Math.max(Number(localProgress.qt || 0), Number(cloudProgress.qt || 0), qr);
+  const reviewStage = Math.max(
+    Number(localProgress.reviewStage || localProgress.reviewCount || 0),
+    Number(cloudProgress.reviewStage || cloudProgress.reviewCount || 0)
+  );
+  const wrongCount = Math.max(Number(localProgress.wrongCount || 0), Number(cloudProgress.wrongCount || 0));
+  const errorStreak = Math.max(Number(localProgress.errorStreak || 0), Number(cloudProgress.errorStreak || 0));
+  const lastReviewedAt = newerIso(localProgress.lastReviewedAt, cloudProgress.lastReviewedAt) || new Date().toISOString();
+  const lastWrongAt = newerIso(localProgress.lastWrongAt, cloudProgress.lastWrongAt);
+  const weakClearedAt = newerIso(localProgress.weakClearedAt, cloudProgress.weakClearedAt);
+  const nextReviewAt = laterReviewIso(
+    localProgress.nextReviewAt || localProgress.nextReview,
+    cloudProgress.nextReviewAt || cloudProgress.nextReview,
+    lastReviewedAt
+  );
+  const merged = {
+    ...cloudProgress,
+    ...localProgress,
+    seen: !!(localProgress.seen || cloudProgress.seen || localProgress.known || cloudProgress.known || qt || reviewStage),
+    known: !!(localProgress.known || cloudProgress.known || qr > 0 || reviewStage > 0),
+    qr,
+    qt,
+    reviewStage,
+    reviewCount: reviewStage,
+    nextReviewAt,
+    lastReviewedAt,
+    wrongCount,
+    errorStreak,
+    lastWrongAt,
+    weakClearedAt
+  };
+  merged.level = normalizeProgressLevel(merged);
+  return merged;
+}
+
+function normalizeRoArray(values = []) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .filter(value => {
+      const key = value.toLocaleLowerCase('ro');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
+  if (!cloudPayload) return localPayload;
+  const completed = normalizeRoArray([
+    ...(cloudPayload.completed_word_ro || []),
+    ...(localPayload.completed_word_ro || [])
+  ]);
+  const completedKeys = new Set(completed.map(value => value.toLocaleLowerCase('ro')));
+  const word_ro = normalizeRoArray([
+    ...(cloudPayload.word_ro || []),
+    ...(localPayload.word_ro || [])
+  ]).filter(value => !completedKeys.has(value.toLocaleLowerCase('ro')));
+  const goal = Math.max(Number(localPayload.goal || 20), Number(cloudPayload.goal || 20), 1);
+  return {
+    ...cloudPayload,
+    ...localPayload,
+    goal,
+    word_ro,
+    completed_word_ro: completed,
+    completed: completed.length >= goal,
+    updated_at: localPayload.updated_at || new Date().toISOString()
+  };
+}
+
+function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal = localPayload.goal) {
+  if (!cloudPayload) return localPayload;
+  const newWords = Math.max(Number(localPayload.new_words || 0), Number(cloudPayload.new_words || 0));
+  const goal = Math.max(Number(localPayload.goal || 20), Number(cloudPayload.goal || 20), 1);
+  const doneGoal = Math.max(Number(completionGoal || goal), 1);
+  return {
+    ...cloudPayload,
+    ...localPayload,
+    new_words: newWords,
+    goal,
+    completed: newWords >= doneGoal
+  };
+}
+
 // ── 词库 ──────────────────────────────────────────────────
 
 /**
@@ -596,25 +717,33 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
   let saved = 0;
   for (let i = 0; i < batch.length; i += PENDING_PROGRESS_RETRY_CONCURRENCY) {
     const chunk = batch.slice(i, i + PENDING_PROGRESS_RETRY_CONCURRENCY);
+    const wordRos = chunk.map(([wordRo]) => wordRo);
+    const { data: cloudRows, error: cloudError } = await sb.from('progress')
+      .select('*')
+      .eq('user_id', userId)
+      .in('word_ro', wordRos);
+    if (cloudError) throw new Error(cloudError.message);
+    const cloudByRo = new Map((cloudRows || []).map(row => [row.word_ro, row]));
     const results = await Promise.allSettled(chunk.map(async ([wordRo, p]) => {
+      const mergedProgress = mergeCloudProgress(p, cloudByRo.get(wordRo));
       await apiSaveProgress(
         userId,
         wordRo,
-        !!p.known,
-        p.qr || 0,
-        p.qt || 0,
-        p.level || 'unknown',
+        !!mergedProgress.known,
+        mergedProgress.qr || 0,
+        mergedProgress.qt || 0,
+        mergedProgress.level || 'unknown',
         {
-          reviewStage: p.reviewStage || p.reviewCount || 0,
-          nextReviewAt: p.nextReviewAt || p.nextReview || new Date().toISOString(),
-          lastReviewedAt: p.lastReviewedAt || new Date().toISOString()
+          reviewStage: mergedProgress.reviewStage || mergedProgress.reviewCount || 0,
+          nextReviewAt: mergedProgress.nextReviewAt || mergedProgress.nextReview || new Date().toISOString(),
+          lastReviewedAt: mergedProgress.lastReviewedAt || new Date().toISOString()
         },
         null,
         {
-          wrongCount: p.wrongCount || 0,
-          errorStreak: p.errorStreak || 0,
-          lastWrongAt: p.lastWrongAt || null,
-          weakClearedAt: p.weakClearedAt || null
+          wrongCount: mergedProgress.wrongCount || 0,
+          errorStreak: mergedProgress.errorStreak || 0,
+          lastWrongAt: mergedProgress.lastWrongAt || null,
+          weakClearedAt: mergedProgress.weakClearedAt || null
         }
       );
     }));
@@ -847,9 +976,19 @@ async function apiSaveDailyQueue(userId, queue) {
   writeLocalQueue(userId, payload, today);
   if (isOfflineMode()) return { ...payload, local: true };
   try {
-    const { error } = await sb.from('daily_queue').upsert(payload, { onConflict: 'user_id,queue_date' });
-    if (!error) return payload;
-    return { ...payload, syncError: error.message };
+    const { data: cloudQueue, error: readError } = await sb.from('daily_queue')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('queue_date', today)
+      .maybeSingle();
+    if (readError) return { ...payload, syncError: readError.message };
+    const mergedPayload = mergeDailyQueuePayload(payload, cloudQueue);
+    const { error } = await sb.from('daily_queue').upsert(mergedPayload, { onConflict: 'user_id,queue_date' });
+    if (!error) {
+      writeLocalQueue(userId, mergedPayload, today);
+      return mergedPayload;
+    }
+    return { ...mergedPayload, syncError: error.message };
   } catch {}
   return { ...payload, syncError: '每日队列云端同步失败' };
 }
@@ -1036,12 +1175,20 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
   if (isOfflineMode()) {
     return { saved: 'local' };
   }
+  const localPayload = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed };
+  const { data: cloudLog, error: readError } = await sb.from('daily_log')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('log_date', today)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  const mergedPayload = mergeDailyLogPayload(localPayload, cloudLog, completionGoal);
   const { error } = await sb.from('daily_log').upsert(
-    { user_id: userId, log_date: today, new_words: completedTasks, goal, completed },
+    mergedPayload,
     { onConflict: 'user_id,log_date' }
   );
   if (error) throw new Error(error.message);
-  logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed };
+  logs[today] = mergedPayload;
   writeJson(localKey(userId, 'daily_log'), logs);
   return { saved: 'database' };
 }

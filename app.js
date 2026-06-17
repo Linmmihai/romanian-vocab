@@ -47,6 +47,7 @@ let editingPendingWordId = null;
 let detailWordRo = null;
 let flashcardButtonsBound = false;
 let cardGesturesBound = false;
+let flashcardAnswerInFlight = false;
 let flashCardRenderTimer = null;
 let wrongbookCardRenderTimer = null;
 const CARD_CONTENT_SWAP_DELAY_MS = 230;
@@ -1874,12 +1875,12 @@ function shouldTrackWrongbookForMiss(prev = {}) {
   return !!(prev.level === 'mastered' || getStoredLevel(prev) === 'mastered');
 }
 
-async function recordInteraction(wordRo, interactionType) {
+async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
   const rule = INTERACTION_RULES[interactionType];
   if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
   const prev = getProgress(wordRo) || { known: false, qr: 0, qt: 0 };
   const next = rule(prev);
-  await syncProgress(wordRo, next.known, next.qr, next.qt, next.success, next.options);
+  await syncProgress(wordRo, next.known, next.qr, next.qt, next.success, { ...next.options, ...extraOptions });
   return getProgress(wordRo) || {};
 }
 
@@ -2522,6 +2523,7 @@ function renderFlashCardAfterFrontReset() {
   const card = document.getElementById('main-card');
   if (!card || !card.classList.contains('flipped')) {
     renderCard();
+    setFlashcardAnswerButtonsDisabled(false);
     return;
   }
   flipped = false;
@@ -2530,6 +2532,7 @@ function renderFlashCardAfterFrontReset() {
   flashCardRenderTimer = setTimeout(() => {
     flashCardRenderTimer = null;
     renderCard();
+    setFlashcardAnswerButtonsDisabled(false);
   }, CARD_CONTENT_SWAP_DELAY_MS);
 }
 
@@ -2587,6 +2590,13 @@ function bindFlashcardButtons() {
   flashcardButtonsBound = true;
 }
 
+function setFlashcardAnswerButtonsDisabled(disabled) {
+  const knownBtn = document.getElementById('mark-known-btn');
+  const unknownBtn = document.getElementById('mark-unknown-btn');
+  if (knownBtn) knownBtn.disabled = disabled;
+  if (unknownBtn) unknownBtn.disabled = disabled;
+}
+
 /**
  * 记录当前卡片为「今日已完成任务」
  */
@@ -2612,35 +2622,46 @@ function updateTodayCalendarCell() {
 
 // 「认识了」/「不认识」
 async function markCard(yes) {
+  if (flashcardAnswerInFlight) return;
   const w = getCurrentFlashWord();
   if (!w) return;
-  const wasReviewingHistory = !!flashOverrideRo;
-  const p = getProgress(w.ro);
-  const isReviewTask = flashMode === 'review' || (flashMode === 'today' && p && (p.qt || p.known));
-  const interaction = flashMode === 'review'
-    ? (yes ? 'review_correct' : 'review_wrong')
-    : (isReviewTask ? (yes ? 'review_correct' : 'review_wrong') : (yes ? 'flashcard_known' : 'flashcard_unknown'));
-  if (flashMode === 'today') recordTodayAccuracyAttempt(yes);
-  await recordInteraction(w.ro, interaction);
-  if (flashMode === 'today' && yes) {
-    lastLearningHint = '';
-    await completeTodayQueueWord(w.ro);
-  } else if (flashMode === 'today') {
-    lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；记住后才会计入完成。`;
-    await saveTodayQueue();
-    renderDailyGoal();
-    renderReviewPanel();
-    updateReviewBadge();
-  } else if (!yes) {
-    showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
+  flashcardAnswerInFlight = true;
+  setFlashcardAnswerButtonsDisabled(true);
+  try {
+    const wasReviewingHistory = !!flashOverrideRo;
+    const p = getProgress(w.ro);
+    const isReviewTask = flashMode === 'review' || (flashMode === 'today' && p && (p.qt || p.known));
+    const interaction = flashMode === 'review'
+      ? (yes ? 'review_correct' : 'review_wrong')
+      : (isReviewTask ? (yes ? 'review_correct' : 'review_wrong') : (yes ? 'flashcard_known' : 'flashcard_unknown'));
+    if (flashMode === 'today') recordTodayAccuracyAttempt(yes);
+    await recordInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
+    if (flashMode === 'today' && yes) {
+      lastLearningHint = '';
+      await completeTodayQueueWord(w.ro);
+    } else if (flashMode === 'today') {
+      lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；记住后才会计入完成。`;
+      await saveTodayQueue({ background: true });
+      renderDailyGoal();
+      renderReviewPanel();
+      updateReviewBadge();
+    } else if (!yes) {
+      showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
+    }
+    // 跳下一张，重置为中文面
+    if (!wasReviewingHistory) flashHistory.push(w.ro);
+    flashOverrideRo = null;
+    applyFilters();
+    const nextIdx = filtered.findIndex(item => item.ro !== w.ro);
+    idx = nextIdx >= 0 ? nextIdx : 0;
+    renderFlashCardAfterFrontReset();
+  } catch (error) {
+    console.warn('Flashcard answer failed', error);
+    setFlashcardAnswerButtonsDisabled(false);
+    showToast('保存失败，请稍后重试');
+  } finally {
+    flashcardAnswerInFlight = false;
   }
-  // 跳下一张，重置为中文面
-  if (!wasReviewingHistory) flashHistory.push(w.ro);
-  flashOverrideRo = null;
-  applyFilters();
-  const nextIdx = filtered.findIndex(item => item.ro !== w.ro);
-  idx = nextIdx >= 0 ? nextIdx : 0;
-  renderFlashCardAfterFrontReset();
 }
 
 // 「上一个」— 回到上一张的罗语面
