@@ -50,7 +50,8 @@ let cardGesturesBound = false;
 let flashcardAnswerInFlight = false;
 let flashCardRenderTimer = null;
 let wrongbookCardRenderTimer = null;
-const CARD_CONTENT_SWAP_DELAY_MS = 230;
+const CARD_FLIP_TRANSITION_MS = 180;
+const CARD_CONTENT_SWAP_DELAY_MS = 95;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -1050,7 +1051,7 @@ function showDailyGoalCompletionPrompt(defer = false) {
     openDailyCheckinModal();
   };
   if (defer) {
-    setTimeout(showPrompt, CARD_CONTENT_SWAP_DELAY_MS + 80);
+    setTimeout(showPrompt, CARD_FLIP_TRANSITION_MS + 40);
     return;
   }
   showPrompt();
