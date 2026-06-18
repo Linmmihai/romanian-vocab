@@ -1044,25 +1044,35 @@ async function saveTodayQueue(options = {}) {
   return todayQueueRecord;
 }
 
-async function recordTodayWord(wordRo) {
+function showDailyGoalCompletionPrompt(defer = false) {
+  const showPrompt = () => {
+    showToast('今日固定目标已完成');
+    openDailyCheckinModal();
+  };
+  if (defer) {
+    setTimeout(showPrompt, CARD_CONTENT_SWAP_DELAY_MS + 80);
+    return;
+  }
+  showPrompt();
+}
+
+function commitTodayWordCompletion(wordRo, options = {}) {
   const canonicalRo = canonicalWordRo(wordRo);
-  if (!canonicalRo || setHasRo(todaySeenWords, canonicalRo)) return;
-  await ensureStartedProgressForTodayWord(canonicalRo);
+  if (!canonicalRo || setHasRo(todayQueueCompleted, canonicalRo)) return false;
   const wasGoalDone = isDefaultGoalDone();
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
   setAddRo(todaySeenWords, canonicalRo);
   writeTodaySeenWords();
-  todayNewWords += 1;
-  todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
-  if (!setHasRo(todayQueueCompleted, canonicalRo)) {
-    setAddRo(todayQueueCompleted, canonicalRo);
-  }
+  setAddRo(todayQueueCompleted, canonicalRo);
   if (isQueuedWord) {
     todayQueue = roListWithout(todayQueue, canonicalRo);
-    todayNewWords = Math.max(todayNewWords, todayQueueCompleted.size);
   }
-  await saveTodayQueue({ background: true });
+  todayNewWords = todayQueueCompleted.size;
+  saveTodayQueue({ background: true }).catch(error => {
+    console.warn('Daily queue background save failed', error);
+    setSyncBadge('队列待同步', '');
+  });
 
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: todayNewWords >= defaultDailyGoal };
   apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
@@ -1075,13 +1085,20 @@ async function recordTodayWord(wordRo) {
   renderReviewPanel();
   updateReviewBadge();
   if (!wasGoalDone && isDefaultGoalDone()) {
-    showToast('今日固定目标已完成');
-    openDailyCheckinModal();
+    showDailyGoalCompletionPrompt(!!options.deferGoalPrompt);
   }
+  return true;
 }
 
-async function completeTodayQueueWord(wordRo) {
-  await recordTodayWord(wordRo);
+async function recordTodayWord(wordRo, options = {}) {
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!canonicalRo || setHasRo(todayQueueCompleted, canonicalRo)) return false;
+  await ensureStartedProgressForTodayWord(canonicalRo);
+  return commitTodayWordCompletion(canonicalRo, options);
+}
+
+async function completeTodayQueueWord(wordRo, options = {}) {
+  return recordTodayWord(wordRo, options);
 }
 
 async function ensureStartedProgressForTodayWord(wordRo) {
@@ -2640,10 +2657,13 @@ async function markCard(yes) {
     await recordInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
     if (flashMode === 'today' && yes) {
       lastLearningHint = '';
-      await completeTodayQueueWord(w.ro);
+      commitTodayWordCompletion(w.ro, { deferGoalPrompt: true });
     } else if (flashMode === 'today') {
       lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；记住后才会计入完成。`;
-      await saveTodayQueue({ background: true });
+      saveTodayQueue({ background: true }).catch(error => {
+        console.warn('Daily queue background save failed', error);
+        setSyncBadge('队列待同步', '');
+      });
       renderDailyGoal();
       renderReviewPanel();
       updateReviewBadge();
