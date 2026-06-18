@@ -1166,7 +1166,7 @@ async function apiGetTodayLog(userId, goal) {
 /**
  * 更新今日完成任务数；数据库字段沿用 daily_log.new_words 以保持兼容
  */
-async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal) {
+async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal, options = {}) {
   const today = getLocalDateKey();
   const completed = completedTasks >= completionGoal;
   const logs = readJson(localKey(userId, 'daily_log'), {});
@@ -1182,7 +1182,7 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
     .eq('log_date', today)
     .maybeSingle();
   if (readError) throw new Error(readError.message);
-  const mergedPayload = mergeDailyLogPayload(localPayload, cloudLog, completionGoal);
+  const mergedPayload = options.forceLocal ? localPayload : mergeDailyLogPayload(localPayload, cloudLog, completionGoal);
   const { error } = await sb.from('daily_log').upsert(
     mergedPayload,
     { onConflict: 'user_id,log_date' }

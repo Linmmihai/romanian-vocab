@@ -784,15 +784,17 @@ async function loadDailyQueue() {
   todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
   writeTodaySeenWords();
   repairStartedProgressForCompletedTodayWords();
-  todayNewWords = Math.max(previousTodayCount, todayQueueCompleted.size);
+  todayNewWords = todayQueueCompleted.size;
   const normalizedQueue = buildOpenTodayQueue(dailyGoal);
   if (normalizedQueue.join('|') !== todayQueue.join('|')) {
     todayQueue = normalizedQueue;
     queueChanged = true;
   }
   if (queueChanged) await saveTodayQueue();
-  if (todayQueueCompleted.size > previousTodayCount || todayLog?.goal !== dailyGoal) {
-    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
+  if (todayNewWords !== previousTodayCount || todayLog?.goal !== dailyGoal) {
+    await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
+      forceLocal: todayNewWords < previousTodayCount
+    });
     invalidateCalendarCache();
   }
   if (todayQueueRecord?.syncError) {
