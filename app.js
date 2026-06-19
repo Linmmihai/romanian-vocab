@@ -33,6 +33,7 @@ let qRight = 0;       // 本次会话累计答对（不重置）
 let qTotal = 0;       // 本次会话累计答题（不重置）
 let qRoundRight = 0;  // 本轮答对（用于显示结算）
 let qRoundTotal = 0;  // 本轮答题
+let qRoundWrong = 0;  // 本轮答错（用于结算建议）
 let qStarted = false;
 let qScopedPracticePool = null;
 let qScopedPracticePoolKey = '';
@@ -1769,8 +1770,43 @@ function renderReviewPanel() {
         ? `先完成一组 ${nextBatch} 个到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`
         : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`));
   setText('review-note', lastLearningHint || baseNote);
+  renderTodayFocus({ due, remainingSlots, remainingDueReviews, unseenRemaining });
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
+}
+
+function setStepState(id, state) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('active', state === 'active');
+  el.classList.toggle('done', state === 'done');
+}
+
+function renderTodayFocus(metrics = null) {
+  const focus = document.getElementById('today-focus');
+  if (!focus) return;
+  focus.style.display = '';
+  const scoped = getCurrentScopeWords();
+  const m = metrics || getReviewPanelMetrics(scoped);
+  const currentDone = isCurrentTodayGoalDone();
+  const dueCount = m.remainingDueReviews ?? getRemainingDueReviewWords(W).length;
+  const wrongCount = getWrongWords().length;
+  const remainingTasks = Math.max(0, dailyGoal - todayNewWords);
+  const reviewState = dueCount > 0 ? 'active' : 'done';
+  const learnState = dueCount > 0 ? '' : (currentDone ? 'done' : 'active');
+  const quizState = dueCount === 0 && currentDone ? 'active' : '';
+  setStepState('today-step-review', reviewState);
+  setStepState('today-step-learn', learnState);
+  setStepState('today-step-quiz', quizState);
+  setText('today-step-review-meta', dueCount > 0 ? `${dueCount} 个到期` : '已清空');
+  setText('today-step-learn-meta', currentDone ? `${todayNewWords} / ${dailyGoal}` : `还差 ${remainingTasks} 个`);
+  setText('today-step-quiz-meta', wrongCount > 0 ? `${wrongCount} 个需加强` : '智能练习');
+  const title = dueCount > 0
+    ? `今日路径：先复习 ${dueCount} 个`
+    : (currentDone ? '今日路径：做一轮智能测验' : `今日路径：继续 ${Math.min(20, remainingTasks)} 个任务`);
+  const action = dueCount > 0 ? '复习优先' : (currentDone ? '巩固检查' : '继续学习');
+  setText('today-focus-title', title);
+  setText('today-focus-action', action);
 }
 
 function setFlashMode(mode) {
@@ -2723,7 +2759,7 @@ function renderCard() {
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
-      frontHint.textContent = todayNewWords >= dailyGoal ? actionText : '点击卡片查看罗马尼亚语 👆';
+      frontHint.textContent = todayNewWords >= dailyGoal ? actionText : '先在心里说出罗语，再点卡片看答案';
     }
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
@@ -2752,7 +2788,7 @@ function getCardRenderWord() {
 
 function renderCardFront(w) {
   const frontHint = document.getElementById('fc-front-hint');
-  if (frontHint) frontHint.textContent = '点击卡片查看罗马尼亚语 👆';
+  if (frontHint) frontHint.textContent = '先在心里说出罗语，再点卡片看答案';
   const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
   document.getElementById('fc-cat').textContent = `${w.cat || ''}${taskType}`;
   document.getElementById('fc-zh').textContent = w.zh;
@@ -3489,6 +3525,7 @@ function resetQuizSession() {
   qIdx = 0;
   qRoundRight = 0;
   qRoundTotal = 0;
+  qRoundWrong = 0;
 }
 
 function invalidateQuizPracticePool() {
@@ -3526,6 +3563,20 @@ function setQSize(n) {
   document.querySelectorAll('.qsize-btn').forEach(b =>
     b.classList.toggle('active', parseInt(b.dataset.n) === n)
   );
+}
+
+function startDefaultSmartQuiz() {
+  qPracticeScope = 'smart';
+  qExerciseMode = 'translation';
+  qMode = 'zh';
+  qStarted = false;
+  invalidateQuizPracticePool();
+  document.querySelectorAll('#quiz-scope-bar .study-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === qPracticeScope));
+  document.querySelectorAll('.exercise-btn').forEach(b => b.classList.toggle('active', b.dataset.exercise === qExerciseMode));
+  document.getElementById('m-zh')?.classList.toggle('active', true);
+  document.getElementById('m-ro')?.classList.toggle('active', false);
+  showQuizSetup();
+  startQuiz();
 }
 
 function getActiveStudyPool() {
@@ -3764,17 +3815,24 @@ function showQuizSetup() {
     verbConj: '动词变位',
     stress: '重音选择'
   }[qExerciseMode];
+  const isDefaultSmart = qPracticeScope === 'smart' && qExerciseMode === 'translation' && qMode === 'zh';
+  const primaryTitle = isDefaultSmart ? '开始智能练习' : `开始${modeName}`;
+  const primarySub = isDefaultSmart
+    ? '系统会优先抽到期、需加强和学习中的词，适合每天完成任务后检查记忆。'
+    : `${getPracticeScopeLabel()} · ${modeName}${qExerciseMode === 'translation' ? ` · ${qMode === 'zh' ? '中文到罗语' : '罗语到中文'}` : ''}`;
   document.getElementById('quiz-area').innerHTML = `
     <div class="quiz-section quiz-start-panel">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${curCat !== '全部' ? curCat : '全部分类'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
-      <div style="font-size:15px;font-weight:600;margin-bottom:1rem;color:var(--text)">选择本轮题目数</div>
+      <div class="quiz-start-meta">${curCat !== '全部' ? curCat : '全部分类'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
+      <div class="quiz-start-title">${escapeHtml(primaryTitle)}</div>
+      <div class="quiz-start-sub">${escapeHtml(primarySub)}</div>
+      <div style="font-size:13px;font-weight:750;margin-bottom:.8rem;color:var(--text2)">本轮题目数</div>
       <div class="quiz-size-row">
         <button class="qsize-btn${qSize===20?' active':''}" data-n="20" onclick="setQSize(20)">20题</button>
         <button class="qsize-btn${qSize===50?' active':''}" data-n="50" onclick="setQSize(50)">50题</button>
         <button class="qsize-btn${qSize===100?' active':''}" data-n="100" onclick="setQSize(100)">100题</button>
         <button class="qsize-btn${qSize===0?' active':''}" data-n="0" onclick="setQSize(0)">全部(${pool.length}题)</button>
       </div>
-      ${pool.length ? '<button class="btn-primary" style="max-width:200px" onclick="startQuiz()">开始测验 →</button>' : '<div class="empty-state">当前模式没有足够的已核对数据。请先由管理员核对词条。</div>'}
+      ${pool.length ? `<button class="btn-primary" style="max-width:220px;margin:0 auto" onclick="startQuiz()">${escapeHtml(primaryTitle)}</button>` : '<div class="empty-state">当前模式没有足够的已核对数据。请先由管理员核对词条。</div>'}
     </div>`;
 }
 
@@ -3787,6 +3845,7 @@ function startQuiz() {
   qIdx = 0;
   qRoundRight = 0;
   qRoundTotal = 0;
+  qRoundWrong = 0;
   qStarted = true;
   renderQuiz();
 }
@@ -3897,6 +3956,7 @@ async function answerQ(btn, ok, ro, zh) {
     qRoundRight++;
   } else {
     btn.classList.add('wrong');
+    qRoundWrong++;
     btn.parentElement.querySelectorAll('.opt').forEach(b => {
       if (b.dataset.optionRo === ro) b.classList.add('correct');
     });
@@ -3920,6 +3980,7 @@ async function answerExerciseQ(btn, ok) {
     qRoundRight++;
   } else {
     btn.classList.add('wrong');
+    qRoundWrong++;
     const ex = qList[qIdx];
     btn.parentElement.querySelectorAll('.opt').forEach(b => {
       if (b.dataset.option === ex.answer) b.classList.add('correct');
@@ -3940,14 +4001,32 @@ function showResult() {
   qStarted = false;
   const pct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
   const wrongCount = getWrongWords().length;
+  const dueCount = getRemainingDueReviewWords(W).length;
+  const nextTitle = qRoundWrong > 0
+    ? `本轮错了 ${qRoundWrong} 题`
+    : (dueCount > 0 ? `还有 ${dueCount} 个到期词` : '本轮状态稳定');
+  const nextText = qRoundWrong > 0
+    ? '建议马上练需加强列表，趁错误记忆还新鲜，把薄弱词修掉。'
+    : (dueCount > 0
+      ? '先完成到期复习，再继续新词或专项练习。'
+      : '可以再做一轮智能练习，或回到今日任务继续扩大词量。');
+  const primaryAction = qRoundWrong > 0 && wrongCount > 0
+    ? `<button class="restart-btn" style="border-color:var(--red);color:var(--red-text)" onclick="switchPage('wrongbook')">练需加强</button>`
+    : (dueCount > 0
+      ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="setPracticeScope('due');switchPage('quiz')">复习到期词</button>`
+      : `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="startDefaultSmartQuiz()">再做智能练习</button>`);
   document.getElementById('quiz-area').innerHTML = `
     <div class="result-box">
       <div class="result-score">${qRoundRight}/${qRoundTotal}</div>
-      <div class="result-label">本轮正确率 ${pct}% · ${pct >= 80 ? '优秀🎉' : pct >= 60 ? '良好👍' : '继续加油💪'}</div>
+      <div class="result-label">本轮正确率 ${pct}% · ${pct >= 80 ? '稳定' : pct >= 60 ? '还需巩固' : '需要加强'}</div>
+      <div class="result-next">
+        <div class="result-next-title">${escapeHtml(nextTitle)}</div>
+        <div class="result-next-text">${escapeHtml(nextText)}</div>
+      </div>
       ${wrongCount > 0 ? `<div style="font-size:13px;color:var(--red-text);margin-bottom:16px">需加强列表有 ${wrongCount} 个词待练习</div>` : ''}
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        ${primaryAction}
         <button class="restart-btn" onclick="startQuiz()">再来一轮</button>
-        ${wrongCount > 0 ? `<button class="restart-btn" style="border-color:var(--red);color:var(--red-text)" onclick="switchPage('wrongbook')">去需加强 →</button>` : ''}
       </div>
     </div>`;
 }
@@ -4055,17 +4134,20 @@ function renderStudyCoach(summary, logs = []) {
   const wrongCount = getWrongWords().length;
   const weakCount = getWeakLearningWords(W).length;
   const weakCat = getWeakestCategory();
-  const todayOpen = todayQueue.length;
+  const todayOpen = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro)).length;
   const items = [];
-  if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, kind: 'due' });
-  if (wrongCount) items.push({ title: `再练 ${wrongCount} 个需加强词`, kind: 'wrong' });
-  if (weakCount) items.push({ title: `继续练 ${weakCount} 个学习中词`, kind: 'weak' });
-  if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, kind: 'today' });
-  if (weakCat) items.push({ title: `薄弱分类：${weakCat.cat}（掌握率 ${weakCat.pct}%）`, kind: 'cat', arg: weakCat.cat });
-  if (!items.length) items.push({ title: `状态稳定。可以做一轮智能测验，当前正确率 ${summary.accuracy}%`, kind: 'quiz' });
+  if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, meta: '这是今天最该优先完成的任务', kind: 'due' });
+  if (wrongCount) items.push({ title: `再练 ${wrongCount} 个需加强词`, meta: '把最近答错的词单独修掉', kind: 'wrong' });
+  if (weakCount) items.push({ title: `继续练 ${weakCount} 个学习中词`, meta: '还没稳定掌握，适合短轮测验', kind: 'weak' });
+  if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, meta: `${todayNewWords}/${dailyGoal} 已完成`, kind: 'today' });
+  if (weakCat) items.push({ title: `薄弱分类：${weakCat.cat}`, meta: `掌握率 ${weakCat.pct}%，建议按分类补强`, kind: 'cat', arg: weakCat.cat });
+  if (!items.length) items.push({ title: `做一轮智能测验`, meta: `当前正确率 ${summary.accuracy}%，用测验检查是否真的记住`, kind: 'quiz' });
   el.innerHTML = items.slice(0, 4).map(item => `
     <div class="hard-row">
-      <div class="hard-main"><div class="hard-word">${escapeHtml(item.title)}</div></div>
+      <div class="hard-main">
+        <div class="hard-word">${escapeHtml(item.title)}</div>
+        <div class="hard-meta">${escapeHtml(item.meta || '')}</div>
+      </div>
       <button class="btn-sm" onclick="startCoachAction(decodeURIComponent('${encodedArg(item.kind)}'),decodeURIComponent('${encodedArg(item.arg || '')}'))">开始</button>
     </div>`).join('');
 }
@@ -4076,8 +4158,8 @@ function startCoachAction(kind, arg = '') {
   if (kind === 'weak') { setPracticeScope('weak'); switchPage('quiz'); return; }
   if (kind === 'today') { setFlashMode('today'); switchPage('flash'); return; }
   if (kind === 'cat') { setCat(arg); switchPage('flash'); return; }
-  setPracticeScope('smart');
   switchPage('quiz');
+  startDefaultSmartQuiz();
 }
 
 function getWeakestCategory() {
