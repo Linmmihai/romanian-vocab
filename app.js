@@ -72,6 +72,8 @@ let defaultDailyGoal = 20; // 用户主动保存的每日固定目标
 let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
 let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
 let todayLog = null;
+let activeDailyDateKey = getDateKeyFor(new Date());
+let dailyDateReloadInFlight = null;
 const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
 let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
@@ -201,6 +203,60 @@ function todayAccuracyKey() {
   return `daily_accuracy:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
 }
 
+function isDailyStateCurrent() {
+  return activeDailyDateKey === getDateKeyFor(new Date());
+}
+
+function resetDailyRuntimeState(dateKey = getDateKeyFor(new Date())) {
+  activeDailyDateKey = dateKey;
+  todayLog = null;
+  todayNewWords = 0;
+  todayQueue = [];
+  todayQueueCompleted = new Set();
+  todaySeenWords = readTodaySeenWords();
+  todayQueueRecord = null;
+  dailyGoal = Math.max(defaultDailyGoal, readTodayTemporaryGoal());
+  dailyCheckinPromptShown = false;
+  dailyQueueLoaded = false;
+  dailyQueueVersion++;
+  invalidateCalendarCache();
+  invalidateQuizPracticePool();
+}
+
+function scheduleDailyStateReloadAfterDateChange() {
+  if (!currentUser?.id || userRole === 'pending' || dailyDateReloadInFlight) return;
+  dailyDateReloadInFlight = (async () => {
+    try {
+      await loadTodayLog();
+      await loadDailyQueue();
+    } catch (error) {
+      console.warn('Daily state reload after date change failed', error);
+      setSyncBadge('今日状态刷新失败', '');
+    } finally {
+      dailyDateReloadInFlight = null;
+    }
+  })();
+}
+
+function ensureDailyStateCurrent(options = {}) {
+  if (isDailyStateCurrent()) return true;
+  resetDailyRuntimeState();
+  if (options.reload) scheduleDailyStateReloadAfterDateChange();
+  return false;
+}
+
+function getProgressDateKey(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return getDateKeyFor(date);
+}
+
+function wasWordCompletedOnActiveDate(wordRo) {
+  const p = getProgress(wordRo);
+  return getProgressDateKey(p?.lastReviewedAt || p?.last_reviewed_at) === activeDailyDateKey;
+}
+
 function readTodayTemporaryGoal() {
   try {
     const raw = localStorage.getItem(todayTemporaryGoalKey());
@@ -217,11 +273,11 @@ function writeTodayTemporaryGoal(goal) {
 }
 
 function isDefaultGoalDone() {
-  return todayNewWords >= defaultDailyGoal;
+  return isDailyStateCurrent() && todayNewWords >= defaultDailyGoal;
 }
 
 function isCurrentTodayGoalDone() {
-  return todayNewWords >= dailyGoal;
+  return isDailyStateCurrent() && todayNewWords >= dailyGoal;
 }
 
 function isDailyCheckinDone() {
@@ -702,6 +758,7 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
 
 async function syncDailyStateToCloud() {
   if (isOfflineMode() || !currentUser?.id) return null;
+  if (!ensureDailyStateCurrent({ reload: true })) return null;
   const queuePayload = {
     goal: dailyGoal,
     word_ro: todayQueue,
@@ -718,6 +775,7 @@ async function syncDailyStateToCloud() {
 }
 
 async function loadTodayLog() {
+  activeDailyDateKey = getDateKeyFor(new Date());
   try {
     todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
   } catch (error) {
@@ -740,10 +798,12 @@ async function loadTodayLog() {
 }
 
 async function loadDailyQueue() {
+  activeDailyDateKey = getDateKeyFor(new Date());
   dailyQueueLoaded = false;
   const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
   let queueChanged = false;
+  let forceQueueLocal = false;
   const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
   const localTemporaryGoal = readTodayTemporaryGoal();
   if (saved?.syncError) {
@@ -755,7 +815,13 @@ async function loadDailyQueue() {
     const savedGoal = normalizeDailyGoalValue(saved.goal, defaultDailyGoal);
     dailyGoal = Math.max(savedGoal, logGoal, localTemporaryGoal, defaultDailyGoal);
     setGoalInputValue(defaultDailyGoal);
-    const savedCompleted = new Set(normalizeWordRoList(saved.completed_word_ro || []));
+    const rawSavedCompleted = normalizeWordRoList(saved.completed_word_ro || []);
+    const todaySavedCompleted = rawSavedCompleted.filter(ro => wasWordCompletedOnActiveDate(ro));
+    if (todaySavedCompleted.length !== rawSavedCompleted.length) {
+      forceQueueLocal = true;
+      queueChanged = true;
+    }
+    const savedCompleted = new Set(todaySavedCompleted);
     const originalQueueLength = saved.word_ro.length;
     const uniqueSavedQueue = normalizeWordRoList(saved.word_ro);
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
@@ -791,7 +857,7 @@ async function loadDailyQueue() {
     todayQueue = normalizedQueue;
     queueChanged = true;
   }
-  if (queueChanged) await saveTodayQueue();
+  if (queueChanged) await saveTodayQueue({ forceLocal: forceQueueLocal });
   if (todayNewWords !== previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
       forceLocal: todayNewWords < previousTodayCount
@@ -1019,7 +1085,7 @@ async function saveTodayQueue(options = {}) {
     completed_word_ro: [...todayQueueCompleted],
     completed: todayNewWords >= dailyGoal
   };
-  const savePromise = apiSaveDailyQueue(currentUser.id, payload);
+  const savePromise = apiSaveDailyQueue(currentUser.id, payload, { forceLocal: !!options.forceLocal });
   if (options.background) {
     todayQueueRecord = { user_id: currentUser.id, queue_date: getLocalDateKey(), ...payload, local: true };
     savePromise.then((record) => {
@@ -1058,6 +1124,7 @@ function showDailyGoalCompletionPrompt(defer = false) {
 }
 
 function commitTodayWordCompletion(wordRo, options = {}) {
+  if (!ensureDailyStateCurrent({ reload: true })) return false;
   const canonicalRo = canonicalWordRo(wordRo);
   if (!canonicalRo || setHasRo(todayQueueCompleted, canonicalRo)) return false;
   const wasGoalDone = isDefaultGoalDone();
@@ -2196,6 +2263,7 @@ function updateReviewBadge() {
 // ── 每日任务目标 ──────────────────────────────────────────
 
 function openDailyCheckinModal() {
+  if (!ensureDailyStateCurrent({ reload: true })) return;
   if (!isDefaultGoalDone() || isDailyCheckinDone()) return;
   const modal = document.getElementById('daily-checkin-modal');
   if (!modal) return;
@@ -2220,6 +2288,7 @@ function completeDailyCheckin() {
 }
 
 function maybePromptDailyCheckin() {
+  if (!ensureDailyStateCurrent({ reload: true })) return;
   if (dailyCheckinPromptShown || !isDefaultGoalDone() || isDailyCheckinDone()) return;
   dailyCheckinPromptShown = true;
   openDailyCheckinModal();
@@ -2228,6 +2297,7 @@ function maybePromptDailyCheckin() {
 function renderDailyGoal() {
   const el = document.getElementById('daily-goal-bar');
   if (!el) return;
+  ensureDailyStateCurrent({ reload: true });
   const pct = Math.min(100, Math.round(todayNewWords / dailyGoal * 100));
   const baseDone = isDefaultGoalDone();
   const currentDone = isCurrentTodayGoalDone();

@@ -962,7 +962,7 @@ async function apiGetDailyQueue(userId, goal) {
   return null;
 }
 
-async function apiSaveDailyQueue(userId, queue) {
+async function apiSaveDailyQueue(userId, queue, options = {}) {
   const today = getQueueDateKey();
   const payload = {
     user_id: userId,
@@ -982,7 +982,7 @@ async function apiSaveDailyQueue(userId, queue) {
       .eq('queue_date', today)
       .maybeSingle();
     if (readError) return { ...payload, syncError: readError.message };
-    const mergedPayload = mergeDailyQueuePayload(payload, cloudQueue);
+    const mergedPayload = options.forceLocal ? payload : mergeDailyQueuePayload(payload, cloudQueue);
     const { error } = await sb.from('daily_queue').upsert(mergedPayload, { onConflict: 'user_id,queue_date' });
     if (!error) {
       writeLocalQueue(userId, mergedPayload, today);
