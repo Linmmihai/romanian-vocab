@@ -2735,32 +2735,46 @@ function renderCard() {
     if (verifyEl) verifyEl.style.display = 'none';
     return;
   }
+  const w = getCardRenderWord();
+  if (!w) return;
+  renderCardFront(w);
+  renderCardBack(w);
+  renderReviewPanel();
+}
+
+function getCardRenderWord() {
+  const overrideWord = flashOverrideRo ? getWordByRo(flashOverrideRo) : null;
+  if (flashOverrideRo && !overrideWord) flashOverrideRo = null;
   bindFlashcardButtons();
   if (filtered.length) idx = (idx + filtered.length) % filtered.length;
-  const w = overrideWord || filtered[idx];
+  return overrideWord || filtered[idx] || null;
+}
+
+function renderCardFront(w) {
   const frontHint = document.getElementById('fc-front-hint');
   if (frontHint) frontHint.textContent = '点击卡片查看罗马尼亚语 👆';
-  const stress = getStressDisplay(w);
   const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
   document.getElementById('fc-cat').textContent = `${w.cat || ''}${taskType}`;
-  document.getElementById('fc-cat2').textContent = `${w.cat || ''}${taskType}`;
   document.getElementById('fc-zh').textContent = w.zh;
-  document.getElementById('fc-ro').textContent = w.ro;
   const verifyEl = document.getElementById('fc-verify');
   if (verifyEl) {
     verifyEl.textContent = isWordUnverified(w) ? '未核对' : '';
     verifyEl.style.display = isWordUnverified(w) ? '' : 'none';
   }
-  setStressHtml('fc-ipa', w);
-  setGrammarText('fc-phint', w, stress);
-  const example = buildExampleSentence(w);
-  renderExampleBlock('fc-example', example);
   // 显示熟练度
-  const p = getProgress(w.ro) || {};
   const lv = getProgressLevel(w.ro);
   const lvEl = document.getElementById('fc-level');
   if (lvEl) { lvEl.textContent = getLevelLabel(w.ro); lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
-  renderReviewPanel();
+}
+
+function renderCardBack(w) {
+  const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
+  document.getElementById('fc-cat2').textContent = `${w.cat || ''}${taskType}`;
+  document.getElementById('fc-ro').textContent = w.ro;
+  const stress = getStressDisplay(w);
+  setStressHtml('fc-ipa', w);
+  setGrammarText('fc-phint', w, stress);
+  renderExampleBlock('fc-example', buildExampleSentence(w));
 }
 
 // 点卡片：来回翻转
@@ -2776,14 +2790,44 @@ function renderFlashCardAfterFrontReset() {
     setFlashcardAnswerButtonsDisabled(false);
     return;
   }
+  const nextWord = getCardRenderWord();
+  if (nextWord) renderCardFront(nextWord);
   flipped = false;
   card.classList.remove('flipped');
   if (flashCardRenderTimer) clearTimeout(flashCardRenderTimer);
   flashCardRenderTimer = setTimeout(() => {
     flashCardRenderTimer = null;
+    if (nextWord) {
+      renderCardBack(nextWord);
+      renderReviewPanel();
+    } else {
+      renderCard();
+    }
+    setFlashcardAnswerButtonsDisabled(false);
+  }, CARD_FLIP_TRANSITION_MS);
+}
+
+function renderNextFlashCardInstantFront() {
+  const card = document.getElementById('main-card');
+  if (!card) {
     renderCard();
     setFlashcardAnswerButtonsDisabled(false);
-  }, CARD_CONTENT_SWAP_DELAY_MS);
+    return;
+  }
+  if (flashCardRenderTimer) {
+    clearTimeout(flashCardRenderTimer);
+    flashCardRenderTimer = null;
+  }
+  card.style.transition = 'none';
+  flipped = false;
+  card.classList.remove('flipped');
+  renderCard();
+  // Force the non-flipped state to commit before restoring the normal answer flip.
+  card.offsetHeight;
+  requestAnimationFrame(() => {
+    card.style.transition = '';
+    setFlashcardAnswerButtonsDisabled(false);
+  });
 }
 
 function nextCard() {
@@ -2914,7 +2958,7 @@ function markCard(yes) {
     // 跳下一张，重置为中文面
     if (!wasReviewingHistory) flashHistory.push(w.ro);
     advanceFlashcardAfterAnswer(w.ro);
-    renderFlashCardAfterFrontReset();
+    renderNextFlashCardInstantFront();
     persistFastCardAnswer(progressResult);
     if (flashMode === 'today') {
       scheduleTodayStatePersistence(!!dailyCompletion?.reachedGoal);
