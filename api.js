@@ -181,6 +181,47 @@ function queueProgressForSync(userId, wordRo, progress = {}, memory = {}) {
   };
 }
 
+function queueProgressBatchForSync(userId, entries = []) {
+  const validEntries = (entries || []).filter(entry => entry?.wordRo);
+  if (!userId || !validEntries.length) return { ok: true, skipped: true };
+  try {
+    const localProgress = readJson(localKey(userId, 'progress'), {});
+    const pendingProgress = readPendingProgress(userId);
+    const memoryBackup = readProgressMemoryBackup(userId);
+    const backedUpAt = new Date().toISOString();
+
+    validEntries.forEach(({ wordRo, progress = {}, memory = {} }) => {
+      localProgress[wordRo] = { ...(progress || {}) };
+      delete localProgress[wordRo].pendingSync;
+      pendingProgress[wordRo] = {
+        ...(progress || {}),
+        pendingSync: true,
+        pendingSyncAt: progress?.pendingSyncAt || backedUpAt
+      };
+
+      const wrongCount = Number(memory.wrongCount || 0);
+      const errorStreak = Number(memory.errorStreak || 0);
+      const lastWrongAt = memory.lastWrongAt || null;
+      const weakClearedAt = memory.weakClearedAt || null;
+      if (!wrongCount && !errorStreak && !lastWrongAt && !weakClearedAt) {
+        delete memoryBackup[wordRo];
+      } else {
+        memoryBackup[wordRo] = { wrongCount, errorStreak, lastWrongAt, weakClearedAt, backedUpAt };
+      }
+    });
+
+    const prunedMemory = Object.fromEntries(Object.entries(memoryBackup)
+      .sort((a, b) => String(b[1]?.backedUpAt || '').localeCompare(String(a[1]?.backedUpAt || '')))
+      .slice(0, 500));
+    writeJson(localKey(userId, 'progress'), localProgress);
+    writeJson(progressPendingKey(userId), pendingProgress);
+    writeJson(progressMemoryKey(userId), prunedMemory);
+    return { ok: true, saved: validEntries.length };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
 function writePendingProgressBatch(userId, entries = []) {
   if (!entries.length) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);

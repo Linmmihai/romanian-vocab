@@ -50,8 +50,14 @@ let cardGesturesBound = false;
 let flashcardAnswerInFlight = false;
 let flashCardRenderTimer = null;
 let wrongbookCardRenderTimer = null;
+let fastProgressFlushTimer = null;
+let todayStateFlushTimer = null;
+let pendingTodayGoalPrompt = false;
+let pendingTodayAccuracyStats = { correct: 0, total: 0 };
+const fastProgressQueue = new Map();
 const CARD_FLIP_TRANSITION_MS = 180;
 const CARD_CONTENT_SWAP_DELAY_MS = 95;
+const FAST_PERSIST_DELAY_MS = 900;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -337,9 +343,26 @@ function recordTodayAccuracyAttempt(correct) {
   return stats;
 }
 
+function queueTodayAccuracyAttempt(correct) {
+  pendingTodayAccuracyStats.total += 1;
+  if (correct) pendingTodayAccuracyStats.correct += 1;
+}
+
+function flushTodayAccuracyStats() {
+  if (!pendingTodayAccuracyStats.total) return;
+  const pending = pendingTodayAccuracyStats;
+  pendingTodayAccuracyStats = { correct: 0, total: 0 };
+  const stats = readTodayAccuracyStats();
+  stats.total += pending.total;
+  stats.correct += pending.correct;
+  writeTodayAccuracyStats(stats);
+}
+
 function getTodayCheckinAccuracy() {
   const stats = readTodayAccuracyStats();
-  if (stats.total > 0) return Math.round(stats.correct / stats.total * 100);
+  const total = stats.total + pendingTodayAccuracyStats.total;
+  const correct = stats.correct + pendingTodayAccuracyStats.correct;
+  if (total > 0) return Math.round(correct / total * 100);
   const base = Math.max(1, Number(defaultDailyGoal || dailyGoal || 20));
   return Math.min(100, Math.round(Math.min(todayNewWords, base) / base * 100));
 }
@@ -691,11 +714,20 @@ function setupProgressAutoBackup() {
     window.addEventListener(eventName, scheduleIdleProgressBackup, { passive: true });
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') triggerCloudProgressBackup('页面隐藏', { limit: 100 });
+    if (document.visibilityState === 'hidden') {
+      flushPendingFastCardState();
+      triggerCloudProgressBackup('页面隐藏', { limit: 100 });
+    }
     else scheduleIdleProgressBackup();
   });
-  window.addEventListener('pagehide', () => triggerCloudProgressBackup('退出页面', { limit: 100 }));
-  window.addEventListener('beforeunload', () => triggerCloudProgressBackup('退出页面', { limit: 100 }));
+  window.addEventListener('pagehide', () => {
+    flushPendingFastCardState();
+    triggerCloudProgressBackup('退出页面', { limit: 100 });
+  });
+  window.addEventListener('beforeunload', () => {
+    flushPendingFastCardState();
+    triggerCloudProgressBackup('退出页面', { limit: 100 });
+  });
   scheduleIdleProgressBackup();
 }
 
@@ -1131,12 +1163,15 @@ function commitTodayWordCompletion(wordRo, options = {}) {
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
   setAddRo(todaySeenWords, canonicalRo);
-  writeTodaySeenWords();
   setAddRo(todayQueueCompleted, canonicalRo);
   if (isQueuedWord) {
     todayQueue = roListWithout(todayQueue, canonicalRo);
   }
   todayNewWords = todayQueueCompleted.size;
+  if (options.fast) {
+    return { completed: true, reachedGoal: !wasGoalDone && isDefaultGoalDone() };
+  }
+  writeTodaySeenWords();
   saveTodayQueue({ background: true }).catch(error => {
     console.warn('Daily queue background save failed', error);
     setSyncBadge('队列待同步', '');
@@ -1962,6 +1997,131 @@ function shouldTrackWrongbookForMiss(prev = {}) {
   return !!(prev.level === 'mastered' || getStoredLevel(prev) === 'mastered');
 }
 
+function buildNextProgressForInteraction(wordRo, interactionType, extraOptions = {}) {
+  const rule = INTERACTION_RULES[interactionType];
+  if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
+  const canonicalRo = canonicalWordRo(wordRo);
+  const prev = getProgress(canonicalRo) || { known: false, qr: 0, qt: 0 };
+  const next = rule(prev);
+  const options = { ...next.options, ...extraOptions };
+  const calculatedLevel = calcLevel(next.qr, next.qt, next.known);
+  const level = options.preserveLearningLevel && (prev.qt || prev.known)
+    ? getStoredLevel(prev)
+    : calculatedLevel;
+  const review = getNextReview(prev, next.success);
+  const shouldTrackWrongbook = options.trackWrongbook === true;
+  const shouldClearWrongbook = options.clearWrongbook === true;
+  const nowIso = new Date().toISOString();
+  const wrongCount = shouldClearWrongbook
+    ? 0
+    : (prev.wrongCount || 0) + (shouldTrackWrongbook && !next.success ? 1 : 0);
+  const errorStreak = shouldClearWrongbook
+    ? 0
+    : (shouldTrackWrongbook
+        ? (next.success ? 0 : (prev.errorStreak || 0) + 1)
+        : (prev.errorStreak || 0));
+  const lastWrongAt = shouldClearWrongbook
+    ? null
+    : (shouldTrackWrongbook && !next.success ? nowIso : (prev.lastWrongAt || null));
+  const weakClearedAt = shouldClearWrongbook
+    ? nowIso
+    : (!next.success ? null : (prev.weakClearedAt || null));
+  const memory = { wrongCount, errorStreak, lastWrongAt, weakClearedAt };
+  const progress = { ...prev, seen: true, known: next.known, qr: next.qr, qt: next.qt, level, ...review, ...memory };
+  return { canonicalRo, prev, next, options, memory, progress };
+}
+
+function runAfterCardSwap(task) {
+  setTimeout(task, CARD_CONTENT_SWAP_DELAY_MS + 20);
+}
+
+function scheduleIdleTask(task, delay = FAST_PERSIST_DELAY_MS) {
+  return setTimeout(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(task, { timeout: delay });
+    } else {
+      task();
+    }
+  }, delay);
+}
+
+function flushFastProgressQueue() {
+  if (fastProgressFlushTimer) {
+    clearTimeout(fastProgressFlushTimer);
+    fastProgressFlushTimer = null;
+  }
+  if (!fastProgressQueue.size || !currentUser?.id) return;
+  const entries = [...fastProgressQueue.values()];
+  fastProgressQueue.clear();
+  const localStatus = typeof queueProgressBatchForSync === 'function'
+    ? queueProgressBatchForSync(currentUser.id, entries)
+    : { ok: false };
+  if (localStatus.ok) {
+    entries.forEach(entry => {
+      setProgress(entry.wordRo, { ...entry.progress, pendingSync: !isOfflineMode() });
+    });
+    setSyncBadge(isOfflineMode() ? '已存本机' : '本机待同步', isOfflineMode() ? 'saved' : '');
+  } else {
+    setSyncBadge('本机保存失败', '');
+    showProgressSaveWarning('本机保存失败，请导出进度或清理浏览器存储');
+  }
+  setTimeout(() => setSyncBadge('', ''), 2000);
+  invalidateQuizPracticePool();
+  upStats();
+  updateReviewBadge();
+}
+
+function persistFastCardAnswer(result) {
+  if (!result?.canonicalRo || !currentUser?.id) return;
+  fastProgressQueue.set(result.canonicalRo, {
+    wordRo: result.canonicalRo,
+    progress: { ...result.progress, pendingSync: true },
+    memory: result.memory
+  });
+  if (fastProgressFlushTimer) return;
+  fastProgressFlushTimer = scheduleIdleTask(flushFastProgressQueue);
+}
+
+function flushPendingFastCardState() {
+  flushFastProgressQueue();
+  flushTodayStatePersistence();
+  flushTodayAccuracyStats();
+}
+
+function flushTodayStatePersistence() {
+  if (todayStateFlushTimer) {
+    clearTimeout(todayStateFlushTimer);
+    todayStateFlushTimer = null;
+  }
+  if (!currentUser?.id || !ensureDailyStateCurrent({ reload: true })) return;
+  flushTodayAccuracyStats();
+  writeTodaySeenWords();
+  saveTodayQueue({ background: true }).catch(error => {
+    console.warn('Daily queue background save failed', error);
+    setSyncBadge('队列待同步', '');
+  });
+  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: todayNewWords >= defaultDailyGoal };
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
+    console.warn('Today log background save failed', error);
+    setSyncBadge('今日记录待同步', '');
+  });
+  invalidateCalendarCache();
+  renderDailyGoal();
+  updateTodayCalendarCell();
+  renderReviewPanel();
+  updateReviewBadge();
+  if (pendingTodayGoalPrompt) {
+    pendingTodayGoalPrompt = false;
+    showDailyGoalCompletionPrompt(true);
+  }
+}
+
+function scheduleTodayStatePersistence(goalReached = false) {
+  pendingTodayGoalPrompt = pendingTodayGoalPrompt || goalReached;
+  if (todayStateFlushTimer) return;
+  todayStateFlushTimer = scheduleIdleTask(flushTodayStatePersistence);
+}
+
 async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
   const rule = INTERACTION_RULES[interactionType];
   if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
@@ -2644,6 +2804,21 @@ function nextCard() {
   renderFlashCardAfterFrontReset();
 }
 
+function advanceFlashcardAfterAnswer(currentRo) {
+  const currentKey = roKey(currentRo);
+  filtered = filtered.filter(item => roKey(item?.ro) !== currentKey);
+  if (flashMode === 'today' && !filtered.length) {
+    const fallback = getNextDailyFallbackWord(currentRo);
+    if (fallback) {
+      flashOverrideRo = fallback.ro;
+      idx = 0;
+      return;
+    }
+  }
+  flashOverrideRo = null;
+  idx = filtered.length ? Math.min(idx, filtered.length - 1) : 0;
+}
+
 function getNextDailyFallbackWord(currentRo) {
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted]);
   if (currentRo) blocked.add(currentRo);
@@ -2711,7 +2886,7 @@ function updateTodayCalendarCell() {
 }
 
 // 「认识了」/「不认识」
-async function markCard(yes) {
+function markCard(yes) {
   if (flashcardAnswerInFlight) return;
   const w = getCurrentFlashWord();
   if (!w) return;
@@ -2724,30 +2899,26 @@ async function markCard(yes) {
     const interaction = flashMode === 'review'
       ? (yes ? 'review_correct' : 'review_wrong')
       : (isReviewTask ? (yes ? 'review_correct' : 'review_wrong') : (yes ? 'flashcard_known' : 'flashcard_unknown'));
-    if (flashMode === 'today') recordTodayAccuracyAttempt(yes);
-    await recordInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
+    if (flashMode === 'today') queueTodayAccuracyAttempt(yes);
+    const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
+    setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() });
+    let dailyCompletion = null;
     if (flashMode === 'today' && yes) {
       lastLearningHint = '';
-      commitTodayWordCompletion(w.ro, { deferGoalPrompt: true });
+      dailyCompletion = commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true });
     } else if (flashMode === 'today') {
       lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；记住后才会计入完成。`;
-      saveTodayQueue({ background: true }).catch(error => {
-        console.warn('Daily queue background save failed', error);
-        setSyncBadge('队列待同步', '');
-      });
-      renderDailyGoal();
-      renderReviewPanel();
-      updateReviewBadge();
     } else if (!yes) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
     }
     // 跳下一张，重置为中文面
     if (!wasReviewingHistory) flashHistory.push(w.ro);
-    flashOverrideRo = null;
-    applyFilters();
-    const nextIdx = filtered.findIndex(item => item.ro !== w.ro);
-    idx = nextIdx >= 0 ? nextIdx : 0;
+    advanceFlashcardAfterAnswer(w.ro);
     renderFlashCardAfterFrontReset();
+    persistFastCardAnswer(progressResult);
+    if (flashMode === 'today') {
+      scheduleTodayStatePersistence(!!dailyCompletion?.reachedGoal);
+    }
   } catch (error) {
     console.warn('Flashcard answer failed', error);
     setFlashcardAnswerButtonsDisabled(false);
