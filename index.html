@@ -150,6 +150,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-cat{font-size:11px;color:var(--blue-text);background:var(--blue-bg);padding:3px 10px;border-radius:99px;margin-bottom:12px}
 .card-hint-txt{font-size:12px;color:var(--text3);margin-bottom:8px}
 .card-zh{font-size:32px;font-weight:600}
+.front-recall{margin-top:18px;width:100%;max-width:460px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:left}
+.front-recall-label{font-size:11px;color:var(--text3);font-weight:800;margin-bottom:6px}
+.front-recall-zh{font-size:14px;color:var(--text);line-height:1.55;margin-bottom:8px}
+.front-recall-cloze{font-size:13px;color:var(--blue-text);font-weight:750;line-height:1.45}
 .card-ro{font-size:24px;font-weight:600;margin-bottom:8px}
 .card-back-top .card-ro{display:none}
 .card-stress-word{font-size:34px;font-weight:750;letter-spacing:0;color:var(--text);line-height:1.2}
@@ -250,6 +254,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hard-word{font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hard-meta{font-size:12px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hard-score{text-align:right;color:var(--red-text);font-size:12px;font-weight:700;white-space:nowrap}
+.repair-panel{background:var(--red-bg);border:1px solid #fecaca;border-radius:var(--radius);padding:10px 12px;margin-bottom:10px}
+.repair-panel-title{font-size:13px;font-weight:850;color:var(--red-text);margin-bottom:4px}
+.repair-panel-text{font-size:12px;color:var(--text2);line-height:1.5}
+.repair-actions{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+.repair-primary{border-color:var(--red);color:var(--red-text);font-weight:800}
 .rank-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .rank-row:last-child{border-bottom:none}
 .rank-row.me{background:var(--blue-bg);margin:0 -8px;padding:12px 8px;border-radius:var(--radius-sm);border-bottom:none}
@@ -500,6 +509,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             </div>
             <div class="card-hint-txt" id="fc-front-hint">先在心里说出罗语，再点卡片看答案</div>
             <div class="card-zh" id="fc-zh"></div>
+            <div class="front-recall" id="fc-front-example" style="display:none"></div>
           </div>
           <div class="card-face card-back">
             <div class="card-back-top">
@@ -653,8 +663,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <!-- 卡片内容 -->
     <div id="wb-content" style="display:none">
-      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap">
-        <button class="btn-sm" onclick="startWrongbookQuiz()">加强测验</button>
+      <div class="repair-panel">
+        <div class="repair-panel-title" id="wb-repair-title">修复目标</div>
+        <div class="repair-panel-text" id="wb-repair-reason">这个词最近答错过，先单独修复。</div>
+        <div class="repair-panel-text" id="wb-repair-target">连续答对 3 次后会移出需加强。</div>
+      </div>
+      <div class="repair-actions">
+        <button class="btn-sm repair-primary" onclick="startWrongbookQuiz()">立即修复</button>
         <button class="btn-sm" onclick="startWrongbookTranslationQuiz()">翻译专项</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">

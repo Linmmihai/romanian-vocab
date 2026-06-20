@@ -109,15 +109,68 @@ function roKey(value) {
   return normalizeWordText(value).toLocaleLowerCase('ro');
 }
 
+function getRoAliasKeys(wordRo) {
+  const normalized = normalizeWordText(wordRo);
+  const key = roKey(normalized);
+  const keys = new Set(key ? [key] : []);
+  if (/^a\s+\S+/i.test(normalized)) {
+    keys.add(roKey(normalized.replace(/^a\s+/i, '')));
+  } else if (normalized) {
+    keys.add(roKey(`a ${normalized}`));
+  }
+  return [...keys].filter(Boolean);
+}
+
+function getProgressReviewStage(progress = {}) {
+  return Number(
+    progress.reviewStage ??
+    progress.reviewCount ??
+    progress.review_stage ??
+    progress.review_count ??
+    0
+  ) || 0;
+}
+
+function mergeProgressEntry(existing = null, incoming = {}) {
+  if (!existing) return incoming;
+  const existingQt = Number(existing.qt || 0);
+  const incomingQt = Number(incoming.qt || 0);
+  const base = incomingQt >= existingQt ? incoming : existing;
+  const other = base === incoming ? existing : incoming;
+  const reviewStage = Math.max(getProgressReviewStage(existing), getProgressReviewStage(incoming));
+  const nextReviewAt = newerIsoLike(existing.nextReviewAt || existing.nextReview, incoming.nextReviewAt || incoming.nextReview);
+  const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
+  return {
+    ...other,
+    ...base,
+    qr: Math.max(Number(existing.qr || 0), Number(incoming.qr || 0)),
+    qt: Math.max(existingQt, incomingQt),
+    known: !!(existing.known || incoming.known),
+    seen: !!(existing.seen || incoming.seen || existing.known || incoming.known || existingQt || incomingQt || reviewStage),
+    reviewStage,
+    reviewCount: reviewStage,
+    nextReviewAt: nextReviewAt || base.nextReviewAt || other.nextReviewAt,
+    lastReviewedAt: lastReviewedAt || base.lastReviewedAt || other.lastReviewedAt,
+    wrongCount: Math.max(Number(existing.wrongCount || 0), Number(incoming.wrongCount || 0)),
+    errorStreak: Math.max(Number(existing.errorStreak || 0), Number(incoming.errorStreak || 0)),
+    lastWrongAt: newerIsoLike(existing.lastWrongAt, incoming.lastWrongAt) || null,
+    weakClearedAt: newerIsoLike(existing.weakClearedAt, incoming.weakClearedAt) || null
+  };
+}
+
+function newerIsoLike(a, b) {
+  if (!a) return b || null;
+  if (!b) return a || null;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
 function normalizeProgressMap(map = {}) {
   const normalized = {};
   Object.entries(map || {}).forEach(([wordRo, progress]) => {
-    const key = roKey(wordRo);
+    const canonical = canonicalWordRo(wordRo);
+    const key = roKey(canonical);
     if (!key) return;
-    const existing = normalized[key];
-    const existingQt = Number(existing?.qt || 0);
-    const nextQt = Number(progress?.qt || 0);
-    normalized[key] = nextQt >= existingQt ? progress : existing;
+    normalized[key] = mergeProgressEntry(normalized[key], progress);
   });
   return normalized;
 }
@@ -125,15 +178,29 @@ function normalizeProgressMap(map = {}) {
 function replaceProgressMap(map = {}) {
   progressMap = normalizeProgressMap(map);
   progressVersion++;
+  if (currentUser?.id && typeof writeLocalProgressSnapshot === 'function') {
+    try { writeLocalProgressSnapshot(currentUser.id, progressMap); } catch {}
+  }
 }
 
 function getProgress(wordRo) {
-  return progressMap[roKey(wordRo)] || null;
+  const canonical = canonicalWordRo(wordRo);
+  for (const key of getRoAliasKeys(canonical)) {
+    if (progressMap[key]) return progressMap[key];
+  }
+  for (const key of getRoAliasKeys(wordRo)) {
+    if (progressMap[key]) return progressMap[key];
+  }
+  return null;
 }
 
 function setProgress(wordRo, progress) {
-  const key = roKey(wordRo);
+  const canonical = canonicalWordRo(wordRo);
+  const key = roKey(canonical);
   if (key) {
+    getRoAliasKeys(canonical).forEach(aliasKey => {
+      if (aliasKey !== key) delete progressMap[aliasKey];
+    });
     progressMap[key] = progress;
     progressVersion++;
   }
@@ -146,7 +213,9 @@ function deleteProgress(wordRo) {
 
 function canonicalWordRo(wordRo) {
   const key = roKey(wordRo);
-  const word = W.find(w => roKey(w.ro) === key);
+  const word = W.find(w => roKey(w.ro) === key)
+    || (!/^a\s+/i.test(normalizeWordText(wordRo)) ? W.find(w => roKey(w.ro) === roKey(`a ${wordRo}`)) : null)
+    || (/^a\s+/i.test(normalizeWordText(wordRo)) ? W.find(w => roKey(w.ro) === roKey(normalizeWordText(wordRo).replace(/^a\s+/i, ''))) : null);
   return word?.ro || normalizeWordText(wordRo);
 }
 
@@ -520,7 +589,7 @@ const DEXONLINE_VERB_FALLBACK_WORDS = [
 // 熟练度规则
 // unknown  → 从未答题
 // learning → 答题次数 ≥ 1，正确率 < 80%
-// mastered → 答题次数 ≥ 3，正确率 ≥ 80%
+// mastered → 答题次数 ≥ 3，正确率 ≥ 80%，且至少通过一次跨天复习
 
 // ── 入口 ─────────────────────────────────────────────────
 
@@ -943,8 +1012,7 @@ function hasWordProgress(progress) {
     progress.known ||
     progress.qt ||
     progress.qr ||
-    progress.reviewStage ||
-    progress.reviewCount ||
+    getProgressReviewStage(progress) ||
     (progress.level && progress.level !== 'unknown')
   ));
 }
@@ -1270,12 +1338,13 @@ async function reconcileTodayQueueAfterProgress(wordRo) {
  * 根据答题记录计算熟练度
  * unknown  → 没答过题
  * learning → 答过但正确率 < 80% 或答题次数 < 3
- * mastered → 答题次数 ≥ 3 且正确率 ≥ 80%
+ * mastered → 答题次数 ≥ 3、正确率 ≥ 80%，且 reviewStage >= 2
  */
-function calcLevel(qr, qt, known = false) {
+function calcLevel(qr, qt, known = false, progress = {}) {
   if (!qt) return known ? 'learning' : 'unknown';
   const pct = qr / qt;
-  if (qt >= 3 && pct >= 0.8) return 'mastered';
+  const reviewStage = getProgressReviewStage(progress);
+  if (qt >= 3 && pct >= 0.8 && reviewStage >= 2) return 'mastered';
   return 'learning';
 }
 
@@ -1285,11 +1354,11 @@ function normalizeStoredProgressLevel(level) {
 
 function getStoredLevel(progress) {
   if (!progress) return 'unknown';
-  const computed = calcLevel(progress.qr, progress.qt, progress.known);
+  const computed = calcLevel(progress.qr, progress.qt, progress.known, progress);
   if (computed !== 'unknown') return computed;
   const stored = normalizeStoredProgressLevel(progress.level);
   if (stored !== 'unknown') return stored;
-  if (progress.seen || progress.reviewStage || progress.reviewCount) return 'learning';
+  if (progress.seen || getProgressReviewStage(progress)) return 'learning';
   return 'unknown';
 }
 
@@ -1553,7 +1622,7 @@ function getNextReview(progress, success) {
       lastReviewedAt: now.toISOString()
     };
   }
-  const current = Number(progress?.reviewStage || 0);
+  const current = getProgressReviewStage(progress);
   const nextStage = Math.min(current + 1, REVIEW_INTERVALS.length);
   const interval = REVIEW_INTERVALS[Math.max(0, nextStage - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
   return {
@@ -1897,11 +1966,11 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   setSyncBadge('保存中...', '');
   const canonicalRo = canonicalWordRo(wordRo);
   const prev = getProgress(canonicalRo) || {};
-  const calculatedLevel = calcLevel(qr, qt, known);
+  const review = getNextReview(prev, success);
+  const calculatedLevel = calcLevel(qr, qt, known, { ...prev, ...review });
   const level = options.preserveLearningLevel && (prev.qt || prev.known)
     ? getStoredLevel(prev)
     : calculatedLevel;
-  const review = getNextReview(prev, success);
   const shouldTrackWrongbook = options.trackWrongbook === true;
   const shouldClearWrongbook = options.clearWrongbook === true;
   const nowIso = new Date().toISOString();
@@ -1970,7 +2039,7 @@ const INTERACTION_RULES = {
       qr: (prev.qr || 0) + 1,
       qt: (prev.qt || 0) + 1,
       success: true,
-      options: { preserveLearningLevel: true }
+      options: {}
     };
   },
   review_wrong(prev) {
@@ -2030,7 +2099,7 @@ const INTERACTION_RULES = {
 };
 
 function shouldTrackWrongbookForMiss(prev = {}) {
-  return !!(prev.level === 'mastered' || getStoredLevel(prev) === 'mastered');
+  return getStoredLevel(prev) === 'mastered';
 }
 
 function buildNextProgressForInteraction(wordRo, interactionType, extraOptions = {}) {
@@ -2040,11 +2109,11 @@ function buildNextProgressForInteraction(wordRo, interactionType, extraOptions =
   const prev = getProgress(canonicalRo) || { known: false, qr: 0, qt: 0 };
   const next = rule(prev);
   const options = { ...next.options, ...extraOptions };
-  const calculatedLevel = calcLevel(next.qr, next.qt, next.known);
+  const review = getNextReview(prev, next.success);
+  const calculatedLevel = calcLevel(next.qr, next.qt, next.known, { ...prev, ...review });
   const level = options.preserveLearningLevel && (prev.qt || prev.known)
     ? getStoredLevel(prev)
     : calculatedLevel;
-  const review = getNextReview(prev, next.success);
   const shouldTrackWrongbook = options.trackWrongbook === true;
   const shouldClearWrongbook = options.clearWrongbook === true;
   const nowIso = new Date().toISOString();
@@ -2766,6 +2835,7 @@ function renderCard() {
     setText('fc-ipa', '');
     setText('fc-phint', '');
     renderExampleBlock('fc-example', null);
+    renderFrontExampleRecall('fc-front-example', null, null);
     setText('fc-level', '');
     const verifyEl = document.getElementById('fc-verify');
     if (verifyEl) verifyEl.style.display = 'none';
@@ -2801,6 +2871,7 @@ function renderCardFront(w) {
   const lv = getProgressLevel(w.ro);
   const lvEl = document.getElementById('fc-level');
   if (lvEl) { lvEl.textContent = getLevelLabel(w.ro); lvEl.style.color = LEVEL_TC[lv]; lvEl.style.background = LEVEL_BG[lv]; }
+  renderFrontExampleRecall('fc-front-example', w, getSyncExampleSentence(w));
 }
 
 function renderCardBack(w) {
@@ -2810,7 +2881,7 @@ function renderCardBack(w) {
   const stress = getStressDisplay(w);
   setStressHtml('fc-ipa', w);
   setGrammarText('fc-phint', w, stress);
-  renderExampleBlock('fc-example', buildExampleSentence(w));
+  renderExampleBlock('fc-example', getSyncExampleSentence(w));
 }
 
 // 点卡片：来回翻转
@@ -3232,7 +3303,7 @@ function renderReviewCard() {
   const w = reviewQueue[reviewIdx];
   const p = getProgress(w.ro) || {};
   const stress = getStressDisplay(w);
-  const stage = Number(p.reviewStage || p.reviewCount || 0);
+  const stage = getProgressReviewStage(p);
   const nextInterval = REVIEW_INTERVALS[Math.min(stage, REVIEW_INTERVALS.length - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
 
   setText('rv-count', `${reviewIdx + 1} / ${reviewQueue.length}`);
@@ -3342,6 +3413,18 @@ function renderWrongbookStats() {
   document.getElementById('wb-tab-badge').style.display = total > 0 ? 'inline' : 'none';
 }
 
+function getWrongbookReason(progress = {}) {
+  const wrongCount = Number(progress.wrongCount || 0);
+  const errorStreak = Number(progress.errorStreak || 0);
+  const qt = Number(progress.qt || 0);
+  const qr = Number(progress.qr || 0);
+  const missed = Math.max(0, qt - qr);
+  if (errorStreak >= 2) return `连续答错 ${errorStreak} 次，先短轮修复。`;
+  if (wrongCount > 0) return `最近答错过 ${wrongCount} 次，需要重新确认。`;
+  if (missed >= REINFORCEMENT_MIN_LEARNING_MISSES) return `累计错 ${missed} 次，先从学习中单独拎出来练。`;
+  return '这个词最近不够稳定，先单独修复。';
+}
+
 function renderWrongbookCard() {
   if (wrongbookCardRenderTimer) {
     clearTimeout(wrongbookCardRenderTimer);
@@ -3364,6 +3447,7 @@ function renderWrongbookCard() {
   const p = getProgress(w.ro) || {};
   const wrongCount = p.wrongCount || 0;
   const streak = wbStreaks[w.ro] || 0;
+  const remainingToGraduate = Math.max(0, WB_GRADUATE - streak);
 
   document.getElementById('wb-cat').textContent = w.cat || '';
   document.getElementById('wb-cat2').textContent = w.cat || '';
@@ -3376,6 +3460,11 @@ function renderWrongbookCard() {
   document.getElementById('wb-wrong-count').textContent = `累计错 ${Math.max(wrongCount, missed)} 次`;
   document.getElementById('wb-streak').textContent = streak > 0 ? `连续答对 ${streak}/${WB_GRADUATE}` : '';
   document.getElementById('wb-streak').style.color = streak > 0 ? 'var(--green-text)' : '';
+  setText('wb-repair-title', `${w.zh || w.ro} · 修复目标`);
+  setText('wb-repair-reason', getWrongbookReason(p));
+  setText('wb-repair-target', streak > 0
+    ? `再连续答对 ${remainingToGraduate} 次，会移出需加强。`
+    : `连续答对 ${WB_GRADUATE} 次后，会移出需加强。`);
 
   // 重置卡片翻转
   wbFlipped = false;
@@ -3449,10 +3538,17 @@ function speakQuizWord(rate = 0.9) {
 
 function startWrongbookQuiz() {
   qPracticeScope = 'wrong';
+  qExerciseMode = 'translation';
+  qMode = 'zh';
+  qSize = 20;
   qStarted = false;
   invalidateQuizPracticePool();
   document.querySelectorAll('#quiz-scope-bar .study-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === 'wrong'));
+  document.querySelectorAll('.exercise-btn').forEach(b => b.classList.toggle('active', b.dataset.exercise === 'translation'));
+  document.getElementById('m-zh')?.classList.toggle('active', true);
+  document.getElementById('m-ro')?.classList.toggle('active', false);
   switchPage('quiz');
+  startQuiz();
 }
 
 function startWrongbookTranslationQuiz() {
@@ -4241,7 +4337,7 @@ async function importProgressBackup(file) {
         p.qt || 0,
         p.level || getStoredLevel(p),
         {
-          reviewStage: p.reviewStage || p.reviewCount || 0,
+          reviewStage: getProgressReviewStage(p),
           nextReviewAt: p.nextReviewAt || p.next_review_at || new Date().toISOString(),
           lastReviewedAt: p.lastReviewedAt || p.last_reviewed_at || new Date().toISOString()
         },
@@ -4322,7 +4418,7 @@ function renderHardestWords() {
     const s = getDifficultScore(w);
     const rate = Math.round(s.rate * 100);
     const p = getProgress(w.ro) || {};
-    const stage = Number(p.reviewStage || p.reviewCount || 0);
+    const stage = getProgressReviewStage(p);
     return `<div class="hard-row">
       <div class="hard-main">
         <div class="hard-word">${escapeHtml(w.zh || '')} · ${escapeHtml(w.ro || '')}</div>
@@ -4453,7 +4549,7 @@ function renderWordDetail(w) {
       <div class="detail-chip"><div class="detail-label">分类</div><div class="detail-value">${escapeHtml(w.cat || '')}</div></div>
       <div class="detail-chip"><div class="detail-label">熟练度</div><div class="detail-value">${escapeHtml(getLevelLabel(w.ro))}</div></div>
       <div class="detail-chip"><div class="detail-label">语法</div><div class="detail-value">${escapeHtml(getGrammarInfo(w))}${stress.auto ? ' · 自动重音待校对' : ''}</div></div>
-      <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${Number(p.reviewStage || p.reviewCount || 0)}</div></div>
+      <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${getProgressReviewStage(p)}</div></div>
       <div class="detail-chip"><div class="detail-label">练习记录</div><div class="detail-value">正确 ${p.qr || 0}/${p.qt || 0} · 答错 ${s.wrong} · 连错 ${s.streak}</div></div>
       <div class="detail-chip"><div class="detail-label">辅助标签</div><div class="detail-value">${escapeHtml(getAuxiliaryLabelText(w))}</div></div>
     </div>
@@ -4476,6 +4572,26 @@ function buildExampleSentence(w) {
   const savedZh = String(w?.example_zh || w?.exampleZh || w?.sentence_zh || '').trim();
   if (savedRo) return { ro: savedRo, zh: savedZh || `例句使用了“${zh || ro}”。` };
   return null;
+}
+
+function getSyncExampleSentence(w) {
+  return buildExampleSentence(w) || getLocalExample(w) || CORPUS_EXAMPLES[lowerRo(w?.ro || '')] || null;
+}
+
+function renderFrontExampleRecall(id, w, example) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!w || !example?.zh) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const zh = String(w.zh || '').trim();
+  el.style.display = '';
+  el.innerHTML = `
+    <div class="front-recall-label">例句回忆</div>
+    <div class="front-recall-zh">${escapeHtml(example.zh)}</div>
+    <div class="front-recall-cloze">空格处先回忆罗语：____${zh ? `（${escapeHtml(zh)}）` : ''}</div>`;
 }
 
 function pickExampleTemplate(templates, seed) {

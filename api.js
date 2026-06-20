@@ -353,6 +353,16 @@ function validIso(value) {
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
+function getProgressReviewStage(progress = {}) {
+  return Number(
+    progress.reviewStage ??
+    progress.reviewCount ??
+    progress.review_stage ??
+    progress.review_count ??
+    0
+  ) || 0;
+}
+
 function newerIso(a, b) {
   const aIso = validIso(a);
   const bIso = validIso(b);
@@ -368,13 +378,14 @@ function laterReviewIso(a, b, fallback = new Date().toISOString()) {
 function normalizeProgressLevel(progress = {}) {
   const qt = Number(progress.qt || 0);
   const qr = Number(progress.qr || 0);
-  if (qt >= 3 && qr / qt >= 0.8) return 'mastered';
+  const reviewStage = getProgressReviewStage(progress);
+  if (qt >= 3 && qr / qt >= 0.8 && reviewStage >= 2) return 'mastered';
   if (
     progress.seen ||
     progress.known ||
     qt ||
     qr ||
-    Number(progress.reviewStage || progress.reviewCount || 0) ||
+    reviewStage ||
     progress.lastReviewedAt
   ) return 'learning';
   return 'unknown';
@@ -385,8 +396,8 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const qr = Math.max(Number(localProgress.qr || 0), Number(cloudProgress.qr || 0));
   const qt = Math.max(Number(localProgress.qt || 0), Number(cloudProgress.qt || 0), qr);
   const reviewStage = Math.max(
-    Number(localProgress.reviewStage || localProgress.reviewCount || 0),
-    Number(cloudProgress.reviewStage || cloudProgress.reviewCount || 0)
+    getProgressReviewStage(localProgress),
+    getProgressReviewStage(cloudProgress)
   );
   const wrongCount = Math.max(Number(localProgress.wrongCount || 0), Number(cloudProgress.wrongCount || 0));
   const errorStreak = Math.max(Number(localProgress.errorStreak || 0), Number(cloudProgress.errorStreak || 0));
@@ -775,7 +786,7 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
         mergedProgress.qt || 0,
         mergedProgress.level || 'unknown',
         {
-          reviewStage: mergedProgress.reviewStage || mergedProgress.reviewCount || 0,
+          reviewStage: getProgressReviewStage(mergedProgress),
           nextReviewAt: mergedProgress.nextReviewAt || mergedProgress.nextReview || new Date().toISOString(),
           lastReviewedAt: mergedProgress.lastReviewedAt || new Date().toISOString()
         },
@@ -844,6 +855,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
       }
     : review;
   const now = new Date().toISOString();
+  const normalizedStage = getProgressReviewStage(normalized);
   const basePayload = {
     user_id: userId,
     word_ro: wordRo,
@@ -855,7 +867,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
   };
   const modernPayload = {
     ...basePayload,
-    review_stage: normalized.reviewStage || 0,
+    review_stage: normalizedStage,
     next_review_at: normalized.nextReviewAt || now,
     last_reviewed_at: normalized.lastReviewedAt || now,
     wrong_count: memory.wrongCount || 0,
@@ -865,13 +877,13 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
   };
   const reviewOnlyPayload = {
     ...basePayload,
-    review_stage: normalized.reviewStage || 0,
+    review_stage: normalizedStage,
     next_review_at: normalized.nextReviewAt || now,
     last_reviewed_at: normalized.lastReviewedAt || now
   };
   const legacyPayload = {
     ...basePayload,
-    review_count: normalized.reviewStage || 0,
+    review_count: normalizedStage,
     next_review: (normalized.nextReviewAt || now).slice(0, 10)
   };
 
