@@ -19,6 +19,8 @@ const OFFLINE_PROFILE = {
   offline: true
 };
 const PROGRESS_LOAD_TIMEOUT_MS = 3500;
+const WORDS_LOAD_TIMEOUT_MS = 3500;
+const BUNDLED_WORDS_LOAD_TIMEOUT_MS = 6000;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
 
@@ -45,6 +47,19 @@ function withTimeout(promise, ms, message) {
     timer = setTimeout(() => reject(new Error(message)), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function fetchWithTimeout(url, options = {}, ms = 6000, message = '请求超时') {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(message);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function writeJson(key, value) {
@@ -299,7 +314,12 @@ function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
 }
 
 async function loadBundledWords() {
-  const response = await fetch('./data/vocab.json', { cache: 'no-store' });
+  const response = await fetchWithTimeout(
+    './data/vocab.json',
+    { cache: 'no-store' },
+    BUNDLED_WORDS_LOAD_TIMEOUT_MS,
+    '本地词库读取超时'
+  );
   if (!response.ok) throw new Error('本地词库读取失败');
   const payload = await response.json();
   return Array.isArray(payload) ? payload : (payload.words || []);
@@ -490,14 +510,19 @@ async function apiLoadWords() {
   let all = [], from = 0;
   try {
     while (true) {
-      const { data, error } = await sb.from('words').select('*').order('id').range(from, from + 999);
+      const { data, error } = await withTimeout(
+        sb.from('words').select('*').order('id').range(from, from + 999),
+        WORDS_LOAD_TIMEOUT_MS,
+        '云端词库读取超时'
+      );
       if (error || !data || !data.length) break;
       all = all.concat(data);
       if (data.length < 1000) break;
       from += 1000;
     }
     return all.length ? all : loadBundledWords();
-  } catch {
+  } catch (error) {
+    console.warn('Cloud words load failed, falling back to bundled words', error);
     return loadBundledWords();
   }
 }

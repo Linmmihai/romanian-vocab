@@ -643,22 +643,54 @@ async function onLogin(user) {
 // ── 词库加载 ──────────────────────────────────────────────
 
 async function loadWords() {
-  document.getElementById('flash-loading').style.display = 'flex';
-  document.getElementById('flash-content').style.display = 'none';
+  showVocabLoading();
 
-  W = (await apiLoadWords()).map(normalizeWordCategory);
-  await loadExampleBank();
-  applyFilters();
+  try {
+    W = (await apiLoadWords()).map(normalizeWordCategory);
+    if (!W.length) throw new Error('词库为空');
+    await loadExampleBank();
+    applyFilters();
 
-  document.getElementById('s-total').textContent = W.length;
-  document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    document.getElementById('s-total').textContent = W.length;
+    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
 
-  populateCategoryDatalist();
-  buildCats();
-  renderCard();
+    populateCategoryDatalist();
+    buildCats();
+    renderCard();
 
-  document.getElementById('flash-loading').style.display = 'none';
-  document.getElementById('flash-content').style.display = 'block';
+    document.getElementById('flash-loading').style.display = 'none';
+    document.getElementById('flash-content').style.display = 'block';
+  } catch (error) {
+    console.error('Words load failed', error);
+    showVocabLoadError(error);
+  }
+}
+
+function showVocabLoading() {
+  const loading = document.getElementById('flash-loading');
+  if (loading) {
+    loading.style.display = 'flex';
+    loading.innerHTML = `
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载词库...</div>
+    `;
+  }
+  const content = document.getElementById('flash-content');
+  if (content) content.style.display = 'none';
+}
+
+function showVocabLoadError(error) {
+  const loading = document.getElementById('flash-loading');
+  if (!loading) return;
+  loading.style.display = 'flex';
+  loading.innerHTML = `
+    <div class="loading-text" style="font-weight:800;color:var(--text)">词库加载失败</div>
+    <div class="loading-text">网络或云端响应过慢。已避免继续卡住，请重试。</div>
+    <button class="btn-sm" onclick="loadWords()">重新加载</button>
+  `;
+  const topbarBadge = document.getElementById('topbar-badge');
+  if (topbarBadge) topbarBadge.textContent = '加载失败';
+  showToast('词库加载失败：' + (error?.message || '请稍后重试'));
 }
 
 async function loadExampleBank() {
