@@ -24,6 +24,8 @@ let todayQueueCompleted = new Set();
 let todayQueueRecord = null;
 let dailyQueueLoaded = false;
 let exampleBank = {};
+let exampleBankLoaded = false;
+let exampleBankLoadPromise = null;
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qExerciseMode = 'translation'; // translation | nounPlural | verbConj | stress | listening
@@ -351,11 +353,15 @@ function writeTodayTemporaryGoal(goal) {
 }
 
 function isDefaultGoalDone() {
-  return isDailyStateCurrent() && todayNewWords >= defaultDailyGoal;
+  return isDailyStateCurrent() && todayNewWords >= defaultDailyGoal && !hasOpenTodayQueue();
 }
 
 function isCurrentTodayGoalDone() {
-  return isDailyStateCurrent() && todayNewWords >= dailyGoal;
+  return isDailyStateCurrent() && todayNewWords >= dailyGoal && !hasOpenTodayQueue();
+}
+
+function hasOpenTodayQueue() {
+  return todayQueue.some(ro => !setHasRo(todayQueueCompleted, ro));
 }
 
 function isDailyCheckinDone() {
@@ -700,17 +706,26 @@ function showVocabLoadError(error) {
 }
 
 async function loadExampleBank() {
+  if (exampleBankLoaded) return exampleBank;
+  if (exampleBankLoadPromise) return exampleBankLoadPromise;
+  exampleBankLoadPromise = (async () => {
   try {
     const response = await fetch('./data/examples.json?v=20260620-cloud-examples', { cache: 'reload' });
     if (!response.ok) {
       exampleBank = {};
-      return;
+      return exampleBank;
     }
     const payload = await response.json();
     exampleBank = payload?.examples && typeof payload.examples === 'object' ? payload.examples : {};
   } catch {
     exampleBank = {};
+  } finally {
+    exampleBankLoaded = true;
+    exampleBankLoadPromise = null;
   }
+  return exampleBank;
+  })();
+  return exampleBankLoadPromise;
 }
 
 async function loadProgress() {
@@ -903,7 +918,7 @@ async function syncDailyStateToCloud() {
     goal: dailyGoal,
     word_ro: todayQueue,
     completed_word_ro: [...todayQueueCompleted],
-    completed: todayNewWords >= dailyGoal
+    completed: isCurrentTodayGoalDone()
   };
   const results = await Promise.allSettled([
     apiSaveDailyQueue(currentUser.id, queuePayload),
@@ -965,15 +980,7 @@ async function loadDailyQueue() {
     const originalQueueLength = saved.word_ro.length;
     const uniqueSavedQueue = normalizeWordRoList(saved.word_ro);
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
-    todayQueue = uniqueSavedQueue.filter(ro => {
-      const word = getWordByRo(ro);
-      if (!word) return false;
-      if (!isDailyQueueCandidate(word)) {
-        setAddRo(todayQueueCompleted, ro);
-        return false;
-      }
-      return !setHasRo(todayQueueCompleted, ro);
-    });
+    todayQueue = uniqueSavedQueue.filter(ro => getWordByRo(ro) && !setHasRo(todayQueueCompleted, ro));
     queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
     dailyGoal = Math.max(logGoal, localTemporaryGoal, defaultDailyGoal);
@@ -991,7 +998,7 @@ async function loadDailyQueue() {
   todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
   writeTodaySeenWords();
   repairStartedProgressForCompletedTodayWords();
-  todayNewWords = todayQueueCompleted.size;
+  todayNewWords = todaySeenWords.size;
   const normalizedQueue = buildOpenTodayQueue(dailyGoal);
   if (normalizedQueue.join('|') !== todayQueue.join('|')) {
     todayQueue = normalizedQueue;
@@ -1021,7 +1028,7 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return buildReviewFirstDailyPlan(W, cap);
+  return getUnseenWords(W).slice(0, cap);
 }
 
 function uniqueWordsByRo(words) {
@@ -1085,11 +1092,17 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
 }
 
 function buildOpenTodayQueue(goal = dailyGoal) {
-  const neededOpenWords = Math.max(0, Number(goal || dailyGoal || 20) - todayNewWords);
-  return buildDailyQueueWords(goal)
-    .map(w => w.ro)
-    .filter(ro => !setHasRo(todayQueueCompleted, ro))
-    .slice(0, neededOpenWords);
+  const cap = Math.max(1, Number(goal || dailyGoal || 20));
+  const open = normalizeWordRoList(todayQueue).filter(ro => getWordByRo(ro) && !setHasRo(todayQueueCompleted, ro));
+  const selectedKeys = new Set([...open, ...todayQueueCompleted].map(roKey));
+  const slots = Math.max(0, cap - selectedKeys.size);
+  if (!slots) return open;
+  const blocked = new Set([...selectedKeys, ...todaySeenWords].map(roKey));
+  const additions = getUnseenWords(W)
+    .filter(w => !blocked.has(roKey(w.ro)))
+    .slice(0, slots)
+    .map(w => w.ro);
+  return normalizeWordRoList([...open, ...additions]);
 }
 
 function getDailyWordList(words = W, options = {}) {
@@ -1106,7 +1119,7 @@ function getDailyWordList(words = W, options = {}) {
     .filter(w => !isRetryDeferred(w));
   if (queueWords.length || !includeFallback) return queueWords.slice(0, limit);
   if (openQueuedRos.length && curCat !== '全部') return [];
-  if (todayNewWords >= dailyGoal) return [];
+  if (todayNewWords >= dailyGoal && !openQueuedRos.length) return [];
 
   const displayableQueuedRos = openQueuedRos
     .map(ro => getWordByRo(ro))
@@ -1114,7 +1127,7 @@ function getDailyWordList(words = W, options = {}) {
     .filter(w => !isRetryDeferred(w))
     .map(w => w.ro);
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...displayableQueuedRos].map(roKey));
-  return buildReviewFirstDailyPlan(scoped, Math.min(limit, dailyGoal - todayNewWords))
+  return buildDailyQueueWords(Math.min(limit, Math.max(0, dailyGoal - todayNewWords)))
     .filter(w => !blocked.has(roKey(w.ro)))
     .slice(0, limit);
 }
@@ -1222,7 +1235,7 @@ async function saveTodayQueue(options = {}) {
     goal: dailyGoal,
     word_ro: todayQueue,
     completed_word_ro: [...todayQueueCompleted],
-    completed: todayNewWords >= dailyGoal
+    completed: isCurrentTodayGoalDone()
   };
   const savePromise = apiSaveDailyQueue(currentUser.id, payload, { forceLocal: !!options.forceLocal });
   if (options.background) {
@@ -1266,17 +1279,17 @@ function commitTodayWordCompletion(wordRo, options = {}) {
   if (!ensureDailyStateCurrent({ reload: true })) return false;
   const canonicalRo = canonicalWordRo(wordRo);
   if (!canonicalRo || setHasRo(todayQueueCompleted, canonicalRo)) return false;
-  const wasGoalDone = isDefaultGoalDone();
+  const exposure = commitTodayWordExposure(canonicalRo, { fast: true });
+  const wasGoalDone = isDefaultGoalDone() && !exposure?.reachedGoal;
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
-  setAddRo(todaySeenWords, canonicalRo);
   setAddRo(todayQueueCompleted, canonicalRo);
   if (isQueuedWord) {
     todayQueue = roListWithout(todayQueue, canonicalRo);
   }
-  todayNewWords = todayQueueCompleted.size;
+  todayNewWords = todaySeenWords.size;
   if (options.fast) {
-    return { completed: true, reachedGoal: !wasGoalDone && isDefaultGoalDone() };
+    return { completed: true, reachedGoal: !!exposure?.reachedGoal || (!wasGoalDone && isDefaultGoalDone()) };
   }
   writeTodaySeenWords();
   saveTodayQueue({ background: true }).catch(error => {
@@ -1284,7 +1297,7 @@ function commitTodayWordCompletion(wordRo, options = {}) {
     setSyncBadge('队列待同步', '');
   });
 
-  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: todayNewWords >= defaultDailyGoal };
+  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: isDefaultGoalDone() };
   apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
     console.warn('Today log background save failed', error);
     setSyncBadge('今日记录待同步', '');
@@ -1300,15 +1313,46 @@ function commitTodayWordCompletion(wordRo, options = {}) {
   return true;
 }
 
+function commitTodayWordExposure(wordRo, options = {}) {
+  if (!ensureDailyStateCurrent({ reload: true })) return false;
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!canonicalRo) return false;
+  const wasGoalDone = isDefaultGoalDone();
+  const wasSeen = setHasRo(todaySeenWords, canonicalRo);
+  setAddRo(todaySeenWords, canonicalRo);
+  todayNewWords = todaySeenWords.size;
+  if (options.fast) {
+    return { counted: !wasSeen, reachedGoal: !wasGoalDone && isDefaultGoalDone() };
+  }
+  writeTodaySeenWords();
+  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: isDefaultGoalDone() };
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
+    console.warn('Today log background save failed', error);
+    setSyncBadge('今日记录待同步', '');
+  });
+  invalidateCalendarCache();
+  renderDailyGoal();
+  updateTodayCalendarCell();
+  renderReviewPanel();
+  updateReviewBadge();
+  if (!wasGoalDone && isDefaultGoalDone()) {
+    showDailyGoalCompletionPrompt(!!options.deferGoalPrompt);
+  }
+  return { counted: !wasSeen, reachedGoal: !wasGoalDone && isDefaultGoalDone() };
+}
+
 async function recordTodayWord(wordRo, options = {}) {
   const canonicalRo = canonicalWordRo(wordRo);
-  if (!canonicalRo || setHasRo(todayQueueCompleted, canonicalRo)) return false;
+  if (!canonicalRo) return false;
   await ensureStartedProgressForTodayWord(canonicalRo);
-  return commitTodayWordCompletion(canonicalRo, options);
+  return commitTodayWordExposure(canonicalRo, options);
 }
 
 async function completeTodayQueueWord(wordRo, options = {}) {
-  return recordTodayWord(wordRo, options);
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!canonicalRo) return false;
+  await ensureStartedProgressForTodayWord(canonicalRo);
+  return commitTodayWordCompletion(canonicalRo, options);
 }
 
 async function ensureStartedProgressForTodayWord(wordRo) {
@@ -1363,7 +1407,7 @@ async function reconcileTodayQueueAfterProgress(wordRo) {
   if (!roListIncludes(todayQueue, canonicalRo) || setHasRo(todayQueueCompleted, canonicalRo)) return;
   if (shouldCompleteQueuedWordFromProgress(canonicalRo)) {
     try {
-      await recordTodayWord(canonicalRo);
+      await completeTodayQueueWord(canonicalRo);
     } catch (error) {
       console.warn('Daily queue reconciliation failed', error);
     }
@@ -1472,10 +1516,10 @@ async function addWordToTodayQueue(wordRo) {
   const w = getWordByRo(wordRo);
   if (!w) { showToast('找不到该词条'); return; }
   if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习或需加强列表巩固'); return; }
-  const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
-  const remainingDueReviews = getRemainingDueReviewWords(W).length;
-  if (todayNewWords >= dailyGoal || remainingDueReviews >= remainingSlots) {
-    showToast('请先完成到期复习；提高今日任务目标后可以继续添加新词');
+  const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
+  const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
+  if (!remainingSlots) {
+    showToast('今日新词名额已用完；提高今日任务目标后可以继续添加新词');
     return;
   }
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
@@ -2243,7 +2287,7 @@ function flushTodayStatePersistence() {
     console.warn('Daily queue background save failed', error);
     setSyncBadge('队列待同步', '');
   });
-  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: todayNewWords >= defaultDailyGoal };
+  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: isDefaultGoalDone() };
   apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
     console.warn('Today log background save failed', error);
     setSyncBadge('今日记录待同步', '');
@@ -2855,18 +2899,19 @@ function renderCard() {
     const hasOpenQueue = todayQueue.some(ro => !setHasRo(todayQueueCompleted, ro));
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
+    const currentDone = isCurrentTodayGoalDone();
     const emptyText = {
-      today: todayNewWords >= dailyGoal ? '今日任务已完成' : (curCat !== '全部' && (hasDueReview || hasNewWords) ? '当前分类没有今日任务' : '今日没有可安排任务'),
+      today: currentDone ? '今日任务已完成' : (curCat !== '全部' && (hasDueReview || hasNewWords) ? '当前分类没有今日任务' : '今日没有可安排任务'),
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
-      today: todayNewWords >= dailyGoal
+      today: currentDone
         ? getContinueAfterGoalText()
         : (hasOpenQueue ? '请切换到全部，先完成到期复习' : '可以切换分类、提高今日任务目标或去测验'),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
-      frontHint.textContent = todayNewWords >= dailyGoal ? actionText : '先在心里说出罗语，再点卡片看答案';
+      frontHint.textContent = currentDone ? actionText : '先在心里说出罗语，再点卡片看答案';
     }
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
@@ -3014,18 +3059,21 @@ function advanceFlashcardAfterAnswer(currentRo) {
 }
 
 function getNextDailyFallbackWord(currentRo) {
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted]);
-  if (currentRo) blocked.add(currentRo);
+  const currentKey = currentRo ? roKey(currentRo) : '';
+  const completed = new Set([...todayQueueCompleted].map(roKey));
   const openQueue = todayQueue
     .map(ro => getWordByRo(ro))
     .filter(Boolean)
     .filter(w => !isRetryDeferred(w))
-    .filter(w => !blocked.has(w.ro));
-  const due = sortReviewDueWithWeakPriority(W)
-    .filter(w => !blocked.has(w.ro) && isDueReviewWord(w));
-  const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
-  const unseen = remainingSlots > 0 ? getUnseenWords(W).filter(w => !blocked.has(w.ro)) : [];
-  return uniqueWordsByRo([...openQueue, ...due, ...unseen])[0] || null;
+    .filter(w => roKey(w.ro) !== currentKey && !completed.has(roKey(w.ro)));
+  const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
+  const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
+  const unseen = remainingSlots > 0
+    ? getUnseenWords(W)
+      .filter(w => roKey(w.ro) !== currentKey && !selectedKeys.has(roKey(w.ro)))
+      .slice(0, remainingSlots)
+    : [];
+  return uniqueWordsByRo([...openQueue, ...unseen])[0] || null;
 }
 
 function bindFlashcardButtons() {
@@ -3062,7 +3110,7 @@ function setFlashcardAnswerButtonsDisabled(disabled) {
 async function recordDailyWord() {
   const w = getCurrentFlashWord();
   if (!w) return;
-  await recordTodayWord(w.ro);
+  await completeTodayQueueWord(w.ro);
 }
 
 /**
@@ -3096,12 +3144,22 @@ function markCard(yes) {
     if (flashMode === 'today') queueTodayAccuracyAttempt(yes);
     const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
     setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() });
-    let dailyCompletion = null;
+    let dailyStateResult = null;
+    const isOpenTodayWord = flashMode === 'today'
+      && roListIncludes(todayQueue, w.ro)
+      && !setHasRo(todayQueueCompleted, w.ro);
     if (flashMode === 'today' && yes) {
       lastLearningHint = '';
-      dailyCompletion = commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true });
+      dailyStateResult = isOpenTodayWord
+        ? commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true })
+        : null;
     } else if (flashMode === 'today') {
-      lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；记住后才会计入完成。`;
+      dailyStateResult = isOpenTodayWord
+        ? commitTodayWordExposure(w.ro, { fast: true, deferGoalPrompt: true })
+        : null;
+      lastLearningHint = dailyStateResult?.counted
+        ? `已计入今日新词；「${w.zh || w.ro}」会留在今日任务里继续巩固。`
+        : `已保留「${w.zh || w.ro}」在今日任务里；记住后才会完成这个词。`;
     } else if (!yes) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
     }
@@ -3111,7 +3169,7 @@ function markCard(yes) {
     renderNextFlashCardInstantFront();
     persistFastCardAnswer(progressResult);
     if (flashMode === 'today') {
-      scheduleTodayStatePersistence(!!dailyCompletion?.reachedGoal);
+      scheduleTodayStatePersistence(!!dailyStateResult?.reachedGoal);
     }
   } catch (error) {
     console.warn('Flashcard answer failed', error);
@@ -4579,7 +4637,7 @@ function renderWordDetail(w) {
   const s = getDifficultScore(w);
   const stress = getStressDisplay(w);
   const nextReview = p.nextReviewAt ? formatReviewDue(p.nextReviewAt) : '未安排';
-  const example = buildExampleSentence(w);
+  const example = getSyncExampleSentence(w);
   const canQueue = isUnseenWord(w) && !(roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
   document.getElementById('word-detail-body').innerHTML = `
     <div class="detail-head">
@@ -4621,6 +4679,10 @@ function getSyncExampleSentence(w) {
   return buildExampleSentence(w) || getLocalExample(w) || getDirectCorpusExample(w?.ro);
 }
 
+function getPrimaryExampleSentence(w) {
+  return buildExampleSentence(w) || getPrimaryLocalExample(w) || getDirectCorpusExample(w?.ro);
+}
+
 function renderFrontExampleRecall(id, w, example) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -4651,6 +4713,18 @@ function getLocalExample(w) {
   const examples = getExampleBankEntries(ro);
   if (!Array.isArray(examples) || !examples.length) return null;
   const selected = examples[Math.abs(hashText(`${ro}:${idx}:${flashMode}`)) % examples.length];
+  if (!selected?.ro) return null;
+  return {
+    ro: selected.ro,
+    zh: selected.zh || '',
+    source: selected.source || 'local corpus'
+  };
+}
+
+function getPrimaryLocalExample(w) {
+  const ro = String(w?.ro || '').trim();
+  const examples = getExampleBankEntries(ro);
+  const selected = Array.isArray(examples) ? examples.find(item => item?.ro) : null;
   if (!selected?.ro) return null;
   return {
     ro: selected.ro,
@@ -4930,9 +5004,39 @@ function openEditModal(word, reportId = null) {
   document.getElementById('em-hint').value = word.hint || '';
   populateCategoryDatalist();
   document.getElementById('em-cat').value = normalizeCategory(word.cat);
-  document.getElementById('em-example-ro').value = word.example_ro || word.exampleRo || '';
-  document.getElementById('em-example-zh').value = word.example_zh || word.exampleZh || '';
+  const example = getPrimaryExampleSentence(word);
+  const roEl = document.getElementById('em-example-ro');
+  const zhEl = document.getElementById('em-example-zh');
+  const sourceEl = document.getElementById('em-example-source');
+  const submitBtn = document.getElementById('em-submit');
+  roEl.value = example?.ro || '';
+  zhEl.value = example?.zh || '';
+  if (sourceEl) {
+    sourceEl.textContent = example?.ro
+      ? '例句来自云端词库缓存；修改后点击保存，会写回云端词库。'
+      : '当前词条还没有例句；填写后点击保存，会写入云端词库。';
+  }
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '保存修改'; }
   document.getElementById('edit-modal').style.display = 'flex';
+  if (!example?.ro && !exampleBankLoaded) {
+    const modalWordId = word.id;
+    if (sourceEl) sourceEl.textContent = '正在读取云端例句缓存，读取完成后再保存。';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '读取例句...'; }
+    loadExampleBank().then(() => {
+      if (editingWordId !== modalWordId) return;
+      const refreshed = getPrimaryExampleSentence(word);
+      if (refreshed?.ro && roEl && !roEl.value.trim()) roEl.value = refreshed.ro;
+      if (refreshed?.zh && zhEl && !zhEl.value.trim()) zhEl.value = refreshed.zh;
+      if (sourceEl) {
+        sourceEl.textContent = refreshed?.ro
+          ? '例句来自云端词库缓存；修改后点击保存，会写回云端词库。'
+          : '当前词条还没有例句；填写后点击保存，会写入云端词库。';
+      }
+    }).finally(() => {
+      if (editingWordId !== modalWordId) return;
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '保存修改'; }
+    });
+  }
 }
 
 function closeEditModal() {
@@ -4958,6 +5062,13 @@ async function saveEdit() {
     // 更新本地缓存
     const wi = W.findIndex(w => w.id === editingWordId);
     if (wi >= 0) W[wi] = { ...W[wi], ...updates };
+    if (updates.ro && updates.example_ro) {
+      exampleBank[roKey(updates.ro)] = [{
+        ro: updates.example_ro,
+        zh: updates.example_zh,
+        source: '云端词库例句'
+      }];
+    }
     rebuildWordRoIndex();
     applyFilters();
     buildCats(); renderCard(); renderList();
