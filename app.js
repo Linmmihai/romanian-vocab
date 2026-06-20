@@ -9,6 +9,7 @@ let currentUser = null;
 let userRole = null;
 let progressMap = {};
 let W = [];           // 全部词汇（从数据库加载）
+let wordRoIndex = new Map();
 let filtered = [];    // 当前分类筛选后的词汇
 let idx = 0;          // 卡片当前索引
 let flipped = false;
@@ -52,6 +53,7 @@ let flashcardAnswerInFlight = false;
 let flashCardRenderTimer = null;
 let wrongbookCardRenderTimer = null;
 let fastProgressFlushTimer = null;
+let progressSnapshotWriteTimer = null;
 let todayStateFlushTimer = null;
 let pendingTodayGoalPrompt = false;
 let pendingTodayAccuracyStats = { correct: 0, total: 0 };
@@ -121,6 +123,23 @@ function getRoAliasKeys(wordRo) {
   return [...keys].filter(Boolean);
 }
 
+function rebuildWordRoIndex() {
+  wordRoIndex = new Map();
+  W.forEach(word => {
+    const canonical = normalizeWordText(word?.ro);
+    if (!canonical) return;
+    const exactKey = roKey(canonical);
+    if (exactKey) wordRoIndex.set(exactKey, canonical);
+  });
+  W.forEach(word => {
+    const canonical = normalizeWordText(word?.ro);
+    if (!canonical) return;
+    getRoAliasKeys(canonical).filter(aliasKey => aliasKey !== roKey(canonical)).forEach(aliasKey => {
+      if (!wordRoIndex.has(aliasKey)) wordRoIndex.set(aliasKey, canonical);
+    });
+  });
+}
+
 function getProgressReviewStage(progress = {}) {
   return Number(
     progress.reviewStage ??
@@ -179,8 +198,17 @@ function replaceProgressMap(map = {}) {
   progressMap = normalizeProgressMap(map);
   progressVersion++;
   if (currentUser?.id && typeof writeLocalProgressSnapshot === 'function') {
-    try { writeLocalProgressSnapshot(currentUser.id, progressMap); } catch {}
+    scheduleLocalProgressSnapshotWrite();
   }
+}
+
+function scheduleLocalProgressSnapshotWrite() {
+  if (!currentUser?.id || typeof writeLocalProgressSnapshot !== 'function') return;
+  if (progressSnapshotWriteTimer) clearTimeout(progressSnapshotWriteTimer);
+  progressSnapshotWriteTimer = setTimeout(() => {
+    progressSnapshotWriteTimer = null;
+    try { writeLocalProgressSnapshot(currentUser.id, progressMap); } catch {}
+  }, 800);
 }
 
 function getProgress(wordRo) {
@@ -213,10 +241,7 @@ function deleteProgress(wordRo) {
 
 function canonicalWordRo(wordRo) {
   const key = roKey(wordRo);
-  const word = W.find(w => roKey(w.ro) === key)
-    || (!/^a\s+/i.test(normalizeWordText(wordRo)) ? W.find(w => roKey(w.ro) === roKey(`a ${wordRo}`)) : null)
-    || (/^a\s+/i.test(normalizeWordText(wordRo)) ? W.find(w => roKey(w.ro) === roKey(normalizeWordText(wordRo).replace(/^a\s+/i, ''))) : null);
-  return word?.ro || normalizeWordText(wordRo);
+  return wordRoIndex.get(key) || normalizeWordText(wordRo);
 }
 
 function normalizeWordRoList(list = []) {
@@ -649,6 +674,7 @@ async function loadWords() {
   try {
     W = (await apiLoadWords()).map(normalizeWordCategory);
     if (!W.length) throw new Error('词库为空');
+    rebuildWordRoIndex();
     const exampleBankPromise = loadExampleBank();
     applyFilters();
 
@@ -4932,6 +4958,7 @@ async function saveEdit() {
     // 更新本地缓存
     const wi = W.findIndex(w => w.id === editingWordId);
     if (wi >= 0) W[wi] = { ...W[wi], ...updates };
+    rebuildWordRoIndex();
     applyFilters();
     buildCats(); renderCard(); renderList();
     closeEditModal();
@@ -5074,6 +5101,7 @@ async function deleteWord(wordId, wordZh) {
   try {
     await apiDeleteWord(wordId);
     W = W.filter(w => w.id !== wordId);
+    rebuildWordRoIndex();
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
@@ -5229,6 +5257,7 @@ async function approvePendingWord(rowId) {
     if (!row) { showToast('找不到待审核词汇'); return; }
     const result = await apiApprovePendingWord(row);
     W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory);
+    rebuildWordRoIndex();
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
@@ -5256,6 +5285,7 @@ async function approveAllPendingWords() {
     if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
     const result = await apiApprovePendingWords(pending);
     W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory);
+    rebuildWordRoIndex();
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
@@ -5378,6 +5408,7 @@ async function applyStressGrammarPatch() {
     });
     const byId = new Map(pendingRows.map(row => [row.id, row]));
     W = W.map(w => byId.has(w.id) ? { ...w, ipa: byId.get(w.id).ipa, hint: byId.get(w.id).hint } : w);
+    rebuildWordRoIndex();
     applyFilters();
     renderCard();
     renderList();
