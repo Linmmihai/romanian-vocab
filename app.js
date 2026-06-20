@@ -2942,7 +2942,12 @@ function renderCardBack(w) {
   const stress = getStressDisplay(w);
   setStressHtml('fc-ipa', w);
   setGrammarText('fc-phint', w, stress);
-  renderExampleBlock('fc-example', getSyncExampleSentence(w));
+  const syncExample = getSyncExampleSentence(w);
+  renderExampleBlock('fc-example', syncExample);
+  if (!syncExample) {
+    const requestedRo = w.ro;
+    hydrateCorpusExample('fc-example', w, () => roKey(getCardRenderWord()?.ro) === roKey(requestedRo));
+  }
 }
 
 // 点卡片：来回翻转
@@ -4631,12 +4636,12 @@ function buildExampleSentence(w) {
   const zh = String(w?.zh || '').trim();
   const savedRo = String(w?.example_ro || w?.exampleRo || w?.sentence_ro || '').trim();
   const savedZh = String(w?.example_zh || w?.exampleZh || w?.sentence_zh || '').trim();
-  if (savedRo) return { ro: savedRo, zh: savedZh || `例句使用了“${zh || ro}”。` };
+  if (savedRo) return { ro: savedRo, zh: savedZh };
   return null;
 }
 
 function getSyncExampleSentence(w) {
-  return buildExampleSentence(w) || getLocalExample(w) || getDirectCorpusExample(w?.ro) || getFallbackExample(w);
+  return buildExampleSentence(w) || getLocalExample(w) || getDirectCorpusExample(w?.ro);
 }
 
 function renderFrontExampleRecall(id, w, example) {
@@ -4672,7 +4677,7 @@ function getLocalExample(w) {
   if (!selected?.ro) return null;
   return {
     ro: selected.ro,
-    zh: selected.zh || `真实语料例句，句中使用“${w?.zh || ro}”。`,
+    zh: selected.zh || '',
     source: selected.source || 'local corpus'
   };
 }
@@ -4694,17 +4699,6 @@ function getExampleBankEntries(wordRo) {
   return null;
 }
 
-function getFallbackExample(w) {
-  const ro = String(w?.ro || '').trim();
-  const zh = String(w?.zh || '').trim();
-  if (!ro) return null;
-  return {
-    ro: `Am întâlnit cuvântul „${ro}” într-un text simplu.`,
-    zh: `我在一段简单文本里见到了“${zh || ro}”这个词。`,
-    source: '学习例句'
-  };
-}
-
 function renderExampleBlock(id, example) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -4716,8 +4710,9 @@ function renderExampleBlock(id, example) {
 function exampleHtml(example) {
   if (!example) return '';
   const source = example.source ? `<div class="example-source">来源：${escapeHtml(example.source)}</div>` : '';
+  const zh = example.zh ? `<div class="example-zh">${escapeHtml(example.zh)}</div>` : '<div class="example-zh">暂无中文翻译</div>';
   return `<div class="example-ro">${escapeHtml(example.ro || '')}</div>
-    <div class="example-zh">${escapeHtml(example.zh || '')}</div>
+    ${zh}
     ${source}`;
 }
 
@@ -4732,7 +4727,7 @@ async function getCorpusExample(w) {
   if (!ro) return null;
   const local = getLocalExample(w);
   if (local) return local;
-  const direct = CORPUS_EXAMPLES[lowerRo(ro)];
+  const direct = getDirectCorpusExample(ro);
   if (direct) return direct;
   const key = EXAMPLE_CACHE_PREFIX + lowerRo(ro);
   const cached = readCachedExample(key);
@@ -4773,7 +4768,7 @@ async function fetchTatoebaExample(wordRo, zh) {
     if (!selected?.text) return null;
     return {
       ro: selected.text,
-      zh: getChineseCorpusTranslation(selected) || `语料例句，句中使用“${zh || wordRo}”。`,
+      zh: getChineseCorpusTranslation(selected),
       source: `Tatoeba #${selected.id || ''}`.trim()
     };
   } catch {
