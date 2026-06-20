@@ -1,4 +1,8 @@
-const CACHE_NAME = 'ro-vocab-pwa-v7';
+const CACHE_NAME = 'ro-vocab-pwa-v8';
+const CACHE_FIRST_PATHS = [
+  '/data/vocab.json',
+  '/data/examples.json'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(self.skipWaiting());
@@ -14,8 +18,24 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-  const request = event.request.cache === 'only-if-cached'
-    ? event.request
-    : new Request(event.request, { cache: 'no-store' });
-  event.respondWith(fetch(request));
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (!CACHE_FIRST_PATHS.includes(url.pathname)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(event.request);
+    if (cached) return cached;
+
+    const response = await fetch(event.request);
+    if (response.ok) cache.put(event.request, response.clone());
+    return response;
+  })());
 });

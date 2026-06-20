@@ -643,12 +643,13 @@ async function onLogin(user) {
 // ── 词库加载 ──────────────────────────────────────────────
 
 async function loadWords() {
+  const startedAt = Date.now();
   showVocabLoading();
 
   try {
     W = (await apiLoadWords()).map(normalizeWordCategory);
     if (!W.length) throw new Error('词库为空');
-    await loadExampleBank();
+    const exampleBankPromise = loadExampleBank();
     applyFilters();
 
     document.getElementById('s-total').textContent = W.length;
@@ -660,6 +661,8 @@ async function loadWords() {
 
     document.getElementById('flash-loading').style.display = 'none';
     document.getElementById('flash-content').style.display = 'block';
+    console.info(`Words ready: ${W.length} words in ${Date.now() - startedAt}ms`);
+    exampleBankPromise.then(() => renderCard());
   } catch (error) {
     console.error('Words load failed', error);
     showVocabLoadError(error);
@@ -695,7 +698,7 @@ function showVocabLoadError(error) {
 
 async function loadExampleBank() {
   try {
-    const response = await fetch('./data/examples.json', { cache: 'no-store' });
+    const response = await fetch('./data/examples.json', { cache: 'force-cache' });
     if (!response.ok) {
       exampleBank = {};
       return;
@@ -5225,7 +5228,7 @@ async function approvePendingWord(rowId) {
     const row = rows.find(r => Number(r.id) === Number(rowId));
     if (!row) { showToast('找不到待审核词汇'); return; }
     const result = await apiApprovePendingWord(row);
-    W = (await apiLoadWords()).map(normalizeWordCategory);
+    W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory);
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
@@ -5252,7 +5255,7 @@ async function approveAllPendingWords() {
     const btn = document.getElementById('pending-approve-all-btn');
     if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
     const result = await apiApprovePendingWords(pending);
-    W = (await apiLoadWords()).map(normalizeWordCategory);
+    W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory);
     applyFilters();
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';

@@ -21,6 +21,8 @@ const OFFLINE_PROFILE = {
 const PROGRESS_LOAD_TIMEOUT_MS = 3500;
 const WORDS_LOAD_TIMEOUT_MS = 3500;
 const BUNDLED_WORDS_LOAD_TIMEOUT_MS = 6000;
+const WORDS_CACHE_KEY = 'words_cache:v2';
+const WORDS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
 
@@ -70,6 +72,26 @@ function writeJson(key, value) {
     throw error;
   }
   return value;
+}
+
+function readCachedWords() {
+  try {
+    const cached = readJson(WORDS_CACHE_KEY, null);
+    if (!cached?.savedAt || !Array.isArray(cached.words)) return null;
+    if (Date.now() - Number(cached.savedAt) > WORDS_CACHE_TTL_MS) return null;
+    return cached.words;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedWords(words) {
+  if (!Array.isArray(words) || !words.length) return;
+  try {
+    writeJson(WORDS_CACHE_KEY, { savedAt: Date.now(), words });
+  } catch (error) {
+    console.warn('Words cache write failed', error);
+  }
 }
 
 function rejectedProfilesKey() {
@@ -313,16 +335,27 @@ function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
   }
 }
 
-async function loadBundledWords() {
+async function loadBundledWords(options = {}) {
+  const { allowStoredCache = true } = options;
+  if (allowStoredCache) {
+    const cached = readCachedWords();
+    if (cached?.length) {
+      console.info(`Words loaded from local cache: ${cached.length}`);
+      return cached;
+    }
+  }
   const response = await fetchWithTimeout(
     './data/vocab.json',
-    { cache: 'no-store' },
+    { cache: 'force-cache' },
     BUNDLED_WORDS_LOAD_TIMEOUT_MS,
     '本地词库读取超时'
   );
   if (!response.ok) throw new Error('本地词库读取失败');
   const payload = await response.json();
-  return Array.isArray(payload) ? payload : (payload.words || []);
+  const words = Array.isArray(payload) ? payload : (payload.words || []);
+  writeCachedWords(words);
+  console.info(`Words loaded from bundled file: ${words.length}`);
+  return words;
 }
 
 function rowToProgress(r) {
@@ -505,8 +538,10 @@ function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal 
  * 从数据库加载全部词汇（自动分页，支持超过1000条）
  * @returns {Promise<Array>} 词汇数组
  */
-async function apiLoadWords() {
+async function apiLoadWords(options = {}) {
+  const { preferCloud = false } = options;
   if (isOfflineMode()) return loadBundledWords();
+  if (!preferCloud) return loadBundledWords();
   let all = [], from = 0;
   try {
     while (true) {
@@ -520,7 +555,12 @@ async function apiLoadWords() {
       if (data.length < 1000) break;
       from += 1000;
     }
-    return all.length ? all : loadBundledWords();
+    if (all.length) {
+      writeCachedWords(all);
+      console.info(`Words loaded from cloud: ${all.length}`);
+      return all;
+    }
+    return loadBundledWords();
   } catch (error) {
     console.warn('Cloud words load failed, falling back to bundled words', error);
     return loadBundledWords();
