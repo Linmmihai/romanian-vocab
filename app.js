@@ -4636,7 +4636,7 @@ function buildExampleSentence(w) {
 }
 
 function getSyncExampleSentence(w) {
-  return buildExampleSentence(w) || getLocalExample(w) || CORPUS_EXAMPLES[lowerRo(w?.ro || '')] || null;
+  return buildExampleSentence(w) || getLocalExample(w) || getDirectCorpusExample(w?.ro) || getFallbackExample(w);
 }
 
 function renderFrontExampleRecall(id, w, example) {
@@ -4666,7 +4666,7 @@ function hashText(value) {
 
 function getLocalExample(w) {
   const ro = String(w?.ro || '').trim();
-  const examples = exampleBank[lowerRo(ro)] || exampleBank[ro];
+  const examples = getExampleBankEntries(ro);
   if (!Array.isArray(examples) || !examples.length) return null;
   const selected = examples[Math.abs(hashText(`${ro}:${idx}:${flashMode}`)) % examples.length];
   if (!selected?.ro) return null;
@@ -4674,6 +4674,34 @@ function getLocalExample(w) {
     ro: selected.ro,
     zh: selected.zh || `真实语料例句，句中使用“${w?.zh || ro}”。`,
     source: selected.source || 'local corpus'
+  };
+}
+
+function getDirectCorpusExample(wordRo) {
+  for (const key of getRoAliasKeys(wordRo)) {
+    const example = CORPUS_EXAMPLES[key] || CORPUS_EXAMPLES[lowerRo(key)];
+    if (example) return example;
+  }
+  return null;
+}
+
+function getExampleBankEntries(wordRo) {
+  const keys = getRoAliasKeys(wordRo);
+  for (const key of keys) {
+    const direct = exampleBank[key] || exampleBank[lowerRo(key)];
+    if (Array.isArray(direct) && direct.length) return direct;
+  }
+  return null;
+}
+
+function getFallbackExample(w) {
+  const ro = String(w?.ro || '').trim();
+  const zh = String(w?.zh || '').trim();
+  if (!ro) return null;
+  return {
+    ro: `Am întâlnit cuvântul „${ro}” într-un text simplu.`,
+    zh: `我在一段简单文本里见到了“${zh || ro}”这个词。`,
+    source: '学习例句'
   };
 }
 
