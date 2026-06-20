@@ -112,15 +112,8 @@ function roKey(value) {
 }
 
 function getRoAliasKeys(wordRo) {
-  const normalized = normalizeWordText(wordRo);
-  const key = roKey(normalized);
-  const keys = new Set(key ? [key] : []);
-  if (/^a\s+\S+/i.test(normalized)) {
-    keys.add(roKey(normalized.replace(/^a\s+/i, '')));
-  } else if (normalized) {
-    keys.add(roKey(`a ${normalized}`));
-  }
-  return [...keys].filter(Boolean);
+  const key = roKey(wordRo);
+  return key ? [key] : [];
 }
 
 function rebuildWordRoIndex() {
@@ -130,13 +123,6 @@ function rebuildWordRoIndex() {
     if (!canonical) return;
     const exactKey = roKey(canonical);
     if (exactKey) wordRoIndex.set(exactKey, canonical);
-  });
-  W.forEach(word => {
-    const canonical = normalizeWordText(word?.ro);
-    if (!canonical) return;
-    getRoAliasKeys(canonical).filter(aliasKey => aliasKey !== roKey(canonical)).forEach(aliasKey => {
-      if (!wordRoIndex.has(aliasKey)) wordRoIndex.set(aliasKey, canonical);
-    });
   });
 }
 
@@ -213,22 +199,13 @@ function scheduleLocalProgressSnapshotWrite() {
 
 function getProgress(wordRo) {
   const canonical = canonicalWordRo(wordRo);
-  for (const key of getRoAliasKeys(canonical)) {
-    if (progressMap[key]) return progressMap[key];
-  }
-  for (const key of getRoAliasKeys(wordRo)) {
-    if (progressMap[key]) return progressMap[key];
-  }
-  return null;
+  return progressMap[roKey(canonical)] || null;
 }
 
 function setProgress(wordRo, progress) {
   const canonical = canonicalWordRo(wordRo);
   const key = roKey(canonical);
   if (key) {
-    getRoAliasKeys(canonical).forEach(aliasKey => {
-      if (aliasKey !== key) delete progressMap[aliasKey];
-    });
     progressMap[key] = progress;
     progressVersion++;
   }
@@ -724,7 +701,7 @@ function showVocabLoadError(error) {
 
 async function loadExampleBank() {
   try {
-    const response = await fetch('./data/examples.json', { cache: 'force-cache' });
+    const response = await fetch('./data/examples.json?v=20260620-cloud-examples', { cache: 'reload' });
     if (!response.ok) {
       exampleBank = {};
       return;

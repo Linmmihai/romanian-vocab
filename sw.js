@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ro-vocab-pwa-v8';
+const CACHE_NAME = 'ro-vocab-pwa-v9';
 const CACHE_FIRST_PATHS = [
   '/data/vocab.json',
   '/data/examples.json'
