@@ -1088,6 +1088,15 @@ function getRemainingDueReviewWords(words = W) {
   return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueReviewWord(w));
 }
 
+function getRemainingTodayReviewWords() {
+  if (!dailyQueueLoaded) return getRemainingDueReviewWords(W);
+  return todayQueue
+    .filter(ro => !setHasRo(todayQueueCompleted, ro))
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(w => isDueReviewWord(w) && !isRetryDeferred(w));
+}
+
 function isDailyQueueCandidate(w) {
   return isDueReviewWord(w) || isPendingLearningRetryWord(w) || isUnseenWord(w);
 }
@@ -1905,7 +1914,7 @@ function getReviewPanelMetrics(scoped) {
     .filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
     .length;
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
-  const remainingDueReviews = getRemainingDueReviewWords(W).length;
+  const remainingDueReviews = getRemainingTodayReviewWords().length;
   const availableNewSlots = Math.max(0, remainingSlots - remainingDueReviews);
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
   const metrics = { due, remainingSlots, remainingDueReviews, unseenRemaining };
@@ -2271,6 +2280,7 @@ function flushFastProgressQueue() {
   }
   setTimeout(() => setSyncBadge('', ''), 2000);
   invalidateQuizPracticePool();
+  renderReviewPanel();
   upStats();
   updateReviewBadge();
 }
@@ -2619,7 +2629,7 @@ function restoreAdminSections() {
 function updateReviewBadge() {
   const badge = document.getElementById('review-tab-badge') || document.getElementById('flash-tab-badge');
   if (!badge) return;
-  const count = getRemainingDueReviewWords(W).length;
+  const count = getRemainingTodayReviewWords().length;
   badge.textContent = count;
   badge.style.display = count > 0 ? 'inline' : 'none';
 }

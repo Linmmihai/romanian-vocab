@@ -94,6 +94,16 @@ function writeCachedWords(words) {
   }
 }
 
+function updateCachedWord(wordId, updates) {
+  const cached = readCachedWords();
+  if (!Array.isArray(cached) || !cached.length) return;
+  const nextWords = cached.map(word => Number(word?.id) === Number(wordId)
+    ? { ...word, ...updates }
+    : word
+  );
+  writeCachedWords(nextWords);
+}
+
 function rejectedProfilesKey() {
   return localKey(currentUser?.id || 'admin', 'rejected_profiles');
 }
@@ -580,6 +590,7 @@ async function apiUpdateWord(wordId, updates) {
   const { data, error } = await sb.from('words').update(updates).eq('id', wordId).select('id').maybeSingle();
   if (error) throw new Error(error.message);
   if (!data?.id) throw new Error('词条未保存：没有权限或词条不存在');
+  updateCachedWord(wordId, updates);
 }
 
 /**
