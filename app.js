@@ -1435,8 +1435,16 @@ function buildOpenTodayQueue(goal = dailyGoal) {
 
 function getDailyWordList(words = W, options = {}) {
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) {
-    debugDailyQueue('getDailyWordList:blocked-not-loaded', { options });
-    return [];
+    const hasActiveOpenCards = normalizeWordRoList(todayQueue)
+      .filter(ro => !setHasRo(todayQueueCompleted, ro))
+      .map(ro => getWordByRo(ro))
+      .filter(Boolean)
+      .some(isActiveTodayQueueWord);
+    if (!hasActiveOpenCards) {
+      debugDailyQueue('getDailyWordList:blocked-not-loaded', { options });
+      return [];
+    }
+    debugDailyQueue('getDailyWordList:using-active-queue-before-load', { options });
   }
   if (shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) {
     debugDailyQueue('getDailyWordList:blocked-paused', { options });

@@ -60,6 +60,7 @@ function repairTodayQueue({
   assert(app.includes('todaySeenWords.size'), 'expected metrics cache key to include todaySeenWords.size');
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');
   assert(app.includes('todayQueueCompleted.size'), 'expected metrics cache key to include completed queue size');
+  assert(app.includes('getDailyWordList:using-active-queue-before-load'), 'expected active repaired queues to render before dailyQueueLoaded settles');
 }
 
 console.log('daily queue repair verification passed');
