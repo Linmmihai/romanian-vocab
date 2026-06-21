@@ -494,8 +494,40 @@ function debugDailyQueue(stage, extra = {}) {
   return collectDailyQueueDebugMetrics(stage, extra);
 }
 
+const dailyQueuePerfCounters = {};
+
+function startDailyQueuePerf(name) {
+  if (!isDailyQueueDebugEnabled()) return null;
+  dailyQueuePerfCounters[name] = (dailyQueuePerfCounters[name] || 0) + 1;
+  return {
+    name,
+    count: dailyQueuePerfCounters[name],
+    startedAt: performance.now(),
+    queueSizeBefore: Array.isArray(todayQueue) ? todayQueue.length : 0,
+    idxBefore: idx
+  };
+}
+
+function finishDailyQueuePerf(perf, extra = {}) {
+  if (!perf) return;
+  const payload = {
+    functionName: perf.name,
+    callCount: perf.count,
+    durationMs: Math.round((performance.now() - perf.startedAt) * 100) / 100,
+    idx: idx,
+    idxBefore: perf.idxBefore,
+    queueSizeBefore: perf.queueSizeBefore,
+    queueSizeAfter: Array.isArray(todayQueue) ? todayQueue.length : 0,
+    filteredSize: Array.isArray(filtered) ? filtered.length : 0,
+    dailyQueueLoaded,
+    ...extra
+  };
+  console.info('[daily-queue-perf]', JSON.stringify(payload));
+}
+
 if (typeof window !== 'undefined') {
   window.__rvDebugDailyQueue = () => collectDailyQueueDebugMetrics('manual');
+  window.__rvDebugDailyQueuePerfCounters = dailyQueuePerfCounters;
 }
 
 function isTodayStudyBlocked() {
@@ -528,6 +560,14 @@ function saveRepairedTodayQueue(reason) {
 }
 
 function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
+  const perf = startDailyQueuePerf('ensureTodayQueueHasActiveCards');
+  let changed = false;
+  let persisted = false;
+  let eligibleNewCount = 0;
+  let vocabScanned = 0;
+  let activeOpenCount = 0;
+  let deferredOpenCount = 0;
+  let activeSlots = 0;
   const remainingQuota = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
   const canStudyToday = remainingQuota > 0 && !isTodayStudyBlocked();
   const queueRos = normalizeWordRoList(todayQueue);
@@ -541,22 +581,40 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     .map(ro => getWordByRo(ro))
     .filter(Boolean)
     .filter(isRetryDeferred);
-  const activeSlots = Math.max(0, remainingQuota - activeOpenWords.length);
+  activeOpenCount = activeOpenWords.length;
+  deferredOpenCount = deferredOpenWords.length;
+  activeSlots = Math.max(0, remainingQuota - activeOpenWords.length);
+  vocabScanned = canStudyToday && activeSlots > 0 ? W.length : 0;
   const eligibleNewWords = canStudyToday && activeSlots > 0
     ? getEligibleUnseenWordsForToday(W).slice(0, activeSlots)
     : [];
+  eligibleNewCount = eligibleNewWords.length;
 
   debugDailyQueue('ensureTodayQueueHasActiveCards:before', {
     reason,
     canStudyToday,
     remainingQuota,
-    activeOpenCount: activeOpenWords.length,
-    deferredOpenCount: deferredOpenWords.length,
+    activeOpenCount,
+    deferredOpenCount,
     activeSlots,
-    eligibleNewCount: eligibleNewWords.length
+    eligibleNewCount
   });
 
-  if (!canStudyToday || !eligibleNewWords.length) return false;
+  if (!canStudyToday || !eligibleNewWords.length) {
+    finishDailyQueuePerf(perf, {
+      reason,
+      changed: false,
+      persisted: false,
+      canStudyToday,
+      remainingQuota,
+      activeOpenCount,
+      deferredOpenCount,
+      activeSlots,
+      vocabScanned,
+      eligibleNewCount
+    });
+    return false;
+  }
 
   const keepRos = queueRos.filter(ro => {
     if (completedKeys.has(roKey(ro))) return false;
@@ -565,8 +623,22 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
   });
   const nextQueue = normalizeWordRoList([...activeOpenWords.map(w => w.ro), ...eligibleNewWords.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
   const mergedQueue = normalizeWordRoList([...nextQueue, ...keepRos.filter(ro => !nextQueue.some(next => roKey(next) === roKey(ro)))]);
-  const changed = mergedQueue.join('|') !== queueRos.join('|');
-  if (!changed) return false;
+  changed = mergedQueue.join('|') !== queueRos.join('|');
+  if (!changed) {
+    finishDailyQueuePerf(perf, {
+      reason,
+      changed: false,
+      persisted: false,
+      canStudyToday,
+      remainingQuota,
+      activeOpenCount,
+      deferredOpenCount,
+      activeSlots,
+      vocabScanned,
+      eligibleNewCount
+    });
+    return false;
+  }
 
   todayQueue = mergedQueue;
   dailyQueueVersion++;
@@ -576,7 +648,23 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     injectedCount: eligibleNewWords.length,
     resultSize: todayQueue.length
   });
-  if (!options.skipSave) saveRepairedTodayQueue(reason);
+  if (!options.skipSave) {
+    persisted = true;
+    saveRepairedTodayQueue(reason);
+  }
+  finishDailyQueuePerf(perf, {
+    reason,
+    changed,
+    persisted,
+    canStudyToday,
+    remainingQuota,
+    activeOpenCount,
+    deferredOpenCount,
+    activeSlots,
+    vocabScanned,
+    eligibleNewCount,
+    injectedCount: eligibleNewWords.length
+  });
   return true;
 }
 
@@ -1434,6 +1522,9 @@ function buildOpenTodayQueue(goal = dailyGoal) {
 }
 
 function getDailyWordList(words = W, options = {}) {
+  const perf = startDailyQueuePerf('getDailyWordList');
+  let resultSize = 0;
+  let path = 'unknown';
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) {
     const hasActiveOpenCards = normalizeWordRoList(todayQueue)
       .filter(ro => !setHasRo(todayQueueCompleted, ro))
@@ -1442,12 +1533,24 @@ function getDailyWordList(words = W, options = {}) {
       .some(isActiveTodayQueueWord);
     if (!hasActiveOpenCards) {
       debugDailyQueue('getDailyWordList:blocked-not-loaded', { options });
+      finishDailyQueuePerf(perf, {
+        path: 'blocked-not-loaded',
+        resultSize: 0,
+        vocabScanned: words.length,
+        options
+      });
       return [];
     }
     debugDailyQueue('getDailyWordList:using-active-queue-before-load', { options });
   }
   if (shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) {
     debugDailyQueue('getDailyWordList:blocked-paused', { options });
+    finishDailyQueuePerf(perf, {
+      path: 'blocked-paused',
+      resultSize: 0,
+      vocabScanned: words.length,
+      options
+    });
     return [];
   }
   ensureTodayQueueHasActiveCards('getDailyWordList');
@@ -1465,6 +1568,8 @@ function getDailyWordList(words = W, options = {}) {
     const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
     if (dueOpenWords.length >= limit) {
       const result = sortDailyPhaseWords(dueOpenWords).slice(0, limit);
+      resultSize = result.length;
+      path = 'due-only';
       debugDailyQueue('getDailyWordList:due-only', {
         options,
         scopedCount: scoped.length,
@@ -1472,10 +1577,19 @@ function getDailyWordList(words = W, options = {}) {
         dueOpenCount: dueOpenWords.length,
         resultSize: result.length
       });
+      finishDailyQueuePerf(perf, {
+        path,
+        resultSize,
+        vocabScanned: words.length,
+        openWordCount: openWords.length,
+        options
+      });
       return result;
     }
     const nonDueOpenWords = openWords.filter(w => !dueOpenWords.some(due => roKey(due.ro) === roKey(w.ro)));
     const result = sortDailyPhaseWords([...dueOpenWords, ...nonDueOpenWords]).slice(0, limit);
+    resultSize = result.length;
+    path = 'due-plus-non-due';
     debugDailyQueue('getDailyWordList:due-plus-non-due', {
       options,
       scopedCount: scoped.length,
@@ -1484,14 +1598,30 @@ function getDailyWordList(words = W, options = {}) {
       nonDueOpenCount: nonDueOpenWords.length,
       resultSize: result.length
     });
+    finishDailyQueuePerf(perf, {
+      path,
+      resultSize,
+      vocabScanned: words.length,
+      openWordCount: openWords.length,
+      options
+    });
     return result;
   }
   const result = sortDailyPhaseWords(openWords).slice(0, limit);
+  resultSize = result.length;
+  path = 'open';
   debugDailyQueue('getDailyWordList:open', {
     options,
     scopedCount: scoped.length,
     openWordCount: openWords.length,
     resultSize: result.length
+  });
+  finishDailyQueuePerf(perf, {
+    path,
+    resultSize,
+    vocabScanned: words.length,
+    openWordCount: openWords.length,
+    options
   });
   return result;
 }
@@ -1879,8 +2009,11 @@ const CORPUS_EXAMPLES = {
 };
 
 function applyFilters() {
+  const perf = startDailyQueuePerf('applyFilters');
+  let path = flashMode;
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (flashMode === 'today') {
+    path = 'today';
     debugDailyQueue('applyFilters:today-before', { scopedCount: scoped.length });
     ensureTodayQueueHasActiveCards('applyFilters:today-before');
     filtered = getDailyWordList(scoped, { includeFallback: true });
@@ -1907,15 +2040,22 @@ function applyFilters() {
       }
     }
   } else if (flashMode === 'review') {
+    path = 'review';
     filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueReviewWord);
     debugDailyQueue('applyFilters:review', { scopedCount: scoped.length });
   } else {
+    path = 'default';
     filtered = sortByReviewPriority(scoped).filter(w => getReviewBucket(w) !== 2);
     debugDailyQueue('applyFilters:default', { scopedCount: scoped.length });
   }
   idx = Math.min(idx, Math.max(filtered.length - 1, 0));
   debugDailyQueue('applyFilters:final', { scopedCount: scoped.length });
   renderReviewPanel();
+  finishDailyQueuePerf(perf, {
+    path,
+    vocabScanned: scoped.length,
+    resultSize: filtered.length
+  });
 }
 
 function isUnseenWord(w) {
@@ -2335,6 +2475,7 @@ function getCurrentScopeWords() {
 }
 
 function getReviewPanelMetrics(scoped) {
+  const perf = startDailyQueuePerf('getReviewPanelMetrics');
   const activeOpenQueueCount = todayQueue
     .filter(ro => !setHasRo(todayQueueCompleted, ro))
     .map(ro => getWordByRo(ro))
@@ -2354,6 +2495,12 @@ function getReviewPanelMetrics(scoped) {
     dailyQueueVersion
   ].join('|');
   if (reviewPanelMetricsCache.key === key && reviewPanelMetricsCache.metrics) {
+    finishDailyQueuePerf(perf, {
+      cacheHit: true,
+      vocabScanned: 0,
+      activeOpenQueueCount,
+      resultSize: 0
+    });
     return reviewPanelMetricsCache.metrics;
   }
   const due = getRemainingDueReviewWords(scoped).length;
@@ -2366,6 +2513,13 @@ function getReviewPanelMetrics(scoped) {
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
   const metrics = { due, remainingSlots, remainingDueReviews, unseenRemaining };
   reviewPanelMetricsCache = { key, metrics };
+  finishDailyQueuePerf(perf, {
+    cacheHit: false,
+    vocabScanned: scoped.length,
+    activeOpenQueueCount,
+    unseenRemaining,
+    remainingDueReviews
+  });
   return metrics;
 }
 
@@ -3451,6 +3605,7 @@ function getCurrentFlashWord() {
 }
 
 function renderCard() {
+  const perf = startDailyQueuePerf('renderCard');
   if (flashCardRenderTimer) {
     clearTimeout(flashCardRenderTimer);
     flashCardRenderTimer = null;
@@ -3512,13 +3667,31 @@ function renderCard() {
     setText('fc-level', '');
     const verifyEl = document.getElementById('fc-verify');
     if (verifyEl) verifyEl.style.display = 'none';
+    finishDailyQueuePerf(perf, {
+      path: 'empty',
+      vocabScanned: W.length,
+      resultSize: 0
+    });
     return;
   }
   const w = getCardRenderWord();
-  if (!w) return;
+  if (!w) {
+    finishDailyQueuePerf(perf, {
+      path: 'no-word',
+      vocabScanned: 0,
+      resultSize: 0
+    });
+    return;
+  }
   renderCardFront(w);
   renderCardBack(w);
   renderReviewPanel();
+  finishDailyQueuePerf(perf, {
+    path: 'card',
+    currentRo: w.ro,
+    vocabScanned: 0,
+    resultSize: filtered.length
+  });
 }
 
 function getCardRenderWord() {
@@ -3751,17 +3924,28 @@ function updateTodayCalendarCell() {
 
 // 「不认识」/「模糊」/「认识」
 function markCard(answer) {
-  if (flashcardAnswerInFlight) return;
+  const perf = startDailyQueuePerf('markCard');
+  let action = answer === true ? 'known' : (answer === false ? 'unknown' : answer);
+  if (flashcardAnswerInFlight) {
+    finishDailyQueuePerf(perf, { path: 'in-flight', action, vocabScanned: 0 });
+    return;
+  }
   const w = getCurrentFlashWord();
-  if (!w) return;
-  const action = answer === true ? 'known' : (answer === false ? 'unknown' : answer);
+  if (!w) {
+    finishDailyQueuePerf(perf, { path: 'no-word', action, vocabScanned: 0 });
+    return;
+  }
   const isKnownAction = action === 'known';
   const isUnknownAction = action === 'unknown';
   const isFuzzyAction = action === 'fuzzy';
   const completesTodayTask = isKnownAction || isFuzzyAction;
-  if (!['unknown', 'fuzzy', 'known'].includes(action)) return;
+  if (!['unknown', 'fuzzy', 'known'].includes(action)) {
+    finishDailyQueuePerf(perf, { path: 'invalid-action', action, vocabScanned: 0 });
+    return;
+  }
   flashcardAnswerInFlight = true;
   setFlashcardAnswerButtonsDisabled(true);
+  let path = 'answer';
   try {
     const wasReviewingHistory = !!flashOverrideRo;
     const p = getProgress(w.ro);
@@ -3820,12 +4004,20 @@ function markCard(answer) {
         showDailyGoalCompletionPrompt(true);
       }
     }
+    path = shouldStopForCheckin ? 'stop-for-checkin' : 'answered';
   } catch (error) {
+    path = 'error';
     console.warn('Flashcard answer failed', error);
     setFlashcardAnswerButtonsDisabled(false);
     showToast('保存失败，请稍后重试');
   } finally {
     flashcardAnswerInFlight = false;
+    finishDailyQueuePerf(perf, {
+      path,
+      action,
+      vocabScanned: 0,
+      resultSize: filtered.length
+    });
   }
 }
 
