@@ -382,7 +382,18 @@ function rowToProgress(r) {
     reviewStage ||
     (r.level && r.level !== 'unknown')
   );
-  return {
+  const recentResults = (() => {
+    const value = r.recent_results ?? r.recentResults;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return [];
+  })();
+  const baseProgress = {
     seen,
     seenViaCard: !!(r.seen_via_card ?? r.seenViaCard),
     known: r.known,
@@ -401,8 +412,23 @@ function rowToProgress(r) {
     errorStreak: r.error_streak ?? r.errorStreak,
     correctStreakSinceWrong: r.correct_streak_since_wrong ?? r.correctStreakSinceWrong ?? 0,
     lastWrongAt: r.last_wrong_at || r.lastWrongAt || null,
-    weakClearedAt: r.weak_cleared_at || r.weakClearedAt || null
+    weakClearedAt: r.weak_cleared_at || r.weakClearedAt || null,
+    cardState: r.card_state || r.cardState,
+    dueAt: r.due_at || r.dueAt || nextReviewAt,
+    intervalDays: r.interval_days ?? r.intervalDays,
+    memoryStrength: r.memory_strength ?? r.memoryStrength,
+    reps: r.reps,
+    correctCount: r.correct_count ?? r.correctCount,
+    fuzzyCount: r.fuzzy_count ?? r.fuzzyCount,
+    forgetCount: r.forget_count ?? r.forgetCount,
+    lapses: r.lapses,
+    recentResults,
+    needsReinforcement: r.needs_reinforcement ?? r.needsReinforcement,
+    lastReviewedAt
   };
+  return typeof RomanianVocabScheduler !== 'undefined'
+    ? { ...baseProgress, ...RomanianVocabScheduler.normalizeSchedulerProgress(baseProgress) }
+    : baseProgress;
 }
 
 function mergeProgressMemory(progress, backup = {}) {
@@ -411,7 +437,18 @@ function mergeProgressMemory(progress, backup = {}) {
     wrongCount: progress.wrongCount ?? backup.wrongCount ?? 0,
     errorStreak: progress.errorStreak ?? backup.errorStreak ?? 0,
     lastWrongAt: progress.lastWrongAt || backup.lastWrongAt || null,
-    weakClearedAt: progress.weakClearedAt || backup.weakClearedAt || null
+    weakClearedAt: progress.weakClearedAt || backup.weakClearedAt || null,
+    cardState: progress.cardState || backup.cardState || 'new',
+    dueAt: progress.dueAt || backup.dueAt || progress.nextReviewAt || null,
+    intervalDays: progress.intervalDays ?? backup.intervalDays ?? 0,
+    memoryStrength: progress.memoryStrength ?? backup.memoryStrength ?? 0,
+    reps: progress.reps ?? backup.reps ?? progress.qt ?? 0,
+    correctCount: progress.correctCount ?? backup.correctCount ?? progress.qr ?? 0,
+    fuzzyCount: progress.fuzzyCount ?? backup.fuzzyCount ?? 0,
+    forgetCount: progress.forgetCount ?? backup.forgetCount ?? Math.max(0, Number(progress.qt || 0) - Number(progress.qr || 0)),
+    lapses: progress.lapses ?? backup.lapses ?? 0,
+    recentResults: Array.isArray(progress.recentResults) ? progress.recentResults : (backup.recentResults || []),
+    needsReinforcement: progress.needsReinforcement ?? backup.needsReinforcement ?? false
   };
 }
 
@@ -476,11 +513,18 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const lastWrongAt = newerIso(localProgress.lastWrongAt, cloudProgress.lastWrongAt);
   const weakClearedAt = newerIso(localProgress.weakClearedAt, cloudProgress.weakClearedAt);
   const wasMasteredAt = newerIso(localProgress.wasMasteredAt, cloudProgress.wasMasteredAt);
+  const localScheduler = typeof RomanianVocabScheduler !== 'undefined'
+    ? RomanianVocabScheduler.normalizeSchedulerProgress(localProgress)
+    : localProgress;
+  const cloudScheduler = typeof RomanianVocabScheduler !== 'undefined'
+    ? RomanianVocabScheduler.normalizeSchedulerProgress(cloudProgress)
+    : cloudProgress;
   const nextReviewAt = laterReviewIso(
     localProgress.nextReviewAt || localProgress.nextReview,
     cloudProgress.nextReviewAt || cloudProgress.nextReview,
     lastReviewedAt
   );
+  const dueAt = localScheduler.dueAt || cloudScheduler.dueAt || nextReviewAt;
   const merged = {
     ...cloudProgress,
     ...localProgress,
@@ -494,6 +538,20 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
     reviewStage,
     reviewCount: reviewStage,
     nextReviewAt,
+    dueAt,
+    cardState: localScheduler.cardState || cloudScheduler.cardState || 'new',
+    intervalDays: Math.max(Number(localScheduler.intervalDays || 0), Number(cloudScheduler.intervalDays || 0)),
+    memoryStrength: Math.max(Number(localScheduler.memoryStrength || 0), Number(cloudScheduler.memoryStrength || 0)),
+    reps: Math.max(Number(localScheduler.reps || 0), Number(cloudScheduler.reps || 0)),
+    correctCount: Math.max(Number(localScheduler.correctCount || 0), Number(cloudScheduler.correctCount || 0)),
+    fuzzyCount: Math.max(Number(localScheduler.fuzzyCount || 0), Number(cloudScheduler.fuzzyCount || 0)),
+    forgetCount: Math.max(Number(localScheduler.forgetCount || 0), Number(cloudScheduler.forgetCount || 0)),
+    lapses: Math.max(Number(localScheduler.lapses || 0), Number(cloudScheduler.lapses || 0)),
+    recentResults: [
+      ...(Array.isArray(cloudScheduler.recentResults) ? cloudScheduler.recentResults : []),
+      ...(Array.isArray(localScheduler.recentResults) ? localScheduler.recentResults : [])
+    ].slice(-5),
+    needsReinforcement: !!(localScheduler.needsReinforcement || cloudScheduler.needsReinforcement),
     lastReviewedAt,
     wasMasteredAt,
     wrongCount,
@@ -884,6 +942,17 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
         {
           reviewStage: getProgressReviewStage(mergedProgress),
           nextReviewAt: mergedProgress.nextReviewAt || mergedProgress.nextReview || new Date().toISOString(),
+          dueAt: mergedProgress.dueAt || mergedProgress.nextReviewAt || mergedProgress.nextReview || new Date().toISOString(),
+          intervalDays: mergedProgress.intervalDays || 0,
+          memoryStrength: mergedProgress.memoryStrength || 0,
+          cardState: mergedProgress.cardState || 'new',
+          reps: mergedProgress.reps || 0,
+          correctCount: mergedProgress.correctCount || 0,
+          fuzzyCount: mergedProgress.fuzzyCount || 0,
+          forgetCount: mergedProgress.forgetCount || 0,
+          lapses: mergedProgress.lapses || 0,
+          recentResults: mergedProgress.recentResults || [],
+          needsReinforcement: !!mergedProgress.needsReinforcement,
           lastReviewedAt: mergedProgress.lastReviewedAt || new Date().toISOString()
         },
         null,
@@ -952,6 +1021,9 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     : review;
   const now = new Date().toISOString();
   const normalizedStage = getProgressReviewStage(normalized);
+  const scheduler = typeof RomanianVocabScheduler !== 'undefined'
+    ? RomanianVocabScheduler.normalizeSchedulerProgress({ ...normalized, known, qr, qt, level })
+    : normalized;
   const basePayload = {
     user_id: userId,
     word_ro: wordRo,
@@ -971,6 +1043,20 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     last_wrong_at: memory.lastWrongAt || null,
     weak_cleared_at: memory.weakClearedAt || null
   };
+  const schedulerPayload = {
+    ...modernPayload,
+    card_state: scheduler.cardState || 'new',
+    due_at: scheduler.dueAt || normalized.dueAt || normalized.nextReviewAt || now,
+    interval_days: Number(scheduler.intervalDays || 0),
+    memory_strength: Number(scheduler.memoryStrength || 0),
+    reps: Number(scheduler.reps || 0),
+    correct_count: Number(scheduler.correctCount || 0),
+    fuzzy_count: Number(scheduler.fuzzyCount || 0),
+    forget_count: Number(scheduler.forgetCount || 0),
+    lapses: Number(scheduler.lapses || 0),
+    recent_results: Array.isArray(scheduler.recentResults) ? scheduler.recentResults : [],
+    needs_reinforcement: !!scheduler.needsReinforcement
+  };
   const reviewOnlyPayload = {
     ...basePayload,
     review_stage: normalizedStage,
@@ -985,7 +1071,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
 
   if (isOfflineMode()) {
     const map = readJson(localKey(userId, 'progress'), {});
-    map[wordRo] = rowToProgress({ word_ro: wordRo, ...modernPayload });
+    map[wordRo] = rowToProgress({ word_ro: wordRo, ...schedulerPayload });
     writeJson(localKey(userId, 'progress'), map);
     const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
     return {
@@ -995,18 +1081,32 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     };
   }
 
-  let { error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' });
+  let { error } = await sb.from('progress').upsert(schedulerPayload, { onConflict: 'user_id,word_ro' });
   if (!error) {
     clearPendingProgress(userId, wordRo);
     const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
     return {
-      savedPayload: 'modern',
+      savedPayload: 'scheduler',
       memoryBackedByDb: true,
       memoryBackup
     };
   }
 
   const modernError = error;
+  ({ error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' }));
+  if (!error) {
+    clearPendingProgress(userId, wordRo);
+    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    console.warn('Progress saved without scheduler columns; local scheduler fields remain in pending/local backup.', modernError);
+    return {
+      savedPayload: 'modern',
+      memoryBackedByDb: true,
+      memoryBackup,
+      fallbackWarning: modernError.message
+    };
+  }
+
+  const schedulerError = modernError;
   ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_ro' }));
   if (!error) {
     clearPendingProgress(userId, wordRo);
@@ -1016,12 +1116,12 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
       savedPayload: 'reviewOnly',
       memoryBackedByDb: false,
       memoryBackup,
-      fallbackWarning: modernError.message
+      fallbackWarning: schedulerError.message
     };
   }
 
   ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
-  if (error) throw new Error(`${modernError.message}; ${error.message}`);
+  if (error) throw new Error(`${schedulerError.message}; ${error.message}`);
   clearPendingProgress(userId, wordRo);
   const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
   console.warn('Progress saved with legacy review columns; wrongbook memory is local-backup only.', modernError);

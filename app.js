@@ -144,6 +144,33 @@ function getProgressGrammarQt(progress = {}) {
   return Number(progress.grammarQt || progress.grammar_qt || 0) || 0;
 }
 
+function normalizeScheduler(progress = {}, now = new Date()) {
+  if (window.RomanianVocabScheduler?.normalizeSchedulerProgress) {
+    return window.RomanianVocabScheduler.normalizeSchedulerProgress(progress, now);
+  }
+  return {
+    cardState: progress.cardState || progress.card_state || 'new',
+    dueAt: progress.dueAt || progress.due_at || progress.nextReviewAt || progress.nextReview || null,
+    intervalDays: Number(progress.intervalDays || progress.interval_days || 0) || 0,
+    memoryStrength: Number(progress.memoryStrength || progress.memory_strength || 0) || 0,
+    reps: Number(progress.reps || progress.qt || 0) || 0,
+    correctCount: Number(progress.correctCount || progress.correct_count || progress.qr || 0) || 0,
+    fuzzyCount: Number(progress.fuzzyCount || progress.fuzzy_count || 0) || 0,
+    forgetCount: Number(progress.forgetCount || progress.forget_count || Math.max(0, (progress.qt || 0) - (progress.qr || 0))) || 0,
+    lapses: Number(progress.lapses || 0) || 0,
+    recentResults: Array.isArray(progress.recentResults) ? progress.recentResults : [],
+    needsReinforcement: !!(progress.needsReinforcement || progress.needs_reinforcement),
+    lastReviewedAt: progress.lastReviewedAt || progress.last_reviewed_at || null
+  };
+}
+
+function mergeRecentResults(existing = [], incoming = []) {
+  const results = [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])]
+    .map(String)
+    .filter(Boolean);
+  return results.slice(-5);
+}
+
 function mergeProgressEntry(existing = null, incoming = {}) {
   if (!existing) return incoming;
   const existingQt = Number(existing.qt || 0);
@@ -154,6 +181,26 @@ function mergeProgressEntry(existing = null, incoming = {}) {
   const nextReviewAt = newerIsoLike(existing.nextReviewAt || existing.nextReview, incoming.nextReviewAt || incoming.nextReview);
   const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
   const wasMasteredAt = newerIsoLike(existing.wasMasteredAt, incoming.wasMasteredAt);
+  const existingScheduler = normalizeScheduler(existing);
+  const incomingScheduler = normalizeScheduler(incoming);
+  const schedulerBase = new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime() >=
+    new Date(existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0).getTime()
+      ? incomingScheduler
+      : existingScheduler;
+  const schedulerFields = {
+    cardState: schedulerBase.cardState,
+    dueAt: schedulerBase.dueAt || null,
+    intervalDays: Math.max(Number(existingScheduler.intervalDays || 0), Number(incomingScheduler.intervalDays || 0)),
+    memoryStrength: Math.max(Number(existingScheduler.memoryStrength || 0), Number(incomingScheduler.memoryStrength || 0)),
+    reps: Math.max(Number(existingScheduler.reps || 0), Number(incomingScheduler.reps || 0)),
+    correctCount: Math.max(Number(existingScheduler.correctCount || 0), Number(incomingScheduler.correctCount || 0)),
+    fuzzyCount: Math.max(Number(existingScheduler.fuzzyCount || 0), Number(incomingScheduler.fuzzyCount || 0)),
+    forgetCount: Math.max(Number(existingScheduler.forgetCount || 0), Number(incomingScheduler.forgetCount || 0)),
+    lapses: Math.max(Number(existingScheduler.lapses || 0), Number(incomingScheduler.lapses || 0)),
+    recentResults: mergeRecentResults(existingScheduler.recentResults, incomingScheduler.recentResults),
+    needsReinforcement: !!(existingScheduler.needsReinforcement || incomingScheduler.needsReinforcement),
+    lastReviewedAt: lastReviewedAt || schedulerBase.lastReviewedAt || null
+  };
   return {
     ...other,
     ...base,
@@ -166,6 +213,7 @@ function mergeProgressEntry(existing = null, incoming = {}) {
     reviewCount: reviewStage,
     nextReviewAt: nextReviewAt || base.nextReviewAt || other.nextReviewAt,
     lastReviewedAt: lastReviewedAt || base.lastReviewedAt || other.lastReviewedAt,
+    ...schedulerFields,
     grammarQr: Math.max(getProgressGrammarQr(existing), getProgressGrammarQr(incoming)),
     grammarQt: Math.max(getProgressGrammarQt(existing), getProgressGrammarQt(incoming)),
     wasMasteredAt: wasMasteredAt || null,
@@ -1087,19 +1135,27 @@ function buildSmartDailyPlan(words = W, limit = dailyGoal) {
   const cap = Math.max(1, Number(limit || dailyGoal || 20));
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
   const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
-  const due = sortReviewDueWithWeakPriority(usable).filter(isDueReviewWord);
-  const weak = getDifficultWords(usable).filter(w => !due.some(d => d.ro === w.ro));
+  const overdueLearning = sortReviewDueWithWeakPriority(usable).filter(isOverdueLearningOrReinforcingWord);
+  const overdueSet = new Set(overdueLearning.map(w => roKey(w.ro)));
+  const due = sortReviewDueWithWeakPriority(usable).filter(w => !overdueSet.has(roKey(w.ro)) && isDueReviewWord(w));
+  const dueSet = new Set([...overdueSet, ...due.map(w => roKey(w.ro))]);
+  const weak = getReinforcementWordsDueToday(usable).filter(w => !dueSet.has(roKey(w.ro)));
+  const weakSet = new Set([...dueSet, ...weak.map(w => roKey(w.ro))]);
   const unseen = getUnseenWords(usable);
-  return uniqueWordsByRo([...due, ...weak, ...unseen]).slice(0, cap);
+  return uniqueWordsByRo([...overdueLearning, ...due, ...weak, ...unseen.filter(w => !weakSet.has(roKey(w.ro)))]).slice(0, cap);
 }
 
 function hasWordProgress(progress) {
+  const scheduler = normalizeScheduler(progress || {});
   return !!(progress && (
     progress.seen ||
     progress.known ||
     progress.qt ||
     progress.qr ||
     getProgressReviewStage(progress) ||
+    scheduler.cardState !== 'new' ||
+    scheduler.reps ||
+    scheduler.dueAt ||
     (progress.level && progress.level !== 'unknown')
   ));
 }
@@ -1109,10 +1165,27 @@ function isDueReviewWord(w) {
   return !!(hasWordProgress(p) && isReviewDue(p));
 }
 
+function isOverdueLearningOrReinforcingWord(w) {
+  const p = getProgress(w?.ro);
+  if (!hasWordProgress(p) || !isReviewDue(p)) return false;
+  const scheduler = normalizeScheduler(p);
+  return scheduler.cardState === 'learning' || scheduler.cardState === 'reinforcing' || scheduler.needsReinforcement;
+}
+
+function getReinforcementWordsDueToday(words = W) {
+  return getDifficultWords(words).filter(w => {
+    const p = getProgress(w?.ro);
+    if (!hasWordProgress(p)) return false;
+    const scheduler = normalizeScheduler(p);
+    return scheduler.needsReinforcement || scheduler.cardState === 'reinforcing';
+  });
+}
+
 function isPendingLearningRetryWord(w) {
   const p = getProgress(w?.ro);
   if (!hasWordProgress(p) || isReviewDue(p)) return false;
-  return !p.known && getStoredLevel(p) !== 'mastered';
+  const scheduler = normalizeScheduler(p);
+  return scheduler.cardState === 'learning' || scheduler.cardState === 'reinforcing' || (!p.known && getStoredLevel(p) !== 'mastered');
 }
 
 function getRemainingDueReviewWords(words = W) {
@@ -1129,17 +1202,21 @@ function getRemainingTodayReviewWords() {
 }
 
 function isDailyQueueCandidate(w) {
-  return isDueReviewWord(w) || isPendingLearningRetryWord(w) || isUnseenWord(w);
+  return isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w) || isPendingLearningRetryWord(w) || isUnseenWord(w);
 }
 
 function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
   const cap = Math.max(1, Number(limit || dailyGoal || 20));
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
   const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
-  const due = sortReviewDueWithWeakPriority(usable).filter(isDueReviewWord);
-  const dueSet = new Set(due.map(w => w.ro));
-  const unseen = getUnseenWords(usable).filter(w => !dueSet.has(w.ro));
-  return uniqueWordsByRo([...due, ...unseen]).slice(0, cap);
+  const overdueLearning = sortReviewDueWithWeakPriority(usable).filter(isOverdueLearningOrReinforcingWord);
+  const overdueSet = new Set(overdueLearning.map(w => roKey(w.ro)));
+  const due = sortReviewDueWithWeakPriority(usable).filter(w => !overdueSet.has(roKey(w.ro)) && isDueReviewWord(w));
+  const dueSet = new Set([...overdueSet, ...due.map(w => roKey(w.ro))]);
+  const weak = getReinforcementWordsDueToday(usable).filter(w => !dueSet.has(roKey(w.ro)));
+  const weakSet = new Set([...dueSet, ...weak.map(w => roKey(w.ro))]);
+  const unseen = getUnseenWords(usable).filter(w => !weakSet.has(roKey(w.ro)));
+  return uniqueWordsByRo([...overdueLearning, ...due, ...weak, ...unseen]).slice(0, cap);
 }
 
 function buildOpenTodayQueue(goal = dailyGoal) {
@@ -1148,16 +1225,15 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     const word = getWordByRo(ro);
     if (!word || setHasRo(todayQueueCompleted, ro)) return false;
     const p = getProgress(ro);
-    return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(word);
+    return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(word) || normalizeScheduler(p || {}).needsReinforcement;
   });
   const selectedKeys = new Set([...open, ...todayQueueCompleted].map(roKey));
   const slots = Math.max(0, cap - selectedKeys.size);
   if (!slots) return open;
   const blocked = new Set([...selectedKeys, ...todaySeenWords].map(roKey));
-  const additions = getUnseenWords(W)
-    .filter(w => !blocked.has(roKey(w.ro)))
-    .slice(0, slots)
-    .map(w => w.ro);
+  const candidates = buildReviewFirstDailyPlan(W, Math.max(slots, dailyGoal))
+    .filter(w => !blocked.has(roKey(w.ro)));
+  const additions = candidates.slice(0, slots).map(w => w.ro);
   return normalizeWordRoList([...open, ...additions]);
 }
 
@@ -1184,10 +1260,11 @@ function getDailyTaskType(w) {
 function getAuxiliaryLabels(w) {
   if (!w) return [];
   const labels = [];
+  const scheduler = normalizeScheduler(getProgress(w.ro) || {});
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) labels.push('今日任务');
   if (!hasWordProgress(getProgress(w.ro)) && !setHasRo(todaySeenWords, w.ro)) labels.push('新词');
   if (isDueReviewWord(w)) labels.push('到期复习');
-  if (isWrongWord(w.ro)) labels.push('需加强');
+  if ((scheduler.needsReinforcement || scheduler.cardState === 'reinforcing' || isWrongWord(w.ro)) && !labels.includes('需加强')) labels.push('需加强');
   return labels;
 }
 
@@ -1411,6 +1488,7 @@ function repairStartedProgressForCompletedTodayWords() {
     const canonicalRo = canonicalWordRo(ro);
     if (!canonicalRo) continue;
     const nowIso = new Date().toISOString();
+    const review = getSchedulerReview({}, 'known', { now: nowIso });
     const repairedProgress = {
       seen: true,
       seenViaCard: true,
@@ -1418,10 +1496,7 @@ function repairStartedProgressForCompletedTodayWords() {
       qr: 1,
       qt: 1,
       level: 'learning',
-      reviewStage: 0,
-      reviewCount: 0,
-      nextReviewAt: nowIso,
-      lastReviewedAt: nowIso,
+      ...review,
       wrongCount: 0,
       errorStreak: 0,
       lastWrongAt: null,
@@ -1468,10 +1543,16 @@ async function reconcileTodayQueueAfterProgress(wordRo) {
  * mastered → 答题次数 ≥ 3、正确率 ≥ 80%，且 reviewStage >= 2
  */
 function calcLevel(qr, qt, known = false, progress = {}) {
+  const scheduler = normalizeScheduler(progress);
+  if (scheduler.cardState === 'mastered') return 'mastered';
   if (!qt) return known ? 'learning' : 'unknown';
   const pct = qr / qt;
-  const reviewStage = getProgressReviewStage(progress);
-  if (qt >= 3 && pct >= 0.8 && reviewStage >= 2) return 'mastered';
+  if (
+    scheduler.cardState === 'review' &&
+    scheduler.intervalDays >= 15 &&
+    scheduler.memoryStrength >= 75 &&
+    !scheduler.needsReinforcement
+  ) return 'mastered';
   return 'learning';
 }
 
@@ -1492,11 +1573,14 @@ function applyMasteryHistory(progress = {}, prev = {}) {
 function buildReviewFromPrev(prev = {}) {
   const nowIso = new Date().toISOString();
   const stage = getProgressReviewStage(prev);
+  const scheduler = normalizeScheduler(prev);
   return {
     reviewStage: stage,
     reviewCount: stage,
-    nextReviewAt: prev.nextReviewAt || prev.nextReview || nowIso,
-    lastReviewedAt: prev.lastReviewedAt || nowIso
+    nextReviewAt: scheduler.dueAt || prev.nextReviewAt || prev.nextReview || nowIso,
+    dueAt: scheduler.dueAt || prev.nextReviewAt || prev.nextReview || nowIso,
+    lastReviewedAt: scheduler.lastReviewedAt || prev.lastReviewedAt || nowIso,
+    ...scheduler
   };
 }
 
@@ -1519,22 +1603,20 @@ function isStartedNotMastered(progress) {
   return getStoredLevel(progress) !== 'mastered';
 }
 
-const LEVEL_LABEL = { unknown: '未学', queued: '今日待学', learning: '学习中', review: '待复习', mastered: '已掌握' };
-const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', review: 'var(--red)', mastered: 'var(--green)' };
-const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', review: 'var(--red-bg)', mastered: 'var(--green-bg)' };
-const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', review: 'var(--red-text)', mastered: 'var(--green-text)' };
+const LEVEL_LABEL = { unknown: '未学', queued: '今日待学', learning: '学习中', review: '待复习', reinforcing: '需加强', mastered: '已掌握' };
+const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', review: 'var(--red)', reinforcing: 'var(--red)', mastered: 'var(--green)' };
+const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', review: 'var(--red-bg)', reinforcing: 'var(--red-bg)', mastered: 'var(--green-bg)' };
+const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', review: 'var(--red-text)', reinforcing: 'var(--red-text)', mastered: 'var(--green-text)' };
 const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
 const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
 const REINFORCEMENT_MIN_LEARNING_MISSES = 2;
 const REVIEW_INTERVALS = [
-  { label: '20分钟', ms: 20 * 60 * 1000 },
   { label: '1天', ms: 24 * 60 * 60 * 1000 },
-  { label: '2天', ms: 2 * 24 * 60 * 60 * 1000 },
-  { label: '4天', ms: 4 * 24 * 60 * 60 * 1000 },
+  { label: '3天', ms: 3 * 24 * 60 * 60 * 1000 },
   { label: '7天', ms: 7 * 24 * 60 * 60 * 1000 },
   { label: '15天', ms: 15 * 24 * 60 * 60 * 1000 },
   { label: '30天', ms: 30 * 24 * 60 * 60 * 1000 },
-  { label: '90天', ms: 90 * 24 * 60 * 60 * 1000 },
+  { label: '60天', ms: 60 * 24 * 60 * 60 * 1000 },
 ];
 const EXAMPLE_CACHE_PREFIX = 'corpus_example:v2:';
 const CORPUS_EXAMPLES = {
@@ -1642,13 +1724,17 @@ function populateCategoryDatalist() {
 }
 
 function isReviewDue(progress) {
-  if (!progress?.nextReviewAt) return false;
-  return new Date(progress.nextReviewAt).getTime() <= Date.now();
+  if (!progress) return false;
+  const scheduler = normalizeScheduler(progress);
+  const dueAt = scheduler.dueAt || progress.nextReviewAt || progress.nextReview;
+  if (!dueAt) return false;
+  return new Date(dueAt).getTime() <= Date.now();
 }
 
 function getReviewBucket(w) {
   const p = getProgress(w.ro);
   if (!hasWordProgress(p)) return 1;
+  if (normalizeScheduler(p).needsReinforcement) return 0;
   return isReviewDue(p) ? 0 : 2;
 }
 
@@ -1659,16 +1745,20 @@ function sortByReviewPriority(words) {
     if (ba !== bb) return ba - bb;
     const pa = getProgress(a.ro) || {};
     const pb = getProgress(b.ro) || {};
-    const da = pa.nextReviewAt ? new Date(pa.nextReviewAt).getTime() : 0;
-    const db = pb.nextReviewAt ? new Date(pb.nextReviewAt).getTime() : 0;
+    const da = normalizeScheduler(pa).dueAt ? new Date(normalizeScheduler(pa).dueAt).getTime() : 0;
+    const db = normalizeScheduler(pb).dueAt ? new Date(normalizeScheduler(pb).dueAt).getTime() : 0;
     return da - db || String(a.ro).localeCompare(String(b.ro), 'ro');
   });
 }
 
 function getProgressLevel(wordRo) {
   const p = getProgress(wordRo) || {};
+  const scheduler = normalizeScheduler(p);
   if (!hasWordProgress(p) && roListIncludes(todayQueue, wordRo) && !setHasRo(todayQueueCompleted, wordRo)) return 'queued';
+  if (hasWordProgress(p) && (scheduler.needsReinforcement || scheduler.cardState === 'reinforcing')) return 'reinforcing';
+  if (hasWordProgress(p) && scheduler.cardState === 'mastered') return 'mastered';
   if (hasWordProgress(p) && isReviewDue(p)) return 'review';
+  if (hasWordProgress(p) && scheduler.cardState === 'review') return getStoredLevel(p);
   if (!hasWordProgress(p) && setHasRo(todayQueueCompleted, wordRo)) return 'learning';
   if (!hasWordProgress(p) && setHasRo(todaySeenWords, wordRo)) return 'learning';
   return getStoredLevel(p);
@@ -1719,7 +1809,8 @@ function getDifficultWords(words = W) {
 
 function isWeakLearningWord(wordRo) {
   const p = getProgress(wordRo) || {};
-  return hasWordProgress(p) && getStoredLevel(p) !== 'mastered';
+  const scheduler = normalizeScheduler(p);
+  return hasWordProgress(p) && (scheduler.needsReinforcement || getStoredLevel(p) !== 'mastered');
 }
 
 function isUnclearedWeakLearningMiss(wordRo) {
@@ -1757,8 +1848,11 @@ function sortReviewDueWithWeakPriority(words) {
     const pb = getProgress(b.ro) || {};
     const sa = getDifficultScore(a);
     const sb = getDifficultScore(b);
-    const da = pa.nextReviewAt ? new Date(pa.nextReviewAt).getTime() : 0;
-    const db = pb.nextReviewAt ? new Date(pb.nextReviewAt).getTime() : 0;
+    const schedulerA = normalizeScheduler(pa);
+    const schedulerB = normalizeScheduler(pb);
+    const da = schedulerA.dueAt ? new Date(schedulerA.dueAt).getTime() : 0;
+    const db = schedulerB.dueAt ? new Date(schedulerB.dueAt).getTime() : 0;
+    if (schedulerA.needsReinforcement !== schedulerB.needsReinforcement) return schedulerA.needsReinforcement ? -1 : 1;
     return sb.rate - sa.rate ||
       sb.streak - sa.streak ||
       sb.lastWrong - sa.lastWrong ||
@@ -1795,10 +1889,35 @@ function getNextReview(progress, success) {
   };
 }
 
+function reviewStageFromIntervalDays(intervalDays) {
+  const days = Number(intervalDays || 0);
+  if (!days) return 0;
+  const index = REVIEW_INTERVALS.findIndex(interval => Math.round(interval.ms / (24 * 60 * 60 * 1000)) >= days);
+  return index >= 0 ? index + 1 : REVIEW_INTERVALS.length;
+}
+
+function getSchedulerReview(progress = {}, action, options = {}) {
+  if (!window.RomanianVocabScheduler?.scheduleCardReview) {
+    return getNextReview(progress, action === 'known');
+  }
+  const scheduler = window.RomanianVocabScheduler.scheduleCardReview(progress, action, options);
+  const reviewStage = reviewStageFromIntervalDays(scheduler.intervalDays);
+  return {
+    ...scheduler,
+    reviewStage,
+    reviewCount: reviewStage,
+    dueAt: scheduler.dueAt,
+    nextReviewAt: scheduler.dueAt,
+    lastReviewedAt: scheduler.lastReviewedAt
+  };
+}
+
 function isRetryDeferred(w) {
   const p = getProgress(w?.ro);
-  if (!p || !p.nextReviewAt || !(p.qt || p.known)) return false;
-  return new Date(p.nextReviewAt).getTime() > Date.now();
+  const scheduler = normalizeScheduler(p || {});
+  const dueAt = scheduler.dueAt || p?.nextReviewAt || p?.nextReview;
+  if (!p || !dueAt || !(p.qt || p.known || scheduler.reps)) return false;
+  return new Date(dueAt).getTime() > Date.now();
 }
 
 function formatReviewDue(iso) {
@@ -2133,9 +2252,10 @@ function isCoreMemoryExercise(options = {}) {
 function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options = {}) {
   const nowIso = new Date().toISOString();
   const coreMemory = isCoreMemoryExercise(options);
+  const schedulerAction = options.schedulerAction || (success ? 'known' : 'unknown');
   const review = options.clearWrongbook
     ? buildReviewFromPrev(prev)
-    : (coreMemory ? getNextReview(prev, success) : buildReviewFromPrev(prev));
+    : (coreMemory ? getSchedulerReview(prev, schedulerAction, { now: nowIso }) : buildReviewFromPrev(prev));
   const nextQr = coreMemory ? (qr || 0) : (prev.qr || 0);
   const nextQt = coreMemory ? (qt || 0) : (prev.qt || 0);
   const nextKnown = coreMemory ? known : !!prev.known;
@@ -2224,7 +2344,7 @@ const INTERACTION_RULES = {
       qr: (prev.qr || 0) + 1,
       qt: (prev.qt || 0) + 1,
       success: true,
-      options: { seenViaCard: true }
+      options: { seenViaCard: true, schedulerAction: 'known' }
     };
   },
   flashcard_unknown(prev) {
@@ -2233,7 +2353,16 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: { seenViaCard: true }
+      options: { seenViaCard: true, schedulerAction: 'unknown' }
+    };
+  },
+  flashcard_fuzzy(prev) {
+    return {
+      known: !!prev.known,
+      qr: prev.qr || 0,
+      qt: (prev.qt || 0) + 1,
+      success: false,
+      options: { seenViaCard: true, schedulerAction: 'fuzzy' }
     };
   },
   review_correct(prev) {
@@ -2242,7 +2371,7 @@ const INTERACTION_RULES = {
       qr: (prev.qr || 0) + 1,
       qt: (prev.qt || 0) + 1,
       success: true,
-      options: { seenViaCard: true }
+      options: { seenViaCard: true, schedulerAction: 'known' }
     };
   },
   review_wrong(prev) {
@@ -2251,7 +2380,16 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: { seenViaCard: true, preserveLearningLevel: true, trackWrongbook: shouldTrackWrongbookForMiss(prev) }
+      options: { seenViaCard: true, preserveLearningLevel: true, trackWrongbook: shouldTrackWrongbookForMiss(prev), schedulerAction: 'unknown' }
+    };
+  },
+  review_fuzzy(prev) {
+    return {
+      known: !!prev.known,
+      qr: prev.qr || 0,
+      qt: (prev.qt || 0) + 1,
+      success: false,
+      options: { seenViaCard: true, preserveLearningLevel: true, trackWrongbook: shouldTrackWrongbookForMiss(prev), schedulerAction: 'fuzzy' }
     };
   },
   quiz_correct(prev) {
@@ -2593,8 +2731,9 @@ function handleFlashShortcut(key) {
   if (key.toLowerCase() === 'f') { flipCard(); return true; }
   if (key === 'ArrowLeft' || key.toLowerCase() === 'b') { prevCard(); return true; }
   if (key === 'ArrowRight' || key.toLowerCase() === 'n') { nextCard(); return true; }
-  if (flipped && key === '1') { markCard(false); return true; }
-  if (flipped && key === '2') { markCard(true); return true; }
+  if (flipped && key === '1') { markCard('unknown'); return true; }
+  if (flipped && key === '2') { markCard('fuzzy'); return true; }
+  if (flipped && key === '3') { markCard('known'); return true; }
   if (key.toLowerCase() === 'p') { speak(1); return true; }
   return false;
 }
@@ -3201,19 +3340,26 @@ function getNextDailyFallbackWord(currentRo) {
 function bindFlashcardButtons() {
   if (flashcardButtonsBound) return;
   const knownBtn = document.getElementById('mark-known-btn');
+  const fuzzyBtn = document.getElementById('mark-fuzzy-btn');
   const unknownBtn = document.getElementById('mark-unknown-btn');
-  if (!knownBtn || !unknownBtn) return;
+  if (!knownBtn || !fuzzyBtn || !unknownBtn) return;
 
   knownBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    markCard(true);
+    markCard('known');
+  });
+
+  fuzzyBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    markCard('fuzzy');
   });
 
   unknownBtn.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    markCard(false);
+    markCard('unknown');
   });
 
   flashcardButtonsBound = true;
@@ -3221,8 +3367,10 @@ function bindFlashcardButtons() {
 
 function setFlashcardAnswerButtonsDisabled(disabled) {
   const knownBtn = document.getElementById('mark-known-btn');
+  const fuzzyBtn = document.getElementById('mark-fuzzy-btn');
   const unknownBtn = document.getElementById('mark-unknown-btn');
   if (knownBtn) knownBtn.disabled = disabled;
+  if (fuzzyBtn) fuzzyBtn.disabled = disabled;
   if (unknownBtn) unknownBtn.disabled = disabled;
 }
 
@@ -3249,11 +3397,17 @@ function updateTodayCalendarCell() {
   });
 }
 
-// 「认识了」/「不认识」
-function markCard(yes) {
+// 「不认识」/「模糊」/「认识」
+function markCard(answer) {
   if (flashcardAnswerInFlight) return;
   const w = getCurrentFlashWord();
   if (!w) return;
+  const action = answer === true ? 'known' : (answer === false ? 'unknown' : answer);
+  const isKnownAction = action === 'known';
+  const isUnknownAction = action === 'unknown';
+  const isFuzzyAction = action === 'fuzzy';
+  const completesTodayTask = isKnownAction || isFuzzyAction;
+  if (!['unknown', 'fuzzy', 'known'].includes(action)) return;
   flashcardAnswerInFlight = true;
   setFlashcardAnswerButtonsDisabled(true);
   try {
@@ -3261,17 +3415,21 @@ function markCard(yes) {
     const p = getProgress(w.ro);
     const isReviewTask = flashMode === 'review' || (flashMode === 'today' && p && (p.qt || p.known));
     const interaction = flashMode === 'review'
-      ? (yes ? 'review_correct' : 'review_wrong')
-      : (isReviewTask ? (yes ? 'review_correct' : 'review_wrong') : (yes ? 'flashcard_known' : 'flashcard_unknown'));
-    if (flashMode === 'today') queueTodayAccuracyAttempt(yes);
+      ? (isKnownAction ? 'review_correct' : (isFuzzyAction ? 'review_fuzzy' : 'review_wrong'))
+      : (isReviewTask
+        ? (isKnownAction ? 'review_correct' : (isFuzzyAction ? 'review_fuzzy' : 'review_wrong'))
+        : (isKnownAction ? 'flashcard_known' : (isFuzzyAction ? 'flashcard_fuzzy' : 'flashcard_unknown')));
+    if (flashMode === 'today') queueTodayAccuracyAttempt(isKnownAction);
     const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
     setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() });
     let dailyStateResult = null;
     const isOpenTodayWord = flashMode === 'today'
       && roListIncludes(todayQueue, w.ro)
       && !setHasRo(todayQueueCompleted, w.ro);
-    if (flashMode === 'today' && yes) {
-      lastLearningHint = '';
+    if (flashMode === 'today' && completesTodayTask) {
+      lastLearningHint = isFuzzyAction
+        ? `已按模糊完成今日任务；「${w.zh || w.ro}」明天会继续复习。`
+        : '';
       dailyStateResult = isOpenTodayWord
         ? commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true })
         : null;
@@ -3281,9 +3439,11 @@ function markCard(yes) {
         : null;
       lastLearningHint = dailyStateResult?.counted
         ? `已计入今日新词；「${w.zh || w.ro}」会留在今日任务里继续巩固。`
-        : `已保留「${w.zh || w.ro}」在今日任务里；记住后才会完成这个词。`;
-    } else if (!yes) {
+        : `已保留「${w.zh || w.ro}」在今日任务里；稳定认识后才会完成这个词。`;
+    } else if (isUnknownAction) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
+    } else if (isFuzzyAction) {
+      showToast('已按模糊处理，系统会安排较近的复习');
     }
     const shouldStopForCheckin = flashMode === 'today' && shouldPauseTodayStudyForCheckin();
     // 跳下一张，重置为中文面
@@ -4452,7 +4612,18 @@ async function importProgressBackup(file) {
         p.level || getStoredLevel(p),
         {
           reviewStage: getProgressReviewStage(p),
-          nextReviewAt: p.nextReviewAt || p.next_review_at || new Date().toISOString(),
+          nextReviewAt: p.nextReviewAt || p.next_review_at || p.dueAt || p.due_at || new Date().toISOString(),
+          dueAt: p.dueAt || p.due_at || p.nextReviewAt || p.next_review_at || new Date().toISOString(),
+          intervalDays: p.intervalDays || p.interval_days || 0,
+          memoryStrength: p.memoryStrength || p.memory_strength || 0,
+          cardState: p.cardState || p.card_state || 'new',
+          reps: p.reps || p.qt || 0,
+          correctCount: p.correctCount || p.correct_count || p.qr || 0,
+          fuzzyCount: p.fuzzyCount || p.fuzzy_count || 0,
+          forgetCount: p.forgetCount || p.forget_count || Math.max(0, Number(p.qt || 0) - Number(p.qr || 0)),
+          lapses: p.lapses || 0,
+          recentResults: p.recentResults || p.recent_results || [],
+          needsReinforcement: !!(p.needsReinforcement || p.needs_reinforcement),
           lastReviewedAt: p.lastReviewedAt || p.last_reviewed_at || new Date().toISOString()
         },
         null,

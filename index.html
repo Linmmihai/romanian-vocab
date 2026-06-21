@@ -175,9 +175,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-wrap>#main-card.flipped{border-bottom-left-radius:0;border-bottom-right-radius:0}
 .card-wrap>#main-card.flipped+.card-answer-row{display:flex}
 .know-yes{flex:1;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer}
+.know-fuzzy{flex:1;padding:11px;border:1px solid var(--yellow);border-radius:var(--radius-sm);background:white;color:var(--yellow-text);font-size:14px;font-weight:600;cursor:pointer}
 .know-no{flex:1;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer}
-.know-yes:disabled,.know-no:disabled{opacity:.55;cursor:wait}
-.know-yes:hover{background:var(--green-bg)}.know-no:hover{background:var(--red-bg)}
+.know-yes:disabled,.know-fuzzy:disabled,.know-no:disabled{opacity:.55;cursor:wait}
+.know-yes:hover{background:var(--green-bg)}.know-fuzzy:hover{background:#fffbeb}.know-no:hover{background:var(--red-bg)}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:420px}
 .calendar-weekday{text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding-bottom:2px}
 .calendar-cell{height:42px;border-radius:10px;background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--text3);font-weight:600;border:1px solid transparent}
@@ -533,7 +534,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div class="card-answer-row">
           <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识</button>
-          <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识了</button>
+          <button type="button" class="know-fuzzy" id="mark-fuzzy-btn" style="flex:1;padding:9px">≈ 模糊</button>
+          <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识</button>
         </div>
       </div>
       <div class="card-nav">
@@ -1133,10 +1135,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- ── JS 文件加载顺序很重要：api → auth → app ──────── -->
-<script src="api.js?v=20260621-edit-cache-daily-count"></script>
+<!-- ── JS 文件加载顺序很重要：scheduler → api → auth → app ──────── -->
+<script src="scheduler.js?v=20260621-momo-scheduler"></script>
+<script src="api.js?v=20260621-momo-scheduler"></script>
 <script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260621-goal-checkin-gate"></script>
+<script src="app.js?v=20260621-momo-scheduler"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
