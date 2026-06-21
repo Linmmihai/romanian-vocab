@@ -1255,13 +1255,16 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     const p = getProgress(word.ro);
     return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(word) || normalizeScheduler(p || {}).needsReinforcement;
   });
+  const deferredOpenWords = openWords.filter(isRetryDeferred);
+  const activeOpenWords = openWords.filter(w => !isRetryDeferred(w));
   const openSlots = Math.max(0, cap - completedKeys.size);
-  if (!openSlots) return [];
+  if (!openSlots) return deferredOpenWords.map(w => w.ro);
   const blocked = new Set([...completedKeys, ...todaySeenWords].map(roKey));
-  const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + openWords.length, dailyGoal))
+  const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + activeOpenWords.length, dailyGoal))
     .filter(w => !completedKeys.has(roKey(w.ro)))
-    .filter(w => !blocked.has(roKey(w.ro)) || openWords.some(open => roKey(open.ro) === roKey(w.ro)));
-  return sortDailyPhaseWords([...candidates, ...openWords]).slice(0, openSlots).map(w => w.ro);
+    .filter(w => !blocked.has(roKey(w.ro)) || activeOpenWords.some(open => roKey(open.ro) === roKey(w.ro)));
+  const activeQueue = sortDailyPhaseWords([...candidates, ...activeOpenWords]).slice(0, openSlots);
+  return normalizeWordRoList([...activeQueue.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
 }
 
 function getDailyWordList(words = W, options = {}) {
@@ -1670,6 +1673,20 @@ function applyFilters() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (flashMode === 'today') {
     filtered = getDailyWordList(scoped, { includeFallback: true });
+    if (
+      !filtered.length &&
+      dailyQueueLoaded &&
+      !shouldPauseTodayStudyForCheckin() &&
+      !shouldPauseTodayStudyForGoal() &&
+      getUnseenWords(W).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
+    ) {
+      todayQueue = buildOpenTodayQueue(dailyGoal);
+      saveTodayQueue({ background: true }).catch(error => {
+        console.warn('Daily queue background save failed', error);
+        setSyncBadge('队列待同步', '');
+      });
+      filtered = getDailyWordList(scoped, { includeFallback: true });
+    }
     if (!filtered.length && curCat !== '全部') {
       const allDailyWords = getDailyWordList(W, { includeFallback: true, ignoreCategory: true });
       if (allDailyWords.length) {
@@ -3246,7 +3263,7 @@ function renderCard() {
         : (currentDone
         ? '已达到今日目标，系统不会继续加入新词。'
         : (deferredQueueCount
-          ? `${deferredQueueCount} 个词刚标记不认识，系统会按短间隔复习；不会加入新词。`
+          ? `${deferredQueueCount} 个词刚标记不认识，系统会按短间隔复习；如果还有名额，会先安排新词。`
           : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换分类、提高今日任务目标或去测验'))),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
