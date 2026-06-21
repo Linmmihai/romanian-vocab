@@ -346,6 +346,12 @@ function readTodayTemporaryGoal() {
   }
 }
 
+function clearTodayTemporaryGoal() {
+  try {
+    localStorage.removeItem(todayTemporaryGoalKey());
+  } catch {}
+}
+
 function writeTodayTemporaryGoal(goal) {
   try {
     localStorage.setItem(todayTemporaryGoalKey(), String(normalizeDailyGoalValue(goal, defaultDailyGoal)));
@@ -353,7 +359,9 @@ function writeTodayTemporaryGoal(goal) {
 }
 
 function isDefaultGoalDone() {
-  return isDailyStateCurrent() && todayNewWords >= defaultDailyGoal && !hasOpenTodayQueue();
+  return isDailyStateCurrent()
+    && todayNewWords >= defaultDailyGoal
+    && (isDailyCheckinDone() || !hasOpenTodayQueue());
 }
 
 function isCurrentTodayGoalDone() {
@@ -922,7 +930,7 @@ async function syncDailyStateToCloud() {
   };
   const results = await Promise.allSettled([
     apiSaveDailyQueue(currentUser.id, queuePayload),
-    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal)
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDefaultGoalDone() })
   ]);
   const rejected = results.find(result => result.status === 'rejected');
   if (rejected) throw rejected.reason;
@@ -1007,6 +1015,7 @@ async function loadDailyQueue() {
   if (queueChanged) await saveTodayQueue({ forceLocal: forceQueueLocal });
   if (todayNewWords !== previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
+      completed: isDefaultGoalDone(),
       forceLocal: todayNewWords < previousTodayCount
     });
     invalidateCalendarCache();
@@ -1174,11 +1183,11 @@ async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更�
   defaultDailyGoal = nextGoal;
   dailyGoal = nextGoal;
   setGoalInputValue(nextGoal);
-  writeTodayTemporaryGoal(nextGoal);
+  clearTodayTemporaryGoal();
   await apiSetDailyGoal(currentUser.id, nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
   await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDefaultGoalDone() });
   invalidateCalendarCache();
   applyFilters();
   renderCard();
@@ -1205,7 +1214,7 @@ async function extendTodayGoal(amount) {
   writeTodayTemporaryGoal(nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
   await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal);
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDefaultGoalDone() });
   invalidateCalendarCache();
   applyFilters();
   renderCard();
@@ -1298,7 +1307,7 @@ function commitTodayWordCompletion(wordRo, options = {}) {
   });
 
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: isDefaultGoalDone() };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDefaultGoalDone() }).catch(error => {
     console.warn('Today log background save failed', error);
     setSyncBadge('今日记录待同步', '');
   });
@@ -1326,7 +1335,7 @@ function commitTodayWordExposure(wordRo, options = {}) {
   }
   writeTodaySeenWords();
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: isDefaultGoalDone() };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDefaultGoalDone() }).catch(error => {
     console.warn('Today log background save failed', error);
     setSyncBadge('今日记录待同步', '');
   });
@@ -2288,7 +2297,7 @@ function flushTodayStatePersistence() {
     setSyncBadge('队列待同步', '');
   });
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: isDefaultGoalDone() };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal).catch(error => {
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDefaultGoalDone() }).catch(error => {
     console.warn('Today log background save failed', error);
     setSyncBadge('今日记录待同步', '');
   });
@@ -2627,8 +2636,15 @@ function closeDailyCheckinModal() {
 
 function completeDailyCheckin() {
   writeDailyCheckinDone();
+  todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: true };
+  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: true }).catch(error => {
+    console.warn('Daily check-in log save failed', error);
+    setSyncBadge('打卡待同步', '');
+  });
+  invalidateCalendarCache();
   closeDailyCheckinModal();
   renderDailyGoal();
+  renderCalendar();
   renderReviewPanel();
   showToast('今日已打卡，可以临时加量继续学习');
   triggerCloudProgressBackup('打卡同步', { force: true, limit: 250 });
@@ -2651,10 +2667,11 @@ function renderDailyGoal() {
   const checkinDone = isDailyCheckinDone();
   const canExtend = currentDone && checkinDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
+  const title = currentDone ? '今日任务已完成' : (baseDone ? '今日固定目标已完成' : '今日任务');
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">
-        ${baseDone ? '今日固定目标已完成' : '今日任务'}
+        ${title}
       </span>
       <span style="font-size:13px;color:var(--text2)">${todayNewWords} / ${dailyGoal} 个</span>
     </div>
@@ -4245,9 +4262,10 @@ function getDateKey(offset = 0) {
 
 function isDailyLogCompleted(log) {
   if (!log) return false;
+  if (typeof log.completed === 'boolean') return log.completed;
   const completedTasks = Number(log.new_words || 0);
   const goal = Number(log.goal || dailyGoal || 20);
-  return !!log.completed || (goal > 0 && completedTasks >= goal);
+  return goal > 0 && completedTasks >= goal;
 }
 
 function buildRecentDays(days) {

@@ -513,22 +513,25 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     goal,
     word_ro,
     completed_word_ro: completed,
-    completed: completed.length >= goal,
+    completed: typeof localPayload.completed === 'boolean' ? localPayload.completed : !!cloudPayload.completed,
     updated_at: localPayload.updated_at || new Date().toISOString()
   };
 }
 
-function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal = localPayload.goal) {
+function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal = localPayload.goal, options = {}) {
   if (!cloudPayload) return localPayload;
   const newWords = Math.max(Number(localPayload.new_words || 0), Number(cloudPayload.new_words || 0));
   const goal = Math.max(Number(localPayload.goal || 20), Number(cloudPayload.goal || 20), 1);
   const doneGoal = Math.max(Number(completionGoal || goal), 1);
+  const completed = options.completedExplicit
+    ? !!localPayload.completed
+    : (!!cloudPayload.completed || newWords >= doneGoal);
   return {
     ...cloudPayload,
     ...localPayload,
     new_words: newWords,
     goal,
-    completed: newWords >= doneGoal
+    completed
   };
 }
 
@@ -1286,7 +1289,7 @@ async function apiGetTodayLog(userId, goal) {
  */
 async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal, options = {}) {
   const today = getLocalDateKey();
-  const completed = completedTasks >= completionGoal;
+  const completed = typeof options.completed === 'boolean' ? options.completed : completedTasks >= completionGoal;
   const logs = readJson(localKey(userId, 'daily_log'), {});
   logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, local: true };
   writeJson(localKey(userId, 'daily_log'), logs);
@@ -1300,7 +1303,9 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
     .eq('log_date', today)
     .maybeSingle();
   if (readError) throw new Error(readError.message);
-  const mergedPayload = options.forceLocal ? localPayload : mergeDailyLogPayload(localPayload, cloudLog, completionGoal);
+  const mergedPayload = options.forceLocal
+    ? localPayload
+    : mergeDailyLogPayload(localPayload, cloudLog, completionGoal, { completedExplicit: typeof options.completed === 'boolean' });
   const { error } = await sb.from('daily_log').upsert(
     mergedPayload,
     { onConflict: 'user_id,log_date' }
