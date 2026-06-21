@@ -484,7 +484,7 @@ function collectDailyQueueDebugMetrics(stage = 'snapshot', extra = {}) {
     ...extra
   };
   if (isDailyQueueDebugEnabled()) {
-    console.info('[daily-queue-debug]', metrics);
+    console.info('[daily-queue-debug]', JSON.stringify(metrics));
   }
   return metrics;
 }
@@ -3466,6 +3466,7 @@ function renderCard() {
     const deferredQueueCount = getDeferredTodayQueueCount();
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
+    const eligibleNewCount = getEligibleUnseenWordsForToday(getCurrentScopeWords()).length;
     const currentDone = isCurrentTodayGoalDone();
     const pausedForCheckin = shouldPauseTodayStudyForCheckin();
     const pausedForGoal = shouldPauseTodayStudyForGoal();
@@ -3485,7 +3486,9 @@ function renderCard() {
         : (currentDone
         ? '已达到今日目标，系统不会继续加入新词。'
         : (deferredQueueCount
-          ? `${deferredQueueCount} 个词刚标记不认识，系统会按短间隔复习；如果还有名额，会先安排新词。`
+          ? (eligibleNewCount > 0
+            ? `${deferredQueueCount} 个词正在等待短间隔复习；系统正在安排可学新词。`
+            : `${deferredQueueCount} 个词正在等待短间隔复习；当前没有可加入的新词，到复习时间后会继续。`)
           : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换分类、提高今日任务目标或去测验'))),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
