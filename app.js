@@ -443,6 +443,10 @@ function shouldPauseTodayStudyForCheckin() {
   return isDefaultGoalDone() && !isDailyCheckinDone();
 }
 
+function shouldPauseTodayStudyForGoal() {
+  return isCurrentTodayGoalDone();
+}
+
 function isDailyCheckinDone() {
   if (isTodayLogCheckedIn()) return true;
   try {
@@ -1262,7 +1266,7 @@ function buildOpenTodayQueue(goal = dailyGoal) {
 
 function getDailyWordList(words = W, options = {}) {
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) return [];
-  if (shouldPauseTodayStudyForCheckin()) return [];
+  if (shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) return [];
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
@@ -1416,7 +1420,7 @@ async function saveTodayQueue(options = {}) {
 
 function showDailyGoalCompletionPrompt(defer = false) {
   const showPrompt = () => {
-    showToast('今日固定目标已完成');
+    showToast('今日目标已完成');
     openDailyCheckinModal();
   };
   if (defer) {
@@ -1431,7 +1435,7 @@ function commitTodayWordCompletion(wordRo, options = {}) {
   const canonicalRo = canonicalWordRo(wordRo);
   if (!canonicalRo || setHasRo(todayQueueCompleted, canonicalRo)) return false;
   commitTodayWordExposure(canonicalRo, { fast: true });
-  const wasGoalDone = isDefaultGoalDone();
+  const wasGoalDone = isCurrentTodayGoalDone();
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
 
   setAddRo(todayQueueCompleted, canonicalRo);
@@ -1439,7 +1443,7 @@ function commitTodayWordCompletion(wordRo, options = {}) {
     todayQueue = roListWithout(todayQueue, canonicalRo);
   }
   todayNewWords = todayQueueCompleted.size;
-  const reachedGoal = !wasGoalDone && isDefaultGoalDone();
+  const reachedGoal = !wasGoalDone && isCurrentTodayGoalDone();
   if (options.fast) {
     return { completed: true, reachedGoal };
   }
@@ -2888,7 +2892,7 @@ function updateReviewBadge() {
 
 function openDailyCheckinModal() {
   if (!ensureDailyStateCurrent({ reload: true })) return;
-  if (!isDefaultGoalDone() || isDailyCheckinDone()) return;
+  if (!isCurrentTodayGoalDone()) return;
   const modal = document.getElementById('daily-checkin-modal');
   if (!modal) return;
   setText('checkin-fixed-goal', defaultDailyGoal);
@@ -2908,7 +2912,7 @@ function completeDailyCheckin() {
     renderDailyGoal();
     renderCalendar();
     renderReviewPanel();
-    return;
+    return true;
   }
   writeDailyCheckinDone();
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: true };
@@ -2923,6 +2927,37 @@ function completeDailyCheckin() {
   renderReviewPanel();
   showToast('今日已打卡，可以临时加量继续学习');
   triggerCloudProgressBackup('打卡同步', { force: true, limit: 250 });
+  return true;
+}
+
+function stopTodayAfterGoal() {
+  completeDailyCheckin();
+  closeDailyCheckinModal();
+  applyFilters();
+  renderCard();
+  renderDailyGoal();
+}
+
+async function continueTodayAfterGoal(amount = 10) {
+  completeDailyCheckin();
+  await extendTodayGoal(amount);
+}
+
+async function continueTodayWithoutLimit() {
+  completeDailyCheckin();
+  const nextGoal = DAILY_GOAL_MAX;
+  dailyGoal = nextGoal;
+  setGoalInputValue(defaultDailyGoal);
+  writeTodayTemporaryGoal(nextGoal);
+  todayQueue = buildOpenTodayQueue(dailyGoal);
+  await saveTodayQueue();
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
+  invalidateCalendarCache();
+  applyFilters();
+  renderCard();
+  renderDailyGoal();
+  renderCalendar();
+  showToast('今天已切换为不限量继续；明天仍按固定目标');
 }
 
 function maybePromptDailyCheckin() {
@@ -3194,9 +3229,10 @@ function renderCard() {
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
     const currentDone = isCurrentTodayGoalDone();
     const pausedForCheckin = shouldPauseTodayStudyForCheckin();
+    const pausedForGoal = shouldPauseTodayStudyForGoal();
     const emptyText = {
-      today: pausedForCheckin
-        ? '今日固定目标已完成'
+      today: pausedForCheckin || pausedForGoal
+        ? '今日目标已完成'
         : (currentDone
           ? '今日任务已完成'
           : (deferredQueueCount
@@ -3205,8 +3241,8 @@ function renderCard() {
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
-      today: pausedForCheckin
-        ? '先完成打卡，再选择是否临时加量继续学习。'
+      today: pausedForCheckin || pausedForGoal
+        ? '今天的目标已完成，请选择是否继续。'
         : (currentDone
         ? '已达到今日目标，系统不会继续加入新词。'
         : (deferredQueueCount
@@ -3215,7 +3251,7 @@ function renderCard() {
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
-      frontHint.textContent = (currentDone || pausedForCheckin) ? actionText : '先在心里说出罗语，再点卡片看答案';
+      frontHint.textContent = (currentDone || pausedForCheckin || pausedForGoal) ? actionText : '先在心里说出罗语，再点卡片看答案';
     }
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
@@ -3347,9 +3383,35 @@ function nextCard() {
   renderFlashCardAfterFrontReset();
 }
 
+function shouldAutoStartTodayAfterReview() {
+  if (flashMode !== 'review') return false;
+  if (!dailyQueueLoaded || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) return false;
+  if (getRemainingDueReviewWords(W).length > 0) return false;
+  return getUnseenWords(W).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
+}
+
 function advanceFlashcardAfterAnswer(currentRo) {
+  flashOverrideRo = null;
+  if (shouldAutoStartTodayAfterReview()) {
+    flashMode = 'today';
+    curCat = '全部';
+    todayQueue = buildOpenTodayQueue(dailyGoal);
+    saveTodayQueue({ background: true }).catch(error => {
+      console.warn('Daily queue background save failed', error);
+      setSyncBadge('队列待同步', '');
+    });
+    applyFilters();
+    idx = 0;
+    buildCats();
+    showToast('到期复习已完成，继续今日新词');
+    return;
+  }
+  applyFilters();
   const currentKey = roKey(currentRo);
-  filtered = filtered.filter(item => roKey(item?.ro) !== currentKey);
+  if (filtered.some(item => roKey(item?.ro) === currentKey)) {
+    idx = filtered.findIndex(item => roKey(item?.ro) === currentKey);
+    return;
+  }
   if (flashMode === 'today' && !filtered.length) {
     const fallback = getNextDailyFallbackWord(currentRo);
     if (fallback) {
@@ -3358,12 +3420,11 @@ function advanceFlashcardAfterAnswer(currentRo) {
       return;
     }
   }
-  flashOverrideRo = null;
   idx = filtered.length ? Math.min(idx, filtered.length - 1) : 0;
 }
 
 function getNextDailyFallbackWord(currentRo) {
-  if (shouldPauseTodayStudyForCheckin() || isCurrentTodayGoalDone()) return null;
+  if (shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) return null;
   const currentKey = currentRo ? roKey(currentRo) : '';
   const completed = new Set([...todayQueueCompleted].map(roKey));
   return todayQueue
@@ -3485,7 +3546,8 @@ function markCard(answer) {
     } else if (isFuzzyAction) {
       showToast('已按模糊处理，系统会安排较近的复习');
     }
-    const shouldStopForCheckin = flashMode === 'today' && shouldPauseTodayStudyForCheckin();
+    const shouldStopForGoal = flashMode === 'today' && !!dailyStateResult?.reachedGoal;
+    const shouldStopForCheckin = flashMode === 'today' && (shouldPauseTodayStudyForCheckin() || shouldStopForGoal);
     // 跳下一张，重置为中文面
     if (!wasReviewingHistory && !shouldStopForCheckin) flashHistory.push(w.ro);
     if (shouldStopForCheckin) {
