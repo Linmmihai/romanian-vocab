@@ -2935,18 +2935,21 @@ function renderCard() {
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
     const currentDone = isCurrentTodayGoalDone();
+    const pausedForCheckin = shouldPauseTodayStudyForCheckin();
     const emptyText = {
-      today: currentDone ? '今日任务已完成' : (curCat !== '全部' && (hasDueReview || hasNewWords) ? '当前分类没有今日任务' : '今日没有可安排任务'),
+      today: pausedForCheckin ? '今日固定目标已完成' : (currentDone ? '今日任务已完成' : (curCat !== '全部' && (hasDueReview || hasNewWords) ? '当前分类没有今日任务' : '今日没有可安排任务')),
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
-      today: currentDone
+      today: pausedForCheckin
+        ? '先完成打卡，再选择是否临时加量继续学习。'
+        : (currentDone
         ? getContinueAfterGoalText()
-        : (hasOpenQueue ? '请切换到全部，先完成到期复习' : '可以切换分类、提高今日任务目标或去测验'),
+        : (hasOpenQueue ? '请切换到全部，先完成到期复习' : '可以切换分类、提高今日任务目标或去测验')),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
-      frontHint.textContent = currentDone ? actionText : '先在心里说出罗语，再点卡片看答案';
+      frontHint.textContent = (currentDone || pausedForCheckin) ? actionText : '先在心里说出罗语，再点卡片看答案';
     }
     setText('fc-zh', emptyText);
     setText('fc-ro', actionText);
@@ -3203,13 +3206,24 @@ function markCard(yes) {
     } else if (!yes) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
     }
+    const shouldStopForCheckin = flashMode === 'today' && shouldPauseTodayStudyForCheckin();
     // 跳下一张，重置为中文面
-    if (!wasReviewingHistory) flashHistory.push(w.ro);
-    advanceFlashcardAfterAnswer(w.ro);
+    if (!wasReviewingHistory && !shouldStopForCheckin) flashHistory.push(w.ro);
+    if (shouldStopForCheckin) {
+      filtered = [];
+      flashOverrideRo = null;
+      idx = 0;
+    } else {
+      advanceFlashcardAfterAnswer(w.ro);
+    }
     renderNextFlashCardInstantFront();
     persistFastCardAnswer(progressResult);
     if (flashMode === 'today') {
       scheduleTodayStatePersistence(!!dailyStateResult?.reachedGoal);
+      if (shouldStopForCheckin && dailyStateResult?.reachedGoal) {
+        pendingTodayGoalPrompt = false;
+        showDailyGoalCompletionPrompt(true);
+      }
     }
   } catch (error) {
     console.warn('Flashcard answer failed', error);
