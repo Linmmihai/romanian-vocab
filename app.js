@@ -439,6 +439,147 @@ function getDeferredTodayQueueCount() {
     .length;
 }
 
+function isDailyQueueDebugEnabled() {
+  try {
+    return new URLSearchParams(location.search).has('debugQueue') ||
+      localStorage.getItem('debug_daily_queue') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function collectDailyQueueDebugMetrics(stage = 'snapshot', extra = {}) {
+  const activeQueueRos = Array.isArray(todayQueue)
+    ? todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro))
+    : [];
+  const activeQueueWords = activeQueueRos.map(ro => getWordByRo(ro)).filter(Boolean);
+  const dueReviewWords = getRemainingDueReviewWords(W);
+  const retryWords = W.filter(isPendingLearningRetryWord);
+  const deferredWords = activeQueueWords.filter(isRetryDeferred);
+  const unseenWords = getUnseenWords(W).filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
+  const metrics = {
+    stage,
+    queueSize: activeQueueRos.length,
+    savedQueueSize: Array.isArray(todayQueue) ? todayQueue.length : 0,
+    filteredSize: Array.isArray(filtered) ? filtered.length : 0,
+    reviewCount: dueReviewWords.length,
+    retryCount: retryWords.length,
+    deferredCount: deferredWords.length,
+    newWordCount: unseenWords.length,
+    dailyLearnedCount: todayNewWords,
+    dailyGoal,
+    remainingQuota: Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0)),
+    unseenWordsAvailable: unseenWords.length,
+    completedCount: todayQueueCompleted?.size || 0,
+    seenTodayCount: todaySeenWords?.size || 0,
+    dailyQueueLoaded,
+    flashMode,
+    curCat,
+    pausedForCheckin: shouldPauseTodayStudyForCheckin(),
+    pausedForGoal: shouldPauseTodayStudyForGoal(),
+    queuePreview: activeQueueRos.slice(0, 8),
+    filteredPreview: Array.isArray(filtered) ? filtered.slice(0, 8).map(w => w?.ro).filter(Boolean) : [],
+    deferredPreview: deferredWords.slice(0, 8).map(w => w.ro),
+    newPreview: unseenWords.slice(0, 8).map(w => w.ro),
+    ...extra
+  };
+  if (isDailyQueueDebugEnabled()) {
+    console.info('[daily-queue-debug]', metrics);
+  }
+  return metrics;
+}
+
+function debugDailyQueue(stage, extra = {}) {
+  if (!isDailyQueueDebugEnabled()) return null;
+  return collectDailyQueueDebugMetrics(stage, extra);
+}
+
+if (typeof window !== 'undefined') {
+  window.__rvDebugDailyQueue = () => collectDailyQueueDebugMetrics('manual');
+}
+
+function isTodayStudyBlocked() {
+  return shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal();
+}
+
+function isActiveTodayQueueWord(w) {
+  if (!w || isRetryDeferred(w)) return false;
+  const p = getProgress(w.ro);
+  return !hasWordProgress(p) ||
+    isReviewDue(p) ||
+    isPendingLearningRetryWord(w) ||
+    normalizeScheduler(p || {}).needsReinforcement;
+}
+
+function getEligibleUnseenWordsForToday(words = W) {
+  const queuedKeys = new Set(normalizeWordRoList(todayQueue).map(roKey));
+  return getUnseenWords(words)
+    .filter(w => !setHasRo(todaySeenWords, w.ro))
+    .filter(w => !setHasRo(todayQueueCompleted, w.ro))
+    .filter(w => !queuedKeys.has(roKey(w.ro)));
+}
+
+function saveRepairedTodayQueue(reason) {
+  if (!currentUser?.id) return;
+  saveTodayQueue({ background: true }).catch(error => {
+    console.warn(`Daily queue repair save failed: ${reason}`, error);
+    setSyncBadge('队列待同步', '');
+  });
+}
+
+function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
+  const remainingQuota = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
+  const canStudyToday = remainingQuota > 0 && !isTodayStudyBlocked();
+  const queueRos = normalizeWordRoList(todayQueue);
+  const completedKeys = new Set([...todayQueueCompleted].map(roKey));
+  const activeOpenWords = queueRos
+    .filter(ro => !completedKeys.has(roKey(ro)))
+    .map(ro => getWordByRo(ro))
+    .filter(isActiveTodayQueueWord);
+  const deferredOpenWords = queueRos
+    .filter(ro => !completedKeys.has(roKey(ro)))
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(isRetryDeferred);
+  const activeSlots = Math.max(0, remainingQuota - activeOpenWords.length);
+  const eligibleNewWords = canStudyToday && activeSlots > 0
+    ? getEligibleUnseenWordsForToday(W).slice(0, activeSlots)
+    : [];
+
+  debugDailyQueue('ensureTodayQueueHasActiveCards:before', {
+    reason,
+    canStudyToday,
+    remainingQuota,
+    activeOpenCount: activeOpenWords.length,
+    deferredOpenCount: deferredOpenWords.length,
+    activeSlots,
+    eligibleNewCount: eligibleNewWords.length
+  });
+
+  if (!canStudyToday || !eligibleNewWords.length) return false;
+
+  const keepRos = queueRos.filter(ro => {
+    if (completedKeys.has(roKey(ro))) return false;
+    const word = getWordByRo(ro);
+    return word && (isActiveTodayQueueWord(word) || isRetryDeferred(word));
+  });
+  const nextQueue = normalizeWordRoList([...activeOpenWords.map(w => w.ro), ...eligibleNewWords.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
+  const mergedQueue = normalizeWordRoList([...nextQueue, ...keepRos.filter(ro => !nextQueue.some(next => roKey(next) === roKey(ro)))]);
+  const changed = mergedQueue.join('|') !== queueRos.join('|');
+  if (!changed) return false;
+
+  todayQueue = mergedQueue;
+  dailyQueueVersion++;
+  invalidateQuizPracticePool();
+  debugDailyQueue('ensureTodayQueueHasActiveCards:after', {
+    reason,
+    injectedCount: eligibleNewWords.length,
+    resultSize: todayQueue.length
+  });
+  if (!options.skipSave) saveRepairedTodayQueue(reason);
+  return true;
+}
+
 function shouldPauseTodayStudyForCheckin() {
   return isDefaultGoalDone() && !isDailyCheckinDone();
 }
@@ -1086,6 +1227,7 @@ async function loadDailyQueue() {
       completed: false
     });
   }
+  debugDailyQueue('loadDailyQueue:after-load', { hasSavedQueueState });
   todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
   writeTodaySeenWords();
   repairStartedProgressForCompletedTodayWords();
@@ -1097,7 +1239,11 @@ async function loadDailyQueue() {
     todayQueue = normalizedQueue;
     queueChanged = true;
   }
+  if (ensureTodayQueueHasActiveCards('loadDailyQueue:after-build', { skipSave: true })) {
+    queueChanged = true;
+  }
   if (queueChanged) await saveTodayQueue({ forceLocal: forceQueueLocal });
+  debugDailyQueue('loadDailyQueue:after-normalize', { queueChanged, forceQueueLocal });
   if (todayNewWords !== previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
       completed: isDailyCheckinDone(),
@@ -1248,6 +1394,7 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
 }
 
 function buildOpenTodayQueue(goal = dailyGoal) {
+  debugDailyQueue('buildOpenTodayQueue:before', { goal });
   const cap = Math.max(1, Number(goal || dailyGoal || 20));
   const completedKeys = new Set([...todayQueueCompleted].map(roKey));
   const openWords = normalizeWordRoList(todayQueue).map(ro => getWordByRo(ro)).filter(word => {
@@ -1258,18 +1405,44 @@ function buildOpenTodayQueue(goal = dailyGoal) {
   const deferredOpenWords = openWords.filter(isRetryDeferred);
   const activeOpenWords = openWords.filter(w => !isRetryDeferred(w));
   const openSlots = Math.max(0, cap - completedKeys.size);
-  if (!openSlots) return deferredOpenWords.map(w => w.ro);
+  if (!openSlots) {
+    const closedQueue = deferredOpenWords.map(w => w.ro);
+    debugDailyQueue('buildOpenTodayQueue:no-open-slots', {
+      goal,
+      resultSize: closedQueue.length,
+      deferredKept: deferredOpenWords.length
+    });
+    return closedQueue;
+  }
   const blocked = new Set([...completedKeys, ...todaySeenWords].map(roKey));
   const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + activeOpenWords.length, dailyGoal))
     .filter(w => !completedKeys.has(roKey(w.ro)))
     .filter(w => !blocked.has(roKey(w.ro)) || activeOpenWords.some(open => roKey(open.ro) === roKey(w.ro)));
   const activeQueue = sortDailyPhaseWords([...candidates, ...activeOpenWords]).slice(0, openSlots);
-  return normalizeWordRoList([...activeQueue.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
+  const result = normalizeWordRoList([...activeQueue.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
+  debugDailyQueue('buildOpenTodayQueue:after', {
+    goal,
+    cap,
+    openSlots,
+    activeOpenCount: activeOpenWords.length,
+    deferredOpenCount: deferredOpenWords.length,
+    candidateCount: candidates.length,
+    activeResultCount: activeQueue.length,
+    resultSize: result.length
+  });
+  return result;
 }
 
 function getDailyWordList(words = W, options = {}) {
-  if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) return [];
-  if (shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) return [];
+  if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) {
+    debugDailyQueue('getDailyWordList:blocked-not-loaded', { options });
+    return [];
+  }
+  if (shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) {
+    debugDailyQueue('getDailyWordList:blocked-paused', { options });
+    return [];
+  }
+  ensureTodayQueueHasActiveCards('getDailyWordList');
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
@@ -1282,11 +1455,37 @@ function getDailyWordList(words = W, options = {}) {
   const allDueToday = getRemainingDueReviewWords(W).length > 0;
   if (allDueToday) {
     const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
-    if (dueOpenWords.length >= limit) return sortDailyPhaseWords(dueOpenWords).slice(0, limit);
+    if (dueOpenWords.length >= limit) {
+      const result = sortDailyPhaseWords(dueOpenWords).slice(0, limit);
+      debugDailyQueue('getDailyWordList:due-only', {
+        options,
+        scopedCount: scoped.length,
+        openWordCount: openWords.length,
+        dueOpenCount: dueOpenWords.length,
+        resultSize: result.length
+      });
+      return result;
+    }
     const nonDueOpenWords = openWords.filter(w => !dueOpenWords.some(due => roKey(due.ro) === roKey(w.ro)));
-    return sortDailyPhaseWords([...dueOpenWords, ...nonDueOpenWords]).slice(0, limit);
+    const result = sortDailyPhaseWords([...dueOpenWords, ...nonDueOpenWords]).slice(0, limit);
+    debugDailyQueue('getDailyWordList:due-plus-non-due', {
+      options,
+      scopedCount: scoped.length,
+      openWordCount: openWords.length,
+      dueOpenCount: dueOpenWords.length,
+      nonDueOpenCount: nonDueOpenWords.length,
+      resultSize: result.length
+    });
+    return result;
   }
-  return sortDailyPhaseWords(openWords).slice(0, limit);
+  const result = sortDailyPhaseWords(openWords).slice(0, limit);
+  debugDailyQueue('getDailyWordList:open', {
+    options,
+    scopedCount: scoped.length,
+    openWordCount: openWords.length,
+    resultSize: result.length
+  });
+  return result;
 }
 
 function getDailyTaskType(w) {
@@ -1335,6 +1534,7 @@ async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更�
   clearTodayTemporaryGoal();
   await apiSetDailyGoal(currentUser.id, nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
+  ensureTodayQueueHasActiveCards('setDailyGoalAndRebuild', { skipSave: true });
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
   invalidateCalendarCache();
@@ -1362,6 +1562,7 @@ async function extendTodayGoal(amount) {
   setGoalInputValue(defaultDailyGoal);
   writeTodayTemporaryGoal(nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
+  ensureTodayQueueHasActiveCards('extendTodayGoal', { skipSave: true });
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
   invalidateCalendarCache();
@@ -1672,7 +1873,10 @@ const CORPUS_EXAMPLES = {
 function applyFilters() {
   const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
   if (flashMode === 'today') {
+    debugDailyQueue('applyFilters:today-before', { scopedCount: scoped.length });
+    ensureTodayQueueHasActiveCards('applyFilters:today-before');
     filtered = getDailyWordList(scoped, { includeFallback: true });
+    debugDailyQueue('applyFilters:today-after-list', { scopedCount: scoped.length });
     if (
       !filtered.length &&
       dailyQueueLoaded &&
@@ -1680,12 +1884,10 @@ function applyFilters() {
       !shouldPauseTodayStudyForGoal() &&
       getUnseenWords(W).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
     ) {
-      todayQueue = buildOpenTodayQueue(dailyGoal);
-      saveTodayQueue({ background: true }).catch(error => {
-        console.warn('Daily queue background save failed', error);
-        setSyncBadge('队列待同步', '');
-      });
+      debugDailyQueue('applyFilters:today-recovery-before', { scopedCount: scoped.length });
+      ensureTodayQueueHasActiveCards('applyFilters:today-recovery');
       filtered = getDailyWordList(scoped, { includeFallback: true });
+      debugDailyQueue('applyFilters:today-recovery-after', { scopedCount: scoped.length });
     }
     if (!filtered.length && curCat !== '全部') {
       const allDailyWords = getDailyWordList(W, { includeFallback: true, ignoreCategory: true });
@@ -1693,14 +1895,18 @@ function applyFilters() {
         curCat = '全部';
         filtered = allDailyWords;
         buildCats();
+        debugDailyQueue('applyFilters:category-fallback', { scopedCount: scoped.length, allDailyWords: allDailyWords.length });
       }
     }
   } else if (flashMode === 'review') {
     filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueReviewWord);
+    debugDailyQueue('applyFilters:review', { scopedCount: scoped.length });
   } else {
     filtered = sortByReviewPriority(scoped).filter(w => getReviewBucket(w) !== 2);
+    debugDailyQueue('applyFilters:default', { scopedCount: scoped.length });
   }
   idx = Math.min(idx, Math.max(filtered.length - 1, 0));
+  debugDailyQueue('applyFilters:final', { scopedCount: scoped.length });
   renderReviewPanel();
 }
 
@@ -2121,6 +2327,11 @@ function getCurrentScopeWords() {
 }
 
 function getReviewPanelMetrics(scoped) {
+  const activeOpenQueueCount = todayQueue
+    .filter(ro => !setHasRo(todayQueueCompleted, ro))
+    .map(ro => getWordByRo(ro))
+    .filter(isActiveTodayQueueWord)
+    .length;
   const key = [
     curCat,
     W.length,
@@ -2128,6 +2339,9 @@ function getReviewPanelMetrics(scoped) {
     dailyGoal,
     todayNewWords,
     defaultDailyGoal,
+    todaySeenWords.size,
+    todayQueueCompleted.size,
+    todayQueue.join('|'),
     progressVersion,
     dailyQueueVersion
   ].join('|');
@@ -2139,9 +2353,8 @@ function getReviewPanelMetrics(scoped) {
     .filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
     .length;
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
-  const queuedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingDueReviews = getRemainingTodayReviewWords().length;
-  const availableNewSlots = Math.max(0, dailyGoal - queuedKeys.size);
+  const availableNewSlots = Math.max(0, remainingSlots - activeOpenQueueCount);
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
   const metrics = { due, remainingSlots, remainingDueReviews, unseenRemaining };
   reviewPanelMetricsCache = { key, metrics };
@@ -2967,6 +3180,7 @@ async function continueTodayWithoutLimit() {
   setGoalInputValue(defaultDailyGoal);
   writeTodayTemporaryGoal(nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
+  ensureTodayQueueHasActiveCards('continueTodayWithoutLimit', { skipSave: true });
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
   invalidateCalendarCache();
@@ -3237,6 +3451,14 @@ function renderCard() {
   if (flashOverrideRo && !overrideWord) flashOverrideRo = null;
 
   if (!filtered.length && !overrideWord) {
+    if (flashMode === 'today' && ensureTodayQueueHasActiveCards('renderCard:before-empty')) {
+      applyFilters();
+      if (filtered.length) {
+        renderCard();
+        return;
+      }
+    }
+    debugDailyQueue('renderCard:empty');
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
     const frontHint = document.getElementById('fc-front-hint');
@@ -3413,6 +3635,7 @@ function advanceFlashcardAfterAnswer(currentRo) {
     flashMode = 'today';
     curCat = '全部';
     todayQueue = buildOpenTodayQueue(dailyGoal);
+    ensureTodayQueueHasActiveCards('advanceFlashcardAfterAnswer:auto-start', { skipSave: true });
     saveTodayQueue({ background: true }).catch(error => {
       console.warn('Daily queue background save failed', error);
       setSyncBadge('队列待同步', '');
@@ -3562,6 +3785,9 @@ function markCard(answer) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
     } else if (isFuzzyAction) {
       showToast('已按模糊处理，系统会安排较近的复习');
+    }
+    if (flashMode === 'today') {
+      ensureTodayQueueHasActiveCards(`markCard:${action}`);
     }
     const shouldStopForGoal = flashMode === 'today' && !!dailyStateResult?.reachedGoal;
     const shouldStopForCheckin = flashMode === 'today' && (shouldPauseTodayStudyForCheckin() || shouldStopForGoal);
