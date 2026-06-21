@@ -1580,7 +1580,7 @@ function getDailyWordList(words = W, options = {}) {
     });
     return [];
   }
-  ensureTodayQueueHasActiveCards('getDailyWordList');
+  if (!options.skipRepair) ensureTodayQueueHasActiveCards('getDailyWordList');
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
@@ -1594,9 +1594,8 @@ function getDailyWordList(words = W, options = {}) {
     .filter(Boolean)
     .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)))
     .filter(w => !isRetryDeferred(w));
-  const allDueToday = getRemainingDueReviewWords(W).length > 0;
-  if (allDueToday) {
-    const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
+  const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
+  if (dueOpenWords.length) {
     if (dueOpenWords.length >= limit) {
       const result = sortDailyPhaseWords(dueOpenWords).slice(0, limit);
       resultSize = result.length;
@@ -2047,7 +2046,7 @@ function applyFilters() {
     path = 'today';
     debugDailyQueue('applyFilters:today-before', { scopedCount: scoped.length });
     ensureTodayQueueHasActiveCards('applyFilters:today-before');
-    filtered = getDailyWordList(scoped, { includeFallback: true });
+    filtered = getDailyWordList(scoped, { includeFallback: true, skipRepair: true });
     debugDailyQueue('applyFilters:today-after-list', { scopedCount: scoped.length });
     if (
       !filtered.length &&
@@ -2058,11 +2057,11 @@ function applyFilters() {
     ) {
       debugDailyQueue('applyFilters:today-recovery-before', { scopedCount: scoped.length });
       ensureTodayQueueHasActiveCards('applyFilters:today-recovery');
-      filtered = getDailyWordList(scoped, { includeFallback: true });
+      filtered = getDailyWordList(scoped, { includeFallback: true, skipRepair: true });
       debugDailyQueue('applyFilters:today-recovery-after', { scopedCount: scoped.length });
     }
     if (!filtered.length && curCat !== '全部') {
-      const allDailyWords = getDailyWordList(W, { includeFallback: true, ignoreCategory: true });
+      const allDailyWords = getDailyWordList(W, { includeFallback: true, ignoreCategory: true, skipRepair: true });
       if (allDailyWords.length) {
         curCat = '全部';
         filtered = allDailyWords;
@@ -4010,9 +4009,6 @@ function markCard(answer) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
     } else if (isFuzzyAction) {
       showToast('已按模糊处理，系统会安排较近的复习');
-    }
-    if (flashMode === 'today') {
-      ensureTodayQueueHasActiveCards(`markCard:${action}`);
     }
     const shouldStopForGoal = flashMode === 'today' && !!dailyStateResult?.reachedGoal;
     const shouldStopForCheckin = flashMode === 'today' && (shouldPauseTodayStudyForCheckin() || shouldStopForGoal);

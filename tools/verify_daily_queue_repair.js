@@ -83,6 +83,8 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
   assert(app.includes('return wordByRoIndex.get(key) || null'), 'expected getWordByRo to use indexed lookup');
+  assert(app.includes('skipRepair: true'), 'expected applyFilters to avoid duplicate getDailyWordList repair');
+  assert(!app.includes('ensureTodayQueueHasActiveCards(`markCard:${action}`)'), 'expected markCard not to duplicate normal repair');
   assert(app.includes('todaySeenWords.size'), 'expected metrics cache key to include todaySeenWords.size');
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');
   assert(app.includes('todayQueueCompleted.size'), 'expected metrics cache key to include completed queue size');
