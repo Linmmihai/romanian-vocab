@@ -3842,7 +3842,7 @@ function shouldAutoStartTodayAfterReview() {
   return getUnseenWords(W).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
 }
 
-function advanceFlashcardAfterAnswer(currentRo) {
+function advanceFlashcardAfterAnswer(currentRo, options = {}) {
   flashOverrideRo = null;
   if (shouldAutoStartTodayAfterReview()) {
     flashMode = 'today';
@@ -3858,6 +3858,14 @@ function advanceFlashcardAfterAnswer(currentRo) {
     buildCats();
     showToast('到期复习已完成，继续今日新词');
     return;
+  }
+  if (options.incrementalToday && flashMode === 'today') {
+    const currentKey = roKey(currentRo);
+    filtered = filtered.filter(item => roKey(item?.ro) !== currentKey);
+    if (filtered.length) {
+      idx = Math.min(idx, filtered.length - 1);
+      return;
+    }
   }
   applyFilters();
   const currentKey = roKey(currentRo);
@@ -4019,7 +4027,9 @@ function markCard(answer) {
       flashOverrideRo = null;
       idx = 0;
     } else {
-      advanceFlashcardAfterAnswer(w.ro);
+      advanceFlashcardAfterAnswer(w.ro, {
+        incrementalToday: flashMode === 'today' && isOpenTodayWord
+      });
     }
     renderNextFlashCardInstantFront();
     persistFastCardAnswer(progressResult);
