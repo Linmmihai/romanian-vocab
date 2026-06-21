@@ -10,6 +10,7 @@ let userRole = null;
 let progressMap = {};
 let W = [];           // 全部词汇（从数据库加载）
 let wordRoIndex = new Map();
+let wordByRoIndex = new Map();
 let filtered = [];    // 当前分类筛选后的词汇
 let idx = 0;          // 卡片当前索引
 let flipped = false;
@@ -118,11 +119,13 @@ function getRoAliasKeys(wordRo) {
 
 function rebuildWordRoIndex() {
   wordRoIndex = new Map();
+  wordByRoIndex = new Map();
   W.forEach(word => {
     const canonical = normalizeWordText(word?.ro);
     if (!canonical) return;
     const exactKey = roKey(canonical);
     if (exactKey) wordRoIndex.set(exactKey, canonical);
+    if (exactKey) wordByRoIndex.set(exactKey, word);
   });
 }
 
@@ -584,6 +587,30 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
   activeOpenCount = activeOpenWords.length;
   deferredOpenCount = deferredOpenWords.length;
   activeSlots = Math.max(0, remainingQuota - activeOpenWords.length);
+  if (!options.force && canStudyToday && activeSlots === 0) {
+    debugDailyQueue('ensureTodayQueueHasActiveCards:fast-active', {
+      reason,
+      canStudyToday,
+      remainingQuota,
+      activeOpenCount,
+      deferredOpenCount,
+      activeSlots
+    });
+    finishDailyQueuePerf(perf, {
+      reason,
+      changed: false,
+      persisted: false,
+      fastPath: 'active-queue-full',
+      canStudyToday,
+      remainingQuota,
+      activeOpenCount,
+      deferredOpenCount,
+      activeSlots,
+      vocabScanned: 0,
+      eligibleNewCount: 0
+    });
+    return false;
+  }
   vocabScanned = canStudyToday && activeSlots > 0 ? W.length : 0;
   const eligibleNewWords = canStudyToday && activeSlots > 0
     ? getEligibleUnseenWordsForToday(W).slice(0, activeSlots)
@@ -1558,10 +1585,14 @@ function getDailyWordList(words = W, options = {}) {
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
     : words.filter(w => w.cat === curCat);
+  const scopedKeys = options.ignoreCategory || curCat === '全部'
+    ? null
+    : new Set(scoped.map(w => roKey(w.ro)));
   const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
   const openWords = openQueuedRos
-    .map(ro => scoped.find(w => roKey(w.ro) === roKey(ro)))
+    .map(ro => getWordByRo(ro))
     .filter(Boolean)
+    .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)))
     .filter(w => !isRetryDeferred(w));
   const allDueToday = getRemainingDueReviewWords(W).length > 0;
   if (allDueToday) {
@@ -2476,11 +2507,6 @@ function getCurrentScopeWords() {
 
 function getReviewPanelMetrics(scoped) {
   const perf = startDailyQueuePerf('getReviewPanelMetrics');
-  const activeOpenQueueCount = todayQueue
-    .filter(ro => !setHasRo(todayQueueCompleted, ro))
-    .map(ro => getWordByRo(ro))
-    .filter(isActiveTodayQueueWord)
-    .length;
   const key = [
     curCat,
     W.length,
@@ -2498,11 +2524,15 @@ function getReviewPanelMetrics(scoped) {
     finishDailyQueuePerf(perf, {
       cacheHit: true,
       vocabScanned: 0,
-      activeOpenQueueCount,
       resultSize: 0
     });
     return reviewPanelMetricsCache.metrics;
   }
+  const activeOpenQueueCount = todayQueue
+    .filter(ro => !setHasRo(todayQueueCompleted, ro))
+    .map(ro => getWordByRo(ro))
+    .filter(isActiveTodayQueueWord)
+    .length;
   const due = getRemainingDueReviewWords(scoped).length;
   const rawUnseenRemaining = getUnseenWords(scoped)
     .filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
@@ -3597,7 +3627,7 @@ function setCat(c) {
 
 function getWordByRo(wordRo) {
   const key = roKey(wordRo);
-  return W.find(w => roKey(w.ro) === key) || null;
+  return wordByRoIndex.get(key) || null;
 }
 
 function getCurrentFlashWord() {

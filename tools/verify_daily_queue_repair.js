@@ -35,6 +35,14 @@ function repairTodayQueue({
   return uniqueRos([...activeOpen, ...newCards, ...deferredOpen]);
 }
 
+function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], dailyGoal, todayNewWords }) {
+  const completedKeys = new Set(completed.map(roKey));
+  const deferredKeys = new Set(deferred.map(roKey));
+  const activeOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && !deferredKeys.has(roKey(ro)));
+  const remainingQuota = Math.max(0, dailyGoal - todayNewWords);
+  return activeOpen.length >= remainingQuota;
+}
+
 {
   const todayQueue = Array.from({ length: 20 }, (_, index) => `retry-${index}`);
   const deferred = [...todayQueue];
@@ -55,8 +63,26 @@ function repairTodayQueue({
 }
 
 {
+  const todayQueue = Array.from({ length: 30 }, (_, index) => `active-${index}`);
+  assert.strictEqual(
+    shouldFastPathActiveQueue({ todayQueue, dailyGoal: 30, todayNewWords: 0 }),
+    true,
+    'expected normal active queue to skip expensive repair'
+  );
+  const repaired = repairTodayQueue({
+    todayQueue,
+    unseen: Array.from({ length: 50 }, (_, index) => `new-${index}`),
+    dailyGoal: 30,
+    todayNewWords: 0
+  });
+  assert.deepStrictEqual(repaired, todayQueue, 'expected active queue repair to make no queue changes');
+}
+
+{
   const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
+  assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
+  assert(app.includes('return wordByRoIndex.get(key) || null'), 'expected getWordByRo to use indexed lookup');
   assert(app.includes('todaySeenWords.size'), 'expected metrics cache key to include todaySeenWords.size');
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');
   assert(app.includes('todayQueueCompleted.size'), 'expected metrics cache key to include completed queue size');
