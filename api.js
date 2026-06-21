@@ -384,17 +384,22 @@ function rowToProgress(r) {
   );
   return {
     seen,
+    seenViaCard: !!(r.seen_via_card ?? r.seenViaCard),
     known: r.known,
     qr,
     qt,
+    grammarQr: r.grammar_qr ?? r.grammarQr ?? 0,
+    grammarQt: r.grammar_qt ?? r.grammarQt ?? 0,
     level: r.level || 'unknown',
     reviewStage,
     nextReviewAt,
     lastReviewedAt,
     reviewCount: reviewStage,
     nextReview: r.next_review || r.nextReview || (r.next_review_at ? String(r.next_review_at).slice(0, 10) : null),
+    wasMasteredAt: r.was_mastered_at || r.wasMasteredAt || null,
     wrongCount: r.wrong_count ?? r.wrongCount,
     errorStreak: r.error_streak ?? r.errorStreak,
+    correctStreakSinceWrong: r.correct_streak_since_wrong ?? r.correctStreakSinceWrong ?? 0,
     lastWrongAt: r.last_wrong_at || r.lastWrongAt || null,
     weakClearedAt: r.weak_cleared_at || r.weakClearedAt || null
   };
@@ -464,9 +469,13 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   );
   const wrongCount = Math.max(Number(localProgress.wrongCount || 0), Number(cloudProgress.wrongCount || 0));
   const errorStreak = Math.max(Number(localProgress.errorStreak || 0), Number(cloudProgress.errorStreak || 0));
+  const correctStreakSinceWrong = Math.max(Number(localProgress.correctStreakSinceWrong || 0), Number(cloudProgress.correctStreakSinceWrong || 0));
+  const grammarQr = Math.max(Number(localProgress.grammarQr || 0), Number(cloudProgress.grammarQr || 0));
+  const grammarQt = Math.max(Number(localProgress.grammarQt || 0), Number(cloudProgress.grammarQt || 0), grammarQr);
   const lastReviewedAt = newerIso(localProgress.lastReviewedAt, cloudProgress.lastReviewedAt) || new Date().toISOString();
   const lastWrongAt = newerIso(localProgress.lastWrongAt, cloudProgress.lastWrongAt);
   const weakClearedAt = newerIso(localProgress.weakClearedAt, cloudProgress.weakClearedAt);
+  const wasMasteredAt = newerIso(localProgress.wasMasteredAt, cloudProgress.wasMasteredAt);
   const nextReviewAt = laterReviewIso(
     localProgress.nextReviewAt || localProgress.nextReview,
     cloudProgress.nextReviewAt || cloudProgress.nextReview,
@@ -476,15 +485,20 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
     ...cloudProgress,
     ...localProgress,
     seen: !!(localProgress.seen || cloudProgress.seen || localProgress.known || cloudProgress.known || qt || reviewStage),
+    seenViaCard: !!(localProgress.seenViaCard || cloudProgress.seenViaCard),
     known: !!(localProgress.known || cloudProgress.known || qr > 0 || reviewStage > 0),
     qr,
     qt,
+    grammarQr,
+    grammarQt,
     reviewStage,
     reviewCount: reviewStage,
     nextReviewAt,
     lastReviewedAt,
+    wasMasteredAt,
     wrongCount,
     errorStreak,
+    correctStreakSinceWrong,
     lastWrongAt,
     weakClearedAt
   };

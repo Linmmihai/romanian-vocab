@@ -16,8 +16,6 @@ let flipped = false;
 let flashHistory = [];
 let flashOverrideRo = null;
 let curCat = '全部';
-let reviewQueue = [];
-let reviewIdx = 0;
 let flashMode = 'today'; // today | review
 let todayQueue = [];
 let todayQueueCompleted = new Set();
@@ -138,6 +136,14 @@ function getProgressReviewStage(progress = {}) {
   ) || 0;
 }
 
+function getProgressGrammarQr(progress = {}) {
+  return Number(progress.grammarQr || progress.grammar_qr || 0) || 0;
+}
+
+function getProgressGrammarQt(progress = {}) {
+  return Number(progress.grammarQt || progress.grammar_qt || 0) || 0;
+}
+
 function mergeProgressEntry(existing = null, incoming = {}) {
   if (!existing) return incoming;
   const existingQt = Number(existing.qt || 0);
@@ -147,6 +153,7 @@ function mergeProgressEntry(existing = null, incoming = {}) {
   const reviewStage = Math.max(getProgressReviewStage(existing), getProgressReviewStage(incoming));
   const nextReviewAt = newerIsoLike(existing.nextReviewAt || existing.nextReview, incoming.nextReviewAt || incoming.nextReview);
   const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
+  const wasMasteredAt = newerIsoLike(existing.wasMasteredAt, incoming.wasMasteredAt);
   return {
     ...other,
     ...base,
@@ -154,12 +161,17 @@ function mergeProgressEntry(existing = null, incoming = {}) {
     qt: Math.max(existingQt, incomingQt),
     known: !!(existing.known || incoming.known),
     seen: !!(existing.seen || incoming.seen || existing.known || incoming.known || existingQt || incomingQt || reviewStage),
+    seenViaCard: !!(existing.seenViaCard || incoming.seenViaCard),
     reviewStage,
     reviewCount: reviewStage,
     nextReviewAt: nextReviewAt || base.nextReviewAt || other.nextReviewAt,
     lastReviewedAt: lastReviewedAt || base.lastReviewedAt || other.lastReviewedAt,
+    grammarQr: Math.max(getProgressGrammarQr(existing), getProgressGrammarQr(incoming)),
+    grammarQt: Math.max(getProgressGrammarQt(existing), getProgressGrammarQt(incoming)),
+    wasMasteredAt: wasMasteredAt || null,
     wrongCount: Math.max(Number(existing.wrongCount || 0), Number(incoming.wrongCount || 0)),
     errorStreak: Math.max(Number(existing.errorStreak || 0), Number(incoming.errorStreak || 0)),
+    correctStreakSinceWrong: Math.max(Number(existing.correctStreakSinceWrong || 0), Number(incoming.correctStreakSinceWrong || 0)),
     lastWrongAt: newerIsoLike(existing.lastWrongAt, incoming.lastWrongAt) || null,
     weakClearedAt: newerIsoLike(existing.weakClearedAt, incoming.weakClearedAt) || null
   };
@@ -368,6 +380,15 @@ function isCurrentTodayGoalDone() {
 
 function hasOpenTodayQueue() {
   return todayQueue.some(ro => !setHasRo(todayQueueCompleted, ro));
+}
+
+function getDeferredTodayQueueCount() {
+  return todayQueue
+    .filter(ro => !setHasRo(todayQueueCompleted, ro))
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(isRetryDeferred)
+    .length;
 }
 
 function shouldPauseTodayStudyForCheckin() {
@@ -1049,7 +1070,7 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return buildReviewFirstDailyPlan(W, cap);
+  return getUnseenWords(W).slice(0, cap);
 }
 
 function uniqueWordsByRo(words) {
@@ -1133,8 +1154,9 @@ function buildOpenTodayQueue(goal = dailyGoal) {
   const slots = Math.max(0, cap - selectedKeys.size);
   if (!slots) return open;
   const blocked = new Set([...selectedKeys, ...todaySeenWords].map(roKey));
-  const additions = buildReviewFirstDailyPlan(W, slots)
+  const additions = getUnseenWords(W)
     .filter(w => !blocked.has(roKey(w.ro)))
+    .slice(0, slots)
     .map(w => w.ro);
   return normalizeWordRoList([...open, ...additions]);
 }
@@ -1142,28 +1164,15 @@ function buildOpenTodayQueue(goal = dailyGoal) {
 function getDailyWordList(words = W, options = {}) {
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) return [];
   if (shouldPauseTodayStudyForCheckin()) return [];
-  const includeFallback = options.includeFallback !== false;
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
     : words.filter(w => w.cat === curCat);
   const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
-  const queueWords = openQueuedRos
+  return openQueuedRos
     .map(ro => scoped.find(w => roKey(w.ro) === roKey(ro)))
     .filter(Boolean)
-    .filter(w => !isRetryDeferred(w));
-  if (queueWords.length || !includeFallback) return queueWords.slice(0, limit);
-  if (openQueuedRos.length && curCat !== '全部') return [];
-  if (todayNewWords >= dailyGoal && !openQueuedRos.length) return [];
-
-  const displayableQueuedRos = openQueuedRos
-    .map(ro => getWordByRo(ro))
-    .filter(Boolean)
     .filter(w => !isRetryDeferred(w))
-    .map(w => w.ro);
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted, ...displayableQueuedRos].map(roKey));
-  return buildDailyQueueWords(Math.min(limit, Math.max(0, dailyGoal - todayNewWords)))
-    .filter(w => !blocked.has(roKey(w.ro)))
     .slice(0, limit);
 }
 
@@ -1392,7 +1401,7 @@ async function completeTodayQueueWord(wordRo, options = {}) {
 async function ensureStartedProgressForTodayWord(wordRo) {
   const canonicalRo = canonicalWordRo(wordRo);
   if (!canonicalRo || hasWordProgress(getProgress(canonicalRo))) return;
-  await syncProgress(canonicalRo, true, 1, 1, true, { skipDailyQueueReconcile: true });
+  await syncProgress(canonicalRo, true, 1, 1, true, { seenViaCard: true, skipDailyQueueReconcile: true });
 }
 
 function repairStartedProgressForCompletedTodayWords() {
@@ -1404,6 +1413,7 @@ function repairStartedProgressForCompletedTodayWords() {
     const nowIso = new Date().toISOString();
     const repairedProgress = {
       seen: true,
+      seenViaCard: true,
       known: true,
       qr: 1,
       qt: 1,
@@ -1432,6 +1442,7 @@ function repairStartedProgressForCompletedTodayWords() {
 function shouldCompleteQueuedWordFromProgress(wordRo) {
   const p = getProgress(wordRo);
   if (!hasWordProgress(p) || isReviewDue(p)) return false;
+  if (!p.seenViaCard) return false;
   return !!(p.known || Number(p.qr || 0) > 0 || getStoredLevel(p) === 'mastered');
 }
 
@@ -1468,6 +1479,25 @@ function resolveNextStoredLevel(prev = {}, calculatedLevel = 'unknown', success 
   if (!options.preserveLearningLevel || !(prev.qt || prev.known)) return calculatedLevel;
   if (!success) return 'learning';
   return getStoredLevel(prev);
+}
+
+function applyMasteryHistory(progress = {}, prev = {}) {
+  const wasMasteredAt = prev.wasMasteredAt || progress.wasMasteredAt || null;
+  if (getStoredLevel(progress) === 'mastered') {
+    return { ...progress, wasMasteredAt: wasMasteredAt || new Date().toISOString() };
+  }
+  return { ...progress, wasMasteredAt };
+}
+
+function buildReviewFromPrev(prev = {}) {
+  const nowIso = new Date().toISOString();
+  const stage = getProgressReviewStage(prev);
+  return {
+    reviewStage: stage,
+    reviewCount: stage,
+    nextReviewAt: prev.nextReviewAt || prev.nextReview || nowIso,
+    lastReviewedAt: prev.lastReviewedAt || nowIso
+  };
 }
 
 function normalizeStoredProgressLevel(level) {
@@ -1653,14 +1683,19 @@ function getDifficultScore(w) {
   const p = getProgress(w.ro) || {};
   const qt = p.qt || 0;
   const qr = p.qr || 0;
-  const wrong = Math.max(Number(p.wrongCount || 0), Math.max(0, qt - qr));
-  const rate = qt ? wrong / qt : 0;
+  const grammarQt = getProgressGrammarQt(p);
+  const grammarQr = getProgressGrammarQr(p);
+  const coreWrong = Math.max(0, qt - qr);
+  const grammarWrong = Math.max(0, grammarQt - grammarQr);
+  const wrong = Math.max(Number(p.wrongCount || 0), coreWrong + grammarWrong);
+  const total = qt + grammarQt;
+  const rate = total ? wrong / total : 0;
   return {
     wrong,
     rate,
     streak: p.errorStreak || 0,
     lastWrong: p.lastWrongAt ? new Date(p.lastWrongAt).getTime() : 0,
-    qt
+    qt: total
   };
 }
 
@@ -1689,6 +1724,7 @@ function isWeakLearningWord(wordRo) {
 
 function isUnclearedWeakLearningMiss(wordRo) {
   const p = getProgress(wordRo) || {};
+  if (!(p.wasMasteredAt || p.level === 'mastered' || getStoredLevel(p) === 'mastered')) return false;
   const qt = p.qt || 0;
   const qr = p.qr || 0;
   const misses = Math.max(0, qt - qr);
@@ -1738,9 +1774,14 @@ function getFlashModeLabel() {
 function getNextReview(progress, success) {
   const now = new Date();
   if (!success) {
+    const current = getProgressReviewStage(progress);
+    const fallbackStage = Math.max(0, current - 2);
+    const fallbackInterval = fallbackStage > 0
+      ? REVIEW_INTERVALS[Math.max(0, fallbackStage - 1)]
+      : LEARNING_RETRY_INTERVAL;
     return {
-      reviewStage: 0,
-      nextReviewAt: new Date(now.getTime() + LEARNING_RETRY_INTERVAL.ms).toISOString(),
+      reviewStage: fallbackStage,
+      nextReviewAt: new Date(now.getTime() + fallbackInterval.ms).toISOString(),
       lastReviewedAt: now.toISOString()
     };
   }
@@ -1928,8 +1969,9 @@ function getReviewPanelMetrics(scoped) {
     .filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
     .length;
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
+  const queuedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingDueReviews = getRemainingTodayReviewWords().length;
-  const availableNewSlots = Math.max(0, remainingSlots - remainingDueReviews);
+  const availableNewSlots = Math.max(0, dailyGoal - queuedKeys.size);
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
   const metrics = { due, remainingSlots, remainingDueReviews, unseenRemaining };
   reviewPanelMetricsCache = { key, metrics };
@@ -2084,32 +2126,73 @@ async function apiSaveProgressWithSessionRetry(userId, wordRo, known, qr, qt, le
   }
 }
 
-async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
-  setSyncBadge('保存中...', '');
-  const canonicalRo = canonicalWordRo(wordRo);
-  const prev = getProgress(canonicalRo) || {};
-  const review = getNextReview(prev, success);
-  const calculatedLevel = calcLevel(qr, qt, known, { ...prev, ...review });
-  const level = resolveNextStoredLevel(prev, calculatedLevel, success, options);
-  const shouldTrackWrongbook = options.trackWrongbook === true;
-  const shouldClearWrongbook = options.clearWrongbook === true;
+function isCoreMemoryExercise(options = {}) {
+  return !options.exerciseType || ['translation', 'listening'].includes(options.exerciseType);
+}
+
+function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options = {}) {
   const nowIso = new Date().toISOString();
+  const coreMemory = isCoreMemoryExercise(options);
+  const review = options.clearWrongbook
+    ? buildReviewFromPrev(prev)
+    : (coreMemory ? getNextReview(prev, success) : buildReviewFromPrev(prev));
+  const nextQr = coreMemory ? (qr || 0) : (prev.qr || 0);
+  const nextQt = coreMemory ? (qt || 0) : (prev.qt || 0);
+  const nextKnown = coreMemory ? known : !!prev.known;
+  const grammarQr = coreMemory ? getProgressGrammarQr(prev) : getProgressGrammarQr(prev) + (success ? 1 : 0);
+  const grammarQt = coreMemory ? getProgressGrammarQt(prev) : getProgressGrammarQt(prev) + 1;
+  const calculatedLevel = calcLevel(nextQr, nextQt, nextKnown, { ...prev, ...review });
+  const level = coreMemory
+    ? resolveNextStoredLevel(prev, calculatedLevel, success, options)
+    : getStoredLevel(prev);
+  const wasMasteredBefore = !!prev.wasMasteredAt || getStoredLevel(prev) === 'mastered';
+  const shouldTrackWrongbook = coreMemory && options.trackWrongbook === true && wasMasteredBefore;
+  const shouldClearWrongbook = options.clearWrongbook === true;
+  const correctStreakSinceWrong = shouldClearWrongbook
+    ? 0
+    : (success
+      ? (Number(prev.correctStreakSinceWrong || 0) + 1)
+      : 0);
+  const decayedWrongCount = success
+    ? Math.max(0, Number(prev.wrongCount || 0) - 1)
+    : Number(prev.wrongCount || 0);
   const wrongCount = shouldClearWrongbook
     ? 0
-    : (prev.wrongCount || 0) + (shouldTrackWrongbook && !success ? 1 : 0);
+    : decayedWrongCount + (shouldTrackWrongbook && !success ? 1 : 0);
   const errorStreak = shouldClearWrongbook
     ? 0
     : (shouldTrackWrongbook
-        ? (success ? 0 : (prev.errorStreak || 0) + 1)
-        : (prev.errorStreak || 0));
+        ? (success ? 0 : Number(prev.errorStreak || 0) + 1)
+        : (success ? 0 : Number(prev.errorStreak || 0)));
   const lastWrongAt = shouldClearWrongbook
     ? null
     : (shouldTrackWrongbook && !success ? nowIso : (prev.lastWrongAt || null));
   const weakClearedAt = shouldClearWrongbook
     ? nowIso
-    : (!success ? null : (prev.weakClearedAt || null));
+    : (wrongCount === 0 && success ? nowIso : (!success ? null : (prev.weakClearedAt || null)));
   const memory = { wrongCount, errorStreak, lastWrongAt, weakClearedAt };
-  const nextProgress = { ...prev, seen: true, known, qr, qt, level, ...review, ...memory };
+  const nextProgress = applyMasteryHistory({
+    ...prev,
+    seen: true,
+    seenViaCard: !!(prev.seenViaCard || options.seenViaCard),
+    known: nextKnown,
+    qr: nextQr,
+    qt: nextQt,
+    grammarQr,
+    grammarQt,
+    level,
+    ...review,
+    ...memory,
+    correctStreakSinceWrong
+  }, prev);
+  return { review, level, memory, progress: nextProgress };
+}
+
+async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
+  setSyncBadge('保存中...', '');
+  const canonicalRo = canonicalWordRo(wordRo);
+  const prev = getProgress(canonicalRo) || {};
+  const { memory, progress: nextProgress } = buildProgressUpdate(prev, known, qr, qt, success, options);
   setProgress(canonicalRo, nextProgress);
   const localStatus = typeof queueProgressForSync === 'function'
     ? queueProgressForSync(currentUser.id, canonicalRo, { ...nextProgress, pendingSync: true }, memory)
@@ -2141,7 +2224,7 @@ const INTERACTION_RULES = {
       qr: (prev.qr || 0) + 1,
       qt: (prev.qt || 0) + 1,
       success: true,
-      options: {}
+      options: { seenViaCard: true }
     };
   },
   flashcard_unknown(prev) {
@@ -2150,7 +2233,7 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: {}
+      options: { seenViaCard: true }
     };
   },
   review_correct(prev) {
@@ -2159,7 +2242,7 @@ const INTERACTION_RULES = {
       qr: (prev.qr || 0) + 1,
       qt: (prev.qt || 0) + 1,
       success: true,
-      options: {}
+      options: { seenViaCard: true }
     };
   },
   review_wrong(prev) {
@@ -2168,7 +2251,7 @@ const INTERACTION_RULES = {
       qr: prev.qr || 0,
       qt: (prev.qt || 0) + 1,
       success: false,
-      options: { preserveLearningLevel: true, trackWrongbook: shouldTrackWrongbookForMiss(prev) }
+      options: { seenViaCard: true, preserveLearningLevel: true, trackWrongbook: shouldTrackWrongbookForMiss(prev) }
     };
   },
   quiz_correct(prev) {
@@ -2219,7 +2302,7 @@ const INTERACTION_RULES = {
 };
 
 function shouldTrackWrongbookForMiss(prev = {}) {
-  return getStoredLevel(prev) === 'mastered';
+  return !!prev.wasMasteredAt || getStoredLevel(prev) === 'mastered';
 }
 
 function buildNextProgressForInteraction(wordRo, interactionType, extraOptions = {}) {
@@ -2229,28 +2312,7 @@ function buildNextProgressForInteraction(wordRo, interactionType, extraOptions =
   const prev = getProgress(canonicalRo) || { known: false, qr: 0, qt: 0 };
   const next = rule(prev);
   const options = { ...next.options, ...extraOptions };
-  const review = getNextReview(prev, next.success);
-  const calculatedLevel = calcLevel(next.qr, next.qt, next.known, { ...prev, ...review });
-  const level = resolveNextStoredLevel(prev, calculatedLevel, next.success, options);
-  const shouldTrackWrongbook = options.trackWrongbook === true;
-  const shouldClearWrongbook = options.clearWrongbook === true;
-  const nowIso = new Date().toISOString();
-  const wrongCount = shouldClearWrongbook
-    ? 0
-    : (prev.wrongCount || 0) + (shouldTrackWrongbook && !next.success ? 1 : 0);
-  const errorStreak = shouldClearWrongbook
-    ? 0
-    : (shouldTrackWrongbook
-        ? (next.success ? 0 : (prev.errorStreak || 0) + 1)
-        : (prev.errorStreak || 0));
-  const lastWrongAt = shouldClearWrongbook
-    ? null
-    : (shouldTrackWrongbook && !next.success ? nowIso : (prev.lastWrongAt || null));
-  const weakClearedAt = shouldClearWrongbook
-    ? nowIso
-    : (!next.success ? null : (prev.weakClearedAt || null));
-  const memory = { wrongCount, errorStreak, lastWrongAt, weakClearedAt };
-  const progress = { ...prev, seen: true, known: next.known, qr: next.qr, qt: next.qt, level, ...review, ...memory };
+  const { memory, progress } = buildProgressUpdate(prev, next.known, next.qr, next.qt, next.success, options);
   return { canonicalRo, prev, next, options, memory, progress };
 }
 
@@ -2359,7 +2421,6 @@ async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
 // ── 导航 ─────────────────────────────────────────────────
 
 function switchPage(p) {
-  if (p === 'review') { qPracticeScope = 'due'; p = 'quiz'; }
   if (p !== 'quiz' && isQuizInProgress()) resetQuizSession();
   if (p !== 'wrongbook' && wbAutoAdvanceTimer) {
     clearTimeout(wbAutoAdvanceTimer);
@@ -2372,8 +2433,6 @@ function switchPage(p) {
     if (page) page.classList.toggle('active', s === p);
   });
   closeAccountMenu?.();
-  const reviewPage = document.getElementById('page-review');
-  if (reviewPage) reviewPage.classList.remove('active');
   if (p === 'flash') { applyFilters(); renderCard(); renderDailyGoal(); renderCalendar(); }
   if (p === 'quiz') showQuizSetup();
   if (p === 'stats') renderStatsPage();
@@ -2640,6 +2699,7 @@ function restoreAdminSections() {
 function updateReviewBadge() {
   const badge = document.getElementById('review-tab-badge') || document.getElementById('flash-tab-badge');
   if (!badge) return;
+  // Nav badge is scoped to due review inside today's queue; overview cards show all-bank due review.
   const count = getRemainingTodayReviewWords().length;
   badge.textContent = count;
   badge.style.display = count > 0 ? 'inline' : 'none';
@@ -2949,21 +3009,30 @@ function renderCard() {
     setText('fc-cat', curCat === '全部' ? '' : curCat);
     setText('fc-cat2', curCat === '全部' ? '' : curCat);
     const frontHint = document.getElementById('fc-front-hint');
-    const hasOpenQueue = todayQueue.some(ro => !setHasRo(todayQueueCompleted, ro));
+    const hasOpenQueue = hasOpenTodayQueue();
+    const deferredQueueCount = getDeferredTodayQueueCount();
     const hasDueReview = getRemainingDueReviewWords(W).length > 0;
     const hasNewWords = getUnseenWords(getCurrentScopeWords()).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
     const currentDone = isCurrentTodayGoalDone();
     const pausedForCheckin = shouldPauseTodayStudyForCheckin();
     const emptyText = {
-      today: pausedForCheckin ? '今日固定目标已完成' : (currentDone ? '今日任务已完成' : (curCat !== '全部' && (hasDueReview || hasNewWords) ? '当前分类没有今日任务' : '今日没有可安排任务')),
+      today: pausedForCheckin
+        ? '今日固定目标已完成'
+        : (currentDone
+          ? '今日任务已完成'
+          : (deferredQueueCount
+            ? '今日队列等待复习'
+            : (curCat !== '全部' && (hasDueReview || hasNewWords || hasOpenQueue) ? '当前分类没有今日任务' : '今日没有可安排任务'))),
       review: '当前没有到期复习词',
     }[flashMode] || '当前分类暂无可学词';
     const actionText = {
       today: pausedForCheckin
         ? '先完成打卡，再选择是否临时加量继续学习。'
         : (currentDone
-        ? getContinueAfterGoalText()
-        : (hasOpenQueue ? '请切换到全部，先完成到期复习' : '可以切换分类、提高今日任务目标或去测验')),
+        ? '已达到今日目标，系统不会继续加入新词。'
+        : (deferredQueueCount
+          ? `${deferredQueueCount} 个词刚标记不认识，系统会按短间隔复习；不会加入新词。`
+          : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换分类、提高今日任务目标或去测验'))),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
@@ -3118,7 +3187,7 @@ function getNextDailyFallbackWord(currentRo) {
   if (shouldPauseTodayStudyForCheckin() || isCurrentTodayGoalDone()) return null;
   const currentKey = currentRo ? roKey(currentRo) : '';
   const completed = new Set([...todayQueueCompleted].map(roKey));
-  const openQueue = todayQueue
+  return todayQueue
     .map(ro => getWordByRo(ro))
     .filter(Boolean)
     .filter(w => !isRetryDeferred(w))
@@ -3126,15 +3195,7 @@ function getNextDailyFallbackWord(currentRo) {
       const p = getProgress(w.ro);
       return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(w);
     })
-    .filter(w => roKey(w.ro) !== currentKey && !completed.has(roKey(w.ro)));
-  const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
-  const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
-  const unseen = remainingSlots > 0
-    ? getUnseenWords(W)
-      .filter(w => roKey(w.ro) !== currentKey && !selectedKeys.has(roKey(w.ro)))
-      .slice(0, remainingSlots)
-    : [];
-  return uniqueWordsByRo([...openQueue, ...unseen])[0] || null;
+    .filter(w => roKey(w.ro) !== currentKey && !completed.has(roKey(w.ro)))[0] || null;
 }
 
 function bindFlashcardButtons() {
@@ -3272,18 +3333,6 @@ function prevCard() {
   renderCard();
 }
 
-function prevReviewCard() {
-  if (!reviewQueue.length) return;
-  reviewIdx = (reviewIdx - 1 + reviewQueue.length) % reviewQueue.length;
-  renderReviewCard();
-}
-
-function nextReviewCard() {
-  if (!reviewQueue.length) return;
-  reviewIdx = (reviewIdx + 1) % reviewQueue.length;
-  renderReviewCard();
-}
-
 function bindCardGesture(cardId, handlers) {
   const card = document.getElementById(cardId);
   if (!card) return;
@@ -3345,11 +3394,6 @@ function bindCardGestures() {
     prev: prevCard,
     next: nextCard,
     flip: flipCard
-  });
-  bindCardGesture('rv-card', {
-    prev: prevReviewCard,
-    next: nextReviewCard,
-    flip: flipReviewCard
   });
   bindCardGesture('wb-card', {
     prev: prevWbCard,
@@ -3439,119 +3483,15 @@ document.addEventListener('keydown', (event) => {
   speakGuidePronunciation(item.dataset.speak, label, item, ttsText, item.dataset.ttsLang || 'ro-RO');
 });
 
-// ── 艾宾浩斯复习页 ────────────────────────────────────────
-
-function getTodayReviewWords() {
-  return W.filter(isDueReviewWord);
-}
-
-function initReviewQueue() {
-  reviewQueue = getTodayReviewWords().sort((a, b) => {
-    const pa = getProgress(a.ro) || {};
-    const pb = getProgress(b.ro) || {};
-    return new Date(pa.nextReviewAt || 0) - new Date(pb.nextReviewAt || 0);
-  });
-  reviewIdx = 0;
-}
-
-function renderReviewCard() {
-  const wrap = document.getElementById('review-wrap');
-  const empty = document.getElementById('review-empty');
-  if (!wrap || !empty) return;
-
-  if (!reviewQueue.length || reviewIdx >= reviewQueue.length) {
-    wrap.style.display = 'none';
-    empty.style.display = 'flex';
-    empty.innerHTML = `
-      <div style="font-size:48px">😴</div>
-      <div style="font-size:16px;font-weight:600;color:var(--text)">当前没有到期复习任务</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">可以回到今日任务学习新词，系统会按复习间隔安排下一次复习</div>
-      <button class="btn-sm" style="margin-top:12px" onclick="switchPage('flash')">去今日任务</button>`;
-    return;
-  }
-
-  wrap.style.display = 'block';
-  empty.style.display = 'none';
-
-  const w = reviewQueue[reviewIdx];
-  const p = getProgress(w.ro) || {};
-  const stress = getStressDisplay(w);
-  const stage = getProgressReviewStage(p);
-  const nextInterval = REVIEW_INTERVALS[Math.min(stage, REVIEW_INTERVALS.length - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
-
-  setText('rv-count', `${reviewIdx + 1} / ${reviewQueue.length}`);
-  setText('rv-zh', w.zh);
-  setText('rv-ro', w.ro);
-  setStressHtml('rv-ipa', w);
-  setGrammarText('rv-hint', w, stress);
-  setText('rv-cat', w.cat || '');
-  setText('rv-cat2', w.cat || '');
-  setText('rv-interval', `当前阶段 ${stage} · 答对后进入 ${nextInterval.label}`);
-
-  document.getElementById('rv-card').classList.remove('flipped');
-  document.getElementById('rv-btns').style.display = 'none';
-  document.getElementById('rv-flip-hint').style.display = 'block';
-}
-
-function flipReviewCard() {
-  const card = document.getElementById('rv-card');
-  if (!card) return;
-  const flippedNow = card.classList.toggle('flipped');
-  document.getElementById('rv-btns').style.display = flippedNow ? 'flex' : 'none';
-  document.getElementById('rv-flip-hint').style.display = flippedNow ? 'none' : 'block';
-}
-
-function speakReview(rate) {
-  if (!reviewQueue.length || reviewIdx >= reviewQueue.length) return;
-  const w = reviewQueue[reviewIdx];
-  if (!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(w.ro);
-  u.lang = 'ro-RO';
-  u.rate = rate;
-  const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
-  if (rv) u.voice = rv;
-  speechSynthesis.speak(u);
-}
-
-async function markReview(yes) {
-  if (!reviewQueue.length || reviewIdx >= reviewQueue.length) return;
-  const w = reviewQueue[reviewIdx];
-  await recordInteraction(w.ro, yes ? 'review_correct' : 'review_wrong');
-
-  if (!yes) {
-    reviewQueue.push(w);
-    showToast('已放回复习队列，稍后会再次出现');
-  }
-  reviewIdx++;
-  if (reviewIdx >= reviewQueue.length) {
-    showReviewComplete();
-    return;
-  }
-  renderReviewCard();
-}
-
-function showReviewComplete() {
-  const wrap = document.getElementById('review-wrap');
-  const empty = document.getElementById('review-empty');
-  if (wrap) wrap.style.display = 'none';
-  if (!empty) return;
-  empty.style.display = 'flex';
-  empty.innerHTML = `
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">今日复习完成</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">完成了 ${reviewQueue.length} 次复习操作</div>
-      <button class="btn-sm" onclick="switchPage('flash')">去今日任务</button>
-    `;
-}
-
 // ── 需加强 ────────────────────────────────────────────────
 
 /**
- * 判断一个词是否需要加强：包含已掌握后又答错的词，以及尚未掌握但已经答错过的词。
+ * 需加强只收曾经掌握、后来又不稳定的词；初学阶段的错题留在学习/复习队列。
  */
 function isWrongWord(wordRo) {
   const p = getProgress(wordRo);
-  return !!p && ((p.wrongCount || 0) > 0 || (p.errorStreak || 0) > 0 || isUnclearedWeakLearningMiss(wordRo));
+  const wasMastered = !!(p?.wasMasteredAt || p?.level === 'mastered' || getStoredLevel(p) === 'mastered');
+  return wasMastered && ((p.wrongCount || 0) > 0 || (p.errorStreak || 0) > 0 || isUnclearedWeakLearningMiss(wordRo));
 }
 
 /**
@@ -3592,10 +3532,10 @@ function getWrongbookReason(progress = {}) {
   const qt = Number(progress.qt || 0);
   const qr = Number(progress.qr || 0);
   const missed = Math.max(0, qt - qr);
-  if (errorStreak >= 2) return `连续答错 ${errorStreak} 次，先短轮修复。`;
-  if (wrongCount > 0) return `最近答错过 ${wrongCount} 次，需要重新确认。`;
-  if (missed >= REINFORCEMENT_MIN_LEARNING_MISSES) return `累计错 ${missed} 次，先从学习中单独拎出来练。`;
-  return '这个词最近不够稳定，先单独修复。';
+  if (errorStreak >= 2) return `已掌握后连续答错 ${errorStreak} 次，先短轮修复。`;
+  if (wrongCount > 0) return `已掌握后最近答错过 ${wrongCount} 次，需要重新确认。`;
+  if (missed >= REINFORCEMENT_MIN_LEARNING_MISSES) return `已掌握词累计错 ${missed} 次，需要重新巩固。`;
+  return '这个已掌握词最近不够稳定，先单独修复。';
 }
 
 function renderWrongbookCard() {
@@ -4233,7 +4173,7 @@ async function answerQ(btn, ok, ro, zh) {
   }
   const w = qList[qIdx];
   document.getElementById('qfb').innerHTML = buildFeedbackHtml(w, ok, { type: qExerciseMode === 'listening' ? 'listening' : 'translation' });
-  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong');
+  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: qExerciseMode });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -4259,7 +4199,7 @@ async function answerExerciseQ(btn, ok) {
   const ex = qList[qIdx];
   const w = ex.word;
   document.getElementById('qfb').innerHTML = buildFeedbackHtml(w, ok, { type: ex.type, answer: ex.answer });
-  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong');
+  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: qExerciseMode });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
