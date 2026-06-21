@@ -359,17 +359,19 @@ function writeTodayTemporaryGoal(goal) {
 }
 
 function isDefaultGoalDone() {
-  return isDailyStateCurrent()
-    && todayNewWords >= defaultDailyGoal
-    && (isDailyCheckinDone() || !hasOpenTodayQueue());
+  return isDailyStateCurrent() && todayNewWords >= defaultDailyGoal;
 }
 
 function isCurrentTodayGoalDone() {
-  return isDailyStateCurrent() && todayNewWords >= dailyGoal && !hasOpenTodayQueue();
+  return isDailyStateCurrent() && todayNewWords >= dailyGoal;
 }
 
 function hasOpenTodayQueue() {
   return todayQueue.some(ro => !setHasRo(todayQueueCompleted, ro));
+}
+
+function shouldPauseTodayStudyForCheckin() {
+  return isDefaultGoalDone() && !isDailyCheckinDone();
 }
 
 function isDailyCheckinDone() {
@@ -1102,7 +1104,12 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
 
 function buildOpenTodayQueue(goal = dailyGoal) {
   const cap = Math.max(1, Number(goal || dailyGoal || 20));
-  const open = normalizeWordRoList(todayQueue).filter(ro => getWordByRo(ro) && !setHasRo(todayQueueCompleted, ro));
+  const open = normalizeWordRoList(todayQueue).filter(ro => {
+    const word = getWordByRo(ro);
+    if (!word || setHasRo(todayQueueCompleted, ro)) return false;
+    const p = getProgress(ro);
+    return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(word);
+  });
   const selectedKeys = new Set([...open, ...todayQueueCompleted].map(roKey));
   const slots = Math.max(0, cap - selectedKeys.size);
   if (!slots) return open;
@@ -1116,6 +1123,7 @@ function buildOpenTodayQueue(goal = dailyGoal) {
 
 function getDailyWordList(words = W, options = {}) {
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) return [];
+  if (shouldPauseTodayStudyForCheckin()) return [];
   const includeFallback = options.includeFallback !== false;
   const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
   const scoped = options.ignoreCategory || curCat === '全部'
@@ -3076,12 +3084,17 @@ function advanceFlashcardAfterAnswer(currentRo) {
 }
 
 function getNextDailyFallbackWord(currentRo) {
+  if (shouldPauseTodayStudyForCheckin() || isCurrentTodayGoalDone()) return null;
   const currentKey = currentRo ? roKey(currentRo) : '';
   const completed = new Set([...todayQueueCompleted].map(roKey));
   const openQueue = todayQueue
     .map(ro => getWordByRo(ro))
     .filter(Boolean)
     .filter(w => !isRetryDeferred(w))
+    .filter(w => {
+      const p = getProgress(w.ro);
+      return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(w);
+    })
     .filter(w => roKey(w.ro) !== currentKey && !completed.has(roKey(w.ro)));
   const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
@@ -5062,6 +5075,44 @@ function closeEditModal() {
   editingWordId = null; editingReportId = null;
 }
 
+function hasCjkText(value) {
+  return /[\u3400-\u9fff]/.test(String(value || ''));
+}
+
+function hasLatinLetter(value) {
+  return /[A-Za-zÀ-ž]/.test(String(value || ''));
+}
+
+function validateEditUpdates(updates, wordId) {
+  const problems = [];
+  if (!updates.zh) problems.push('中文不能为空');
+  if (!updates.ro) problems.push('罗马尼亚语不能为空');
+  if (updates.zh && hasLatinLetter(updates.zh) && !hasCjkText(updates.zh)) {
+    problems.push('中文字段看起来不是中文');
+  }
+  if (updates.ro && hasCjkText(updates.ro)) {
+    problems.push('罗马尼亚语字段不能包含中文');
+  }
+  if (updates.zh && updates.ro && roKey(updates.zh) === roKey(updates.ro)) {
+    problems.push('中文和罗马尼亚语不能相同');
+  }
+  const duplicate = W.find(w => Number(w.id) !== Number(wordId) && roKey(w.ro) === roKey(updates.ro));
+  if (duplicate) problems.push(`罗马尼亚语已存在：${duplicate.zh || duplicate.ro}`);
+  if (updates.example_zh && !updates.example_ro) {
+    problems.push('填写中文例句时也要填写罗语例句');
+  }
+  if (updates.example_ro && hasCjkText(updates.example_ro)) {
+    problems.push('罗语例句不能包含中文');
+  }
+  if (updates.example_ro && !hasLatinLetter(updates.example_ro)) {
+    problems.push('罗语例句看起来不是罗马尼亚语句子');
+  }
+  if (updates.example_zh && hasLatinLetter(updates.example_zh) && !hasCjkText(updates.example_zh)) {
+    problems.push('中文例句看起来不是中文');
+  }
+  return problems;
+}
+
 async function saveEdit() {
   const btn = document.getElementById('em-submit');
   btn.disabled = true; btn.textContent = '保存中...';
@@ -5074,6 +5125,12 @@ async function saveEdit() {
     example_ro: document.getElementById('em-example-ro').value.trim(),
     example_zh: document.getElementById('em-example-zh').value.trim(),
   };
+  const validationProblems = validateEditUpdates(updates, editingWordId);
+  if (validationProblems.length) {
+    showToast(validationProblems[0]);
+    btn.disabled = false; btn.textContent = '保存修改';
+    return;
+  }
   try {
     await apiUpdateWord(editingWordId, updates);
     if (editingReportId) await apiResolveReport(editingReportId);

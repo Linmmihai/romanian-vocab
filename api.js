@@ -577,8 +577,9 @@ async function apiLoadWords(options = {}) {
  */
 async function apiUpdateWord(wordId, updates) {
   if (isOfflineMode()) throw new Error('离线模式下不能修改共享词库');
-  const { error } = await sb.from('words').update(updates).eq('id', wordId);
+  const { data, error } = await sb.from('words').update(updates).eq('id', wordId).select('id').maybeSingle();
   if (error) throw new Error(error.message);
+  if (!data?.id) throw new Error('词条未保存：没有权限或词条不存在');
 }
 
 /**
