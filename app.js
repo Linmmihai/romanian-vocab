@@ -89,6 +89,7 @@ let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
 let progressCloudSyncInFlight = null;
 let progressCloudSyncTimer = null;
+let progressLoaded = false;
 let dailyReminderTimer = null;
 let dailyCheckinPromptShown = false;
 let adminWeeklySummaryText = '';
@@ -174,6 +175,35 @@ function mergeRecentResults(existing = [], incoming = []) {
   return results.slice(-5);
 }
 
+function schedulerMaturityRank(state) {
+  const ranks = {
+    new: 0,
+    learning: 1,
+    relearning: 1,
+    reinforcing: 2,
+    review: 3,
+    mastered: 4
+  };
+  return ranks[state] ?? 0;
+}
+
+function isSchedulerProgressDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
+  const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
+  const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
+  const existingReviewStage = getProgressReviewStage(existingProgress);
+  const incomingReviewStage = getProgressReviewStage(incomingProgress);
+  const existingInterval = Number(existingScheduler.intervalDays || 0);
+  const incomingInterval = Number(incomingScheduler.intervalDays || 0);
+  const existingRank = schedulerMaturityRank(existingScheduler.cardState);
+  const incomingRank = schedulerMaturityRank(incomingScheduler.cardState);
+  return (
+    incomingReps < existingReps ||
+    incomingReviewStage < existingReviewStage ||
+    incomingRank < existingRank ||
+    (incomingInterval < existingInterval && incomingReps <= existingReps)
+  );
+}
+
 function mergeProgressEntry(existing = null, incoming = {}) {
   if (!existing) return incoming;
   const existingQt = Number(existing.qt || 0);
@@ -186,10 +216,13 @@ function mergeProgressEntry(existing = null, incoming = {}) {
   const wasMasteredAt = newerIsoLike(existing.wasMasteredAt, incoming.wasMasteredAt);
   const existingScheduler = normalizeScheduler(existing);
   const incomingScheduler = normalizeScheduler(incoming);
-  const schedulerBase = new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime() >=
-    new Date(existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0).getTime()
-      ? incomingScheduler
-      : existingScheduler;
+  const incomingWouldDowngrade = isSchedulerProgressDowngrade(existingScheduler, incomingScheduler, existing, incoming);
+  const schedulerBase = incomingWouldDowngrade
+    ? existingScheduler
+    : (new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime() >=
+      new Date(existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0).getTime()
+        ? incomingScheduler
+        : existingScheduler);
   const schedulerFields = {
     cardState: schedulerBase.cardState,
     dueAt: schedulerBase.dueAt || null,
@@ -226,6 +259,53 @@ function mergeProgressEntry(existing = null, incoming = {}) {
     lastWrongAt: newerIsoLike(existing.lastWrongAt, incoming.lastWrongAt) || null,
     weakClearedAt: newerIsoLike(existing.weakClearedAt, incoming.weakClearedAt) || null
   };
+}
+
+function getProgressIntegrityFields(progress = {}) {
+  const scheduler = normalizeScheduler(progress || {});
+  return {
+    known: !!progress.known,
+    level: getStoredLevel(progress),
+    cardState: scheduler.cardState,
+    dueAt: scheduler.dueAt || null,
+    intervalDays: Number(scheduler.intervalDays || 0),
+    easeFactor: Number(progress.easeFactor || progress.ease_factor || 0),
+    memoryStrength: Number(scheduler.memoryStrength || 0),
+    reps: Number(scheduler.reps || 0),
+    lapses: Number(scheduler.lapses || 0),
+    reviewStage: getProgressReviewStage(progress),
+    nextReviewAt: progress.nextReviewAt || progress.nextReview || scheduler.dueAt || null,
+    lastReviewedAt: progress.lastReviewedAt || scheduler.lastReviewedAt || null,
+    qr: Number(progress.qr || 0),
+    qt: Number(progress.qt || 0)
+  };
+}
+
+function debugProgressWrite(source, wordRo, previous, next, extra = {}) {
+  if (!isDailyQueueDebugEnabled()) return;
+  const prevFields = previous ? getProgressIntegrityFields(previous) : null;
+  const nextFields = next ? getProgressIntegrityFields(next) : null;
+  const changedFields = [];
+  if (prevFields && nextFields) {
+    Object.keys(nextFields).forEach(field => {
+      if (String(prevFields[field] ?? '') !== String(nextFields[field] ?? '')) changedFields.push(field);
+    });
+  }
+  const schedulerFields = ['cardState', 'dueAt', 'intervalDays', 'memoryStrength', 'reps', 'lapses', 'reviewStage', 'nextReviewAt'];
+  console.info('[progress-write-debug]', JSON.stringify({
+    source,
+    wordRo,
+    created: !previous,
+    overwritten: !!previous,
+    changedFieldCount: changedFields.length,
+    changedFields,
+    schedulerFieldsPreserved: prevFields ? schedulerFields.every(field => !changedFields.includes(field)) : true,
+    prev: prevFields,
+    next: nextFields,
+    progressLoaded,
+    dailyQueueLoaded,
+    ...extra
+  }));
 }
 
 function newerIsoLike(a, b) {
@@ -267,11 +347,16 @@ function getProgress(wordRo) {
   return progressMap[roKey(canonical)] || null;
 }
 
-function setProgress(wordRo, progress) {
+function setProgress(wordRo, progress, options = {}) {
   const canonical = canonicalWordRo(wordRo);
   const key = roKey(canonical);
   if (key) {
-    progressMap[key] = progress;
+    const previous = progressMap[key] || null;
+    const nextProgress = options.replace ? progress : mergeProgressEntry(previous, progress);
+    debugProgressWrite(options.source || 'setProgress', canonical, previous, nextProgress, {
+      replace: !!options.replace
+    });
+    progressMap[key] = nextProgress;
     progressVersion++;
   }
 }
@@ -571,6 +656,18 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
   let activeOpenCount = 0;
   let deferredOpenCount = 0;
   let activeSlots = 0;
+  if (!progressLoaded) {
+    debugDailyQueue('ensureTodayQueueHasActiveCards:blocked-progress-not-loaded', { reason });
+    finishDailyQueuePerf(perf, {
+      reason,
+      changed: false,
+      persisted: false,
+      blocked: 'progress-not-loaded',
+      vocabScanned: 0,
+      eligibleNewCount: 0
+    });
+    return false;
+  }
   const remainingQuota = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
   const canStudyToday = remainingQuota > 0 && !isTodayStudyBlocked();
   const queueRos = normalizeWordRoList(todayQueue);
@@ -974,6 +1071,7 @@ async function onLogin(user) {
   const nickname = profile?.nickname || user.email.split('@')[0];
   defaultDailyGoal = normalizeDailyGoalValue(profile?.daily_goal, 20);
   dailyGoal = defaultDailyGoal;
+  progressLoaded = false;
 
   // 先设置目标输入框
   const goalInput = document.getElementById('goal-input');
@@ -981,8 +1079,8 @@ async function onLogin(user) {
 
   showAppScreen(nickname, userRole === 'admin');
 
-  // 词库先加载；进度和今日记录互不依赖，可以并行。
-  await loadWords();
+  // 先加载词库，但不渲染可答卡片；长线进度加载完成后才能判断新词/复习状态。
+  await loadWords({ render: false });
   await Promise.all([loadProgress(), loadTodayLog()]);
   await loadDailyQueue();
   setupDailyReminderChecks();
@@ -994,7 +1092,8 @@ async function onLogin(user) {
 
 // ── 词库加载 ──────────────────────────────────────────────
 
-async function loadWords() {
+async function loadWords(options = {}) {
+  const shouldRender = options.render !== false;
   const startedAt = Date.now();
   showVocabLoading();
 
@@ -1003,23 +1102,31 @@ async function loadWords() {
     if (!W.length) throw new Error('词库为空');
     rebuildWordRoIndex();
     const exampleBankPromise = loadExampleBank();
-    applyFilters();
+    if (shouldRender) applyFilters();
 
     document.getElementById('s-total').textContent = W.length;
     document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
 
     populateCategoryDatalist();
     buildCats();
-    renderCard();
+    if (shouldRender) renderCard();
 
-    document.getElementById('flash-loading').style.display = 'none';
-    document.getElementById('flash-content').style.display = 'block';
+    if (shouldRender) showFlashContent();
     console.info(`Words ready: ${W.length} words in ${Date.now() - startedAt}ms`);
-    exampleBankPromise.then(() => renderCard());
+    exampleBankPromise.then(() => {
+      if (progressLoaded && dailyQueueLoaded) renderCard();
+    });
   } catch (error) {
     console.error('Words load failed', error);
     showVocabLoadError(error);
   }
+}
+
+function showFlashContent() {
+  const loading = document.getElementById('flash-loading');
+  const content = document.getElementById('flash-content');
+  if (loading) loading.style.display = 'none';
+  if (content) content.style.display = 'block';
 }
 
 function showVocabLoading() {
@@ -1077,9 +1184,12 @@ async function loadProgress() {
     const localProgress = readLocalProgressFallback(currentUser.id);
     if (Object.keys(localProgress).length) {
       replaceProgressMap(localProgress);
+      progressLoaded = true;
       setSyncBadge(hasPendingProgress(localProgress) ? '本机待同步' : '本机进度', hasPendingProgress(localProgress) ? '' : 'saved');
-      applyFilters();
-      renderCard();
+      if (dailyQueueLoaded) {
+        applyFilters();
+        renderCard();
+      }
       upStats();
       refreshCloudProgressAfterLocalLoad();
       return;
@@ -1090,6 +1200,7 @@ async function loadProgress() {
     const progressSource = loadedProgress.__progressSource || 'cloud';
     const progressError = loadedProgress.__progressError || '';
     replaceProgressMap(loadedProgress);
+    progressLoaded = true;
     if (progressSource === 'localFallback') {
       setSyncBadge('本机待同步', '');
       showProgressSaveWarning(`云端进度读取失败，已显示本机保存的进度：${progressError || '请稍后重试'}`);
@@ -1098,8 +1209,10 @@ async function loadProgress() {
     } else {
       setSyncBadge(isOfflineMode() ? '本机保存' : '', isOfflineMode() ? 'saved' : '');
     }
-    applyFilters();
-    renderCard();
+    if (dailyQueueLoaded) {
+      applyFilters();
+      renderCard();
+    }
     upStats();
     if (progressSource === 'cloudWithPending' && typeof apiRetryPendingProgress === 'function') {
       setSyncBadge('本机待同步', '');
@@ -1109,12 +1222,15 @@ async function loadProgress() {
       ? readLocalProgressFallback(currentUser.id)
       : {};
     replaceProgressMap(fallback);
+    progressLoaded = true;
     setSyncBadge(Object.keys(fallback).length ? '本机待同步' : '进度读取失败', '');
     showToast(Object.keys(fallback).length
       ? `进度读取失败，已显示本机保存的进度：${error.message || '请稍后重试'}`
       : `进度读取失败：${error.message || '请刷新重试'}`);
-    applyFilters();
-    renderCard();
+    if (dailyQueueLoaded) {
+      applyFilters();
+      renderCard();
+    }
     upStats();
   }
 }
@@ -1132,10 +1248,13 @@ async function refreshCloudProgressAfterLocalLoad() {
     const loadedProgress = await apiLoadProgress(currentUser.id);
     const progressSource = loadedProgress.__progressSource || 'cloud';
     replaceProgressMap(loadedProgress);
+    progressLoaded = true;
     const stillPending = progressSource === 'cloudWithPending' || hasPendingProgress(loadedProgress);
     setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
-    applyFilters();
-    renderCard();
+    if (dailyQueueLoaded) {
+      applyFilters();
+      renderCard();
+    }
     upStats();
     updateReviewBadge();
     if (progressSource === 'cloudWithPending' && typeof apiRetryPendingProgress === 'function') {
@@ -1379,6 +1498,7 @@ async function loadDailyQueue() {
   renderDailyGoal();
   renderCalendar();
   updateReviewBadge();
+  showFlashContent();
 }
 
 function buildDailyQueueWords(goal) {
@@ -1552,6 +1672,16 @@ function getDailyWordList(words = W, options = {}) {
   const perf = startDailyQueuePerf('getDailyWordList');
   let resultSize = 0;
   let path = 'unknown';
+  if (!progressLoaded) {
+    debugDailyQueue('getDailyWordList:blocked-progress-not-loaded', { options });
+    finishDailyQueuePerf(perf, {
+      path: 'blocked-progress-not-loaded',
+      resultSize: 0,
+      vocabScanned: 0,
+      options
+    });
+    return [];
+  }
   if (!dailyQueueLoaded && !options.allowBeforeQueueLoaded) {
     const hasActiveOpenCards = normalizeWordRoList(todayQueue)
       .filter(ro => !setHasRo(todayQueueCompleted, ro))
@@ -1909,7 +2039,7 @@ function repairStartedProgressForCompletedTodayWords() {
       weakClearedAt: null,
       pendingSync: true
     };
-    setProgress(canonicalRo, repairedProgress);
+    setProgress(canonicalRo, repairedProgress, { source: 'repairStartedProgressForCompletedTodayWords' });
     pendingEntries.push([canonicalRo, repairedProgress]);
   }
   if (pendingEntries.length && typeof writePendingProgressBatch === 'function') {
@@ -2045,7 +2175,7 @@ function applyFilters() {
   if (flashMode === 'today') {
     path = 'today';
     debugDailyQueue('applyFilters:today-before', { scopedCount: scoped.length });
-    ensureTodayQueueHasActiveCards('applyFilters:today-before');
+    if (dailyQueueLoaded) ensureTodayQueueHasActiveCards('applyFilters:today-before');
     filtered = getDailyWordList(scoped, { includeFallback: true, skipRepair: true });
     debugDailyQueue('applyFilters:today-after-list', { scopedCount: scoped.length });
     if (
@@ -2778,17 +2908,17 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const canonicalRo = canonicalWordRo(wordRo);
   const prev = getProgress(canonicalRo) || {};
   const { memory, progress: nextProgress } = buildProgressUpdate(prev, known, qr, qt, success, options);
-  setProgress(canonicalRo, nextProgress);
+  setProgress(canonicalRo, nextProgress, { source: 'syncProgress:optimistic' });
   const localStatus = typeof queueProgressForSync === 'function'
     ? queueProgressForSync(currentUser.id, canonicalRo, { ...nextProgress, pendingSync: true }, memory)
     : { ok: false };
   if (localStatus.ok) {
-    setProgress(canonicalRo, { ...nextProgress, pendingSync: !isOfflineMode() });
+    setProgress(canonicalRo, { ...nextProgress, pendingSync: !isOfflineMode() }, { source: 'syncProgress:queued' });
     setSyncBadge(isOfflineMode() ? '已存本机' : '本机待同步', isOfflineMode() ? 'saved' : '');
     if (!options.skipDailyQueueReconcile) await reconcileTodayQueueAfterProgress(canonicalRo);
   } else {
     if (Object.keys(prev).length) {
-      setProgress(canonicalRo, prev);
+      setProgress(canonicalRo, prev, { source: 'syncProgress:rollback', replace: true });
     } else {
       deleteProgress(canonicalRo);
     }
@@ -2946,7 +3076,7 @@ function flushFastProgressQueue() {
     : { ok: false };
   if (localStatus.ok) {
     entries.forEach(entry => {
-      setProgress(entry.wordRo, { ...entry.progress, pendingSync: !isOfflineMode() });
+      setProgress(entry.wordRo, { ...entry.progress, pendingSync: !isOfflineMode() }, { source: 'flushFastProgressQueue' });
     });
     setSyncBadge(isOfflineMode() ? '已存本机' : '本机待同步', isOfflineMode() ? 'saved' : '');
   } else {
@@ -3967,6 +4097,11 @@ function markCard(answer) {
     finishDailyQueuePerf(perf, { path: 'in-flight', action, vocabScanned: 0 });
     return;
   }
+  if (!progressLoaded) {
+    showToast('进度还在加载，请稍等片刻');
+    finishDailyQueuePerf(perf, { path: 'blocked-progress-not-loaded', action, vocabScanned: 0 });
+    return;
+  }
   const w = getCurrentFlashWord();
   if (!w) {
     finishDailyQueuePerf(perf, { path: 'no-word', action, vocabScanned: 0 });
@@ -3994,7 +4129,7 @@ function markCard(answer) {
         : (isKnownAction ? 'flashcard_known' : (isFuzzyAction ? 'flashcard_fuzzy' : 'flashcard_unknown')));
     if (flashMode === 'today') queueTodayAccuracyAttempt(isKnownAction);
     const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
-    setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() });
+    setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() }, { source: 'markCard' });
     let dailyStateResult = null;
     const isOpenTodayWord = flashMode === 'today'
       && roListIncludes(todayQueue, w.ro)

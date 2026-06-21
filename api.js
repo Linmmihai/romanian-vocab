@@ -190,8 +190,10 @@ function writeLocalProgressSnapshot(userId, progressMap = {}) {
 function writePendingProgress(userId, wordRo, progress = {}) {
   if (!wordRo) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);
+  const localProgress = readJson(localKey(userId, 'progress'), {});
+  const merged = mergeCloudProgress(progress || {}, pending[wordRo] || localProgress[wordRo] || null);
   pending[wordRo] = {
-    ...progress,
+    ...merged,
     pendingSync: true,
     pendingSyncAt: new Date().toISOString()
   };
@@ -206,7 +208,7 @@ function writePendingProgress(userId, wordRo, progress = {}) {
 function writeLocalProgressEntry(userId, wordRo, progress = {}) {
   if (!userId || !wordRo) return { ok: true, skipped: true };
   const map = readJson(localKey(userId, 'progress'), {});
-  map[wordRo] = { ...(progress || {}) };
+  map[wordRo] = mergeCloudProgress(progress || {}, map[wordRo] || null);
   delete map[wordRo].pendingSync;
   try {
     writeJson(localKey(userId, 'progress'), map);
@@ -238,10 +240,11 @@ function queueProgressBatchForSync(userId, entries = []) {
     const backedUpAt = new Date().toISOString();
 
     validEntries.forEach(({ wordRo, progress = {}, memory = {} }) => {
-      localProgress[wordRo] = { ...(progress || {}) };
+      const merged = mergeCloudProgress(progress || {}, pendingProgress[wordRo] || localProgress[wordRo] || null);
+      localProgress[wordRo] = { ...merged };
       delete localProgress[wordRo].pendingSync;
       pendingProgress[wordRo] = {
-        ...(progress || {}),
+        ...merged,
         pendingSync: true,
         pendingSyncAt: progress?.pendingSyncAt || backedUpAt
       };
@@ -272,11 +275,13 @@ function queueProgressBatchForSync(userId, entries = []) {
 function writePendingProgressBatch(userId, entries = []) {
   if (!entries.length) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);
+  const localProgress = readJson(localKey(userId, 'progress'), {});
   const now = new Date().toISOString();
   entries.forEach(([wordRo, progress]) => {
     if (!wordRo) return;
+    const merged = mergeCloudProgress(progress || {}, pending[wordRo] || localProgress[wordRo] || null);
     pending[wordRo] = {
-      ...(progress || {}),
+      ...merged,
       pendingSync: true,
       pendingSyncAt: progress?.pendingSyncAt || now
     };
@@ -521,7 +526,10 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
     : cloudProgress;
   const localSchedulerTime = new Date(localScheduler.lastReviewedAt || localScheduler.dueAt || 0).getTime();
   const cloudSchedulerTime = new Date(cloudScheduler.lastReviewedAt || cloudScheduler.dueAt || 0).getTime();
-  const schedulerBase = localSchedulerTime >= cloudSchedulerTime ? localScheduler : cloudScheduler;
+  const localWouldDowngrade = isSchedulerMergeDowngrade(cloudScheduler, localScheduler, cloudProgress, localProgress);
+  const schedulerBase = localWouldDowngrade
+    ? cloudScheduler
+    : (localSchedulerTime >= cloudSchedulerTime ? localScheduler : cloudScheduler);
   const nextReviewAt = laterReviewIso(
     localProgress.nextReviewAt || localProgress.nextReview,
     cloudProgress.nextReviewAt || cloudProgress.nextReview,
@@ -562,6 +570,35 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   };
   merged.level = normalizeProgressLevel(merged);
   return merged;
+}
+
+function schedulerMaturityRank(state) {
+  const ranks = {
+    new: 0,
+    learning: 1,
+    relearning: 1,
+    reinforcing: 2,
+    review: 3,
+    mastered: 4
+  };
+  return ranks[state] ?? 0;
+}
+
+function isSchedulerMergeDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
+  const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
+  const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
+  const existingReviewStage = getProgressReviewStage(existingProgress);
+  const incomingReviewStage = getProgressReviewStage(incomingProgress);
+  const existingInterval = Number(existingScheduler.intervalDays || 0);
+  const incomingInterval = Number(incomingScheduler.intervalDays || 0);
+  const existingRank = schedulerMaturityRank(existingScheduler.cardState);
+  const incomingRank = schedulerMaturityRank(incomingScheduler.cardState);
+  return (
+    incomingReps < existingReps ||
+    incomingReviewStage < existingReviewStage ||
+    incomingRank < existingRank ||
+    (incomingInterval < existingInterval && incomingReps <= existingReps)
+  );
 }
 
 function normalizeRoArray(values = []) {
