@@ -519,12 +519,15 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const cloudScheduler = typeof RomanianVocabScheduler !== 'undefined'
     ? RomanianVocabScheduler.normalizeSchedulerProgress(cloudProgress)
     : cloudProgress;
+  const localSchedulerTime = new Date(localScheduler.lastReviewedAt || localScheduler.dueAt || 0).getTime();
+  const cloudSchedulerTime = new Date(cloudScheduler.lastReviewedAt || cloudScheduler.dueAt || 0).getTime();
+  const schedulerBase = localSchedulerTime >= cloudSchedulerTime ? localScheduler : cloudScheduler;
   const nextReviewAt = laterReviewIso(
     localProgress.nextReviewAt || localProgress.nextReview,
     cloudProgress.nextReviewAt || cloudProgress.nextReview,
     lastReviewedAt
   );
-  const dueAt = localScheduler.dueAt || cloudScheduler.dueAt || nextReviewAt;
+  const dueAt = schedulerBase.dueAt || nextReviewAt;
   const merged = {
     ...cloudProgress,
     ...localProgress,
@@ -539,19 +542,16 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
     reviewCount: reviewStage,
     nextReviewAt,
     dueAt,
-    cardState: localScheduler.cardState || cloudScheduler.cardState || 'new',
-    intervalDays: Math.max(Number(localScheduler.intervalDays || 0), Number(cloudScheduler.intervalDays || 0)),
-    memoryStrength: Math.max(Number(localScheduler.memoryStrength || 0), Number(cloudScheduler.memoryStrength || 0)),
+    cardState: schedulerBase.cardState || 'new',
+    intervalDays: Number(schedulerBase.intervalDays || 0),
+    memoryStrength: Number(schedulerBase.memoryStrength || 0),
     reps: Math.max(Number(localScheduler.reps || 0), Number(cloudScheduler.reps || 0)),
     correctCount: Math.max(Number(localScheduler.correctCount || 0), Number(cloudScheduler.correctCount || 0)),
     fuzzyCount: Math.max(Number(localScheduler.fuzzyCount || 0), Number(cloudScheduler.fuzzyCount || 0)),
     forgetCount: Math.max(Number(localScheduler.forgetCount || 0), Number(cloudScheduler.forgetCount || 0)),
     lapses: Math.max(Number(localScheduler.lapses || 0), Number(cloudScheduler.lapses || 0)),
-    recentResults: [
-      ...(Array.isArray(cloudScheduler.recentResults) ? cloudScheduler.recentResults : []),
-      ...(Array.isArray(localScheduler.recentResults) ? localScheduler.recentResults : [])
-    ].slice(-5),
-    needsReinforcement: !!(localScheduler.needsReinforcement || cloudScheduler.needsReinforcement),
+    recentResults: Array.isArray(schedulerBase.recentResults) ? schedulerBase.recentResults : [],
+    needsReinforcement: !!schedulerBase.needsReinforcement,
     lastReviewedAt,
     wasMasteredAt,
     wrongCount,

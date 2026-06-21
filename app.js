@@ -190,15 +190,15 @@ function mergeProgressEntry(existing = null, incoming = {}) {
   const schedulerFields = {
     cardState: schedulerBase.cardState,
     dueAt: schedulerBase.dueAt || null,
-    intervalDays: Math.max(Number(existingScheduler.intervalDays || 0), Number(incomingScheduler.intervalDays || 0)),
-    memoryStrength: Math.max(Number(existingScheduler.memoryStrength || 0), Number(incomingScheduler.memoryStrength || 0)),
+    intervalDays: Number(schedulerBase.intervalDays || 0),
+    memoryStrength: Number(schedulerBase.memoryStrength || 0),
     reps: Math.max(Number(existingScheduler.reps || 0), Number(incomingScheduler.reps || 0)),
     correctCount: Math.max(Number(existingScheduler.correctCount || 0), Number(incomingScheduler.correctCount || 0)),
     fuzzyCount: Math.max(Number(existingScheduler.fuzzyCount || 0), Number(incomingScheduler.fuzzyCount || 0)),
     forgetCount: Math.max(Number(existingScheduler.forgetCount || 0), Number(incomingScheduler.forgetCount || 0)),
     lapses: Math.max(Number(existingScheduler.lapses || 0), Number(incomingScheduler.lapses || 0)),
-    recentResults: mergeRecentResults(existingScheduler.recentResults, incomingScheduler.recentResults),
-    needsReinforcement: !!(existingScheduler.needsReinforcement || incomingScheduler.needsReinforcement),
+    recentResults: Array.isArray(schedulerBase.recentResults) ? schedulerBase.recentResults : mergeRecentResults(existingScheduler.recentResults, incomingScheduler.recentResults),
+    needsReinforcement: !!schedulerBase.needsReinforcement,
     lastReviewedAt: lastReviewedAt || schedulerBase.lastReviewedAt || null
   };
   return {
@@ -1205,6 +1205,30 @@ function isDailyQueueCandidate(w) {
   return isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w) || isPendingLearningRetryWord(w) || isUnseenWord(w);
 }
 
+function getDailyPhasePriority(w) {
+  if (!w?.ro) return 9;
+  if (isOverdueLearningOrReinforcingWord(w)) return 0;
+  if (isDueReviewWord(w)) return 1;
+  const scheduler = normalizeScheduler(getProgress(w.ro) || {});
+  if (scheduler.needsReinforcement || scheduler.cardState === 'reinforcing') return 2;
+  if (isUnseenWord(w)) return 3;
+  if (isPendingLearningRetryWord(w)) return 4;
+  return 8;
+}
+
+function sortDailyPhaseWords(words = []) {
+  return uniqueWordsByRo(words).sort((a, b) => {
+    const pa = getDailyPhasePriority(a);
+    const pb = getDailyPhasePriority(b);
+    if (pa !== pb) return pa - pb;
+    const sa = normalizeScheduler(getProgress(a.ro) || {});
+    const sb = normalizeScheduler(getProgress(b.ro) || {});
+    const da = sa.dueAt ? new Date(sa.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
+    const db = sb.dueAt ? new Date(sb.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
+    return da - db || String(a.ro).localeCompare(String(b.ro), 'ro');
+  });
+}
+
 function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
   const cap = Math.max(1, Number(limit || dailyGoal || 20));
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
@@ -1221,20 +1245,19 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
 
 function buildOpenTodayQueue(goal = dailyGoal) {
   const cap = Math.max(1, Number(goal || dailyGoal || 20));
-  const open = normalizeWordRoList(todayQueue).filter(ro => {
-    const word = getWordByRo(ro);
-    if (!word || setHasRo(todayQueueCompleted, ro)) return false;
-    const p = getProgress(ro);
+  const completedKeys = new Set([...todayQueueCompleted].map(roKey));
+  const openWords = normalizeWordRoList(todayQueue).map(ro => getWordByRo(ro)).filter(word => {
+    if (!word || completedKeys.has(roKey(word.ro))) return false;
+    const p = getProgress(word.ro);
     return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(word) || normalizeScheduler(p || {}).needsReinforcement;
   });
-  const selectedKeys = new Set([...open, ...todayQueueCompleted].map(roKey));
-  const slots = Math.max(0, cap - selectedKeys.size);
-  if (!slots) return open;
-  const blocked = new Set([...selectedKeys, ...todaySeenWords].map(roKey));
-  const candidates = buildReviewFirstDailyPlan(W, Math.max(slots, dailyGoal))
-    .filter(w => !blocked.has(roKey(w.ro)));
-  const additions = candidates.slice(0, slots).map(w => w.ro);
-  return normalizeWordRoList([...open, ...additions]);
+  const openSlots = Math.max(0, cap - completedKeys.size);
+  if (!openSlots) return [];
+  const blocked = new Set([...completedKeys, ...todaySeenWords].map(roKey));
+  const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + openWords.length, dailyGoal))
+    .filter(w => !completedKeys.has(roKey(w.ro)))
+    .filter(w => !blocked.has(roKey(w.ro)) || openWords.some(open => roKey(open.ro) === roKey(w.ro)));
+  return sortDailyPhaseWords([...candidates, ...openWords]).slice(0, openSlots).map(w => w.ro);
 }
 
 function getDailyWordList(words = W, options = {}) {
@@ -1245,11 +1268,18 @@ function getDailyWordList(words = W, options = {}) {
     ? words
     : words.filter(w => w.cat === curCat);
   const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
-  return openQueuedRos
+  const openWords = openQueuedRos
     .map(ro => scoped.find(w => roKey(w.ro) === roKey(ro)))
     .filter(Boolean)
-    .filter(w => !isRetryDeferred(w))
-    .slice(0, limit);
+    .filter(w => !isRetryDeferred(w));
+  const allDueToday = getRemainingDueReviewWords(W).length > 0;
+  if (allDueToday) {
+    const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
+    if (dueOpenWords.length >= limit) return sortDailyPhaseWords(dueOpenWords).slice(0, limit);
+    const nonDueOpenWords = openWords.filter(w => !dueOpenWords.some(due => roKey(due.ro) === roKey(w.ro)));
+    return sortDailyPhaseWords([...dueOpenWords, ...nonDueOpenWords]).slice(0, limit);
+  }
+  return sortDailyPhaseWords(openWords).slice(0, limit);
 }
 
 function getDailyTaskType(w) {
@@ -2291,6 +2321,15 @@ function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options 
     ? nowIso
     : (wrongCount === 0 && success ? nowIso : (!success ? null : (prev.weakClearedAt || null)));
   const memory = { wrongCount, errorStreak, lastWrongAt, weakClearedAt };
+  const clearedScheduler = shouldClearWrongbook
+    ? {
+        cardState: 'review',
+        needsReinforcement: false,
+        forgetCount: 0,
+        lapses: 0,
+        recentResults: ['known', 'known']
+      }
+    : {};
   const nextProgress = applyMasteryHistory({
     ...prev,
     seen: true,
@@ -2303,6 +2342,7 @@ function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options 
     level,
     ...review,
     ...memory,
+    ...clearedScheduler,
     correctStreakSinceWrong
   }, prev);
   return { review, level, memory, progress: nextProgress };

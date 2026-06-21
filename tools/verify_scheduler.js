@@ -61,4 +61,33 @@ function approx(actual, expected, tolerance = 1000) {
   assert(fuzzy.intervalDays < known.intervalDays, `expected fuzzy ${fuzzy.intervalDays} < known ${known.intervalDays}`);
 }
 
+{
+  const result = scheduler.normalizeSchedulerProgress({
+    cardState: 'reinforcing',
+    intervalDays: 3,
+    memoryStrength: 55,
+    forgetCount: 3,
+    lapses: 2,
+    recentResults: ['unknown', 'known', 'known'],
+    needsReinforcement: true,
+    lastWrongAt: '2026-06-20T08:00:00.000Z',
+    weakClearedAt: '2026-06-21T08:00:00.000Z'
+  }, NOW);
+  assert.strictEqual(result.needsReinforcement, false);
+  assert.strictEqual(result.cardState, 'review');
+}
+
+{
+  const result = scheduler.scheduleCardReview({
+    cardState: 'review',
+    intervalDays: 3,
+    memoryStrength: 60,
+    reps: 3,
+    forgetCount: 1,
+    recentResults: ['unknown']
+  }, scheduler.ACTION_UNKNOWN, { now: NOW });
+  assert.strictEqual(result.cardState, 'reinforcing');
+  assert.strictEqual(result.needsReinforcement, true);
+}
+
 console.log('scheduler verification passed');

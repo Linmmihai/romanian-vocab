@@ -115,6 +115,13 @@
     return failures >= 2 || fuzzy >= 3 || recentAccuracy(results) < 0.6;
   }
 
+  function wasReinforcementCleared(progress = {}) {
+    const clearedAt = validIso(progress.weakClearedAt || progress.weak_cleared_at);
+    if (!clearedAt) return false;
+    const lastWrongAt = validIso(progress.lastWrongAt || progress.last_wrong_at);
+    return !lastWrongAt || new Date(clearedAt).getTime() >= new Date(lastWrongAt).getTime();
+  }
+
   function normalizeSchedulerProgress(progress = {}, now = new Date()) {
     const recentResults = normalizeRecentResults(progress.recentResults ?? progress.recent_results);
     const intervalDays = legacyIntervalDays(progress);
@@ -143,10 +150,16 @@
       needsReinforcement: !!(progress.needsReinforcement ?? progress.needs_reinforcement ?? false),
       lastReviewedAt: validIso(progress.lastReviewedAt || progress.last_reviewed_at)
     };
-    normalized.needsReinforcement = normalized.needsReinforcement ||
+    const reinforcementCleared = wasReinforcementCleared(progress);
+    normalized.needsReinforcement = !reinforcementCleared && (
+      normalized.needsReinforcement ||
       normalized.forgetCount >= 2 ||
       normalized.lapses >= 2 ||
-      repeatedWeakResults(normalized.recentResults);
+      repeatedWeakResults(normalized.recentResults)
+    );
+    if (reinforcementCleared && normalized.cardState === 'reinforcing') {
+      normalized.cardState = normalized.reps || normalized.intervalDays ? 'review' : 'learning';
+    }
     return normalized;
   }
 
