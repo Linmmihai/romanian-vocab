@@ -523,7 +523,7 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     goal,
     word_ro,
     completed_word_ro: completed,
-    completed: typeof localPayload.completed === 'boolean' ? localPayload.completed : !!cloudPayload.completed,
+    completed: !!(localPayload.completed || cloudPayload.completed),
     updated_at: localPayload.updated_at || new Date().toISOString()
   };
 }
@@ -533,9 +533,11 @@ function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal 
   const newWords = Math.max(Number(localPayload.new_words || 0), Number(cloudPayload.new_words || 0));
   const goal = Math.max(Number(localPayload.goal || 20), Number(cloudPayload.goal || 20), 1);
   const doneGoal = Math.max(Number(completionGoal || goal), 1);
-  const completed = options.completedExplicit
-    ? !!localPayload.completed
-    : (!!cloudPayload.completed || newWords >= doneGoal);
+  const hasLocalCompleted = typeof localPayload.completed === 'boolean';
+  const hasCloudCompleted = typeof cloudPayload.completed === 'boolean';
+  const completed = (hasLocalCompleted || hasCloudCompleted)
+    ? !!(localPayload.completed || cloudPayload.completed)
+    : newWords >= doneGoal;
   return {
     ...cloudPayload,
     ...localPayload,
@@ -1282,7 +1284,12 @@ async function apiGetTodayLog(userId, goal) {
   const { data, error } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
   if (data) {
     const local = localLogs[today];
-    if (local && Number(local.new_words || 0) > Number(data.new_words || 0)) return local;
+    if (local) {
+      const merged = mergeDailyLogPayload(local, data, goal, { completedExplicit: typeof local.completed === 'boolean' });
+      localLogs[today] = { ...merged, local: true };
+      writeJson(localKey(userId, 'daily_log'), localLogs);
+      return merged;
+    }
     return data;
   }
   if (localLogs[today]) return localLogs[today];
