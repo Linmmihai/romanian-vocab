@@ -2072,23 +2072,39 @@ async function reconcileTodayQueueAfterProgress(wordRo) {
 
 // ── 熟练度计算 ────────────────────────────────────────────
 
-/**
- * 根据答题记录计算熟练度
- * unknown  → 没答过题
- * learning → 答过但正确率 < 80% 或答题次数 < 3
- * mastered → 答题次数 ≥ 3、正确率 ≥ 80%，且 reviewStage >= 2
- */
-function calcLevel(qr, qt, known = false, progress = {}) {
+function hasActiveWeakState(progress = {}, scheduler = normalizeScheduler(progress)) {
+  if (scheduler.needsReinforcement || progress.needsReinforcement || progress.needs_reinforcement) return true;
+  const wrongCount = Number(progress.wrongCount || progress.wrong_count || 0);
+  const errorStreak = Number(progress.errorStreak || progress.error_streak || 0);
+  return wrongCount >= REINFORCEMENT_MIN_LEARNING_MISSES && errorStreak > 0;
+}
+
+function isMasteredProgress(progress = {}) {
+  if (!progress) return false;
   const scheduler = normalizeScheduler(progress);
-  if (scheduler.cardState === 'mastered') return 'mastered';
-  if (!qt) return known ? 'learning' : 'unknown';
-  const pct = qr / qt;
+  if (hasActiveWeakState(progress, scheduler)) return false;
+  const qt = Number(progress.qt || progress.quiz_total || 0);
+  const qr = Number(progress.qr || progress.quiz_right || 0);
+  const reviewStage = getProgressReviewStage(progress);
+  if (scheduler.cardState === 'mastered') return true;
+  if (normalizeStoredProgressLevel(progress.level) === 'mastered') return true;
   if (
     scheduler.cardState === 'review' &&
     scheduler.intervalDays >= 15 &&
-    scheduler.memoryStrength >= 75 &&
-    !scheduler.needsReinforcement
-  ) return 'mastered';
+    scheduler.memoryStrength >= 75
+  ) return true;
+  return qt >= 3 && qr / Math.max(qt, 1) >= 0.8 && reviewStage >= 2;
+}
+
+/**
+ * 根据答题记录计算熟练度
+ * unknown  → 没答过题
+ * learning → 答过但未达到统一掌握规则
+ * mastered → 现代 scheduler 达到稳定复习，或 legacy 记录达到旧掌握规则
+ */
+function calcLevel(qr, qt, known = false, progress = {}) {
+  if (isMasteredProgress({ ...progress, qr, qt, known })) return 'mastered';
+  if (!qt) return known ? 'learning' : 'unknown';
   return 'learning';
 }
 
@@ -5175,7 +5191,7 @@ function calcStreak(logs) {
 
 function calcProgressSummary(map) {
   const vals = Object.values(map || {});
-  const mastered = vals.filter(p => getStoredLevel(p) === 'mastered').length;
+  const mastered = vals.filter(isMasteredProgress).length;
   const learning = vals.filter(isStartedNotMastered).length;
   const known = vals.filter(p => p.known).length;
   const qr = vals.reduce((sum, p) => sum + (p.qr || 0), 0);
@@ -5457,12 +5473,7 @@ async function renderLeaderboard() {
     const byUser = {};
     rows.forEach(r => {
       if (!byUser[r.user_id]) byUser[r.user_id] = {};
-      byUser[r.user_id][r.word_ro] = {
-        known: r.known,
-        qr: r.quiz_right || 0,
-        qt: r.quiz_total || 0,
-        level: r.level || 'unknown'
-      };
+      byUser[r.user_id][r.word_ro] = rowToProgress(r);
     });
     const logsByUser = {};
     logs.forEach(l => {
