@@ -1,0 +1,82 @@
+{
+  "createdAt": "2026-06-21T22:17:00+08:00",
+  "restoreApplied": false,
+  "status": "partial-preview-cloud-only",
+  "reason": "Browser automation cannot read localStorage in the in-app browser read-only sandbox. Supabase connector is available, but cloud progress lacks modern scheduler columns, so exact restoration cannot be determined until local progress, pending progress, and progress memory backups are manually exported.",
+  "richerProgressRecordDefinition": {
+    "primaryPriority": [
+      "higher reps",
+      "higher intervalDays",
+      "non-empty dueAt or nextReviewAt",
+      "valid non-new cardState",
+      "higher reviewStage",
+      "existing easeFactor"
+    ],
+    "secondaryPriority": [
+      "higher lapses only when reps are also present",
+      "newer lastReviewedAt only if it does not downgrade reps, interval, reviewStage, or cardState",
+      "preserve existing dueAt when incoming record has fewer reps or lower reviewStage"
+    ]
+  },
+  "recoveryCountsFromAutomaticallyAvailableSources": {
+    "canBeRestoredExactly": 0,
+    "canBePartiallyRestoredFromSupabaseLegacyFields": 1591,
+    "cannotBeRecoveredWithoutLocalBackupComparison": "unknown",
+    "needsManualLocalStorageExport": true
+  },
+  "sourcePriorityRecommendation": [
+    "progress_memory:<userId> if it contains richer scheduler fields",
+    "progress:<userId> if it contains richer scheduler fields and is not already overwritten",
+    "progress_pending:<userId> only when it has higher reps/reviewStage than active progress",
+    "Supabase public.progress for legacy fields: known, quiz_right, quiz_total, review_stage, next_review_at, last_reviewed_at, weak/wrong fields",
+    "daily_queue and daily_seen_words only for today's queue reconstruction, not long-term progress restoration"
+  ],
+  "proposedMergeStrategy": {
+    "doNotOverwriteWholeRecord": true,
+    "fieldLevelMerge": true,
+    "forEachWord": [
+      "collect all candidate records from local progress, pending progress, memory backup, and Supabase",
+      "score each candidate for richness using reps, intervalDays, dueAt/nextReviewAt, cardState, reviewStage, easeFactor",
+      "choose the richest scheduler fields",
+      "choose max counters for qr, qt, reps, reviewStage, lapses, wrongCount when compatible",
+      "preserve latest lastReviewedAt only if scheduler maturity is not downgraded",
+      "never restore dailyQueue state into long-term progress fields"
+    ]
+  },
+  "top30CandidateDowngradedExamplesNeedLocalComparison": [
+    {"wordRo":"a plăti chiria","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:41.659Z","cloudUpdatedAt":"2026-06-21T13:58:43.619Z"},
+    {"wordRo":"a planta copaci","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:37.526Z","cloudUpdatedAt":"2026-06-21T13:58:43.619Z"},
+    {"wordRo":"a plăti o amendă","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:43.134Z","cloudUpdatedAt":"2026-06-21T13:58:43.619Z"},
+    {"wordRo":"a planta flori","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:39.061Z","cloudUpdatedAt":"2026-06-21T13:58:43.619Z"},
+    {"wordRo":"a plivit","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:45.276Z","cloudUpdatedAt":"2026-06-21T13:58:43.619Z"},
+    {"wordRo":"a pierde o bătălie","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:35.476Z","cloudUpdatedAt":"2026-06-21T13:58:41.968Z"},
+    {"wordRo":"a picta un tablou","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:31.356Z","cloudUpdatedAt":"2026-06-21T13:58:41.968Z"},
+    {"wordRo":"a pierde autobuzul","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:33.970Z","cloudUpdatedAt":"2026-06-21T13:58:41.968Z"},
+    {"wordRo":"a picta în ulei","cloudReps":2,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:29.340Z","cloudUpdatedAt":"2026-06-21T13:58:41.968Z"},
+    {"wordRo":"a picta în acuarelă","cloudReps":2,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:27.933Z","cloudUpdatedAt":"2026-06-21T13:58:41.968Z"},
+    {"wordRo":"a pica un examen","cloudReps":2,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:25.395Z","cloudUpdatedAt":"2026-06-21T13:58:40.103Z"},
+    {"wordRo":"a participa la instruire","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:14.180Z","cloudUpdatedAt":"2026-06-21T13:58:40.102Z"},
+    {"wordRo":"a participa la război","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:17.918Z","cloudUpdatedAt":"2026-06-21T13:58:40.102Z"},
+    {"wordRo":"a păzi","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:22.885Z","cloudUpdatedAt":"2026-06-21T13:58:40.102Z"},
+    {"wordRo":"a patrula","cloudReps":2,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:20.397Z","cloudUpdatedAt":"2026-06-21T13:58:40.102Z"},
+    {"wordRo":"a motiva angajații","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:06.900Z","cloudUpdatedAt":"2026-06-21T13:58:38.382Z"},
+    {"wordRo":"a mulțumi","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:09.315Z","cloudUpdatedAt":"2026-06-21T13:58:38.382Z"},
+    {"wordRo":"a nu-i plăcea","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:11.729Z","cloudUpdatedAt":"2026-06-21T13:58:38.382Z"},
+    {"wordRo":"a monta un raft","cloudReps":2,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:53:02.919Z","cloudUpdatedAt":"2026-06-21T13:58:38.382Z"},
+    {"wordRo":"a merge la înmormântare","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:45.647Z","cloudUpdatedAt":"2026-06-21T13:58:36.688Z"},
+    {"wordRo":"a merge la cumpărături","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:43.335Z","cloudUpdatedAt":"2026-06-21T13:58:36.688Z"},
+    {"wordRo":"a merge la restaurant","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:50.276Z","cloudUpdatedAt":"2026-06-21T13:58:36.688Z"},
+    {"wordRo":"a merge la nuntă","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:47.951Z","cloudUpdatedAt":"2026-06-21T13:58:36.688Z"},
+    {"wordRo":"a mima","cloudReps":3,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:52.626Z","cloudUpdatedAt":"2026-06-21T13:58:36.688Z"},
+    {"wordRo":"a lua un taxi","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:40.179Z","cloudUpdatedAt":"2026-06-21T13:58:34.838Z"},
+    {"wordRo":"a lăsa bacșiș","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:21.461Z","cloudUpdatedAt":"2026-06-21T13:58:34.838Z"},
+    {"wordRo":"a îngrășa","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:50:24.229Z","cloudUpdatedAt":"2026-06-21T13:58:34.838Z"},
+    {"wordRo":"a merge la bancă","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:41.563Z","cloudUpdatedAt":"2026-06-21T13:58:34.838Z"},
+    {"wordRo":"a lua la pachet","cloudReps":2,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:51:31.684Z","cloudUpdatedAt":"2026-06-21T13:58:34.838Z"},
+    {"wordRo":"a închiria o mașină","cloudReps":1,"cloudReviewStage":1,"cloudLevel":"learning","cloudNextReviewAt":"2026-06-22T13:48:02.818Z","cloudUpdatedAt":"2026-06-21T13:58:33.021Z"}
+  ],
+  "manualExportInstructions": {
+    "where": "Open the app in the browser, open DevTools Console, paste the script below, and download the generated JSON.",
+    "script": "(() => { const userId = '87118dba-a11a-4232-bcff-c60c046428a4'; const keys = Object.keys(localStorage).filter(k => k.includes(userId) && /progress|daily_queue|daily_seen_words|daily_log|goal/i.test(k)).sort(); const data = { exportedAt: new Date().toISOString(), userId, url: location.href, keys: {}, keyList: keys }; for (const key of keys) { try { data.keys[key] = JSON.parse(localStorage.getItem(key)); } catch { data.keys[key] = localStorage.getItem(key); } } const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `romanian-vocab-local-progress-${userId}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); })();"
+  }
+}

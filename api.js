@@ -4,7 +4,7 @@
 // ============================================================
 
 const SUPA_URL = 'https://wuiblzpyhcjxevotwcqz.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1aWJsenB5aGNqeGV2b3R3Y3F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMjg3NTksImV4cCI6MjA5MjcwNDc1OX0.ImJ1yH8v0op6_5G2P4fI--uJG8LOXIPt-JujPCzeN54';
+const SUPA_KEY = 'sb_publishable_R_1KpyBLGgn_BW1McVso7w_maR5OzDJ';
 
 // 初始化 Supabase 客户端（APK 内会打包本地 supabase 脚本）
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);

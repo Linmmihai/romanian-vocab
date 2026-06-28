@@ -1,0 +1,40 @@
+{
+  "createdAt": "2026-06-21T22:17:00+08:00",
+  "restoreApplied": false,
+  "status": "not-ready",
+  "reason": "No restore patch is proposed yet because localStorage progress, pending progress, and progress memory backups could not be read by browser automation. Applying a cloud-only patch would risk replacing richer local scheduler fields with poorer legacy fields.",
+  "patch": [],
+  "safeToApply": false,
+  "requiresBeforeApply": [
+    "Manual localStorage export from the browser console",
+    "Word-by-word comparison of progress:<userId>, progress_pending:<userId>, progress_memory:<userId>, and Supabase public.progress",
+    "Approval from user after reviewing recovery-preview.json"
+  ],
+  "cloudOnlyFallbackIfNoLocalBackupExists": {
+    "description": "If local backups are unavailable, Supabase can partially reconstruct legacy progress fields only.",
+    "fieldsPotentiallyRecoverable": [
+      "known",
+      "qr / quiz_right",
+      "qt / quiz_total",
+      "reviewStage / review_stage",
+      "reviewCount / review_count",
+      "nextReviewAt / next_review_at",
+      "lastReviewedAt / last_reviewed_at",
+      "wrongCount",
+      "errorStreak",
+      "lastWrongAt",
+      "weakClearedAt",
+      "level"
+    ],
+    "fieldsNotRecoverableFromCurrentCloudSchema": [
+      "cardState",
+      "intervalDays",
+      "easeFactor",
+      "memoryStrength",
+      "reps as separate modern scheduler field",
+      "lapses",
+      "recentResults",
+      "dueAt when distinct from nextReviewAt"
+    ]
+  }
+}

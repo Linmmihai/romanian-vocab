@@ -1,0 +1,74 @@
+{
+  "createdAt": "2026-06-21T22:17:00+08:00",
+  "mode": "read-only recovery audit",
+  "restoreApplied": false,
+  "user": {
+    "id": "87118dba-a11a-4232-bcff-c60c046428a4",
+    "nickname": "Ming",
+    "email": "linmihai2004@gmail.com"
+  },
+  "sourceAccess": {
+    "browserLocalStorage": {
+      "status": "blocked-by-in-app-browser-readonly-sandbox",
+      "probeResult": {
+        "localStorageType": "undefined",
+        "currentUserAccessible": false,
+        "pageSupabaseClientAccessible": false
+      },
+      "requiredManualExport": true,
+      "expectedKeys": [
+        "progress:87118dba-a11a-4232-bcff-c60c046428a4",
+        "progress_pending:87118dba-a11a-4232-bcff-c60c046428a4",
+        "progress_memory:87118dba-a11a-4232-bcff-c60c046428a4",
+        "daily_queue:87118dba-a11a-4232-bcff-c60c046428a4:<date>",
+        "daily_seen_words:87118dba-a11a-4232-bcff-c60c046428a4:<date>"
+      ]
+    },
+    "supabase": {
+      "status": "available-read-only-via-connector",
+      "projectId": "wuiblzpyhcjxevotwcqz",
+      "tablesInspected": [
+        "public.progress",
+        "public.daily_queue",
+        "public.daily_log",
+        "public.profiles"
+      ],
+      "note": "public.progress currently lacks modern scheduler columns such as cardState, intervalDays, easeFactor, dueAt, reps, lapses. Cloud can preserve legacy quiz/review fields and dates, but localStorage backups are needed for exact modern scheduler restoration."
+    }
+  },
+  "supabaseProgressMetrics": {
+    "source": "supabase:public.progress",
+    "totalRecords": 1591,
+    "matureReviewCardsInferred": 1038,
+    "recordsWithRepsGt0": 1591,
+    "recordsWithIntervalDaysGt0Inferred": 1550,
+    "cardStateReviewInferred": 1038,
+    "cardStateLearningInferred": 553,
+    "cardStateRelearningInferred": 0,
+    "missingModernSchedulerFields": 1591,
+    "suspiciousDowngradedRecordsWithoutLocalComparison": 0,
+    "maxReps": 25,
+    "maxReviewStage": 8,
+    "updatedAtMin": "2026-05-04T09:13:53.970Z",
+    "updatedAtMax": "2026-06-21T13:58:43.619Z"
+  },
+  "supabaseRecentWindowMetrics": {
+    "recentWindowStartUtc": "2026-06-21T13:00:00Z",
+    "recentUpdates": 86,
+    "recentLowStageLearningLike": 61,
+    "recentReviewLike": 17,
+    "allLowStageLearningLike": 520,
+    "allReviewLike": 959
+  },
+  "dailyStateSummary": {
+    "cloudDailyLogRowsLast14Days": "available via Supabase connector; not fully embedded because connector output was truncated by transport",
+    "currentCloudDailyQueue": {
+      "queueDate": "2026-06-21",
+      "goal": 170,
+      "completed": false,
+      "updatedAt": "2026-06-21T14:12:08.334Z",
+      "observedQueueContainsDeferredAndInjectedItems": true
+    }
+  },
+  "manualExportRequiredBeforeRestore": true
+}
