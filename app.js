@@ -11,6 +11,7 @@ let progressMap = {};
 let W = [];           // 全部词汇（从数据库加载）
 let wordRoIndex = new Map();
 let wordByRoIndex = new Map();
+let wordIdIndex = new Map();
 let filtered = [];    // 当前分类筛选后的词汇
 let idx = 0;          // 卡片当前索引
 let flipped = false;
@@ -80,7 +81,7 @@ const IDLE_PROGRESS_BACKUP_MS = 150 * 1000;
 let dailyGoal = 20;        // 今天实际任务量，允许临时扩展
 let defaultDailyGoal = 20; // 用户主动保存的每日固定目标
 let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
-let todaySeenWords = new Set(); // 今天已经见过的词 ro 集合
+let todaySeenWords = new Set(); // 今天已经见过的词 id 集合
 let todayLog = null;
 let activeDailyDateKey = getDateKeyFor(new Date());
 let dailyDateReloadInFlight = null;
@@ -110,7 +111,17 @@ function normalizeWordText(value) {
 }
 
 function roKey(value) {
-  return normalizeWordText(value).toLocaleLowerCase('ro');
+  const raw = String(value ?? '');
+  if (typeof wordIdIndex !== 'undefined' && wordIdIndex?.has(raw)) {
+    return normalizeWordText(wordIdIndex.get(raw)?.ro)
+      .replace(/[şŞ]/g, match => match === 'Ş' ? 'Ș' : 'ș')
+      .replace(/[ţŢ]/g, match => match === 'Ţ' ? 'Ț' : 'ț')
+      .toLocaleLowerCase('ro');
+  }
+  return normalizeWordText(value)
+    .replace(/[şŞ]/g, match => match === 'Ş' ? 'Ș' : 'ș')
+    .replace(/[ţŢ]/g, match => match === 'Ţ' ? 'Ț' : 'ț')
+    .toLocaleLowerCase('ro');
 }
 
 function getRoAliasKeys(wordRo) {
@@ -121,7 +132,9 @@ function getRoAliasKeys(wordRo) {
 function rebuildWordRoIndex() {
   wordRoIndex = new Map();
   wordByRoIndex = new Map();
+  wordIdIndex = new Map();
   W.forEach(word => {
+    if (word?.id !== undefined && word?.id !== null) wordIdIndex.set(String(word.id), word);
     const canonical = normalizeWordText(word?.ro);
     if (!canonical) return;
     const exactKey = roKey(canonical);
@@ -316,11 +329,17 @@ function newerIsoLike(a, b) {
 
 function normalizeProgressMap(map = {}) {
   const normalized = {};
-  Object.entries(map || {}).forEach(([wordRo, progress]) => {
-    const canonical = canonicalWordRo(wordRo);
-    const key = roKey(canonical);
+  Object.entries(map || {}).forEach(([rawKey, progress]) => {
+    const word = resolveWordFromProgressKey(rawKey, progress);
+    const key = word ? String(word.id) : progressFallbackKey(rawKey, progress);
     if (!key) return;
-    normalized[key] = mergeProgressEntry(normalized[key], progress);
+    normalized[key] = mergeProgressEntry(normalized[key], {
+      ...(progress || {}),
+      wordId: word?.id ?? progress?.wordId ?? progress?.word_id ?? null,
+      word_id: word?.id ?? progress?.word_id ?? progress?.wordId ?? null,
+      wordRo: word?.ro ?? progress?.wordRo ?? progress?.word_ro ?? '',
+      word_ro: word?.ro ?? progress?.word_ro ?? progress?.wordRo ?? ''
+    });
   });
   return normalized;
 }
@@ -342,18 +361,24 @@ function scheduleLocalProgressSnapshotWrite() {
   }, 800);
 }
 
-function getProgress(wordRo) {
-  const canonical = canonicalWordRo(wordRo);
-  return progressMap[roKey(canonical)] || null;
+function getProgress(wordRef) {
+  const key = progressKeyForWordRef(wordRef);
+  return (key && progressMap[key]) || null;
 }
 
-function setProgress(wordRo, progress, options = {}) {
-  const canonical = canonicalWordRo(wordRo);
-  const key = roKey(canonical);
+function setProgress(wordRef, progress, options = {}) {
+  const word = resolveWord(wordRef) || resolveWordFromProgressKey(wordRef, progress);
+  const key = word ? String(word.id) : progressFallbackKey(wordRef, progress);
   if (key) {
     const previous = progressMap[key] || null;
-    const nextProgress = options.replace ? progress : mergeProgressEntry(previous, progress);
-    debugProgressWrite(options.source || 'setProgress', canonical, previous, nextProgress, {
+    const nextProgress = {
+      ...(options.replace ? progress : mergeProgressEntry(previous, progress)),
+      wordId: word?.id ?? progress?.wordId ?? progress?.word_id ?? null,
+      word_id: word?.id ?? progress?.word_id ?? progress?.wordId ?? null,
+      wordRo: word?.ro ?? progress?.wordRo ?? progress?.word_ro ?? '',
+      word_ro: word?.ro ?? progress?.word_ro ?? progress?.wordRo ?? ''
+    };
+    debugProgressWrite(options.source || 'setProgress', word?.ro || String(wordRef || ''), previous, nextProgress, {
       replace: !!options.replace
     });
     progressMap[key] = nextProgress;
@@ -361,8 +386,9 @@ function setProgress(wordRo, progress, options = {}) {
   }
 }
 
-function deleteProgress(wordRo) {
-  delete progressMap[roKey(wordRo)];
+function deleteProgress(wordRef) {
+  const key = progressKeyForWordRef(wordRef);
+  if (key) delete progressMap[key];
   progressVersion++;
 }
 
@@ -371,48 +397,97 @@ function canonicalWordRo(wordRo) {
   return wordRoIndex.get(key) || normalizeWordText(wordRo);
 }
 
+function resolveWord(wordRef) {
+  if (!wordRef && wordRef !== 0) return null;
+  if (typeof wordRef === 'object') {
+    if (wordRef.id !== undefined && wordRef.id !== null && wordIdIndex.has(String(wordRef.id))) return wordIdIndex.get(String(wordRef.id));
+    if (wordRef.ro) return getWordByRo(wordRef.ro);
+    return null;
+  }
+  const raw = String(wordRef);
+  if (wordIdIndex.has(raw)) return wordIdIndex.get(raw);
+  return wordByRoIndex.get(roKey(raw)) || null;
+}
+
+function resolveWordFromProgressKey(rawKey, progress = {}) {
+  const explicitId = progress?.wordId ?? progress?.word_id ?? (/^\d+$/.test(String(rawKey || '')) ? rawKey : null);
+  if (explicitId !== undefined && explicitId !== null && wordIdIndex.has(String(explicitId))) return wordIdIndex.get(String(explicitId));
+  const wordRo = progress?.wordRo || progress?.word_ro || String(rawKey || '').replace(/^legacy:/, '');
+  return getWordByRo(wordRo);
+}
+
+function progressFallbackKey(rawKey, progress = {}) {
+  const wordRo = progress?.wordRo || progress?.word_ro || String(rawKey || '').replace(/^legacy:/, '');
+  const key = roKey(wordRo);
+  return key ? `legacy:${key}` : '';
+}
+
+function progressKeyForWordRef(wordRef) {
+  const word = resolveWord(wordRef);
+  if (word?.id !== undefined && word?.id !== null) return String(word.id);
+  const key = roKey(String(wordRef || '').replace(/^legacy:/, ''));
+  return key ? `legacy:${key}` : '';
+}
+
+function dailyWordKey(wordRef) {
+  const word = resolveWord(wordRef);
+  if (word?.id !== undefined && word?.id !== null) return String(word.id);
+  const key = roKey(String(wordRef || ''));
+  return key ? `legacy:${key}` : '';
+}
+
 function normalizeWordRoList(list = []) {
   const seen = new Set();
   const normalized = [];
-  (Array.isArray(list) ? list : []).forEach(ro => {
-    const canonical = canonicalWordRo(ro);
-    const key = roKey(canonical);
+  (Array.isArray(list) ? list : []).forEach(value => {
+    const key = dailyWordKey(value);
     if (!key || seen.has(key)) return;
     seen.add(key);
-    normalized.push(canonical);
+    normalized.push(key);
   });
   return normalized;
 }
 
 function setHasRo(set, wordRo) {
-  const key = roKey(wordRo);
-  return [...set].some(ro => roKey(ro) === key);
+  const key = dailyWordKey(wordRo);
+  return [...set].some(value => dailyWordKey(value) === key);
 }
 
 function setAddRo(set, wordRo) {
-  const canonical = canonicalWordRo(wordRo);
-  const key = roKey(canonical);
-  [...set].forEach(ro => {
-    if (roKey(ro) === key) set.delete(ro);
+  const key = dailyWordKey(wordRo);
+  [...set].forEach(value => {
+    if (dailyWordKey(value) === key) set.delete(value);
   });
-  if (key) set.add(canonical);
+  if (key) set.add(key);
 }
 
 function setDeleteRo(set, wordRo) {
-  const key = roKey(wordRo);
-  [...set].forEach(ro => {
-    if (roKey(ro) === key) set.delete(ro);
+  const key = dailyWordKey(wordRo);
+  [...set].forEach(value => {
+    if (dailyWordKey(value) === key) set.delete(value);
   });
 }
 
 function roListIncludes(list, wordRo) {
-  const key = roKey(wordRo);
-  return (list || []).some(ro => roKey(ro) === key);
+  const key = dailyWordKey(wordRo);
+  return (list || []).some(value => dailyWordKey(value) === key);
 }
 
 function roListWithout(list, wordRo) {
-  const key = roKey(wordRo);
-  return (list || []).filter(ro => roKey(ro) !== key);
+  const key = dailyWordKey(wordRo);
+  return (list || []).filter(value => dailyWordKey(value) !== key);
+}
+
+function queueIdsToWords(values = []) {
+  return normalizeWordRoList(values).map(value => getWordByRo(value)).filter(Boolean);
+}
+
+function queueIdsToWordRos(values = []) {
+  return queueIdsToWords(values).map(word => word.ro);
+}
+
+function queueIdsToWordIds(values = []) {
+  return queueIdsToWords(values).map(word => Number(word.id)).filter(Number.isFinite);
 }
 
 function todayTemporaryGoalKey() {
@@ -1380,8 +1455,10 @@ async function syncDailyStateToCloud() {
   const checkinDone = isDailyCheckinDone();
   const queuePayload = {
     goal: dailyGoal,
-    word_ro: todayQueue,
-    completed_word_ro: [...todayQueueCompleted],
+    word_id: queueIdsToWordIds(todayQueue),
+    word_ro: queueIdsToWordRos(todayQueue),
+    completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
+    completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
     completed: isCurrentTodayGoalDone()
   };
   const results = await Promise.allSettled([
@@ -1430,21 +1507,23 @@ async function loadDailyQueue() {
     showToast(`每日队列未能云端同步：${saved.syncError}`);
     setSyncBadge('队列同步失败', '');
   }
-  const hasSavedQueueState = !!(saved?.word_ro?.length || saved?.completed_word_ro?.length);
+  const savedWordRefs = saved?.word_id?.length ? saved.word_id : (saved?.word_ro || []);
+  const savedCompletedRefs = saved?.completed_word_id?.length ? saved.completed_word_id : (saved?.completed_word_ro || []);
+  const hasSavedQueueState = !!(savedWordRefs.length || savedCompletedRefs.length);
   if (hasSavedQueueState) {
     todayQueueRecord = saved;
     const savedGoal = normalizeDailyGoalValue(saved.goal, defaultDailyGoal);
     dailyGoal = Math.max(savedGoal, logGoal, localTemporaryGoal, defaultDailyGoal);
     setGoalInputValue(defaultDailyGoal);
-    const rawSavedCompleted = normalizeWordRoList(saved.completed_word_ro || []);
+    const rawSavedCompleted = normalizeWordRoList(savedCompletedRefs);
     const todaySavedCompleted = rawSavedCompleted.filter(ro => wasWordCompletedOnActiveDate(ro));
     if (todaySavedCompleted.length !== rawSavedCompleted.length) {
       forceQueueLocal = true;
       queueChanged = true;
     }
     const savedCompleted = new Set(todaySavedCompleted);
-    const originalQueueLength = saved.word_ro.length;
-    const uniqueSavedQueue = normalizeWordRoList(saved.word_ro);
+    const originalQueueLength = savedWordRefs.length;
+    const uniqueSavedQueue = normalizeWordRoList(savedWordRefs);
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
     todayQueue = uniqueSavedQueue.filter(ro => getWordByRo(ro) && !setHasRo(todayQueueCompleted, ro));
     queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
@@ -1456,7 +1535,9 @@ async function loadDailyQueue() {
     todayQueue = buildDailyQueueWords(dailyGoal).map(w => w.ro);
     todayQueueRecord = await apiSaveDailyQueue(currentUser.id, {
       goal: dailyGoal,
-      word_ro: todayQueue,
+      word_id: queueIdsToWordIds(todayQueue),
+      word_ro: queueIdsToWordRos(todayQueue),
+      completed_word_id: [],
       completed_word_ro: [],
       completed: false
     });
@@ -1890,8 +1971,10 @@ async function saveTodayQueue(options = {}) {
   if (dailyGoal > defaultDailyGoal) writeTodayTemporaryGoal(dailyGoal);
   const payload = {
     goal: dailyGoal,
-    word_ro: todayQueue,
-    completed_word_ro: [...todayQueueCompleted],
+    word_id: queueIdsToWordIds(todayQueue),
+    word_ro: queueIdsToWordRos(todayQueue),
+    completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
+    completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
     completed: isCurrentTodayGoalDone()
   };
   const savePromise = apiSaveDailyQueue(currentUser.id, payload, { forceLocal: !!options.forceLocal });
@@ -2040,7 +2123,8 @@ function repairStartedProgressForCompletedTodayWords() {
       pendingSync: true
     };
     setProgress(canonicalRo, repairedProgress, { source: 'repairStartedProgressForCompletedTodayWords' });
-    pendingEntries.push([canonicalRo, repairedProgress]);
+    const word = getWordByRo(canonicalRo);
+    pendingEntries.push([word?.id ?? null, word?.ro || canonicalRo, { ...repairedProgress, word_id: word?.id ?? null, word_ro: word?.ro || canonicalRo }]);
   }
   if (pendingEntries.length && typeof writePendingProgressBatch === 'function') {
     writePendingProgressBatch(currentUser.id, pendingEntries);
@@ -2830,15 +2914,18 @@ function handleProgressSaveStatus(status) {
 }
 
 async function apiSaveProgressWithSessionRetry(userId, wordRo, known, qr, qt, level, review, memory) {
+  const word = getWordByRo(wordRo);
+  const wordId = word?.id ?? null;
+  const displayRo = word?.ro || canonicalWordRo(wordRo);
   try {
-    return await apiSaveProgress(userId, wordRo, known, qr, qt, level, review, null, memory);
+    return await apiSaveProgress(userId, wordId, displayRo, known, qr, qt, level, review, null, memory);
   } catch (firstError) {
     if (isOfflineMode()) throw firstError;
     try {
       const { data, error } = await sb.auth.refreshSession();
       if (error) throw error;
       if (data?.user) currentUser = data.user;
-      return await apiSaveProgress(currentUser.id, wordRo, known, qr, qt, level, review, null, memory);
+      return await apiSaveProgress(currentUser.id, wordId, displayRo, known, qr, qt, level, review, null, memory);
     } catch (retryError) {
       retryError.firstError = firstError;
       throw retryError;
@@ -2922,11 +3009,13 @@ function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options 
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
   setSyncBadge('保存中...', '');
   const canonicalRo = canonicalWordRo(wordRo);
+  const word = getWordByRo(canonicalRo);
+  const wordId = word?.id ?? null;
   const prev = getProgress(canonicalRo) || {};
   const { memory, progress: nextProgress } = buildProgressUpdate(prev, known, qr, qt, success, options);
   setProgress(canonicalRo, nextProgress, { source: 'syncProgress:optimistic' });
   const localStatus = typeof queueProgressForSync === 'function'
-    ? queueProgressForSync(currentUser.id, canonicalRo, { ...nextProgress, pendingSync: true }, memory)
+    ? queueProgressForSync(currentUser.id, wordId, word?.ro || canonicalRo, { ...nextProgress, word_id: wordId, word_ro: word?.ro || canonicalRo, pendingSync: true }, memory)
     : { ok: false };
   if (localStatus.ok) {
     setProgress(canonicalRo, { ...nextProgress, pendingSync: !isOfflineMode() }, { source: 'syncProgress:queued' });
@@ -3108,9 +3197,12 @@ function flushFastProgressQueue() {
 
 function persistFastCardAnswer(result) {
   if (!result?.canonicalRo || !currentUser?.id) return;
+  const word = getWordByRo(result.canonicalRo);
+  const wordId = word?.id ?? null;
   fastProgressQueue.set(result.canonicalRo, {
+    wordId,
     wordRo: result.canonicalRo,
-    progress: { ...result.progress, pendingSync: true },
+    progress: { ...result.progress, word_id: wordId, word_ro: word?.ro || result.canonicalRo, pendingSync: true },
     memory: result.memory
   });
   if (fastProgressFlushTimer) return;
@@ -3771,6 +3863,8 @@ function setCat(c) {
 }
 
 function getWordByRo(wordRo) {
+  const raw = String(wordRo ?? '');
+  if (wordIdIndex.has(raw)) return wordIdIndex.get(raw);
   const key = roKey(wordRo);
   return wordByRoIndex.get(key) || null;
 }
@@ -5311,8 +5405,10 @@ function exportProgressBackup() {
     todayGoal: dailyGoal,
     progress: progressMap,
     dailyQueue: {
-      word_ro: todayQueue,
-      completed_word_ro: [...todayQueueCompleted],
+      word_id: queueIdsToWordIds(todayQueue),
+      word_ro: queueIdsToWordRos(todayQueue),
+      completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
+      completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
       new_words: todayNewWords
     }
   };
@@ -5338,9 +5434,12 @@ async function importProgressBackup(file) {
     const rows = Object.entries(incoming).slice(0, 1000);
     let importWarningShown = false;
     for (const [wordRo, p] of rows) {
+      const word = resolveWordFromProgressKey(wordRo, p);
+      const displayRo = word?.ro || canonicalWordRo(p?.word_ro || p?.wordRo || wordRo);
       const saveStatus = await apiSaveProgress(
         currentUser.id,
-        canonicalWordRo(wordRo),
+        word?.id ?? p?.word_id ?? p?.wordId ?? null,
+        displayRo,
         !!p.known,
         p.qr || 0,
         p.qt || 0,
@@ -5473,7 +5572,8 @@ async function renderLeaderboard() {
     const byUser = {};
     rows.forEach(r => {
       if (!byUser[r.user_id]) byUser[r.user_id] = {};
-      byUser[r.user_id][r.word_ro] = rowToProgress(r);
+      const key = r.word_id ? String(r.word_id) : progressFallbackKey(r.word_ro, r);
+      byUser[r.user_id][key] = rowToProgress(r);
     });
     const logsByUser = {};
     logs.forEach(l => {
@@ -6517,9 +6617,11 @@ function getAdminWrongStats(rows) {
   const map = {};
   (rows || []).forEach(r => {
     if (!r.word_ro) return;
-    if (!map[r.word_ro]) map[r.word_ro] = { ro: r.word_ro, qt: 0, qr: 0 };
-    map[r.word_ro].qt += r.quiz_total || 0;
-    map[r.word_ro].qr += r.quiz_right || 0;
+    const word = wordIdIndex.get(String(r.word_id || '')) || getWordByRo(r.word_ro) || {};
+    const key = r.word_id ? String(r.word_id) : r.word_ro;
+    if (!map[key]) map[key] = { ro: word.ro || r.word_ro, qt: 0, qr: 0 };
+    map[key].qt += r.quiz_total || 0;
+    map[key].qr += r.quiz_right || 0;
   });
   return Object.values(map)
     .map(s => {
@@ -6729,7 +6831,8 @@ function buildWeeklyUserRows(users, progressRows, logs, watchSettings = {}) {
   const progressByUser = {};
   (progressRows || []).forEach(r => {
     if (!progressByUser[r.user_id]) progressByUser[r.user_id] = {};
-    progressByUser[r.user_id][r.word_ro] = rowToProgress(r);
+    const key = r.word_id ? String(r.word_id) : progressFallbackKey(r.word_ro, r);
+    progressByUser[r.user_id][key] = rowToProgress(r);
   });
   const logsByUser = {};
   (logs || []).forEach(l => {
@@ -6806,10 +6909,11 @@ function buildWeeklyWrongWords(users, progressRows, watchSettings = {}) {
     const qr = Number(p.qr || 0);
     const misses = Math.max(Number(p.wrongCount || 0), Math.max(0, qt - qr));
     if (!qt || misses <= 0) return;
-    const word = wordMap.get(row.word_ro) || {};
-    if (!byWord[row.word_ro]) {
-      byWord[row.word_ro] = {
-        ro: row.word_ro,
+    const word = wordIdIndex.get(String(row.word_id || '')) || wordMap.get(row.word_ro) || {};
+    const key = row.word_id ? String(row.word_id) : row.word_ro;
+    if (!byWord[key]) {
+      byWord[key] = {
+        ro: word.ro || row.word_ro,
         zh: word.zh || '',
         cat: word.cat || '',
         misses: 0,
@@ -6817,9 +6921,9 @@ function buildWeeklyWrongWords(users, progressRows, watchSettings = {}) {
         users: new Set()
       };
     }
-    byWord[row.word_ro].misses += misses;
-    byWord[row.word_ro].attempts += qt;
-    byWord[row.word_ro].users.add(row.user_id);
+    byWord[key].misses += misses;
+    byWord[key].attempts += qt;
+    byWord[key].users.add(row.user_id);
   });
   return Object.values(byWord)
     .map(item => ({ ...item, users: item.users.size, rate: item.attempts ? Math.round(item.misses / item.attempts * 100) : 0 }))

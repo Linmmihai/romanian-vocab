@@ -141,6 +141,33 @@ function progressPendingKey(userId) {
   return localKey(userId, 'progress_pending');
 }
 
+function normalizeProgressWordRoKey(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[şŞ]/g, match => match === 'Ş' ? 'Ș' : 'ș')
+    .replace(/[ţŢ]/g, match => match === 'Ţ' ? 'Ț' : 'ț')
+    .toLocaleLowerCase('ro');
+}
+
+function progressEntryKey(wordId, wordRo = '') {
+  if (wordId !== undefined && wordId !== null && String(wordId).trim() !== '') {
+    return String(wordId);
+  }
+  const legacyKey = normalizeProgressWordRoKey(wordRo);
+  return legacyKey ? `legacy:${legacyKey}` : '';
+}
+
+function getProgressEntryWordId(key, progress = {}) {
+  const value = progress?.wordId ?? progress?.word_id ?? (/^\d+$/.test(String(key || '')) ? key : null);
+  return value !== undefined && value !== null && String(value).trim() !== '' ? Number(value) : null;
+}
+
+function getProgressEntryWordRo(progress = {}, fallback = '') {
+  return progress?.wordRo || progress?.word_ro || fallback || '';
+}
+
 function readProgressMemoryBackup(userId) {
   return readJson(progressMemoryKey(userId), {});
 }
@@ -162,11 +189,17 @@ function readLocalProgressFallback(userId) {
   const localProgress = readJson(localKey(userId, 'progress'), {});
   const pendingProgress = readPendingProgress(userId);
   const map = {};
-  Object.entries(localProgress).forEach(([wordRo, progress]) => {
-    map[wordRo] = mergeProgressMemory(progress || {}, memoryBackup[wordRo]);
+  Object.entries(localProgress).forEach(([key, progress]) => {
+    const wordId = getProgressEntryWordId(key, progress);
+    const wordRo = getProgressEntryWordRo(progress, key);
+    const nextKey = progressEntryKey(wordId, wordRo) || key;
+    map[nextKey] = mergeProgressMemory({ ...(progress || {}), word_id: wordId, word_ro: wordRo }, memoryBackup[nextKey] || memoryBackup[key]);
   });
-  Object.entries(pendingProgress).forEach(([wordRo, progress]) => {
-    map[wordRo] = mergeProgressMemory({ ...(progress || {}), pendingSync: true }, memoryBackup[wordRo]);
+  Object.entries(pendingProgress).forEach(([key, progress]) => {
+    const wordId = getProgressEntryWordId(key, progress);
+    const wordRo = getProgressEntryWordRo(progress, key);
+    const nextKey = progressEntryKey(wordId, wordRo) || key;
+    map[nextKey] = mergeProgressMemory({ ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
   });
   return map;
 }
@@ -174,10 +207,14 @@ function readLocalProgressFallback(userId) {
 function writeLocalProgressSnapshot(userId, progressMap = {}) {
   if (!userId) return { ok: true, skipped: true };
   const snapshot = {};
-  Object.entries(progressMap || {}).forEach(([wordRo, progress]) => {
-    if (!wordRo || wordRo.startsWith('__')) return;
-    snapshot[wordRo] = { ...(progress || {}) };
-    delete snapshot[wordRo].pendingSync;
+  Object.entries(progressMap || {}).forEach(([key, progress]) => {
+    if (!key || key.startsWith('__')) return;
+    const wordId = getProgressEntryWordId(key, progress);
+    const wordRo = getProgressEntryWordRo(progress, key);
+    const nextKey = progressEntryKey(wordId, wordRo);
+    if (!nextKey) return;
+    snapshot[nextKey] = { ...(progress || {}), word_id: wordId, word_ro: wordRo };
+    delete snapshot[nextKey].pendingSync;
   });
   try {
     writeJson(localKey(userId, 'progress'), snapshot);
@@ -187,13 +224,16 @@ function writeLocalProgressSnapshot(userId, progressMap = {}) {
   }
 }
 
-function writePendingProgress(userId, wordRo, progress = {}) {
-  if (!wordRo) return { ok: true, skipped: true };
+function writePendingProgress(userId, wordId, wordRo, progress = {}) {
+  const key = progressEntryKey(wordId, wordRo);
+  if (!key) return { ok: true, skipped: true };
   const pending = readPendingProgress(userId);
   const localProgress = readJson(localKey(userId, 'progress'), {});
-  const merged = mergeCloudProgress(progress || {}, pending[wordRo] || localProgress[wordRo] || null);
-  pending[wordRo] = {
+  const merged = mergeCloudProgress(progress || {}, pending[key] || localProgress[key] || null);
+  pending[key] = {
     ...merged,
+    word_id: getProgressEntryWordId(key, progress),
+    word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
     pendingSync: true,
     pendingSyncAt: new Date().toISOString()
   };
@@ -205,11 +245,12 @@ function writePendingProgress(userId, wordRo, progress = {}) {
   }
 }
 
-function writeLocalProgressEntry(userId, wordRo, progress = {}) {
-  if (!userId || !wordRo) return { ok: true, skipped: true };
+function writeLocalProgressEntry(userId, wordId, wordRo, progress = {}) {
+  const key = progressEntryKey(wordId, wordRo);
+  if (!userId || !key) return { ok: true, skipped: true };
   const map = readJson(localKey(userId, 'progress'), {});
-  map[wordRo] = mergeCloudProgress(progress || {}, map[wordRo] || null);
-  delete map[wordRo].pendingSync;
+  map[key] = mergeCloudProgress({ ...(progress || {}), word_id: getProgressEntryWordId(key, progress), word_ro: wordRo || progress?.word_ro || progress?.wordRo || '' }, map[key] || null);
+  delete map[key].pendingSync;
   try {
     writeJson(localKey(userId, 'progress'), map);
     return { ok: true };
@@ -218,10 +259,10 @@ function writeLocalProgressEntry(userId, wordRo, progress = {}) {
   }
 }
 
-function queueProgressForSync(userId, wordRo, progress = {}, memory = {}) {
-  const localStatus = writeLocalProgressEntry(userId, wordRo, progress);
-  const pendingStatus = writePendingProgress(userId, wordRo, progress);
-  const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+function queueProgressForSync(userId, wordId, wordRo, progress = {}, memory = {}) {
+  const localStatus = writeLocalProgressEntry(userId, wordId, wordRo, progress);
+  const pendingStatus = writePendingProgress(userId, wordId, wordRo, progress);
+  const memoryBackup = writeProgressMemoryBackup(userId, wordId, wordRo, memory);
   return {
     ok: localStatus.ok && pendingStatus.ok && memoryBackup.ok !== false,
     localStatus,
@@ -231,7 +272,7 @@ function queueProgressForSync(userId, wordRo, progress = {}, memory = {}) {
 }
 
 function queueProgressBatchForSync(userId, entries = []) {
-  const validEntries = (entries || []).filter(entry => entry?.wordRo);
+  const validEntries = (entries || []).filter(entry => progressEntryKey(entry?.wordId ?? entry?.word_id, entry?.wordRo ?? entry?.word_ro));
   if (!userId || !validEntries.length) return { ok: true, skipped: true };
   try {
     const localProgress = readJson(localKey(userId, 'progress'), {});
@@ -239,12 +280,15 @@ function queueProgressBatchForSync(userId, entries = []) {
     const memoryBackup = readProgressMemoryBackup(userId);
     const backedUpAt = new Date().toISOString();
 
-    validEntries.forEach(({ wordRo, progress = {}, memory = {} }) => {
-      const merged = mergeCloudProgress(progress || {}, pendingProgress[wordRo] || localProgress[wordRo] || null);
-      localProgress[wordRo] = { ...merged };
-      delete localProgress[wordRo].pendingSync;
-      pendingProgress[wordRo] = {
+    validEntries.forEach(({ wordId, wordRo, progress = {}, memory = {} }) => {
+      const key = progressEntryKey(wordId ?? progress?.word_id ?? progress?.wordId, wordRo ?? progress?.word_ro ?? progress?.wordRo);
+      const merged = mergeCloudProgress(progress || {}, pendingProgress[key] || localProgress[key] || null);
+      localProgress[key] = { ...merged, word_id: getProgressEntryWordId(key, progress), word_ro: wordRo || progress?.word_ro || progress?.wordRo || '' };
+      delete localProgress[key].pendingSync;
+      pendingProgress[key] = {
         ...merged,
+        word_id: getProgressEntryWordId(key, progress),
+        word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
         pendingSync: true,
         pendingSyncAt: progress?.pendingSyncAt || backedUpAt
       };
@@ -254,9 +298,9 @@ function queueProgressBatchForSync(userId, entries = []) {
       const lastWrongAt = memory.lastWrongAt || null;
       const weakClearedAt = memory.weakClearedAt || null;
       if (!wrongCount && !errorStreak && !lastWrongAt && !weakClearedAt) {
-        delete memoryBackup[wordRo];
+        delete memoryBackup[key];
       } else {
-        memoryBackup[wordRo] = { wrongCount, errorStreak, lastWrongAt, weakClearedAt, backedUpAt };
+        memoryBackup[key] = { wrongCount, errorStreak, lastWrongAt, weakClearedAt, backedUpAt };
       }
     });
 
@@ -277,11 +321,18 @@ function writePendingProgressBatch(userId, entries = []) {
   const pending = readPendingProgress(userId);
   const localProgress = readJson(localKey(userId, 'progress'), {});
   const now = new Date().toISOString();
-  entries.forEach(([wordRo, progress]) => {
-    if (!wordRo) return;
-    const merged = mergeCloudProgress(progress || {}, pending[wordRo] || localProgress[wordRo] || null);
-    pending[wordRo] = {
+  entries.forEach(([wordId, wordRo, progress]) => {
+    if (progress === undefined && typeof wordRo === 'object') {
+      progress = wordRo;
+      wordRo = progress?.word_ro || progress?.wordRo || '';
+    }
+    const key = progressEntryKey(wordId, wordRo);
+    if (!key) return;
+    const merged = mergeCloudProgress(progress || {}, pending[key] || localProgress[key] || null);
+    pending[key] = {
       ...merged,
+      word_id: getProgressEntryWordId(key, progress),
+      word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
       pendingSync: true,
       pendingSyncAt: progress?.pendingSyncAt || now
     };
@@ -294,20 +345,21 @@ function writePendingProgressBatch(userId, entries = []) {
   }
 }
 
-function clearPendingProgress(userId, wordRo) {
-  if (!wordRo) return;
+function clearPendingProgress(userId, wordId, wordRo) {
+  const key = progressEntryKey(wordId, wordRo);
+  if (!key) return;
   const pending = readPendingProgress(userId);
-  if (!(wordRo in pending)) return;
-  delete pending[wordRo];
+  if (!(key in pending)) return;
+  delete pending[key];
   try { writeJson(progressPendingKey(userId), pending); } catch {}
 }
 
-function clearPendingProgressBatch(userId, wordRos = []) {
+function clearPendingProgressBatch(userId, keys = []) {
   const pending = readPendingProgress(userId);
   let changed = false;
-  wordRos.forEach(wordRo => {
-    if (wordRo in pending) {
-      delete pending[wordRo];
+  keys.forEach(key => {
+    if (key in pending) {
+      delete pending[key];
       changed = true;
     }
   });
@@ -316,15 +368,16 @@ function clearPendingProgressBatch(userId, wordRos = []) {
   }
 }
 
-function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
-  if (!wordRo) return { ok: true, skipped: true };
+function writeProgressMemoryBackup(userId, wordId, wordRo, memory = {}) {
+  const key = progressEntryKey(wordId, wordRo);
+  if (!key) return { ok: true, skipped: true };
   const existing = readProgressMemoryBackup(userId);
   const wrongCount = Number(memory.wrongCount || 0);
   const errorStreak = Number(memory.errorStreak || 0);
   const lastWrongAt = memory.lastWrongAt || null;
   const weakClearedAt = memory.weakClearedAt || null;
   if (!wrongCount && !errorStreak && !lastWrongAt && !weakClearedAt) {
-    delete existing[wordRo];
+    delete existing[key];
     try {
       writeJson(progressMemoryKey(userId), existing);
       return { ok: true, cleared: true };
@@ -332,7 +385,7 @@ function writeProgressMemoryBackup(userId, wordRo, memory = {}) {
       return { ok: false, error };
     }
   }
-  existing[wordRo] = {
+  existing[key] = {
     wrongCount,
     errorStreak,
     lastWrongAt,
@@ -399,6 +452,10 @@ function rowToProgress(r) {
     return [];
   })();
   const baseProgress = {
+    wordId: r.word_id ?? r.wordId ?? null,
+    word_id: r.word_id ?? r.wordId ?? null,
+    wordRo: r.word_ro ?? r.wordRo ?? '',
+    word_ro: r.word_ro ?? r.wordRo ?? '',
     seen,
     seenViaCard: !!(r.seen_via_card ?? r.seenViaCard),
     known: r.known,
@@ -614,8 +671,30 @@ function normalizeRoArray(values = []) {
     });
 }
 
+function normalizeIdArray(values = []) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value))
+    .filter(value => {
+      const key = String(value);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
 function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
   if (!cloudPayload) return localPayload;
+  const completed_word_id = normalizeIdArray([
+    ...(cloudPayload.completed_word_id || []),
+    ...(localPayload.completed_word_id || [])
+  ]);
+  const completedIdKeys = new Set(completed_word_id.map(String));
+  const word_id = normalizeIdArray([
+    ...(cloudPayload.word_id || []),
+    ...(localPayload.word_id || [])
+  ]).filter(value => !completedIdKeys.has(String(value)));
   const completed = normalizeRoArray([
     ...(cloudPayload.completed_word_ro || []),
     ...(localPayload.completed_word_ro || [])
@@ -630,7 +709,9 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     ...cloudPayload,
     ...localPayload,
     goal,
+    word_id,
     word_ro,
+    completed_word_id,
     completed_word_ro: completed,
     completed: !!(localPayload.completed || cloudPayload.completed),
     updated_at: localPayload.updated_at || new Date().toISOString()
@@ -698,6 +779,7 @@ async function apiLoadWords(options = {}) {
  */
 async function apiUpdateWord(wordId, updates) {
   if (isOfflineMode()) throw new Error('离线模式下不能修改共享词库');
+  // Progress is keyed by stable word_id, so editing ro text no longer detaches a student's history.
   const { data, error } = await sb.from('words').update(updates).eq('id', wordId).select('id').maybeSingle();
   if (error) throw new Error(error.message);
   if (!data?.id) throw new Error('词条未保存：没有权限或词条不存在');
@@ -917,10 +999,10 @@ async function apiDeleteWord(wordId) {
 /**
  * 加载当前用户的所有学习进度
  * @param {string} userId
- * @returns {Promise<object>} { word_ro: { known, qr, qt } }
+ * @returns {Promise<object>} { word_id: { known, qr, qt, word_ro } } plus legacy:* fallback keys
  */
 async function apiLoadProgress(userId) {
-  if (isOfflineMode()) return markProgressSource(readJson(localKey(userId, 'progress'), {}), 'offline');
+  if (isOfflineMode()) return markProgressSource(readLocalProgressFallback(userId), 'offline');
   let data = null;
   let error = null;
   try {
@@ -940,12 +1022,21 @@ async function apiLoadProgress(userId) {
   const memoryBackup = readProgressMemoryBackup(userId);
   const pendingProgress = readPendingProgress(userId);
   const map = {};
+  let legacyRows = 0;
   (data || []).forEach(r => {
     const progress = rowToProgress(r);
-    map[r.word_ro] = mergeProgressMemory(progress, memoryBackup[r.word_ro]);
+    const key = progressEntryKey(r.word_id, r.word_ro);
+    if (!r.word_id) legacyRows++;
+    map[key] = mergeProgressMemory(progress, memoryBackup[key] || memoryBackup[r.word_ro]);
   });
-  Object.entries(pendingProgress).forEach(([wordRo, progress]) => {
-    map[wordRo] = mergeProgressMemory({ ...progress, pendingSync: true }, memoryBackup[wordRo]);
+  if (legacyRows) {
+    console.warn(`Loaded ${legacyRows} legacy progress row(s) without word_id; using normalized word_ro fallback until migration/backfill is complete.`);
+  }
+  Object.entries(pendingProgress).forEach(([key, progress]) => {
+    const wordId = getProgressEntryWordId(key, progress);
+    const wordRo = getProgressEntryWordRo(progress, key);
+    const nextKey = progressEntryKey(wordId, wordRo) || key;
+    map[nextKey] = mergeProgressMemory({ ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
   });
   writeLocalProgressSnapshot(userId, map);
   return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
@@ -960,17 +1051,21 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
   let saved = 0;
   for (let i = 0; i < batch.length; i += PENDING_PROGRESS_RETRY_CONCURRENCY) {
     const chunk = batch.slice(i, i + PENDING_PROGRESS_RETRY_CONCURRENCY);
-    const wordRos = chunk.map(([wordRo]) => wordRo);
-    const { data: cloudRows, error: cloudError } = await sb.from('progress')
-      .select('*')
-      .eq('user_id', userId)
-      .in('word_ro', wordRos);
+    const wordIds = chunk
+      .map(([key, p]) => getProgressEntryWordId(key, p))
+      .filter(Boolean);
+    const { data: cloudRows, error: cloudError } = wordIds.length
+      ? await sb.from('progress').select('*').eq('user_id', userId).in('word_id', wordIds)
+      : { data: [], error: null };
     if (cloudError) throw new Error(cloudError.message);
-    const cloudByRo = new Map((cloudRows || []).map(row => [row.word_ro, row]));
-    const results = await Promise.allSettled(chunk.map(async ([wordRo, p]) => {
-      const mergedProgress = mergeCloudProgress(p, cloudByRo.get(wordRo));
+    const cloudById = new Map((cloudRows || []).map(row => [String(row.word_id), row]));
+    const results = await Promise.allSettled(chunk.map(async ([key, p]) => {
+      const wordId = getProgressEntryWordId(key, p);
+      const wordRo = getProgressEntryWordRo(p, '');
+      const mergedProgress = mergeCloudProgress(p, wordId ? cloudById.get(String(wordId)) : null);
       await apiSaveProgress(
         userId,
+        wordId,
         wordRo,
         !!mergedProgress.known,
         mergedProgress.qr || 0,
@@ -1001,16 +1096,16 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
         }
       );
     }));
-    const savedWordRos = [];
+    const savedKeys = [];
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         saved++;
-        savedWordRos.push(chunk[index][0]);
+        savedKeys.push(chunk[index][0]);
       } else {
         console.warn('Pending progress retry failed', chunk[index][0], result.reason);
       }
     });
-    clearPendingProgressBatch(userId, savedWordRos);
+    clearPendingProgressBatch(userId, savedKeys);
   }
   const failed = batch.length - saved;
   const remaining = Math.max(0, entries.length - saved);
@@ -1040,7 +1135,8 @@ async function apiLoadAllProgress() {
 /**
  * 保存/更新一个词的学习进度
  * @param {string} userId
- * @param {string} wordRo
+ * @param {number|string} wordId - stable words.id identity
+ * @param {string} wordRo - display/debug metadata only
  * @param {boolean} known
  * @param {number} qr - 答对次数
  * @param {number} qt - 总答题次数
@@ -1048,7 +1144,28 @@ async function apiLoadAllProgress() {
 /**
  * 保存/更新一个词的学习进度（含熟练度 level）
  */
-async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}) {
+async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}) {
+  if (typeof wordRo === 'boolean') {
+    const legacyWordRo = String(wordId || '');
+    const legacyKnown = wordRo;
+    const legacyQr = known;
+    const legacyQt = qr;
+    const legacyLevel = qt;
+    const legacyReview = level || {};
+    const legacyReviewCountValue = review;
+    const legacyMemory = memory || {};
+    wordRo = legacyWordRo;
+    wordId = null;
+    known = legacyKnown;
+    qr = legacyQr;
+    qt = legacyQt;
+    level = legacyLevel;
+    review = legacyReview;
+    legacyReviewCount = legacyReviewCountValue;
+    memory = legacyMemory;
+    console.warn('apiSaveProgress called without wordId; saving through legacy fallback key.');
+  }
+  const stableWordId = wordId !== undefined && wordId !== null && String(wordId).trim() !== '' ? Number(wordId) : null;
   const normalized = typeof review === 'string'
     ? {
         nextReviewAt: new Date(`${review}T00:00:00`).toISOString(),
@@ -1063,6 +1180,7 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     : normalized;
   const basePayload = {
     user_id: userId,
+    word_id: stableWordId,
     word_ro: wordRo,
     known,
     quiz_right: qr || 0,
@@ -1108,9 +1226,10 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
 
   if (isOfflineMode()) {
     const map = readJson(localKey(userId, 'progress'), {});
-    map[wordRo] = rowToProgress({ word_ro: wordRo, ...schedulerPayload });
+    const key = progressEntryKey(stableWordId, wordRo);
+    map[key] = rowToProgress({ ...schedulerPayload });
     writeJson(localKey(userId, 'progress'), map);
-    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     return {
       savedPayload: 'offline',
       memoryBackedByDb: true,
@@ -1118,10 +1237,20 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     };
   }
 
-  let { error } = await sb.from('progress').upsert(schedulerPayload, { onConflict: 'user_id,word_ro' });
+  if (!stableWordId) {
+    const status = queueProgressForSync(userId, null, wordRo, { ...rowToProgress(schedulerPayload), pendingSync: true }, memory);
+    return {
+      savedPayload: 'legacyLocalOnly',
+      memoryBackedByDb: false,
+      memoryBackup: status.memoryBackup,
+      fallbackWarning: 'Missing word_id; progress queued locally under legacy word_ro fallback.'
+    };
+  }
+
+  let { error } = await sb.from('progress').upsert(schedulerPayload, { onConflict: 'user_id,word_id' });
   if (!error) {
-    clearPendingProgress(userId, wordRo);
-    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    clearPendingProgress(userId, stableWordId, wordRo);
+    const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     return {
       savedPayload: 'scheduler',
       memoryBackedByDb: true,
@@ -1130,10 +1259,10 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
   }
 
   const modernError = error;
-  ({ error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_ro' }));
+  ({ error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_id' }));
   if (!error) {
-    clearPendingProgress(userId, wordRo);
-    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    clearPendingProgress(userId, stableWordId, wordRo);
+    const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     console.warn('Progress saved without scheduler columns; local scheduler fields remain in pending/local backup.', modernError);
     return {
       savedPayload: 'modern',
@@ -1144,10 +1273,10 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
   }
 
   const schedulerError = modernError;
-  ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_ro' }));
+  ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_id' }));
   if (!error) {
-    clearPendingProgress(userId, wordRo);
-    const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+    clearPendingProgress(userId, stableWordId, wordRo);
+    const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     console.warn('Progress saved without wrongbook memory columns; local backup is being used.', modernError);
     return {
       savedPayload: 'reviewOnly',
@@ -1157,10 +1286,10 @@ async function apiSaveProgress(userId, wordRo, known, qr, qt, level, review = {}
     };
   }
 
-  ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_ro' }));
+  ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_id' }));
   if (error) throw new Error(`${schedulerError.message}; ${error.message}`);
-  clearPendingProgress(userId, wordRo);
-  const memoryBackup = writeProgressMemoryBackup(userId, wordRo, memory);
+  clearPendingProgress(userId, stableWordId, wordRo);
+  const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
   console.warn('Progress saved with legacy review columns; wrongbook memory is local-backup only.', modernError);
   return {
     savedPayload: 'legacy',
@@ -1196,7 +1325,9 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
       user_id: userId,
       queue_date: date,
       goal: parsed.goal || goal || 20,
+      word_id: normalizeIdArray(parsed.word_id),
       word_ro: Array.isArray(parsed.word_ro) ? parsed.word_ro : [],
+      completed_word_id: normalizeIdArray(parsed.completed_word_id),
       completed_word_ro: Array.isArray(parsed.completed_word_ro) ? parsed.completed_word_ro : [],
       completed: !!parsed.completed,
       local: true
@@ -1209,7 +1340,9 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
 function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
   const payload = {
     goal: queue.goal || 20,
+    word_id: normalizeIdArray(queue.word_id),
     word_ro: queue.word_ro || [],
+    completed_word_id: normalizeIdArray(queue.completed_word_id),
     completed_word_ro: queue.completed_word_ro || [],
     completed: !!queue.completed
   };
@@ -1229,7 +1362,9 @@ async function apiGetDailyQueue(userId, goal) {
     if (!error && data) {
       return {
         ...data,
+        word_id: normalizeIdArray(data.word_id),
         word_ro: data.word_ro || [],
+        completed_word_id: normalizeIdArray(data.completed_word_id),
         completed_word_ro: data.completed_word_ro || []
       };
     }
@@ -1238,7 +1373,9 @@ async function apiGetDailyQueue(userId, goal) {
         user_id: userId,
         queue_date: today,
         goal: goal || 20,
+        word_id: [],
         word_ro: [],
+        completed_word_id: [],
         completed_word_ro: [],
         completed: false,
         syncError: error.message
@@ -1254,7 +1391,9 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
     user_id: userId,
     queue_date: today,
     goal: queue.goal || 20,
+    word_id: normalizeIdArray(queue.word_id),
     word_ro: queue.word_ro || [],
+    completed_word_id: normalizeIdArray(queue.completed_word_id),
     completed_word_ro: queue.completed_word_ro || [],
     completed: !!queue.completed,
     updated_at: new Date().toISOString()
@@ -1269,7 +1408,11 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
       .maybeSingle();
     if (readError) return { ...payload, syncError: readError.message };
     const mergedPayload = options.forceLocal ? payload : mergeDailyQueuePayload(payload, cloudQueue);
-    const { error } = await sb.from('daily_queue').upsert(mergedPayload, { onConflict: 'user_id,queue_date' });
+    let { error } = await sb.from('daily_queue').upsert(mergedPayload, { onConflict: 'user_id,queue_date' });
+    if (error && /word_id|completed_word_id|schema cache|Could not find/i.test(error.message || '')) {
+      const { word_id, completed_word_id, ...legacyPayload } = mergedPayload;
+      ({ error } = await sb.from('daily_queue').upsert(legacyPayload, { onConflict: 'user_id,queue_date' }));
+    }
     if (!error) {
       writeLocalQueue(userId, mergedPayload, today);
       return mergedPayload;

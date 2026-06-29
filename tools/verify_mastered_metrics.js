@@ -136,7 +136,7 @@ function calcProgressSummary(map) {
   const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert(app.includes('function isMasteredProgress'), 'expected explicit shared mastered helper');
   assert(app.includes('const mastered = vals.filter(isMasteredProgress).length'), 'expected summary to use shared mastered helper');
-  assert(app.includes('byUser[r.user_id][r.word_ro] = rowToProgress(r);'), 'expected leaderboard to preserve full Supabase progress rows');
+  assert(app.includes('byUser[r.user_id][key] = rowToProgress(r);'), 'expected leaderboard to preserve full Supabase progress rows with id-keyed grouping');
   assert(!app.includes('byUser[r.user_id][r.word_ro] = {\n        known: r.known,'), 'leaderboard must not strip review/scheduler fields');
 }
 

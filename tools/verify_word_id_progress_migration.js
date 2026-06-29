@@ -1,0 +1,118 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
+const api = fs.readFileSync(path.join(root, 'api.js'), 'utf8');
+const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'tools/progress_word_id_migration.sql'), 'utf8');
+
+assert(api.includes("onConflict: 'user_id,word_id'"), 'apiSaveProgress must upsert by user_id,word_id');
+assert(api.includes('word_id: stableWordId'), 'apiSaveProgress payload must include word_id');
+assert(api.includes('progressEntryKey(wordId, wordRo)'), 'local progress keys must use wordId first');
+assert(app.includes('let wordIdIndex = new Map();'), 'app must build a word id index');
+assert(app.includes('function progressKeyForWordRef'), 'app must resolve progress keys by word id');
+assert(app.includes('word_id: queueIdsToWordIds(todayQueue)'), 'daily queue payload must carry word ids');
+assert(migration.includes('add column if not exists word_id integer references public.words(id)'), 'migration must add progress.word_id');
+assert(migration.includes('progress_user_word_id_unique_idx'), 'migration must add a user_id,word_id unique index');
+
+let W = [];
+let wordIdIndex = new Map();
+let wordByRoIndex = new Map();
+let progressMap = {};
+let todaySeenWords = new Set();
+let todayQueueCompleted = new Set();
+
+function normalizeWordText(value) {
+  return String(value || '').normalize('NFC').trim().replace(/\s+/g, ' ');
+}
+
+function roKey(value) {
+  const raw = String(value ?? '');
+  if (wordIdIndex.has(raw)) return normalizeWordText(wordIdIndex.get(raw).ro).toLocaleLowerCase('ro');
+  return normalizeWordText(value).toLocaleLowerCase('ro');
+}
+
+function rebuildIndexes() {
+  wordIdIndex = new Map();
+  wordByRoIndex = new Map();
+  W.forEach((word) => {
+    wordIdIndex.set(String(word.id), word);
+    wordByRoIndex.set(roKey(word.ro), word);
+  });
+}
+
+function getWordByRo(wordRo) {
+  const raw = String(wordRo ?? '');
+  if (wordIdIndex.has(raw)) return wordIdIndex.get(raw);
+  return wordByRoIndex.get(roKey(wordRo)) || null;
+}
+
+function resolveWord(wordRef) {
+  if (typeof wordRef === 'object') return wordIdIndex.get(String(wordRef.id)) || getWordByRo(wordRef.ro);
+  return getWordByRo(wordRef);
+}
+
+function progressKeyForWordRef(wordRef) {
+  const word = resolveWord(wordRef);
+  if (word) return String(word.id);
+  const key = roKey(String(wordRef || '').replace(/^legacy:/, ''));
+  return key ? `legacy:${key}` : '';
+}
+
+function getProgress(wordRef) {
+  return progressMap[progressKeyForWordRef(wordRef)] || null;
+}
+
+function hasWordProgress(progress) {
+  return !!(progress && (progress.seen || progress.known || progress.qt || progress.qr || progress.level !== 'unknown'));
+}
+
+function dailyWordKey(wordRef) {
+  const word = resolveWord(wordRef);
+  if (word) return String(word.id);
+  const key = roKey(String(wordRef || ''));
+  return key ? `legacy:${key}` : '';
+}
+
+function setHasRo(set, wordRef) {
+  const key = dailyWordKey(wordRef);
+  return [...set].some((value) => dailyWordKey(value) === key);
+}
+
+function isUnseenWord(w) {
+  return !hasWordProgress(getProgress(w.ro)) && !setHasRo(todayQueueCompleted, w.ro) && !setHasRo(todaySeenWords, w.ro);
+}
+
+W = [
+  { id: 42, ro: 'școală', zh: '学校' },
+  { id: 43, ro: 'masă', zh: '桌子' }
+];
+rebuildIndexes();
+progressMap = {
+  42: { word_id: 42, word_ro: 'școală', seen: true, known: true, qr: 3, qt: 3, level: 'mastered' }
+};
+todaySeenWords = new Set(['42']);
+todayQueueCompleted = new Set(['42']);
+
+assert(hasWordProgress(getProgress('școală')), 'known word should have progress before edit');
+assert(!isUnseenWord(W[0]), 'known word should not be unseen before edit');
+
+W = [
+  { id: 42, ro: 'ȘCOALĂ ', zh: '学校' },
+  { id: 43, ro: 'masă', zh: '桌子' }
+];
+rebuildIndexes();
+
+assert(hasWordProgress(getProgress(W[0].ro)), 'known word should retain progress after ro text edit');
+assert(!isUnseenWord(W[0]), 'known word should not reappear as new after ro text edit');
+assert(isUnseenWord(W[1]), 'word without progress should still be unseen');
+assert(setHasRo(todaySeenWords, W[0].ro), 'today seen set should survive ro text edit via id');
+assert(setHasRo(todayQueueCompleted, W[0].ro), 'completed queue set should survive ro text edit via id');
+
+const localProgress = {};
+const key = String(42);
+localProgress[key] = { word_id: 42, word_ro: W[0].ro, known: true };
+assert(localProgress['42'].word_id === 42, 'offline progress should be keyed by word id');
+
+console.log('word_id progress migration regression checks passed');

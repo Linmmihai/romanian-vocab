@@ -228,8 +228,8 @@ const matureProgress = {
   assert(app.includes('debugProgressWrite'), 'progress writes should be instrumented behind debug mode');
   assert(app.includes('isSchedulerProgressDowngrade'), 'front-end progress merge must prevent scheduler downgrades');
   assert(api.includes('isSchedulerMergeDowngrade'), 'local/cloud progress merge must prevent scheduler downgrades');
-  assert(api.includes('mergeCloudProgress(progress || {}, map[wordRo] || null)'), 'local progress writes must merge with existing records');
-  assert(api.includes('mergeCloudProgress(progress || {}, pending[wordRo] || localProgress[wordRo] || null)'), 'pending progress writes must merge with existing records');
+  assert(api.includes('map[key] = mergeCloudProgress({ ...(progress || {}), word_id:'), 'local progress writes must merge with existing id-keyed records');
+  assert(api.includes('mergeCloudProgress(progress || {}, pending[key] || localProgress[key] || null)'), 'pending progress writes must merge with existing id-keyed records');
 }
 
 console.log('progress integrity verification passed');
