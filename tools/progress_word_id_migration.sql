@@ -57,7 +57,14 @@ matched_progress as (
 update public.progress p
 set word_id = m.matched_word_id
 from matched_progress m
-where p.ctid = m.progress_ctid;
+where p.ctid = m.progress_ctid
+  and not exists (
+    select 1
+    from public.progress existing
+    where existing.user_id = p.user_id
+      and existing.word_id = m.matched_word_id
+      and existing.ctid <> p.ctid
+  );
 
 -- Backfill/orphan report. Save these counts before and after the update.
 select
@@ -72,6 +79,13 @@ select
   p.updated_at,
   case
     when nullif(normalize_ro_progress_key(p.word_ro), '') is null then 'empty_word_ro'
+    when exists (
+      select 1
+      from public.progress existing
+      join public.words w on w.id = existing.word_id
+      where existing.user_id = p.user_id
+        and normalize_ro_progress_key(w.ro) = normalize_ro_progress_key(p.word_ro)
+    ) then 'duplicate_user_word_progress_kept_legacy'
     when exists (
       select 1
       from public.words w

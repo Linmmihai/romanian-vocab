@@ -743,8 +743,6 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     });
     return false;
   }
-  const remainingQuota = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
-  const canStudyToday = remainingQuota > 0 && !isTodayStudyBlocked();
   const queueRos = normalizeWordRoList(todayQueue);
   const completedKeys = new Set([...todayQueueCompleted].map(roKey));
   const activeOpenWords = queueRos
@@ -758,12 +756,10 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     .filter(isRetryDeferred);
   activeOpenCount = activeOpenWords.length;
   deferredOpenCount = deferredOpenWords.length;
-  activeSlots = Math.max(0, remainingQuota - activeOpenWords.length);
-  if (!options.force && canStudyToday && activeSlots === 0) {
+  activeSlots = 0;
+  if (!options.force) {
     debugDailyQueue('ensureTodayQueueHasActiveCards:fast-active', {
       reason,
-      canStudyToday,
-      remainingQuota,
       activeOpenCount,
       deferredOpenCount,
       activeSlots
@@ -773,8 +769,6 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
       changed: false,
       persisted: false,
       fastPath: 'active-queue-full',
-      canStudyToday,
-      remainingQuota,
       activeOpenCount,
       deferredOpenCount,
       activeSlots,
@@ -783,53 +777,27 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     });
     return false;
   }
-  vocabScanned = canStudyToday && activeSlots > 0 ? W.length : 0;
-  const eligibleNewWords = canStudyToday && activeSlots > 0
-    ? getEligibleUnseenWordsForToday(W).slice(0, activeSlots)
-    : [];
-  eligibleNewCount = eligibleNewWords.length;
 
   debugDailyQueue('ensureTodayQueueHasActiveCards:before', {
     reason,
-    canStudyToday,
-    remainingQuota,
     activeOpenCount,
     deferredOpenCount,
     activeSlots,
     eligibleNewCount
   });
 
-  if (!canStudyToday || !eligibleNewWords.length) {
-    finishDailyQueuePerf(perf, {
-      reason,
-      changed: false,
-      persisted: false,
-      canStudyToday,
-      remainingQuota,
-      activeOpenCount,
-      deferredOpenCount,
-      activeSlots,
-      vocabScanned,
-      eligibleNewCount
-    });
-    return false;
-  }
-
   const keepRos = queueRos.filter(ro => {
     if (completedKeys.has(roKey(ro))) return false;
     const word = getWordByRo(ro);
-    return word && (isActiveTodayQueueWord(word) || isRetryDeferred(word));
+    return !!word;
   });
-  const nextQueue = normalizeWordRoList([...activeOpenWords.map(w => w.ro), ...eligibleNewWords.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
-  const mergedQueue = normalizeWordRoList([...nextQueue, ...keepRos.filter(ro => !nextQueue.some(next => roKey(next) === roKey(ro)))]);
+  const mergedQueue = normalizeWordRoList(keepRos);
   changed = mergedQueue.join('|') !== queueRos.join('|');
   if (!changed) {
     finishDailyQueuePerf(perf, {
       reason,
       changed: false,
       persisted: false,
-      canStudyToday,
-      remainingQuota,
       activeOpenCount,
       deferredOpenCount,
       activeSlots,
@@ -844,7 +812,7 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
   invalidateQuizPracticePool();
   debugDailyQueue('ensureTodayQueueHasActiveCards:after', {
     reason,
-    injectedCount: eligibleNewWords.length,
+    injectedCount: 0,
     resultSize: todayQueue.length
   });
   if (!options.skipSave) {
@@ -855,14 +823,12 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     reason,
     changed,
     persisted,
-    canStudyToday,
-    remainingQuota,
     activeOpenCount,
     deferredOpenCount,
     activeSlots,
     vocabScanned,
     eligibleNewCount,
-    injectedCount: eligibleNewWords.length
+    injectedCount: 0
   });
   return true;
 }
@@ -1584,7 +1550,7 @@ async function loadDailyQueue() {
 
 function buildDailyQueueWords(goal) {
   const cap = Math.max(1, Number(goal || 20));
-  return getUnseenWords(W).slice(0, cap);
+  return buildReviewFirstDailyPlan(W, cap);
 }
 
 function uniqueWordsByRo(words) {
@@ -1659,12 +1625,7 @@ function getRemainingDueReviewWords(words = W) {
 }
 
 function getRemainingTodayReviewWords() {
-  if (!dailyQueueLoaded) return getRemainingDueReviewWords(W);
-  return todayQueue
-    .filter(ro => !setHasRo(todayQueueCompleted, ro))
-    .map(ro => getWordByRo(ro))
-    .filter(Boolean)
-    .filter(w => isDueReviewWord(w) && !isRetryDeferred(w));
+  return getRemainingDueReviewWords(W).filter(w => !isRetryDeferred(w));
 }
 
 function isDailyQueueCandidate(w) {
@@ -1730,11 +1691,7 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     });
     return closedQueue;
   }
-  const blocked = new Set([...completedKeys, ...todaySeenWords].map(roKey));
-  const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + activeOpenWords.length, dailyGoal))
-    .filter(w => !completedKeys.has(roKey(w.ro)))
-    .filter(w => !blocked.has(roKey(w.ro)) || activeOpenWords.some(open => roKey(open.ro) === roKey(w.ro)));
-  const activeQueue = sortDailyPhaseWords([...candidates, ...activeOpenWords]).slice(0, openSlots);
+  const activeQueue = sortDailyPhaseWords(activeOpenWords).slice(0, openSlots);
   const result = normalizeWordRoList([...activeQueue.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
   debugDailyQueue('buildOpenTodayQueue:after', {
     goal,
@@ -1742,11 +1699,34 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     openSlots,
     activeOpenCount: activeOpenWords.length,
     deferredOpenCount: deferredOpenWords.length,
-    candidateCount: candidates.length,
+    candidateCount: 0,
     activeResultCount: activeQueue.length,
     resultSize: result.length
   });
   return result;
+}
+
+function appendExplicitTodayQueueCards(targetGoal = dailyGoal) {
+  const completedCount = todayQueueCompleted.size;
+  const targetOpen = Math.max(0, Number(targetGoal || dailyGoal || 20) - completedCount);
+  const missing = Math.max(0, targetOpen - todayQueue.length);
+  if (!missing) return 0;
+  const queuedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
+  const additions = getUnseenWords(W)
+    .filter(w => !queuedKeys.has(roKey(w.ro)))
+    .filter(w => !setHasRo(todaySeenWords, w.ro))
+    .slice(0, missing);
+  if (!additions.length) return 0;
+  todayQueue = normalizeWordRoList([...todayQueue, ...additions.map(w => w.ro)]);
+  dailyQueueVersion++;
+  invalidateQuizPracticePool();
+  debugDailyQueue('appendExplicitTodayQueueCards', {
+    targetGoal,
+    missing,
+    appended: additions.length,
+    resultSize: todayQueue.length
+  });
+  return additions.length;
 }
 
 function getDailyWordList(words = W, options = {}) {
@@ -1799,6 +1779,27 @@ function getDailyWordList(words = W, options = {}) {
   const scopedKeys = options.ignoreCategory || curCat === '全部'
     ? null
     : new Set(scoped.map(w => roKey(w.ro)));
+  const globalDueWords = sortDailyPhaseWords(getRemainingTodayReviewWords())
+    .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)));
+  if (globalDueWords.length) {
+    const result = globalDueWords.slice(0, limit);
+    resultSize = result.length;
+    path = 'global-due-only';
+    debugDailyQueue('getDailyWordList:global-due-only', {
+      options,
+      scopedCount: scoped.length,
+      globalDueCount: globalDueWords.length,
+      resultSize: result.length
+    });
+    finishDailyQueuePerf(perf, {
+      path,
+      resultSize,
+      vocabScanned: words.length,
+      openWordCount: 0,
+      options
+    });
+    return result;
+  }
   const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
   const openWords = openQueuedRos
     .map(ro => getWordByRo(ro))
@@ -1913,7 +1914,7 @@ async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更�
   clearTodayTemporaryGoal();
   await apiSetDailyGoal(currentUser.id, nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
-  ensureTodayQueueHasActiveCards('setDailyGoalAndRebuild', { skipSave: true });
+  appendExplicitTodayQueueCards(dailyGoal);
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
   invalidateCalendarCache();
@@ -1941,7 +1942,7 @@ async function extendTodayGoal(amount) {
   setGoalInputValue(defaultDailyGoal);
   writeTodayTemporaryGoal(nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
-  ensureTodayQueueHasActiveCards('extendTodayGoal', { skipSave: true });
+  appendExplicitTodayQueueCards(dailyGoal);
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
   invalidateCalendarCache();
@@ -2278,18 +2279,6 @@ function applyFilters() {
     if (dailyQueueLoaded) ensureTodayQueueHasActiveCards('applyFilters:today-before');
     filtered = getDailyWordList(scoped, { includeFallback: true, skipRepair: true });
     debugDailyQueue('applyFilters:today-after-list', { scopedCount: scoped.length });
-    if (
-      !filtered.length &&
-      dailyQueueLoaded &&
-      !shouldPauseTodayStudyForCheckin() &&
-      !shouldPauseTodayStudyForGoal() &&
-      getUnseenWords(W).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
-    ) {
-      debugDailyQueue('applyFilters:today-recovery-before', { scopedCount: scoped.length });
-      ensureTodayQueueHasActiveCards('applyFilters:today-recovery');
-      filtered = getDailyWordList(scoped, { includeFallback: true, skipRepair: true });
-      debugDailyQueue('applyFilters:today-recovery-after', { scopedCount: scoped.length });
-    }
     if (!filtered.length && curCat !== '全部') {
       const allDailyWords = getDailyWordList(W, { includeFallback: true, ignoreCategory: true, skipRepair: true });
       if (allDailyWords.length) {
@@ -3541,7 +3530,7 @@ function restoreAdminSections() {
 function updateReviewBadge() {
   const badge = document.getElementById('review-tab-badge') || document.getElementById('flash-tab-badge');
   if (!badge) return;
-  // Nav badge is scoped to due review inside today's queue; overview cards show all-bank due review.
+  // Reviews are a global gate: any due review should block new daily cards.
   const count = getRemainingTodayReviewWords().length;
   badge.textContent = count;
   badge.style.display = count > 0 ? 'inline' : 'none';
@@ -3609,7 +3598,7 @@ async function continueTodayWithoutLimit() {
   setGoalInputValue(defaultDailyGoal);
   writeTodayTemporaryGoal(nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
-  ensureTodayQueueHasActiveCards('continueTodayWithoutLimit', { skipSave: true });
+  appendExplicitTodayQueueCards(Math.min(DAILY_GOAL_MAX, todayQueueCompleted.size + todayQueue.length + 50));
   await saveTodayQueue();
   await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
   invalidateCalendarCache();
@@ -4220,7 +4209,7 @@ function markCard(answer) {
   const isKnownAction = action === 'known';
   const isUnknownAction = action === 'unknown';
   const isFuzzyAction = action === 'fuzzy';
-  const completesTodayTask = isKnownAction || isFuzzyAction;
+  const completesTodayTask = isKnownAction;
   if (!['unknown', 'fuzzy', 'known'].includes(action)) {
     finishDailyQueuePerf(perf, { path: 'invalid-action', action, vocabScanned: 0 });
     return;
@@ -4245,9 +4234,7 @@ function markCard(answer) {
       && roListIncludes(todayQueue, w.ro)
       && !setHasRo(todayQueueCompleted, w.ro);
     if (flashMode === 'today' && completesTodayTask) {
-      lastLearningHint = isFuzzyAction
-        ? `已按模糊完成今日任务；「${w.zh || w.ro}」明天会继续复习。`
-        : '';
+      lastLearningHint = '';
       dailyStateResult = isOpenTodayWord
         ? commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true })
         : null;
@@ -4255,9 +4242,7 @@ function markCard(answer) {
       dailyStateResult = isOpenTodayWord
         ? commitTodayWordExposure(w.ro, { fast: true, deferGoalPrompt: true })
         : null;
-      lastLearningHint = dailyStateResult?.counted
-        ? `已计入今日新词；「${w.zh || w.ro}」会留在今日任务里继续巩固。`
-        : `已保留「${w.zh || w.ro}」在今日任务里；稳定认识后才会完成这个词。`;
+      lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；明确认识后才会完成这个词。`;
     } else if (isUnknownAction) {
       showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
     } else if (isFuzzyAction) {
@@ -5424,6 +5409,38 @@ function exportProgressBackup() {
   showToast('进度备份已导出');
 }
 
+function resolveQueueRefsToRos(refs = []) {
+  return normalizeWordRoList(Array.isArray(refs) ? refs : [])
+    .map(ref => getWordByRo(ref))
+    .filter(Boolean)
+    .map(word => word.ro);
+}
+
+async function restoreDailyQueueFromBackup(dailyQueuePayload = null) {
+  if (!dailyQueuePayload || typeof dailyQueuePayload !== 'object') return { restored: false };
+  const restoredQueue = resolveQueueRefsToRos([
+    ...(dailyQueuePayload.word_id || []),
+    ...(dailyQueuePayload.word_ro || [])
+  ]);
+  const restoredCompleted = resolveQueueRefsToRos([
+    ...(dailyQueuePayload.completed_word_id || []),
+    ...(dailyQueuePayload.completed_word_ro || [])
+  ]);
+  if (!restoredQueue.length && !restoredCompleted.length) return { restored: false };
+  todayQueueCompleted = new Set(restoredCompleted);
+  todayQueue = restoredQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
+  todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
+  writeTodaySeenWords();
+  todayNewWords = todayQueueCompleted.size;
+  dailyQueueVersion++;
+  await saveTodayQueue();
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
+    completed: isDailyCheckinDone(),
+    forceLocal: true
+  });
+  return { restored: true, queued: todayQueue.length, completed: todayQueueCompleted.size };
+}
+
 async function importProgressBackup(file) {
   if (!file) return;
   try {
@@ -5431,44 +5448,52 @@ async function importProgressBackup(file) {
     if (!payload || payload.app !== 'romanian-vocab' || !payload.progress) throw new Error('文件格式不正确');
     const incoming = payload.progress || {};
     replaceProgressMap({ ...progressMap, ...incoming });
-    const rows = Object.entries(incoming).slice(0, 1000);
+    const rows = Object.entries(incoming);
     let importWarningShown = false;
+    let importedRows = 0;
+    let failedRows = 0;
     for (const [wordRo, p] of rows) {
-      const word = resolveWordFromProgressKey(wordRo, p);
-      const displayRo = word?.ro || canonicalWordRo(p?.word_ro || p?.wordRo || wordRo);
-      const saveStatus = await apiSaveProgress(
-        currentUser.id,
-        word?.id ?? p?.word_id ?? p?.wordId ?? null,
-        displayRo,
-        !!p.known,
-        p.qr || 0,
-        p.qt || 0,
-        p.level || getStoredLevel(p),
-        {
-          reviewStage: getProgressReviewStage(p),
-          nextReviewAt: p.nextReviewAt || p.next_review_at || p.dueAt || p.due_at || new Date().toISOString(),
-          dueAt: p.dueAt || p.due_at || p.nextReviewAt || p.next_review_at || new Date().toISOString(),
-          intervalDays: p.intervalDays || p.interval_days || 0,
-          memoryStrength: p.memoryStrength || p.memory_strength || 0,
-          cardState: p.cardState || p.card_state || 'new',
-          reps: p.reps || p.qt || 0,
-          correctCount: p.correctCount || p.correct_count || p.qr || 0,
-          fuzzyCount: p.fuzzyCount || p.fuzzy_count || 0,
-          forgetCount: p.forgetCount || p.forget_count || Math.max(0, Number(p.qt || 0) - Number(p.qr || 0)),
-          lapses: p.lapses || 0,
-          recentResults: p.recentResults || p.recent_results || [],
-          needsReinforcement: !!(p.needsReinforcement || p.needs_reinforcement),
-          lastReviewedAt: p.lastReviewedAt || p.last_reviewed_at || new Date().toISOString()
-        },
-        null,
-        {
-          wrongCount: p.wrongCount || 0,
-          errorStreak: p.errorStreak || 0,
-          lastWrongAt: p.lastWrongAt || null,
-          weakClearedAt: p.weakClearedAt || null
-        }
-      );
-      if (!importWarningShown && handleProgressSaveStatus(saveStatus)) importWarningShown = true;
+      try {
+        const word = resolveWordFromProgressKey(wordRo, p);
+        const displayRo = word?.ro || canonicalWordRo(p?.word_ro || p?.wordRo || wordRo);
+        const saveStatus = await apiSaveProgress(
+          currentUser.id,
+          word?.id ?? p?.word_id ?? p?.wordId ?? null,
+          displayRo,
+          !!p.known,
+          p.qr || 0,
+          p.qt || 0,
+          p.level || getStoredLevel(p),
+          {
+            reviewStage: getProgressReviewStage(p),
+            nextReviewAt: p.nextReviewAt || p.next_review_at || p.dueAt || p.due_at || new Date().toISOString(),
+            dueAt: p.dueAt || p.due_at || p.nextReviewAt || p.next_review_at || new Date().toISOString(),
+            intervalDays: p.intervalDays || p.interval_days || 0,
+            memoryStrength: p.memoryStrength || p.memory_strength || 0,
+            cardState: p.cardState || p.card_state || 'new',
+            reps: p.reps || p.qt || 0,
+            correctCount: p.correctCount || p.correct_count || p.qr || 0,
+            fuzzyCount: p.fuzzyCount || p.fuzzy_count || 0,
+            forgetCount: p.forgetCount || p.forget_count || Math.max(0, Number(p.qt || 0) - Number(p.qr || 0)),
+            lapses: p.lapses || 0,
+            recentResults: p.recentResults || p.recent_results || [],
+            needsReinforcement: !!(p.needsReinforcement || p.needs_reinforcement),
+            lastReviewedAt: p.lastReviewedAt || p.last_reviewed_at || new Date().toISOString()
+          },
+          null,
+          {
+            wrongCount: p.wrongCount || 0,
+            errorStreak: p.errorStreak || 0,
+            lastWrongAt: p.lastWrongAt || null,
+            weakClearedAt: p.weakClearedAt || null
+          }
+        );
+        importedRows++;
+        if (!importWarningShown && handleProgressSaveStatus(saveStatus)) importWarningShown = true;
+      } catch (rowError) {
+        failedRows++;
+        console.warn('Progress backup row import failed', wordRo, rowError);
+      }
     }
     if (payload.dailyGoal) {
       defaultDailyGoal = normalizeDailyGoalValue(payload.dailyGoal, defaultDailyGoal);
@@ -5477,12 +5502,15 @@ async function importProgressBackup(file) {
       if (input) input.value = defaultDailyGoal;
       await apiSetDailyGoal(currentUser.id, defaultDailyGoal);
     }
+    const queueRestore = await restoreDailyQueueFromBackup(payload.dailyQueue);
     applyFilters();
     upStats();
     renderDailyGoal();
     renderStatsPage();
     renderList();
-    showToast(`已导入 ${rows.length} 条进度`);
+    const queueText = queueRestore.restored ? `，今日队列 ${queueRestore.queued} 个待学 / ${queueRestore.completed} 个已完成` : '';
+    const failText = failedRows ? `，${failedRows} 条失败` : '';
+    showToast(`已导入 ${importedRows}/${rows.length} 条进度${failText}${queueText}`);
   } catch (e) {
     showToast('导入失败：' + (e.message || '无法读取文件'));
   }

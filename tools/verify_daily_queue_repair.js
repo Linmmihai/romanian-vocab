@@ -19,20 +19,13 @@ function uniqueRos(values) {
 function repairTodayQueue({
   todayQueue,
   completed = [],
-  deferred = [],
-  unseen = [],
-  dailyGoal,
-  todayNewWords
+  deferred = []
 }) {
   const completedKeys = new Set(completed.map(roKey));
   const deferredKeys = new Set(deferred.map(roKey));
   const activeOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && !deferredKeys.has(roKey(ro)));
   const deferredOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && deferredKeys.has(roKey(ro)));
-  const queuedKeys = new Set(todayQueue.map(roKey));
-  const remainingQuota = Math.max(0, dailyGoal - todayNewWords);
-  const activeSlots = Math.max(0, remainingQuota - activeOpen.length);
-  const newCards = unseen.filter((ro) => !queuedKeys.has(roKey(ro)) && !completedKeys.has(roKey(ro))).slice(0, activeSlots);
-  return uniqueRos([...activeOpen, ...newCards, ...deferredOpen]);
+  return uniqueRos([...activeOpen, ...deferredOpen]);
 }
 
 function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], dailyGoal, todayNewWords }) {
@@ -50,8 +43,7 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   const repaired = repairTodayQueue({ todayQueue, deferred, unseen, dailyGoal: 170, todayNewWords: 7 });
   const active = repaired.filter((ro) => ro.startsWith('new-'));
   const keptDeferred = repaired.filter((ro) => ro.startsWith('retry-'));
-  assert(active.length > 0, 'expected active new cards to be injected');
-  assert.strictEqual(active[0], 'new-0');
+  assert.strictEqual(active.length, 0, 'expected repair not to inject unseen cards into a fixed queue');
   assert.strictEqual(keptDeferred.length, 20, 'expected deferred retry cards to be preserved');
 }
 
@@ -82,9 +74,14 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
+  assert(app.includes("path = 'global-due-only'"), 'expected global due reviews to block daily new cards');
+  assert(app.includes('const completesTodayTask = isKnownAction;'), 'expected fuzzy answers not to complete daily tasks');
+  assert(app.includes('function appendExplicitTodayQueueCards'), 'expected explicit goal changes to be the only path that appends new cards');
   assert(app.includes('return wordByRoIndex.get(key) || null'), 'expected getWordByRo to use indexed lookup');
   assert(app.includes('skipRepair: true'), 'expected applyFilters to avoid duplicate getDailyWordList repair');
   assert(!app.includes('ensureTodayQueueHasActiveCards(`markCard:${action}`)'), 'expected markCard not to duplicate normal repair');
+  assert(!app.includes('getEligibleUnseenWordsForToday(W).slice(0, activeSlots)'), 'expected queue repair not to backfill unseen words');
+  assert(!app.includes('const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + activeOpenWords.length, dailyGoal))'), 'expected open queue normalization not to backfill unseen words');
   assert(app.includes('incrementalToday'), 'expected normal today answers to advance without rebuilding the whole queue');
   assert(app.includes('todaySeenWords.size'), 'expected metrics cache key to include todaySeenWords.size');
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');

@@ -7,7 +7,45 @@ const SUPA_URL = 'https://wuiblzpyhcjxevotwcqz.supabase.co';
 const SUPA_KEY = 'sb_publishable_R_1KpyBLGgn_BW1McVso7w_maR5OzDJ';
 
 // 初始化 Supabase 客户端（APK 内会打包本地 supabase 脚本）
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+function createUnavailableSupabaseClient() {
+  const unavailable = () => {
+    throw new Error('云端服务暂不可用，请使用离线模式或稍后重试');
+  };
+  const chain = {
+    select: unavailable,
+    insert: unavailable,
+    update: unavailable,
+    delete: unavailable,
+    upsert: unavailable,
+    eq: unavailable,
+    in: unavailable,
+    gte: unavailable,
+    order: unavailable,
+    limit: unavailable,
+    range: unavailable,
+    single: unavailable,
+    maybeSingle: unavailable
+  };
+  return {
+    offlineUnavailable: true,
+    rpc: async () => ({ data: null, error: new Error('云端服务暂不可用，请使用离线模式或稍后重试') }),
+    from: () => chain,
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      signInWithPassword: async () => ({ data: null, error: new Error('云端登录暂不可用，请使用离线模式或稍后重试') }),
+      signUp: async () => ({ data: null, error: new Error('云端注册暂不可用，请使用离线模式或稍后重试') }),
+      signOut: async () => ({ error: null }),
+      resetPasswordForEmail: async () => ({ error: new Error('云端服务暂不可用，请稍后重试') }),
+      updateUser: async () => ({ data: null, error: new Error('云端服务暂不可用，请稍后重试') }),
+      refreshSession: async () => ({ data: null, error: new Error('云端服务暂不可用，请稍后重试') }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
+    }
+  };
+}
+
+const sb = typeof supabase !== 'undefined' && supabase?.createClient
+  ? supabase.createClient(SUPA_URL, SUPA_KEY)
+  : createUnavailableSupabaseClient();
 
 const OFFLINE_USER_ID = 'local-offline-user';
 const OFFLINE_PROFILE = {
@@ -1354,11 +1392,15 @@ async function apiGetDailyQueue(userId, goal) {
   const today = getQueueDateKey();
   if (isOfflineMode()) return readLocalQueue(userId, goal, today);
   try {
-    const { data, error } = await sb.from('daily_queue')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('queue_date', today)
-      .single();
+    const { data, error } = await withTimeout(
+      sb.from('daily_queue')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('queue_date', today)
+        .single(),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '每日队列读取超时'
+    );
     if (!error && data) {
       return {
         ...data,
@@ -1506,6 +1548,13 @@ async function apiGetProfile(userId) {
  */
 async function apiSetUserRole(userId, role) {
   if (isOfflineMode()) throw new Error('离线模式下无法修改用户角色');
+  if (typeof sb.rpc === 'function') {
+    const { error } = await sb.rpc('admin_set_user_role', { target_user_id: userId, new_role: role });
+    if (!error) return;
+    if (!/function .*admin_set_user_role|schema cache|not find/i.test(error.message || '')) {
+      throw new Error(error.message);
+    }
+  }
   const { error } = await sb.from('profiles').update({ role }).eq('id', userId);
   if (error) throw new Error(error.message);
 }
@@ -1575,7 +1624,11 @@ async function apiGetTodayLog(userId, goal) {
     }
     return localLogs[today];
   }
-  const { data, error } = await sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single();
+  const { data, error } = await withTimeout(
+    sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single(),
+    PROGRESS_LOAD_TIMEOUT_MS,
+    '今日记录读取超时'
+  );
   if (data) {
     const local = localLogs[today];
     if (local) {
@@ -1589,10 +1642,14 @@ async function apiGetTodayLog(userId, goal) {
   if (localLogs[today]) return localLogs[today];
   if (error && error.code !== 'PGRST116') throw new Error(error.message);
   // 创建今日记录
-  const { data: created, error: createError } = await sb.from('daily_log')
-    .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false })
-    .select()
-    .single();
+  const { data: created, error: createError } = await withTimeout(
+    sb.from('daily_log')
+      .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false })
+      .select()
+      .single(),
+    PROGRESS_LOAD_TIMEOUT_MS,
+    '今日记录创建超时'
+  );
   if (createError) throw new Error(createError.message);
   return created;
 }
@@ -1610,18 +1667,26 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
     return { saved: 'local' };
   }
   const localPayload = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed };
-  const { data: cloudLog, error: readError } = await sb.from('daily_log')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('log_date', today)
-    .maybeSingle();
+  const { data: cloudLog, error: readError } = await withTimeout(
+    sb.from('daily_log')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('log_date', today)
+      .maybeSingle(),
+    PROGRESS_LOAD_TIMEOUT_MS,
+    '今日记录读取超时'
+  );
   if (readError) throw new Error(readError.message);
   const mergedPayload = options.forceLocal
     ? localPayload
     : mergeDailyLogPayload(localPayload, cloudLog, completionGoal, { completedExplicit: typeof options.completed === 'boolean' });
-  const { error } = await sb.from('daily_log').upsert(
-    mergedPayload,
-    { onConflict: 'user_id,log_date' }
+  const { error } = await withTimeout(
+    sb.from('daily_log').upsert(
+      mergedPayload,
+      { onConflict: 'user_id,log_date' }
+    ),
+    PROGRESS_LOAD_TIMEOUT_MS,
+    '今日记录保存超时'
   );
   if (error) throw new Error(error.message);
   logs[today] = mergedPayload;
