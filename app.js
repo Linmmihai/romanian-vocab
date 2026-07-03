@@ -756,8 +756,8 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     .filter(isRetryDeferred);
   activeOpenCount = activeOpenWords.length;
   deferredOpenCount = deferredOpenWords.length;
-  activeSlots = 0;
-  if (!options.force) {
+  activeSlots = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
+  if (!options.force && (activeOpenCount >= activeSlots || !activeSlots || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal())) {
     debugDailyQueue('ensureTodayQueueHasActiveCards:fast-active', {
       reason,
       activeOpenCount,
@@ -786,12 +786,7 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
     eligibleNewCount
   });
 
-  const keepRos = queueRos.filter(ro => {
-    if (completedKeys.has(roKey(ro))) return false;
-    const word = getWordByRo(ro);
-    return !!word;
-  });
-  const mergedQueue = normalizeWordRoList(keepRos);
+  const mergedQueue = buildOpenTodayQueue(dailyGoal);
   changed = mergedQueue.join('|') !== queueRos.join('|');
   if (!changed) {
     finishDailyQueuePerf(perf, {
@@ -802,7 +797,8 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
       deferredOpenCount,
       activeSlots,
       vocabScanned,
-      eligibleNewCount
+      eligibleNewCount,
+      injectedCount: 0
     });
     return false;
   }
@@ -1126,6 +1122,7 @@ async function onLogin(user) {
   await loadDailyQueue();
   setupDailyReminderChecks();
   setupProgressAutoBackup();
+  retryPendingProgressAfterLoad();
 
   if (userRole === 'admin') refreshAdminBadge();
   if (isOfflineMode()) setSyncBadge('本机保存', 'saved');
@@ -1280,6 +1277,11 @@ function hasPendingProgress(map = progressMap) {
   return Object.values(map || {}).some(progress => progress?.pendingSync);
 }
 
+function hasPendingSync() {
+  return hasPendingProgress() ||
+    (typeof hasPendingDailyState === 'function' && currentUser?.id && hasPendingDailyState(currentUser.id));
+}
+
 async function refreshCloudProgressAfterLocalLoad() {
   try {
     const refreshKey = `progress_cloud_refresh_at:${currentUser.id}`;
@@ -1290,7 +1292,7 @@ async function refreshCloudProgressAfterLocalLoad() {
     const progressSource = loadedProgress.__progressSource || 'cloud';
     replaceProgressMap(loadedProgress);
     progressLoaded = true;
-    const stillPending = progressSource === 'cloudWithPending' || hasPendingProgress(loadedProgress);
+    const stillPending = progressSource === 'cloudWithPending' || hasPendingProgress(loadedProgress) || hasPendingSync();
     setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
     if (dailyQueueLoaded) {
       applyFilters();
@@ -1303,7 +1305,7 @@ async function refreshCloudProgressAfterLocalLoad() {
     }
   } catch (error) {
     console.warn('Cloud progress refresh after local load failed', error);
-    setSyncBadge(hasPendingProgress() ? '本机待同步' : '本机进度', hasPendingProgress() ? '' : 'saved');
+    setSyncBadge(hasPendingSync() ? '本机待同步' : '本机进度', hasPendingSync() ? '' : 'saved');
   }
 }
 
@@ -1311,14 +1313,16 @@ async function retryPendingProgressAfterLoad() {
   try {
     const retryKey = `progress_pending_retry_at:${currentUser.id}`;
     const lastRetryAt = Number(localStorage.getItem(retryKey) || 0);
-    if (Date.now() - lastRetryAt < PENDING_PROGRESS_RETRY_COOLDOWN_MS) {
+    const hasDailyPending = typeof hasPendingDailyState === 'function' && hasPendingDailyState(currentUser.id);
+    if (Date.now() - lastRetryAt < PENDING_PROGRESS_RETRY_COOLDOWN_MS && !hasDailyPending) {
       setSyncBadge('本机待同步', '');
       return;
     }
+    const result = await triggerCloudProgressBackup('启动同步', { force: true, limit: 250 });
     localStorage.setItem(retryKey, String(Date.now()));
-    const result = await apiRetryPendingProgress(currentUser.id);
-    if (!result.attempted) return;
-    if (result.failed || result.remaining) {
+    const attempted = Number(result?.attempted || 0) + Number(result?.dailyAttempted || 0) + Number(result?.retry?.attempted || 0);
+    if (!attempted) return;
+    if (result?.failed || result?.remaining || result?.dailyError || result?.syncError || hasPendingSync()) {
       setSyncBadge('本机待同步', '');
       return;
     }
@@ -1355,6 +1359,9 @@ function setupProgressAutoBackup() {
     flushPendingFastCardState();
     triggerCloudProgressBackup('退出页面', { limit: 100 });
   });
+  window.addEventListener('online', () => {
+    triggerCloudProgressBackup('网络恢复', { force: true, limit: 250 });
+  });
   scheduleIdleProgressBackup();
 }
 
@@ -1367,8 +1374,8 @@ function scheduleIdleProgressBackup() {
 
 async function triggerCloudProgressBackup(reason = '备份', options = {}) {
   if (isOfflineMode() || !currentUser?.id || typeof apiRetryPendingProgress !== 'function') return null;
-  if (!hasPendingProgress() && !options.force) return syncDailyStateToCloud();
   if (progressCloudSyncInFlight) return progressCloudSyncInFlight;
+  if (!hasPendingSync() && !options.force) return null;
   setSyncBadge(`${reason}中...`, '');
   progressCloudSyncInFlight = (async () => {
     try {
@@ -1382,12 +1389,19 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
       if (dailyResult.status === 'rejected') {
         result.failed = true;
         result.dailyError = dailyResult.reason;
+      } else if (dailyResult.value?.syncError) {
+        result.failed = true;
+        result.dailyError = dailyResult.value.syncError;
       }
-      if (!result.attempted) {
+      if (dailyResult.status === 'fulfilled') {
+        result.dailyAttempted = Number(dailyResult.value?.retry?.attempted || 0);
+        result.dailyRemaining = Number(dailyResult.value?.retry?.remaining || 0);
+      }
+      if (!result.attempted && !result.dailyAttempted) {
         setSyncBadge(result.failed ? '本机待同步' : '已同步', result.failed ? '' : 'saved');
         return result;
       }
-      if (result.failed || result.remaining) {
+      if (result.failed || result.remaining || result.dailyRemaining) {
         setSyncBadge('本机待同步', '');
       } else {
         Object.keys(progressMap).forEach((wordRo) => {
@@ -1408,7 +1422,7 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
     } finally {
       progressCloudSyncInFlight = null;
       setTimeout(() => {
-        if (!hasPendingProgress()) setSyncBadge('', '');
+        if (!hasPendingSync()) setSyncBadge('', '');
       }, 2000);
     }
   })();
@@ -1433,7 +1447,37 @@ async function syncDailyStateToCloud() {
   ]);
   const rejected = results.find(result => result.status === 'rejected');
   if (rejected) throw rejected.reason;
-  return { saved: true };
+  const retryResult = typeof apiRetryPendingDailyState === 'function'
+    ? await apiRetryPendingDailyState(currentUser.id)
+    : { attempted: 0, failed: 0, remaining: 0 };
+  const syncError = results
+    .filter(result => result.status === 'fulfilled' && result.value?.syncError)
+    .map(result => result.value.syncError)
+    .join('；');
+  if (syncError || retryResult.failed || retryResult.remaining) {
+    return {
+      saved: false,
+      syncError: syncError || '每日状态仍有待同步项',
+      retry: retryResult
+    };
+  }
+  return { saved: true, retry: retryResult };
+}
+
+function saveTodayLogBackground(promise, label = '今日记录待同步') {
+  return promise.then(result => {
+    if (result?.syncError) {
+      console.warn('Today log saved locally; cloud sync pending', result.syncError);
+      setSyncBadge(label, '');
+      showProgressSaveWarning(`今日记录暂存本机：${result.syncError}`);
+    }
+    return result;
+  }).catch(error => {
+    console.warn('Today log background save failed', error);
+    setSyncBadge(label, '');
+    showProgressSaveWarning('今日记录暂存本机，云端同步稍后重试');
+    return { saved: 'local', syncError: error.message || String(error) };
+  });
 }
 
 async function loadTodayLog() {
@@ -1444,6 +1488,10 @@ async function loadTodayLog() {
     todayLog = { new_words: 0, goal: dailyGoal, completed: false, syncError: error.message };
     setSyncBadge('今日记录读取失败', '');
     showToast(`今日记录读取失败：${error.message || '请刷新重试'}`);
+  }
+  if (todayLog?.syncError) {
+    setSyncBadge('今日记录待同步', '');
+    console.warn('Today log loaded from local fallback', todayLog.syncError);
   }
   todayNewWords = todayLog?.new_words || 0;
   if (todayLog?.log_date === getDateKeyFor(new Date()) && todayLog.completed === true) writeDailyCheckinDone();
@@ -1512,9 +1560,11 @@ async function loadDailyQueue() {
   todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
   writeTodaySeenWords();
   repairStartedProgressForCompletedTodayWords();
-  todayNewWords = hasSavedQueueState
-    ? todayQueueCompleted.size
-    : Math.max(todayQueueCompleted.size, Number(todayLog?.new_words || 0));
+  todayNewWords = Math.max(
+    todayQueueCompleted.size,
+    Number(todayLog?.new_words || 0),
+    Number(previousTodayCount || 0)
+  );
   const normalizedQueue = buildOpenTodayQueue(dailyGoal);
   if (normalizedQueue.join('|') !== todayQueue.join('|')) {
     todayQueue = normalizedQueue;
@@ -1681,7 +1731,7 @@ function buildOpenTodayQueue(goal = dailyGoal) {
   });
   const deferredOpenWords = openWords.filter(isRetryDeferred);
   const activeOpenWords = openWords.filter(w => !isRetryDeferred(w));
-  const openSlots = Math.max(0, cap - completedKeys.size);
+  const openSlots = Math.max(0, cap - Number(todayNewWords || 0));
   if (!openSlots) {
     const closedQueue = deferredOpenWords.map(w => w.ro);
     debugDailyQueue('buildOpenTodayQueue:no-open-slots', {
@@ -1692,14 +1742,33 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     return closedQueue;
   }
   const activeQueue = sortDailyPhaseWords(activeOpenWords).slice(0, openSlots);
-  const result = normalizeWordRoList([...activeQueue.map(w => w.ro), ...deferredOpenWords.map(w => w.ro)]);
+  const usedKeys = new Set([
+    ...completedKeys,
+    ...activeQueue.map(w => roKey(w.ro)),
+    ...deferredOpenWords.map(w => roKey(w.ro))
+  ]);
+  const missingActiveSlots = Math.max(0, openSlots - activeQueue.length);
+  const replacementWords = missingActiveSlots
+    ? sortDailyPhaseWords(W)
+        .filter(w => w?.ro && !usedKeys.has(roKey(w.ro)))
+        .filter(w => !setHasRo(todaySeenWords, w.ro))
+        .filter(isDailyQueueCandidate)
+        .filter(w => !isRetryDeferred(w))
+        .slice(0, missingActiveSlots)
+    : [];
+  replacementWords.forEach(w => usedKeys.add(roKey(w.ro)));
+  const result = normalizeWordRoList([
+    ...activeQueue.map(w => w.ro),
+    ...replacementWords.map(w => w.ro),
+    ...deferredOpenWords.map(w => w.ro)
+  ]);
   debugDailyQueue('buildOpenTodayQueue:after', {
     goal,
     cap,
     openSlots,
     activeOpenCount: activeOpenWords.length,
     deferredOpenCount: deferredOpenWords.length,
-    candidateCount: 0,
+    candidateCount: replacementWords.length,
     activeResultCount: activeQueue.length,
     resultSize: result.length
   });
@@ -2023,12 +2092,13 @@ function commitTodayWordCompletion(wordRo, options = {}) {
   commitTodayWordExposure(canonicalRo, { fast: true });
   const wasGoalDone = isCurrentTodayGoalDone();
   const isQueuedWord = roListIncludes(todayQueue, canonicalRo);
+  const previousTodayNewWords = Number(todayNewWords || 0);
 
   setAddRo(todayQueueCompleted, canonicalRo);
   if (isQueuedWord) {
     todayQueue = roListWithout(todayQueue, canonicalRo);
   }
-  todayNewWords = todayQueueCompleted.size;
+  todayNewWords = Math.max(previousTodayNewWords + 1, todayQueueCompleted.size);
   const reachedGoal = !wasGoalDone && isCurrentTodayGoalDone();
   if (options.fast) {
     return { completed: true, reachedGoal };
@@ -2041,10 +2111,9 @@ function commitTodayWordCompletion(wordRo, options = {}) {
 
   const checkinDone = isDailyCheckinDone();
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: checkinDone };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: checkinDone }).catch(error => {
-    console.warn('Today log background save failed', error);
-    setSyncBadge('今日记录待同步', '');
-  });
+  saveTodayLogBackground(
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: checkinDone })
+  );
   invalidateCalendarCache();
   renderDailyGoal();
   updateTodayCalendarCell();
@@ -2062,17 +2131,16 @@ function commitTodayWordExposure(wordRo, options = {}) {
   if (!canonicalRo) return false;
   const wasSeen = setHasRo(todaySeenWords, canonicalRo);
   setAddRo(todaySeenWords, canonicalRo);
-  todayNewWords = todayQueueCompleted.size;
+  todayNewWords = Math.max(Number(todayNewWords || 0), todayQueueCompleted.size);
   if (options.fast) {
     return { counted: !wasSeen, reachedGoal: false };
   }
   writeTodaySeenWords();
   const checkinDone = isDailyCheckinDone();
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: checkinDone };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: checkinDone }).catch(error => {
-    console.warn('Today log background save failed', error);
-    setSyncBadge('今日记录待同步', '');
-  });
+  saveTodayLogBackground(
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: checkinDone })
+  );
   invalidateCalendarCache();
   renderDailyGoal();
   updateTodayCalendarCell();
@@ -3019,7 +3087,9 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
     setSyncBadge('本机保存失败', '');
     showProgressSaveWarning('本机保存失败，请导出进度或清理浏览器存储');
   }
-  setTimeout(() => setSyncBadge('', ''), 2000);
+  setTimeout(() => {
+    if (!hasPendingSync()) setSyncBadge('', '');
+  }, 2000);
   applyFilters();
   invalidateQuizPracticePool();
   upStats();
@@ -3177,7 +3247,9 @@ function flushFastProgressQueue() {
     setSyncBadge('本机保存失败', '');
     showProgressSaveWarning('本机保存失败，请导出进度或清理浏览器存储');
   }
-  setTimeout(() => setSyncBadge('', ''), 2000);
+  setTimeout(() => {
+    if (!hasPendingSync()) setSyncBadge('', '');
+  }, 2000);
   invalidateQuizPracticePool();
   renderReviewPanel();
   upStats();
@@ -3218,10 +3290,9 @@ function flushTodayStatePersistence() {
   });
   const checkinDone = isDailyCheckinDone();
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: checkinDone };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: checkinDone }).catch(error => {
-    console.warn('Today log background save failed', error);
-    setSyncBadge('今日记录待同步', '');
-  });
+  saveTodayLogBackground(
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: checkinDone })
+  );
   invalidateCalendarCache();
   renderDailyGoal();
   updateTodayCalendarCell();
@@ -3564,10 +3635,10 @@ function completeDailyCheckin() {
   }
   writeDailyCheckinDone();
   todayLog = { ...(todayLog || {}), user_id: currentUser.id, log_date: getLocalDateKey(), new_words: todayNewWords, goal: dailyGoal, completed: true };
-  apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: true }).catch(error => {
-    console.warn('Daily check-in log save failed', error);
-    setSyncBadge('打卡待同步', '');
-  });
+  saveTodayLogBackground(
+    apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: true }),
+    '打卡待同步'
+  );
   invalidateCalendarCache();
   closeDailyCheckinModal();
   renderDailyGoal();
@@ -4233,9 +4304,10 @@ function markCard(answer) {
     const isOpenTodayWord = flashMode === 'today'
       && roListIncludes(todayQueue, w.ro)
       && !setHasRo(todayQueueCompleted, w.ro);
+    const isTodayBlockingReviewWord = flashMode === 'today' && !isOpenTodayWord && isDueReviewWord(w);
     if (flashMode === 'today' && completesTodayTask) {
       lastLearningHint = '';
-      dailyStateResult = isOpenTodayWord
+      dailyStateResult = (isOpenTodayWord || isTodayBlockingReviewWord)
         ? commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true })
         : null;
     } else if (flashMode === 'today') {
@@ -4258,7 +4330,7 @@ function markCard(answer) {
       idx = 0;
     } else {
       advanceFlashcardAfterAnswer(w.ro, {
-        incrementalToday: flashMode === 'today' && isOpenTodayWord
+        incrementalToday: flashMode === 'today'
       });
     }
     renderNextFlashCardInstantFront();

@@ -63,6 +63,7 @@ const WORDS_CACHE_KEY = 'words_cache:v2';
 const WORDS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
+const PENDING_DAILY_STATE_RETRY_LIMIT = 10;
 
 function isOfflineMode() {
   return currentUser?.id === OFFLINE_USER_ID || localStorage.getItem('offline-mode') === '1';
@@ -179,6 +180,10 @@ function progressPendingKey(userId) {
   return localKey(userId, 'progress_pending');
 }
 
+function dailyStatePendingKey(userId) {
+  return localKey(userId, 'daily_state_pending');
+}
+
 function normalizeProgressWordRoKey(value) {
   return String(value || '')
     .normalize('NFC')
@@ -212,6 +217,22 @@ function readProgressMemoryBackup(userId) {
 
 function readPendingProgress(userId) {
   return readJson(progressPendingKey(userId), {});
+}
+
+function readPendingDailyState(userId) {
+  return readJson(dailyStatePendingKey(userId), {});
+}
+
+function hasPendingDailyState(userId) {
+  return Object.values(readPendingDailyState(userId) || {}).some(entry => entry?.queue || entry?.log);
+}
+
+function createDailySyncToken(part, date) {
+  return `${part}:${date}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+}
+
+function createProgressSyncToken(key) {
+  return `progress:${key}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 }
 
 function markProgressSource(map, source, error = null) {
@@ -273,7 +294,8 @@ function writePendingProgress(userId, wordId, wordRo, progress = {}) {
     word_id: getProgressEntryWordId(key, progress),
     word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
     pendingSync: true,
-    pendingSyncAt: new Date().toISOString()
+    pendingSyncAt: new Date().toISOString(),
+    pendingSyncToken: createProgressSyncToken(key)
   };
   try {
     writeJson(progressPendingKey(userId), pending);
@@ -328,7 +350,8 @@ function queueProgressBatchForSync(userId, entries = []) {
         word_id: getProgressEntryWordId(key, progress),
         word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
         pendingSync: true,
-        pendingSyncAt: progress?.pendingSyncAt || backedUpAt
+        pendingSyncAt: progress?.pendingSyncAt || backedUpAt,
+        pendingSyncToken: createProgressSyncToken(key)
       };
 
       const wrongCount = Number(memory.wrongCount || 0);
@@ -372,7 +395,8 @@ function writePendingProgressBatch(userId, entries = []) {
       word_id: getProgressEntryWordId(key, progress),
       word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
       pendingSync: true,
-      pendingSyncAt: progress?.pendingSyncAt || now
+      pendingSyncAt: progress?.pendingSyncAt || now,
+      pendingSyncToken: createProgressSyncToken(key)
     };
   });
   try {
@@ -383,11 +407,13 @@ function writePendingProgressBatch(userId, entries = []) {
   }
 }
 
-function clearPendingProgress(userId, wordId, wordRo) {
+function clearPendingProgress(userId, wordId, wordRo, expectedToken = '') {
   const key = progressEntryKey(wordId, wordRo);
   if (!key) return;
   const pending = readPendingProgress(userId);
   if (!(key in pending)) return;
+  const currentToken = pending[key]?.pendingSyncToken || pending[key]?.pending_sync_token || '';
+  if (expectedToken && currentToken && currentToken !== expectedToken) return;
   delete pending[key];
   try { writeJson(progressPendingKey(userId), pending); } catch {}
 }
@@ -395,8 +421,12 @@ function clearPendingProgress(userId, wordId, wordRo) {
 function clearPendingProgressBatch(userId, keys = []) {
   const pending = readPendingProgress(userId);
   let changed = false;
-  keys.forEach(key => {
+  keys.forEach(entry => {
+    const key = typeof entry === 'string' ? entry : entry?.key;
+    const expectedToken = typeof entry === 'string' ? '' : (entry?.pendingSyncToken || entry?.token || '');
     if (key in pending) {
+      const currentToken = pending[key]?.pendingSyncToken || pending[key]?.pending_sync_token || '';
+      if (expectedToken && currentToken && currentToken !== expectedToken) return;
       delete pending[key];
       changed = true;
     }
@@ -404,6 +434,88 @@ function clearPendingProgressBatch(userId, keys = []) {
   if (changed) {
     try { writeJson(progressPendingKey(userId), pending); } catch {}
   }
+}
+
+function queueDailyStateForSync(userId, date, patch = {}) {
+  if (!userId || !date) return { ok: true, skipped: true };
+  const pending = readPendingDailyState(userId);
+  const existing = pending[date] || {};
+  const now = new Date().toISOString();
+  pending[date] = {
+    ...existing,
+    ...(patch.queue ? { queue: patch.queue } : {}),
+    ...(patch.log ? { log: patch.log } : {}),
+    pendingSyncAt: existing.pendingSyncAt || now,
+    updatedAt: now,
+    lastError: patch.lastError || existing.lastError || null,
+    attempts: Number(existing.attempts || 0)
+  };
+  try {
+    writeJson(dailyStatePendingKey(userId), pending);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+function markPendingDailyStateError(userId, date, error) {
+  const pending = readPendingDailyState(userId);
+  if (!pending[date]) return;
+  pending[date] = {
+    ...pending[date],
+    attempts: Number(pending[date].attempts || 0) + 1,
+    lastError: error?.message || String(error || '同步失败'),
+    updatedAt: new Date().toISOString()
+  };
+  try { writeJson(dailyStatePendingKey(userId), pending); } catch {}
+}
+
+function clearPendingDailyStatePart(userId, date, part, syncedToken = '', syncedUpdatedAt = '') {
+  const pending = readPendingDailyState(userId);
+  const entry = pending[date];
+  if (!entry?.[part]) return;
+  const currentToken = entry[part]?.sync_token || entry[part]?.syncToken || '';
+  if (syncedToken && currentToken && currentToken !== syncedToken) return;
+  const currentUpdatedAt = entry[part]?.updated_at || entry[part]?.updatedAt || '';
+  if (!currentToken && syncedUpdatedAt && currentUpdatedAt && String(currentUpdatedAt) > String(syncedUpdatedAt)) return;
+  delete entry[part];
+  delete entry.lastError;
+  if (!entry.queue && !entry.log) {
+    delete pending[date];
+  } else {
+    pending[date] = { ...entry, updatedAt: new Date().toISOString() };
+  }
+  try { writeJson(dailyStatePendingKey(userId), pending); } catch {}
+}
+
+async function upsertDailyQueuePayload(payload) {
+  const { sync_token, syncToken, local, syncError, pendingSync, ...cloudPayload } = payload;
+  let { error } = await sb.from('daily_queue').upsert(cloudPayload, { onConflict: 'user_id,queue_date' });
+  if (error && /word_id|completed_word_id|schema cache|Could not find/i.test(error.message || '')) {
+    const { word_id, completed_word_id, ...legacyPayload } = cloudPayload;
+    ({ error } = await sb.from('daily_queue').upsert(legacyPayload, { onConflict: 'user_id,queue_date' }));
+  }
+  if (error) throw new Error(error.message);
+  return payload;
+}
+
+async function upsertDailyLogPayload(payload) {
+  const { sync_token, syncToken, local, syncError, pendingSync, ...cloudPayload } = payload;
+  let { error } = await withTimeout(
+    sb.from('daily_log').upsert(cloudPayload, { onConflict: 'user_id,log_date' }),
+    PROGRESS_LOAD_TIMEOUT_MS,
+    '今日记录保存超时'
+  );
+  if (error && /updated_at|schema cache|Could not find/i.test(error.message || '')) {
+    const { updated_at, updatedAt, ...legacyPayload } = cloudPayload;
+    ({ error } = await withTimeout(
+      sb.from('daily_log').upsert(legacyPayload, { onConflict: 'user_id,log_date' }),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '今日记录保存超时'
+    ));
+  }
+  if (error) throw new Error(error.message);
+  return payload;
 }
 
 function writeProgressMemoryBackup(userId, wordId, wordRo, memory = {}) {
@@ -1131,6 +1243,9 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
           errorStreak: mergedProgress.errorStreak || 0,
           lastWrongAt: mergedProgress.lastWrongAt || null,
           weakClearedAt: mergedProgress.weakClearedAt || null
+        },
+        {
+          pendingSyncToken: p.pendingSyncToken || p.pending_sync_token || ''
         }
       );
     }));
@@ -1138,7 +1253,10 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         saved++;
-        savedKeys.push(chunk[index][0]);
+        savedKeys.push({
+          key: chunk[index][0],
+          pendingSyncToken: chunk[index][1]?.pendingSyncToken || chunk[index][1]?.pending_sync_token || ''
+        });
       } else {
         console.warn('Pending progress retry failed', chunk[index][0], result.reason);
       }
@@ -1147,6 +1265,70 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
   }
   const failed = batch.length - saved;
   const remaining = Math.max(0, entries.length - saved);
+  return { attempted: batch.length, saved, failed, remaining, totalPending: entries.length };
+}
+
+async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RETRY_LIMIT) {
+  if (isOfflineMode()) return { attempted: 0, saved: 0, failed: 0, remaining: 0 };
+  const pendingState = readPendingDailyState(userId);
+  const entries = Object.entries(pendingState)
+    .filter(([, state]) => state?.queue || state?.log)
+    .sort((a, b) => String(a[1]?.pendingSyncAt || '').localeCompare(String(b[1]?.pendingSyncAt || '')));
+  const batch = entries.slice(0, Math.max(1, Number(limit || PENDING_DAILY_STATE_RETRY_LIMIT)));
+  let saved = 0;
+  for (const [date, state] of batch) {
+    let entrySaved = false;
+    try {
+      if (state.queue) {
+        const queuePayload = {
+          ...state.queue,
+          user_id: userId,
+          queue_date: date,
+          word_id: normalizeIdArray(state.queue.word_id),
+          word_ro: state.queue.word_ro || [],
+          completed_word_id: normalizeIdArray(state.queue.completed_word_id),
+          completed_word_ro: state.queue.completed_word_ro || []
+        };
+        const { data: cloudQueue, error: readError } = await sb.from('daily_queue')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('queue_date', date)
+          .maybeSingle();
+        if (readError) throw new Error(readError.message);
+        const mergedQueue = mergeDailyQueuePayload(queuePayload, cloudQueue);
+        await upsertDailyQueuePayload(mergedQueue);
+        clearPendingDailyStatePart(userId, date, 'queue', queuePayload.sync_token || queuePayload.syncToken || '', queuePayload.updated_at || queuePayload.updatedAt || '');
+        entrySaved = true;
+      }
+      if (state.log) {
+        const logPayload = {
+          ...state.log,
+          user_id: userId,
+          log_date: date
+        };
+        const { data: cloudLog, error: readError } = await withTimeout(
+          sb.from('daily_log')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('log_date', date)
+            .maybeSingle(),
+          PROGRESS_LOAD_TIMEOUT_MS,
+          '今日记录读取超时'
+        );
+        if (readError) throw new Error(readError.message);
+        const mergedLog = mergeDailyLogPayload(logPayload, cloudLog, logPayload.goal, { completedExplicit: typeof logPayload.completed === 'boolean' });
+        await upsertDailyLogPayload(mergedLog);
+        clearPendingDailyStatePart(userId, date, 'log', logPayload.sync_token || logPayload.syncToken || '', logPayload.updated_at || logPayload.updatedAt || '');
+        entrySaved = true;
+      }
+      if (entrySaved) saved++;
+    } catch (error) {
+      console.warn('Pending daily state retry failed', date, error);
+      markPendingDailyStateError(userId, date, error);
+    }
+  }
+  const remaining = Object.values(readPendingDailyState(userId) || {}).filter(state => state?.queue || state?.log).length;
+  const failed = Math.max(0, batch.length - saved);
   return { attempted: batch.length, saved, failed, remaining, totalPending: entries.length };
 }
 
@@ -1182,7 +1364,7 @@ async function apiLoadAllProgress() {
 /**
  * 保存/更新一个词的学习进度（含熟练度 level）
  */
-async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}) {
+async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, review = {}, legacyReviewCount = null, memory = {}, options = {}) {
   if (typeof wordRo === 'boolean') {
     const legacyWordRo = String(wordId || '');
     const legacyKnown = wordRo;
@@ -1201,9 +1383,11 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
     review = legacyReview;
     legacyReviewCount = legacyReviewCountValue;
     memory = legacyMemory;
+    options = {};
     console.warn('apiSaveProgress called without wordId; saving through legacy fallback key.');
   }
   const stableWordId = wordId !== undefined && wordId !== null && String(wordId).trim() !== '' ? Number(wordId) : null;
+  const expectedPendingToken = options.pendingSyncToken || '';
   const normalized = typeof review === 'string'
     ? {
         nextReviewAt: new Date(`${review}T00:00:00`).toISOString(),
@@ -1287,7 +1471,7 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
 
   let { error } = await sb.from('progress').upsert(schedulerPayload, { onConflict: 'user_id,word_id' });
   if (!error) {
-    clearPendingProgress(userId, stableWordId, wordRo);
+    clearPendingProgress(userId, stableWordId, wordRo, expectedPendingToken);
     const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     return {
       savedPayload: 'scheduler',
@@ -1299,7 +1483,7 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
   const modernError = error;
   ({ error } = await sb.from('progress').upsert(modernPayload, { onConflict: 'user_id,word_id' }));
   if (!error) {
-    clearPendingProgress(userId, stableWordId, wordRo);
+    clearPendingProgress(userId, stableWordId, wordRo, expectedPendingToken);
     const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     console.warn('Progress saved without scheduler columns; local scheduler fields remain in pending/local backup.', modernError);
     return {
@@ -1313,7 +1497,7 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
   const schedulerError = modernError;
   ({ error } = await sb.from('progress').upsert(reviewOnlyPayload, { onConflict: 'user_id,word_id' }));
   if (!error) {
-    clearPendingProgress(userId, stableWordId, wordRo);
+    clearPendingProgress(userId, stableWordId, wordRo, expectedPendingToken);
     const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
     console.warn('Progress saved without wrongbook memory columns; local backup is being used.', modernError);
     return {
@@ -1326,7 +1510,7 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
 
   ({ error } = await sb.from('progress').upsert(legacyPayload, { onConflict: 'user_id,word_id' }));
   if (error) throw new Error(`${schedulerError.message}; ${error.message}`);
-  clearPendingProgress(userId, stableWordId, wordRo);
+  clearPendingProgress(userId, stableWordId, wordRo, expectedPendingToken);
   const memoryBackup = writeProgressMemoryBackup(userId, stableWordId, wordRo, memory);
   console.warn('Progress saved with legacy review columns; wrongbook memory is local-backup only.', modernError);
   return {
@@ -1390,7 +1574,12 @@ function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
 
 async function apiGetDailyQueue(userId, goal) {
   const today = getQueueDateKey();
-  if (isOfflineMode()) return readLocalQueue(userId, goal, today);
+  const localQueue = readLocalQueue(userId, goal, today);
+  const pendingQueue = readPendingDailyState(userId)?.[today]?.queue || null;
+  const localEffectiveQueue = pendingQueue
+    ? mergeDailyQueuePayload(pendingQueue, localQueue)
+    : localQueue;
+  if (isOfflineMode()) return localEffectiveQueue;
   try {
     const { data, error } = await withTimeout(
       sb.from('daily_queue')
@@ -1402,15 +1591,17 @@ async function apiGetDailyQueue(userId, goal) {
       '每日队列读取超时'
     );
     if (!error && data) {
-      return {
+      const cloudQueue = {
         ...data,
         word_id: normalizeIdArray(data.word_id),
         word_ro: data.word_ro || [],
         completed_word_id: normalizeIdArray(data.completed_word_id),
         completed_word_ro: data.completed_word_ro || []
       };
+      return localEffectiveQueue ? mergeDailyQueuePayload(localEffectiveQueue, cloudQueue) : cloudQueue;
     }
     if (error && error.code !== 'PGRST116') {
+      if (localEffectiveQueue) return { ...localEffectiveQueue, syncError: error.message };
       return {
         user_id: userId,
         queue_date: today,
@@ -1424,7 +1615,7 @@ async function apiGetDailyQueue(userId, goal) {
       };
     }
   } catch {}
-  return null;
+  return localEffectiveQueue || null;
 }
 
 async function apiSaveDailyQueue(userId, queue, options = {}) {
@@ -1438,30 +1629,44 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
     completed_word_id: normalizeIdArray(queue.completed_word_id),
     completed_word_ro: queue.completed_word_ro || [],
     completed: !!queue.completed,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    sync_token: createDailySyncToken('queue', today)
   };
-  writeLocalQueue(userId, payload, today);
-  if (isOfflineMode()) return { ...payload, local: true };
+  const pendingStatus = queueDailyStateForSync(userId, today, { queue: payload });
+  let localWriteError = null;
+  try {
+    writeLocalQueue(userId, payload, today);
+  } catch (error) {
+    localWriteError = error;
+  }
+  if (isOfflineMode()) {
+    return {
+      ...payload,
+      local: true,
+      pendingSync: pendingStatus.ok,
+      syncError: [localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') || undefined
+    };
+  }
   try {
     const { data: cloudQueue, error: readError } = await sb.from('daily_queue')
       .select('*')
       .eq('user_id', userId)
       .eq('queue_date', today)
       .maybeSingle();
-    if (readError) return { ...payload, syncError: readError.message };
+    if (readError) return { ...payload, syncError: [readError.message, localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') };
     const mergedPayload = options.forceLocal ? payload : mergeDailyQueuePayload(payload, cloudQueue);
-    let { error } = await sb.from('daily_queue').upsert(mergedPayload, { onConflict: 'user_id,queue_date' });
-    if (error && /word_id|completed_word_id|schema cache|Could not find/i.test(error.message || '')) {
-      const { word_id, completed_word_id, ...legacyPayload } = mergedPayload;
-      ({ error } = await sb.from('daily_queue').upsert(legacyPayload, { onConflict: 'user_id,queue_date' }));
-    }
-    if (!error) {
+    await upsertDailyQueuePayload(mergedPayload);
+    try {
       writeLocalQueue(userId, mergedPayload, today);
-      return mergedPayload;
+    } catch (error) {
+      localWriteError = localWriteError || error;
     }
-    return { ...mergedPayload, syncError: error.message };
-  } catch {}
-  return { ...payload, syncError: '每日队列云端同步失败' };
+    clearPendingDailyStatePart(userId, today, 'queue', payload.sync_token, payload.updated_at);
+    return localWriteError ? { ...mergedPayload, syncError: localWriteError.message } : mergedPayload;
+  } catch (error) {
+    markPendingDailyStateError(userId, today, error);
+    return { ...payload, syncError: [error.message || '每日队列云端同步失败', localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') };
+  }
 }
 
 // ── 报错反馈 ──────────────────────────────────────────────
@@ -1617,40 +1822,79 @@ async function apiSetUserWatch(userId, watched) {
 async function apiGetTodayLog(userId, goal) {
   const today = getLocalDateKey();
   const localLogs = readJson(localKey(userId, 'daily_log'), {});
-  if (isOfflineMode()) {
-    if (!localLogs[today]) {
-      localLogs[today] = { user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false, local: true };
-      writeJson(localKey(userId, 'daily_log'), localLogs);
-    }
+  const pendingLog = readPendingDailyState(userId)?.[today]?.log || null;
+  const ensureLocalTodayLog = (extra = {}) => {
+    const updatedAt = new Date().toISOString();
+    const syncToken = createDailySyncToken('log', today);
+    const local = localLogs[today] || {
+      user_id: userId,
+      log_date: today,
+      new_words: 0,
+      goal: goal || 20,
+      completed: false,
+      updated_at: updatedAt
+    };
+    localLogs[today] = { ...local, local: true, updated_at: local.updated_at || updatedAt, sync_token: local.sync_token || syncToken, ...extra };
+    writeJson(localKey(userId, 'daily_log'), localLogs);
+    queueDailyStateForSync(userId, today, { log: localLogs[today] });
     return localLogs[today];
+  };
+  if (isOfflineMode()) {
+    return ensureLocalTodayLog();
   }
-  const { data, error } = await withTimeout(
-    sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single(),
-    PROGRESS_LOAD_TIMEOUT_MS,
-    '今日记录读取超时'
-  );
+  let data = null;
+  let error = null;
+  try {
+    ({ data, error } = await withTimeout(
+      sb.from('daily_log').select('*').eq('user_id', userId).eq('log_date', today).single(),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '今日记录读取超时'
+    ));
+  } catch (loadError) {
+    error = loadError;
+  }
   if (data) {
-    const local = localLogs[today];
+    const local = pendingLog
+      ? mergeDailyLogPayload(pendingLog, localLogs[today], goal, { completedExplicit: typeof pendingLog.completed === 'boolean' })
+      : localLogs[today];
     if (local) {
       const merged = mergeDailyLogPayload(local, data, goal, { completedExplicit: typeof local.completed === 'boolean' });
+      delete merged.syncError;
       localLogs[today] = { ...merged, local: true };
       writeJson(localKey(userId, 'daily_log'), localLogs);
       return merged;
     }
     return data;
   }
-  if (localLogs[today]) return localLogs[today];
-  if (error && error.code !== 'PGRST116') throw new Error(error.message);
+  const localFallback = pendingLog
+    ? mergeDailyLogPayload(pendingLog, localLogs[today], goal, { completedExplicit: typeof pendingLog.completed === 'boolean' })
+    : localLogs[today];
+  if (localFallback) {
+    if (error && error.code !== 'PGRST116') return { ...localFallback, syncError: error.message || localFallback.syncError };
+    const { syncError, ...localToday } = localFallback;
+    localLogs[today] = localToday;
+    writeJson(localKey(userId, 'daily_log'), localLogs);
+    return localToday;
+  }
+  if (error && error.code !== 'PGRST116') {
+    return ensureLocalTodayLog({ syncError: error.message || '今日记录读取失败' });
+  }
   // 创建今日记录
-  const { data: created, error: createError } = await withTimeout(
-    sb.from('daily_log')
-      .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false })
-      .select()
-      .single(),
-    PROGRESS_LOAD_TIMEOUT_MS,
-    '今日记录创建超时'
-  );
-  if (createError) throw new Error(createError.message);
+  let created = null;
+  let createError = null;
+  try {
+    ({ data: created, error: createError } = await withTimeout(
+      sb.from('daily_log')
+        .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false })
+        .select()
+        .single(),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '今日记录创建超时'
+    ));
+  } catch (error) {
+    createError = error;
+  }
+  if (createError) return ensureLocalTodayLog({ syncError: createError.message || '今日记录创建失败' });
   return created;
 }
 
@@ -1661,46 +1905,77 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
   const today = getLocalDateKey();
   const completed = typeof options.completed === 'boolean' ? options.completed : completedTasks >= completionGoal;
   const logs = readJson(localKey(userId, 'daily_log'), {});
-  logs[today] = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, local: true };
-  writeJson(localKey(userId, 'daily_log'), logs);
-  if (isOfflineMode()) {
-    return { saved: 'local' };
+  const updatedAt = new Date().toISOString();
+  const syncToken = createDailySyncToken('log', today);
+  const localPayload = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, updated_at: updatedAt, sync_token: syncToken };
+  const pendingStatus = queueDailyStateForSync(userId, today, { log: localPayload });
+  logs[today] = { ...localPayload, local: true };
+  let localWriteError = null;
+  try {
+    writeJson(localKey(userId, 'daily_log'), logs);
+  } catch (error) {
+    localWriteError = error;
   }
-  const localPayload = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed };
-  const { data: cloudLog, error: readError } = await withTimeout(
-    sb.from('daily_log')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('log_date', today)
-      .maybeSingle(),
-    PROGRESS_LOAD_TIMEOUT_MS,
-    '今日记录读取超时'
-  );
-  if (readError) throw new Error(readError.message);
+  if (isOfflineMode()) {
+    return {
+      saved: 'local',
+      pendingSync: pendingStatus.ok,
+      syncError: [localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') || undefined
+    };
+  }
+  let cloudLog = null;
+  let readError = null;
+  try {
+    ({ data: cloudLog, error: readError } = await withTimeout(
+      sb.from('daily_log')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('log_date', today)
+        .maybeSingle(),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '今日记录读取超时'
+    ));
+  } catch (error) {
+    readError = error;
+  }
+  if (readError) return { saved: 'local', syncError: [readError.message || '今日记录读取失败', localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') };
   const mergedPayload = options.forceLocal
     ? localPayload
     : mergeDailyLogPayload(localPayload, cloudLog, completionGoal, { completedExplicit: typeof options.completed === 'boolean' });
-  const { error } = await withTimeout(
-    sb.from('daily_log').upsert(
-      mergedPayload,
-      { onConflict: 'user_id,log_date' }
-    ),
-    PROGRESS_LOAD_TIMEOUT_MS,
-    '今日记录保存超时'
-  );
-  if (error) throw new Error(error.message);
+  let error = null;
+  try {
+    await upsertDailyLogPayload(mergedPayload);
+  } catch (saveError) {
+    error = saveError;
+  }
+  if (error) return { saved: 'local', syncError: [error.message || '今日记录保存失败', localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') };
   logs[today] = mergedPayload;
-  writeJson(localKey(userId, 'daily_log'), logs);
-  return { saved: 'database' };
+  try {
+    writeJson(localKey(userId, 'daily_log'), logs);
+  } catch (error) {
+    localWriteError = localWriteError || error;
+  }
+  clearPendingDailyStatePart(userId, today, 'log', localPayload.sync_token, localPayload.updated_at);
+  return localWriteError
+    ? { saved: 'database', syncError: localWriteError.message }
+    : { saved: 'database' };
 }
 
 /**
  * 获取最近N天的学习记录
  */
 async function apiGetRecentLogs(userId, days = 14) {
+  const localLogs = Object.values(readJson(localKey(userId, 'daily_log'), {}));
+  const pendingLogs = Object.values(readPendingDailyState(userId) || {})
+    .map(entry => entry?.log)
+    .filter(Boolean);
+  const localMerged = [...localLogs, ...pendingLogs].reduce((map, log) => {
+    if (!log?.log_date) return map;
+    map[log.log_date] = mergeDailyLogPayload(log, map[log.log_date] || null, log.goal, { completedExplicit: typeof log.completed === 'boolean' });
+    return map;
+  }, {});
   if (isOfflineMode()) {
-    const logs = Object.values(readJson(localKey(userId, 'daily_log'), {}));
-    return logs
+    return Object.values(localMerged)
       .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))
       .slice(0, days);
   }
@@ -1708,7 +1983,17 @@ async function apiGetRecentLogs(userId, days = 14) {
     .eq('user_id', userId)
     .order('log_date', { ascending: false })
     .limit(days);
-  return data || [];
+  const merged = {};
+  (data || []).forEach(log => {
+    if (log?.log_date) merged[log.log_date] = log;
+  });
+  Object.values(localMerged).forEach(log => {
+    if (!log?.log_date) return;
+    merged[log.log_date] = mergeDailyLogPayload(log, merged[log.log_date] || null, log.goal, { completedExplicit: typeof log.completed === 'boolean' });
+  });
+  return Object.values(merged)
+    .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))
+    .slice(0, days);
 }
 
 /**

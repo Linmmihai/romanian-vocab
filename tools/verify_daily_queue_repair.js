@@ -19,13 +19,19 @@ function uniqueRos(values) {
 function repairTodayQueue({
   todayQueue,
   completed = [],
-  deferred = []
+  deferred = [],
+  unseen = [],
+  dailyGoal = todayQueue.length,
+  todayNewWords = completed.length
 }) {
   const completedKeys = new Set(completed.map(roKey));
   const deferredKeys = new Set(deferred.map(roKey));
   const activeOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && !deferredKeys.has(roKey(ro)));
   const deferredOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && deferredKeys.has(roKey(ro)));
-  return uniqueRos([...activeOpen, ...deferredOpen]);
+  const used = new Set([...completed, ...activeOpen, ...deferredOpen].map(roKey));
+  const missing = Math.max(0, dailyGoal - todayNewWords - activeOpen.length);
+  const additions = unseen.filter((ro) => !used.has(roKey(ro))).slice(0, missing);
+  return uniqueRos([...activeOpen, ...additions, ...deferredOpen]);
 }
 
 function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], dailyGoal, todayNewWords }) {
@@ -43,7 +49,7 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   const repaired = repairTodayQueue({ todayQueue, deferred, unseen, dailyGoal: 170, todayNewWords: 7 });
   const active = repaired.filter((ro) => ro.startsWith('new-'));
   const keptDeferred = repaired.filter((ro) => ro.startsWith('retry-'));
-  assert.strictEqual(active.length, 0, 'expected repair not to inject unseen cards into a fixed queue');
+  assert.strictEqual(active.length, 135, 'expected repair to inject eligible unseen cards while quota remains');
   assert.strictEqual(keptDeferred.length, 20, 'expected deferred retry cards to be preserved');
 }
 
@@ -74,14 +80,17 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
+  assert(app.includes('activeOpenCount >= activeSlots'), 'expected queue repair to backfill until active cards cover remaining quota');
+  assert(app.includes('cap - Number(todayNewWords || 0)'), 'expected open slots to use the canonical daily completion count');
   assert(app.includes("path = 'global-due-only'"), 'expected global due reviews to block daily new cards');
+  assert(app.includes('isTodayBlockingReviewWord'), 'expected blocking review cards in today mode to count when known');
   assert(app.includes('const completesTodayTask = isKnownAction;'), 'expected fuzzy answers not to complete daily tasks');
-  assert(app.includes('function appendExplicitTodayQueueCards'), 'expected explicit goal changes to be the only path that appends new cards');
+  assert(app.includes('function appendExplicitTodayQueueCards'), 'expected explicit goal changes to keep their fast append path');
   assert(app.includes('return wordByRoIndex.get(key) || null'), 'expected getWordByRo to use indexed lookup');
   assert(app.includes('skipRepair: true'), 'expected applyFilters to avoid duplicate getDailyWordList repair');
   assert(!app.includes('ensureTodayQueueHasActiveCards(`markCard:${action}`)'), 'expected markCard not to duplicate normal repair');
-  assert(!app.includes('getEligibleUnseenWordsForToday(W).slice(0, activeSlots)'), 'expected queue repair not to backfill unseen words');
-  assert(!app.includes('const candidates = buildReviewFirstDailyPlan(W, Math.max(openSlots + activeOpenWords.length, dailyGoal))'), 'expected open queue normalization not to backfill unseen words');
+  assert(app.includes('replacementWords'), 'expected open queue normalization to backfill active cards when quota remains');
+  assert(app.includes("incrementalToday: flashMode === 'today'"), 'expected every normal today answer to advance away from the current card');
   assert(app.includes('incrementalToday'), 'expected normal today answers to advance without rebuilding the whole queue');
   assert(app.includes('todaySeenWords.size'), 'expected metrics cache key to include todaySeenWords.size');
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');
