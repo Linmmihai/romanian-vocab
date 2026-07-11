@@ -85,7 +85,7 @@ assert(sql.includes("revoke all on function public.handle_new_user() from authen
   assert(sql.includes(`grant execute on function public.${signature} to authenticated;`), `expected authenticated grant for ${signature}`);
 });
 
-assert(index.includes('api.js?v=20260711-daily-plan'), 'api.js cache-busting version must move with daily planner changes');
-assert(serviceWorker.includes("ro-vocab-pwa-v17"), 'service worker cache name must move with daily planner changes');
+assert(index.includes('api.js?v=20260711-quality-cleanup'), 'api.js cache-busting version must move with quality cleanup changes');
+assert(serviceWorker.includes("ro-vocab-pwa-v18"), 'service worker cache name must move with quality cleanup changes');
 
 console.log('admin RLS path verification passed');
