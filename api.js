@@ -675,16 +675,6 @@ function validIso(value) {
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
-function getProgressReviewStage(progress = {}) {
-  return Number(
-    progress.reviewStage ??
-    progress.reviewCount ??
-    progress.review_stage ??
-    progress.review_count ??
-    0
-  ) || 0;
-}
-
 function newerIso(a, b) {
   const aIso = validIso(a);
   const bIso = validIso(b);
@@ -700,7 +690,7 @@ function laterReviewIso(a, b, fallback = new Date().toISOString()) {
 function normalizeProgressLevel(progress = {}) {
   const qt = Number(progress.qt || 0);
   const qr = Number(progress.qr || 0);
-  const reviewStage = getProgressReviewStage(progress);
+  const reviewStage = RomanianVocabScheduler.getReviewStage(progress);
   if (qt >= 3 && qr / qt >= 0.8 && reviewStage >= 2) return 'mastered';
   if (
     progress.seen ||
@@ -718,8 +708,8 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const qr = Math.max(Number(localProgress.qr || 0), Number(cloudProgress.qr || 0));
   const qt = Math.max(Number(localProgress.qt || 0), Number(cloudProgress.qt || 0), qr);
   const reviewStage = Math.max(
-    getProgressReviewStage(localProgress),
-    getProgressReviewStage(cloudProgress)
+    RomanianVocabScheduler.getReviewStage(localProgress),
+    RomanianVocabScheduler.getReviewStage(cloudProgress)
   );
   const wrongCount = Math.max(Number(localProgress.wrongCount || 0), Number(cloudProgress.wrongCount || 0));
   const errorStreak = Math.max(Number(localProgress.errorStreak || 0), Number(cloudProgress.errorStreak || 0));
@@ -784,32 +774,13 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   return merged;
 }
 
-function schedulerMaturityRank(state) {
-  const ranks = {
-    new: 0,
-    learning: 1,
-    relearning: 1,
-    reinforcing: 2,
-    review: 3,
-    mastered: 4
-  };
-  return ranks[state] ?? 0;
-}
-
 function isSchedulerMergeDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
-  const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
-  const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
-  const existingReviewStage = getProgressReviewStage(existingProgress);
-  const incomingReviewStage = getProgressReviewStage(incomingProgress);
-  const existingInterval = Number(existingScheduler.intervalDays || 0);
-  const incomingInterval = Number(incomingScheduler.intervalDays || 0);
-  const existingRank = schedulerMaturityRank(existingScheduler.cardState);
-  const incomingRank = schedulerMaturityRank(incomingScheduler.cardState);
-  return (
-    incomingReps < existingReps ||
-    incomingReviewStage < existingReviewStage ||
-    incomingRank < existingRank ||
-    (incomingInterval < existingInterval && incomingReps <= existingReps)
+  if (typeof RomanianVocabScheduler === 'undefined' || !RomanianVocabScheduler.isProgressDowngrade) return true;
+  return RomanianVocabScheduler.isProgressDowngrade(
+    existingScheduler,
+    incomingScheduler,
+    existingProgress,
+    incomingProgress
   );
 }
 
@@ -1227,7 +1198,7 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
         mergedProgress.qt || 0,
         mergedProgress.level || 'unknown',
         {
-          reviewStage: getProgressReviewStage(mergedProgress),
+          reviewStage: RomanianVocabScheduler.getReviewStage(mergedProgress),
           nextReviewAt: mergedProgress.nextReviewAt || mergedProgress.nextReview || new Date().toISOString(),
           dueAt: mergedProgress.dueAt || mergedProgress.nextReviewAt || mergedProgress.nextReview || new Date().toISOString(),
           intervalDays: mergedProgress.intervalDays || 0,
@@ -1406,7 +1377,7 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
       }
     : review;
   const now = new Date().toISOString();
-  const normalizedStage = getProgressReviewStage(normalized);
+  const normalizedStage = RomanianVocabScheduler.getReviewStage(normalized);
   const scheduler = typeof RomanianVocabScheduler !== 'undefined'
     ? RomanianVocabScheduler.normalizeSchedulerProgress({ ...normalized, known, qr, qt, level })
     : normalized;

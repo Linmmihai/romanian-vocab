@@ -1,6 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const scheduler = require('../scheduler.js');
 
 function newerIsoLike(a, b) {
   if (!a) return b || null;
@@ -29,35 +30,6 @@ function normalizeScheduler(progress = {}) {
   };
 }
 
-function schedulerMaturityRank(state) {
-  const ranks = {
-    new: 0,
-    learning: 1,
-    relearning: 1,
-    reinforcing: 2,
-    review: 3,
-    mastered: 4
-  };
-  return ranks[state] ?? 0;
-}
-
-function isSchedulerProgressDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
-  const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
-  const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
-  const existingReviewStage = getProgressReviewStage(existingProgress);
-  const incomingReviewStage = getProgressReviewStage(incomingProgress);
-  const existingInterval = Number(existingScheduler.intervalDays || 0);
-  const incomingInterval = Number(incomingScheduler.intervalDays || 0);
-  const existingRank = schedulerMaturityRank(existingScheduler.cardState);
-  const incomingRank = schedulerMaturityRank(incomingScheduler.cardState);
-  return (
-    incomingReps < existingReps ||
-    incomingReviewStage < existingReviewStage ||
-    incomingRank < existingRank ||
-    (incomingInterval < existingInterval && incomingReps <= existingReps)
-  );
-}
-
 function mergeProgressEntry(existing = null, incoming = {}) {
   if (!existing) return incoming;
   const existingQt = Number(existing.qt || 0);
@@ -69,7 +41,7 @@ function mergeProgressEntry(existing = null, incoming = {}) {
   const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
   const existingScheduler = normalizeScheduler(existing);
   const incomingScheduler = normalizeScheduler(incoming);
-  const incomingWouldDowngrade = isSchedulerProgressDowngrade(existingScheduler, incomingScheduler, existing, incoming);
+  const incomingWouldDowngrade = scheduler.isProgressDowngrade(existingScheduler, incomingScheduler, existing, incoming);
   const schedulerBase = incomingWouldDowngrade
     ? existingScheduler
     : (new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime() >=
@@ -226,8 +198,12 @@ const matureProgress = {
   assert(app.includes("if (dailyQueueLoaded) ensureTodayQueueHasActiveCards('applyFilters:today-before')"), 'applyFilters must not persist queue repair before daily queue load');
   assert(app.includes('blocked-progress-not-loaded'), 'answer/list/repair paths must be blocked before progress load');
   assert(app.includes('debugProgressWrite'), 'progress writes should be instrumented behind debug mode');
-  assert(app.includes('isSchedulerProgressDowngrade'), 'front-end progress merge must prevent scheduler downgrades');
-  assert(api.includes('isSchedulerMergeDowngrade'), 'local/cloud progress merge must prevent scheduler downgrades');
+  assert(app.includes('RomanianVocabScheduler.isProgressDowngrade'), 'front-end progress merge must use the shared downgrade policy');
+  assert(api.includes('RomanianVocabScheduler.isProgressDowngrade'), 'local/cloud progress merge must use the shared downgrade policy');
+  assert(!app.includes('function schedulerMaturityRank'), 'front-end must not duplicate scheduler maturity rules');
+  assert(!api.includes('function schedulerMaturityRank'), 'API layer must not duplicate scheduler maturity rules');
+  assert(!app.includes('function getProgressReviewStage'), 'front-end must use the shared review-stage adapter');
+  assert(!api.includes('function getProgressReviewStage'), 'API layer must use the shared review-stage adapter');
   assert(api.includes('map[key] = mergeCloudProgress({ ...(progress || {}), word_id:'), 'local progress writes must merge with existing id-keyed records');
   assert(api.includes('mergeCloudProgress(progress || {}, pending[key] || localProgress[key] || null)'), 'pending progress writes must merge with existing id-keyed records');
 }

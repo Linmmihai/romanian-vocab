@@ -143,16 +143,6 @@ function rebuildWordRoIndex() {
   });
 }
 
-function getProgressReviewStage(progress = {}) {
-  return Number(
-    progress.reviewStage ??
-    progress.reviewCount ??
-    progress.review_stage ??
-    progress.review_count ??
-    0
-  ) || 0;
-}
-
 function getProgressGrammarQr(progress = {}) {
   return Number(progress.grammarQr || progress.grammar_qr || 0) || 0;
 }
@@ -188,32 +178,13 @@ function mergeRecentResults(existing = [], incoming = []) {
   return results.slice(-5);
 }
 
-function schedulerMaturityRank(state) {
-  const ranks = {
-    new: 0,
-    learning: 1,
-    relearning: 1,
-    reinforcing: 2,
-    review: 3,
-    mastered: 4
-  };
-  return ranks[state] ?? 0;
-}
-
 function isSchedulerProgressDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
-  const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
-  const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
-  const existingReviewStage = getProgressReviewStage(existingProgress);
-  const incomingReviewStage = getProgressReviewStage(incomingProgress);
-  const existingInterval = Number(existingScheduler.intervalDays || 0);
-  const incomingInterval = Number(incomingScheduler.intervalDays || 0);
-  const existingRank = schedulerMaturityRank(existingScheduler.cardState);
-  const incomingRank = schedulerMaturityRank(incomingScheduler.cardState);
-  return (
-    incomingReps < existingReps ||
-    incomingReviewStage < existingReviewStage ||
-    incomingRank < existingRank ||
-    (incomingInterval < existingInterval && incomingReps <= existingReps)
+  if (!window.RomanianVocabScheduler?.isProgressDowngrade) return true;
+  return window.RomanianVocabScheduler.isProgressDowngrade(
+    existingScheduler,
+    incomingScheduler,
+    existingProgress,
+    incomingProgress
   );
 }
 
@@ -223,7 +194,10 @@ function mergeProgressEntry(existing = null, incoming = {}) {
   const incomingQt = Number(incoming.qt || 0);
   const base = incomingQt >= existingQt ? incoming : existing;
   const other = base === incoming ? existing : incoming;
-  const reviewStage = Math.max(getProgressReviewStage(existing), getProgressReviewStage(incoming));
+  const reviewStage = Math.max(
+    window.RomanianVocabScheduler.getReviewStage(existing),
+    window.RomanianVocabScheduler.getReviewStage(incoming)
+  );
   const nextReviewAt = newerIsoLike(existing.nextReviewAt || existing.nextReview, incoming.nextReviewAt || incoming.nextReview);
   const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
   const wasMasteredAt = newerIsoLike(existing.wasMasteredAt, incoming.wasMasteredAt);
@@ -286,7 +260,7 @@ function getProgressIntegrityFields(progress = {}) {
     memoryStrength: Number(scheduler.memoryStrength || 0),
     reps: Number(scheduler.reps || 0),
     lapses: Number(scheduler.lapses || 0),
-    reviewStage: getProgressReviewStage(progress),
+    reviewStage: window.RomanianVocabScheduler.getReviewStage(progress),
     nextReviewAt: progress.nextReviewAt || progress.nextReview || scheduler.dueAt || null,
     lastReviewedAt: progress.lastReviewedAt || scheduler.lastReviewedAt || null,
     qr: Number(progress.qr || 0),
@@ -1671,7 +1645,7 @@ function hasWordProgress(progress) {
     progress.known ||
     progress.qt ||
     progress.qr ||
-    getProgressReviewStage(progress) ||
+    window.RomanianVocabScheduler.getReviewStage(progress) ||
     scheduler.cardState !== 'new' ||
     scheduler.reps ||
     scheduler.dueAt ||
@@ -2276,7 +2250,7 @@ function isMasteredProgress(progress = {}) {
   if (hasActiveWeakState(progress, scheduler)) return false;
   const qt = Number(progress.qt || progress.quiz_total || 0);
   const qr = Number(progress.qr || progress.quiz_right || 0);
-  const reviewStage = getProgressReviewStage(progress);
+  const reviewStage = window.RomanianVocabScheduler.getReviewStage(progress);
   if (scheduler.cardState === 'mastered') return true;
   if (normalizeStoredProgressLevel(progress.level) === 'mastered') return true;
   if (
@@ -2315,7 +2289,7 @@ function applyMasteryHistory(progress = {}, prev = {}) {
 
 function buildReviewFromPrev(prev = {}) {
   const nowIso = new Date().toISOString();
-  const stage = getProgressReviewStage(prev);
+  const stage = window.RomanianVocabScheduler.getReviewStage(prev);
   const scheduler = normalizeScheduler(prev);
   return {
     reviewStage: stage,
@@ -2337,7 +2311,7 @@ function getStoredLevel(progress) {
   if (computed !== 'unknown') return computed;
   const stored = normalizeStoredProgressLevel(progress.level);
   if (stored !== 'unknown') return stored;
-  if (progress.seen || getProgressReviewStage(progress)) return 'learning';
+  if (progress.seen || window.RomanianVocabScheduler.getReviewStage(progress)) return 'learning';
   return 'unknown';
 }
 
@@ -2628,7 +2602,7 @@ function getFlashModeLabel() {
 function getNextReview(progress, success) {
   const now = new Date();
   if (!success) {
-    const current = getProgressReviewStage(progress);
+    const current = window.RomanianVocabScheduler.getReviewStage(progress);
     const fallbackStage = Math.max(0, current - 2);
     const fallbackInterval = fallbackStage > 0
       ? REVIEW_INTERVALS[Math.max(0, fallbackStage - 1)]
@@ -2639,7 +2613,7 @@ function getNextReview(progress, success) {
       lastReviewedAt: now.toISOString()
     };
   }
-  const current = getProgressReviewStage(progress);
+  const current = window.RomanianVocabScheduler.getReviewStage(progress);
   const nextStage = Math.min(current + 1, REVIEW_INTERVALS.length);
   const interval = REVIEW_INTERVALS[Math.max(0, nextStage - 1)] || REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
   return {
@@ -5575,7 +5549,7 @@ async function importProgressBackup(file) {
           p.qt || 0,
           p.level || getStoredLevel(p),
           {
-            reviewStage: getProgressReviewStage(p),
+            reviewStage: window.RomanianVocabScheduler.getReviewStage(p),
             nextReviewAt: p.nextReviewAt || p.next_review_at || p.dueAt || p.due_at || new Date().toISOString(),
             dueAt: p.dueAt || p.due_at || p.nextReviewAt || p.next_review_at || new Date().toISOString(),
             intervalDays: p.intervalDays || p.interval_days || 0,
@@ -5675,7 +5649,7 @@ function renderHardestWords() {
     const s = getDifficultScore(w);
     const rate = Math.round(s.rate * 100);
     const p = getProgress(w.ro) || {};
-    const stage = getProgressReviewStage(p);
+    const stage = window.RomanianVocabScheduler.getReviewStage(p);
     return `<div class="hard-row">
       <div class="hard-main">
         <div class="hard-word">${escapeHtml(w.zh || '')} · ${escapeHtml(w.ro || '')}</div>
@@ -5802,7 +5776,7 @@ function renderWordDetail(w) {
       <div class="detail-chip"><div class="detail-label">分类</div><div class="detail-value">${escapeHtml(w.cat || '')}</div></div>
       <div class="detail-chip"><div class="detail-label">熟练度</div><div class="detail-value">${escapeHtml(getLevelLabel(w.ro))}</div></div>
       <div class="detail-chip"><div class="detail-label">语法</div><div class="detail-value">${escapeHtml(getGrammarInfo(w))}${stress.auto ? ' · 自动重音待校对' : ''}</div></div>
-      <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${getProgressReviewStage(p)}</div></div>
+      <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${window.RomanianVocabScheduler.getReviewStage(p)}</div></div>
       <div class="detail-chip"><div class="detail-label">练习记录</div><div class="detail-value">正确 ${p.qr || 0}/${p.qt || 0} · 答错 ${s.wrong} · 连错 ${s.streak}</div></div>
       <div class="detail-chip"><div class="detail-label">辅助标签</div><div class="detail-value">${escapeHtml(getAuxiliaryLabelText(w))}</div></div>
     </div>

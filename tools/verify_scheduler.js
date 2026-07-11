@@ -15,6 +15,27 @@ const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
 
+assert.strictEqual(scheduler.cardStateMaturity('new'), 0);
+assert.strictEqual(scheduler.cardStateMaturity('reinforcing'), 2);
+assert.strictEqual(scheduler.cardStateMaturity('mastered'), 4);
+assert.strictEqual(scheduler.getReviewStage({ review_stage: 3 }), 3);
+assert.strictEqual(scheduler.getReviewStage({ reviewCount: 5 }), 5);
+
+{
+  const mature = { cardState: 'review', intervalDays: 30, reps: 20 };
+  const accidentalFresh = { cardState: 'learning', intervalDays: 0, reps: 1 };
+  assert.strictEqual(
+    scheduler.isProgressDowngrade(mature, accidentalFresh, { reviewStage: 5 }, { reviewStage: 1 }),
+    true,
+    'shared merge policy must reject a scheduler downgrade'
+  );
+  assert.strictEqual(
+    scheduler.isProgressDowngrade(mature, { cardState: 'review', intervalDays: 60, reps: 21 }, { reviewStage: 5 }, { reviewStage: 6 }),
+    false,
+    'shared merge policy must allow a legitimate review advance'
+  );
+}
+
 function dueDiff(result) {
   return new Date(result.dueAt).getTime() - new Date(NOW).getTime();
 }
