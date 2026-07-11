@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ro-vocab-pwa-v14';
+const CACHE_NAME = 'ro-vocab-pwa-v15';
 const APP_SHELL_PATHS = [
   './',
   './index.html',

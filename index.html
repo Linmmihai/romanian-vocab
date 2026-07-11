@@ -1139,10 +1139,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序很重要：scheduler → api → auth → app ──────── -->
-<script src="scheduler.js?v=20260711-build-complete"></script>
-<script src="api.js?v=20260711-admin-rpc-rls"></script>
+<script src="scheduler.js?v=20260711-shared-scheduler"></script>
+<script src="api.js?v=20260711-shared-scheduler"></script>
 <script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260711-mobile-sync-feedback"></script>
+<script src="app.js?v=20260711-shared-scheduler"></script>
 <script>
 const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
