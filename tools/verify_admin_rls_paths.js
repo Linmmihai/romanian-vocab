@@ -53,6 +53,27 @@ assert(sql.includes("raise exception 'Only admins can read class progress'"), 'p
 assert(sql.includes("raise exception 'Only admins can read class logs'"), 'class logs RPC must reject non-admin callers');
 assert(sql.includes('Admins cannot reject their own profile'), 'profile rejection RPC must protect the current admin');
 assert(sql.includes("target_role = 'admin'"), 'profile rejection RPC must protect admin profiles');
+assert(!sql.includes('set search_path = public'), 'security definer functions should not trust the exposed public search path');
+assert((sql.match(/set search_path = ''/g) || []).length >= 5, 'security definer functions should use an empty search path');
+assert(sql.includes("to_regprocedure('public.handle_new_user()')"), 'auth trigger function should be detected before revoking direct access');
+assert(sql.includes("revoke all on function public.handle_new_user() from authenticated"), 'auth trigger function should not be directly callable by signed-in users');
+
+[
+  'own_profile',
+  'read_all_profiles',
+  'admin_update_roles',
+  'read_words',
+  'admin_write_words',
+  'submit_report',
+  'admin_read_reports',
+  'admin_update_reports',
+  'own_progress',
+  'class_read_progress',
+  'own_log',
+  'class_read_daily_log'
+].forEach(policy => {
+  assert(sql.includes(`drop policy if exists "${policy}"`), `expected legacy policy cleanup for ${policy}`);
+});
 
 [
   'admin_load_all_progress()',
