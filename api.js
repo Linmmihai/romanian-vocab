@@ -243,6 +243,11 @@ function markProgressSource(map, source, error = null) {
   return map;
 }
 
+function isMissingRpcError(error) {
+  const message = String(error?.message || error || '');
+  return /function .* does not exist|schema cache|not find|could not find|404/i.test(message);
+}
+
 function readLocalProgressFallback(userId) {
   const memoryBackup = readProgressMemoryBackup(userId);
   const localProgress = readJson(localKey(userId, 'progress'), {});
@@ -1337,6 +1342,11 @@ async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RET
  */
 async function apiLoadAllProgress() {
   if (isOfflineMode()) return [];
+  if (typeof sb.rpc === 'function') {
+    const { data, error } = await sb.rpc('admin_load_all_progress');
+    if (!error) return data || [];
+    if (!isMissingRpcError(error)) throw new Error(error.message);
+  }
   let all = [], from = 0;
   while (true) {
     const { data, error } = await sb.from('progress')
@@ -1769,6 +1779,11 @@ async function apiSetUserRole(userId, role) {
  */
 async function apiDeleteUserProfile(userId) {
   if (isOfflineMode()) throw new Error('离线模式下无法删除用户记录');
+  if (typeof sb.rpc === 'function') {
+    const { data, error } = await sb.rpc('admin_delete_user_profile', { target_user_id: userId });
+    if (!error) return data || 'deleted';
+    if (!isMissingRpcError(error)) throw new Error(error.message);
+  }
   const { data, error } = await sb.from('profiles').delete().eq('id', userId).select('id');
   if (error) throw new Error(error.message);
   if (data?.length) return 'deleted';
@@ -2001,6 +2016,11 @@ async function apiGetRecentLogs(userId, days = 14) {
  */
 async function apiGetClassRecentLogs(days = 30) {
   if (isOfflineMode()) return apiGetRecentLogs(OFFLINE_USER_ID, days);
+  if (typeof sb.rpc === 'function') {
+    const { data, error } = await sb.rpc('admin_get_class_recent_logs', { days_count: days });
+    if (!error) return data || [];
+    if (!isMissingRpcError(error)) throw new Error(error.message);
+  }
   const since = new Date();
   since.setDate(since.getDate() - days + 1);
   const sinceStr = getLocalDateKey(since);
