@@ -12,10 +12,10 @@ assert(schedulerMigration.includes('add column if not exists recent_results json
 assert(schedulerMigration.includes('progress_user_due_at_idx'), 'scheduler migration must index per-user due lookups');
 assert(schedulerMigration.includes('validate constraint progress_card_state_check'), 'scheduler migration must validate the card-state constraint after backfill');
 assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
-assert(index.includes('scheduler.js?v=20260711-progress-model'), 'scheduler cache buster must move with progress model changes');
-assert(index.includes('api.js?v=20260711-progress-model'), 'API cache buster must match the progress model release');
-assert(index.includes('app.js?v=20260711-progress-model'), 'app cache buster must match the progress model release');
-assert(serviceWorker.includes('ro-vocab-pwa-v16'), 'service worker cache must move with progress model changes');
+assert(index.includes('scheduler.js?v=20260711-daily-plan'), 'scheduler cache buster must move with daily planner changes');
+assert(index.includes('api.js?v=20260711-daily-plan'), 'API cache buster must match the daily planner release');
+assert(index.includes('app.js?v=20260711-daily-plan'), 'app cache buster must match the daily planner release');
+assert(serviceWorker.includes('ro-vocab-pwa-v17'), 'service worker cache must move with daily planner changes');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;

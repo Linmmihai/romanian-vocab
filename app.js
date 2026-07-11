@@ -1524,27 +1524,7 @@ function buildDailyQueueWords(goal) {
 }
 
 function uniqueWordsByRo(words) {
-  const seen = new Set();
-  return words.filter(w => {
-    const key = roKey(w?.ro);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function buildSmartDailyPlan(words = W, limit = dailyGoal) {
-  const cap = Math.max(1, Number(limit || dailyGoal || 20));
-  const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
-  const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
-  const overdueLearning = sortReviewDueWithWeakPriority(usable).filter(isOverdueLearningOrReinforcingWord);
-  const overdueSet = new Set(overdueLearning.map(w => roKey(w.ro)));
-  const due = sortReviewDueWithWeakPriority(usable).filter(w => !overdueSet.has(roKey(w.ro)) && isDueReviewWord(w));
-  const dueSet = new Set([...overdueSet, ...due.map(w => roKey(w.ro))]);
-  const weak = getReinforcementWordsDueToday(usable).filter(w => !dueSet.has(roKey(w.ro)));
-  const weakSet = new Set([...dueSet, ...weak.map(w => roKey(w.ro))]);
-  const unseen = getUnseenWords(usable);
-  return uniqueWordsByRo([...overdueLearning, ...due, ...weak, ...unseen.filter(w => !weakSet.has(roKey(w.ro)))]).slice(0, cap);
+  return window.RomanianVocabDailyPlan.uniqueBy(words, w => roKey(w?.ro));
 }
 
 function hasWordProgress(progress) {
@@ -1614,15 +1594,11 @@ function getDailyPhasePriority(w) {
 }
 
 function sortDailyPhaseWords(words = []) {
-  return uniqueWordsByRo(words).sort((a, b) => {
-    const pa = getDailyPhasePriority(a);
-    const pb = getDailyPhasePriority(b);
-    if (pa !== pb) return pa - pb;
-    const sa = normalizeScheduler(getProgress(a.ro) || {});
-    const sb = normalizeScheduler(getProgress(b.ro) || {});
-    const da = sa.dueAt ? new Date(sa.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
-    const db = sb.dueAt ? new Date(sb.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
-    return da - db || String(a.ro).localeCompare(String(b.ro), 'ro');
+  return window.RomanianVocabDailyPlan.sortByPhase(words, {
+    keyOf: w => roKey(w?.ro),
+    priorityOf: getDailyPhasePriority,
+    dueAtOf: w => normalizeScheduler(getProgress(w?.ro) || {}).dueAt,
+    locale: 'ro'
   });
 }
 
@@ -1637,7 +1613,10 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
   const weak = getReinforcementWordsDueToday(usable).filter(w => !dueSet.has(roKey(w.ro)));
   const weakSet = new Set([...dueSet, ...weak.map(w => roKey(w.ro))]);
   const unseen = getUnseenWords(usable).filter(w => !weakSet.has(roKey(w.ro)));
-  return uniqueWordsByRo([...overdueLearning, ...due, ...weak, ...unseen]).slice(0, cap);
+  return window.RomanianVocabDailyPlan.buildTieredPlan(
+    [overdueLearning, due, weak, unseen],
+    { limit: cap, keyOf: w => roKey(w?.ro) }
+  );
 }
 
 function buildOpenTodayQueue(goal = dailyGoal) {
@@ -1652,44 +1631,37 @@ function buildOpenTodayQueue(goal = dailyGoal) {
   const deferredOpenWords = openWords.filter(isRetryDeferred);
   const activeOpenWords = openWords.filter(w => !isRetryDeferred(w));
   const openSlots = Math.max(0, cap - Number(todayNewWords || 0));
+  const plan = window.RomanianVocabDailyPlan.composeOpenQueue({
+    active: activeOpenWords,
+    deferred: deferredOpenWords,
+    candidates: W
+      .filter(w => w?.ro && !completedKeys.has(roKey(w.ro)))
+      .filter(w => !setHasRo(todaySeenWords, w.ro))
+      .filter(isDailyQueueCandidate)
+      .filter(w => !isRetryDeferred(w)),
+    goal: cap,
+    completedCount: Number(todayNewWords || 0),
+    keyOf: w => roKey(w?.ro),
+    sortWords: sortDailyPhaseWords
+  });
   if (!openSlots) {
-    const closedQueue = deferredOpenWords.map(w => w.ro);
+    const closedQueue = plan.deferred.map(w => w.ro);
     debugDailyQueue('buildOpenTodayQueue:no-open-slots', {
       goal,
       resultSize: closedQueue.length,
-      deferredKept: deferredOpenWords.length
+      deferredKept: plan.deferred.length
     });
     return closedQueue;
   }
-  const activeQueue = sortDailyPhaseWords(activeOpenWords).slice(0, openSlots);
-  const usedKeys = new Set([
-    ...completedKeys,
-    ...activeQueue.map(w => roKey(w.ro)),
-    ...deferredOpenWords.map(w => roKey(w.ro))
-  ]);
-  const missingActiveSlots = Math.max(0, openSlots - activeQueue.length);
-  const replacementWords = missingActiveSlots
-    ? sortDailyPhaseWords(W)
-        .filter(w => w?.ro && !usedKeys.has(roKey(w.ro)))
-        .filter(w => !setHasRo(todaySeenWords, w.ro))
-        .filter(isDailyQueueCandidate)
-        .filter(w => !isRetryDeferred(w))
-        .slice(0, missingActiveSlots)
-    : [];
-  replacementWords.forEach(w => usedKeys.add(roKey(w.ro)));
-  const result = normalizeWordRoList([
-    ...activeQueue.map(w => w.ro),
-    ...replacementWords.map(w => w.ro),
-    ...deferredOpenWords.map(w => w.ro)
-  ]);
+  const result = normalizeWordRoList(plan.words.map(w => w.ro));
   debugDailyQueue('buildOpenTodayQueue:after', {
     goal,
     cap,
     openSlots,
     activeOpenCount: activeOpenWords.length,
     deferredOpenCount: deferredOpenWords.length,
-    candidateCount: replacementWords.length,
-    activeResultCount: activeQueue.length,
+    candidateCount: plan.replacements.length,
+    activeResultCount: plan.active.length,
     resultSize: result.length
   });
   return result;
