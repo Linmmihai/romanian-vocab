@@ -33,14 +33,16 @@
 ```text
 .
 ├── index.html                 # 主界面和样式
-├── app.js                     # 学习、记忆、测验、统计和管理员逻辑
+├── scheduler.js               # 单张卡片的调度与防进度倒退规则
+├── progress-model.js          # 学习进度合并与证据选择
+├── daily-plan.js              # 每日队列去重、排序和固定配额规划
+├── app.js                     # 页面状态、交互、渲染和流程编排
 ├── api.js                     # Supabase 与本地/离线存储逻辑
 ├── auth.js                    # 登录、注册、离线登录、退出登录
 ├── data/vocab.json            # 内置词库，离线模式也会使用
-├── scripts/build-web.mjs      # 构建网页输出到 www/
-├── capacitor.config.json      # Capacitor 配置
-├── android/                   # Android 工程
-└── www/                       # 构建产物，可重新生成
+├── tools/                     # 数据库迁移和自动化回归检查
+├── ARCHITECTURE.md            # 模块职责和修改边界
+└── app build/                 # 网页构建与 Android Capacitor 工程
 ```
 
 ## 本地运行
@@ -48,19 +50,19 @@
 安装依赖：
 
 ```bash
-npm install
+npm ci --prefix "app build"
 ```
 
 构建网页文件：
 
 ```bash
-npm run build:web
+npm --prefix "app build" run build:web
 ```
 
-建议通过本地服务器打开 `www`，不要直接用 `file://` 打开 `index.html`。例如：
+建议通过本地服务器打开 `app build/www`，不要直接用 `file://` 打开 `index.html`。例如：
 
 ```bash
-npx http-server www -p 4173 -c-1
+npx http-server "app build/www" -p 4173 -c-1
 ```
 
 然后访问：
@@ -76,31 +78,31 @@ http://127.0.0.1:4173/
 先构建网页并同步到 Android：
 
 ```bash
-npm run cap:sync
+npm --prefix "app build" run cap:sync
 ```
 
 构建调试版 APK：
 
 ```bash
-npm run apk:debug
+npm --prefix "app build" run apk:debug
 ```
 
 生成的 APK 通常位于：
 
 ```text
-android/app/build/outputs/apk/debug/app-debug.apk
+app build/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 如果手机已开启 USB 调试并连接电脑，可以安装：
 
 ```bash
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb install -r "app build/android/app/build/outputs/apk/debug/app-debug.apk"
 ```
 
 如果要发布正式版本，请先修改：
 
 ```text
-android/app/build.gradle
+app build/android/app/build.gradle
 ```
 
 中的：
@@ -150,18 +152,26 @@ versionName
 
 ## 开发说明
 
-- `www/` 和 `android/app/build/` 是构建产物，可以重新生成。
-- 如果之后还要继续更新 APK，请保留整个项目文件夹，尤其是根目录源码和 `android/` 目录。
+- `app build/www/` 和 `app build/android/app/build/` 是构建产物，可以重新生成。
+- 核心模块职责和修改边界见 `ARCHITECTURE.md`。
+- 提交代码前运行完整校验：
+
+```bash
+node tools/run_checks.js
+npm --prefix "app build" run build:web
+```
+
+- 如果之后还要继续更新 APK，请保留整个项目文件夹，尤其是根目录源码和 `app build/android/` 目录。
 - 修改网页代码后，运行：
 
 ```bash
-npm run build:web
+npm --prefix "app build" run build:web
 ```
 
 - 修改后要重新生成 APK，运行：
 
 ```bash
-npm run apk:debug
+npm --prefix "app build" run apk:debug
 ```
 
 ## 许可证
