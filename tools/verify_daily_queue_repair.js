@@ -1,19 +1,10 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const dailyPlan = require('../daily-plan.js');
 
 function roKey(value) {
   return String(value || '').trim().toLocaleLowerCase('ro');
-}
-
-function uniqueRos(values) {
-  const seen = new Set();
-  return values.filter((value) => {
-    const key = roKey(value);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 function repairTodayQueue({
@@ -28,10 +19,15 @@ function repairTodayQueue({
   const deferredKeys = new Set(deferred.map(roKey));
   const activeOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && !deferredKeys.has(roKey(ro)));
   const deferredOpen = todayQueue.filter((ro) => !completedKeys.has(roKey(ro)) && deferredKeys.has(roKey(ro)));
-  const used = new Set([...completed, ...activeOpen, ...deferredOpen].map(roKey));
-  const missing = Math.max(0, dailyGoal - todayNewWords - activeOpen.length);
-  const additions = unseen.filter((ro) => !used.has(roKey(ro))).slice(0, missing);
-  return uniqueRos([...activeOpen, ...additions, ...deferredOpen]);
+  return dailyPlan.composeOpenQueue({
+    active: activeOpen,
+    deferred: deferredOpen,
+    candidates: unseen.filter(ro => !completedKeys.has(roKey(ro))),
+    goal: dailyGoal,
+    completedCount: todayNewWords,
+    keyOf: roKey,
+    sortWords: values => values
+  }).words;
 }
 
 function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], dailyGoal, todayNewWords }) {
@@ -89,7 +85,8 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes('return wordByRoIndex.get(key) || null'), 'expected getWordByRo to use indexed lookup');
   assert(app.includes('skipRepair: true'), 'expected applyFilters to avoid duplicate getDailyWordList repair');
   assert(!app.includes('ensureTodayQueueHasActiveCards(`markCard:${action}`)'), 'expected markCard not to duplicate normal repair');
-  assert(app.includes('replacementWords'), 'expected open queue normalization to backfill active cards when quota remains');
+  assert(app.includes('RomanianVocabDailyPlan.composeOpenQueue'), 'expected open queue composition to use the shared daily planner');
+  assert(!app.includes('function buildSmartDailyPlan'), 'expected obsolete duplicate daily planner to be removed');
   assert(app.includes("incrementalToday: flashMode === 'today'"), 'expected every normal today answer to advance away from the current card');
   assert(app.includes('incrementalToday'), 'expected normal today answers to advance without rebuilding the whole queue');
   assert(app.includes('todaySeenWords.size'), 'expected metrics cache key to include todaySeenWords.size');
