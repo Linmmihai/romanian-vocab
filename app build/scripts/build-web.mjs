@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { build } from 'esbuild';
@@ -15,7 +15,7 @@ const root = appRoot;
 const out = path.join(root, 'www');
 
 await rm(out, { recursive: true, force: true });
-await mkdir(path.join(out, 'icons'), { recursive: true });
+await mkdir(path.join(out, 'manifest'), { recursive: true });
 await mkdir(path.join(out, 'vendor'), { recursive: true });
 await mkdir(path.join(out, 'data'), { recursive: true });
 
@@ -32,7 +32,7 @@ await build({
   outfile: path.join(out, 'vendor', 'supabase.js')
 });
 
-const files = ['api.js', 'auth.js', 'app.js', 'manifest.webmanifest', 'sw.js'];
+const files = ['scheduler.js', 'api.js', 'auth.js', 'app.js', 'manifest.webmanifest', 'sw.js'];
 for (const file of files) {
   await copyFile(path.join(webRoot, file), path.join(out, file));
 }
@@ -41,7 +41,7 @@ for (const icon of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) {
   const iconPath = existsSync(path.join(webRoot, 'icons', icon))
     ? path.join(webRoot, 'icons', icon)
     : path.join(webRoot, 'manifest', icon);
-  if (existsSync(iconPath)) await copyFile(iconPath, path.join(out, 'icons', icon));
+  if (existsSync(iconPath)) await copyFile(iconPath, path.join(out, 'manifest', icon));
 }
 
 await copyFile(path.join(dataRoot, 'data', 'vocab.json'), path.join(out, 'data', 'vocab.json'));
@@ -61,8 +61,28 @@ html = html.replace(
   '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>',
   '<script src="vendor/supabase.js"></script>'
 );
-html = html.replace(
-  '<link rel="apple-touch-icon" href="apple-touch-icon.png">',
-  '<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">'
-);
 await writeFile(path.join(out, 'index.html'), html);
+
+const requiredFiles = [
+  'index.html',
+  'scheduler.js',
+  'api.js',
+  'auth.js',
+  'app.js',
+  'sw.js',
+  'manifest.webmanifest',
+  'data/vocab.json',
+  'data/examples.json',
+  'vendor/supabase.js'
+];
+
+const manifest = JSON.parse(await readFile(path.join(out, 'manifest.webmanifest'), 'utf8'));
+for (const icon of manifest.icons || []) requiredFiles.push(icon.src);
+
+for (const file of requiredFiles) {
+  try {
+    await access(path.join(out, file));
+  } catch {
+    throw new Error(`Web build is incomplete: missing ${file}`);
+  }
+}

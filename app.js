@@ -569,6 +569,14 @@ function readTodayTemporaryGoal() {
   }
 }
 
+function hasTodayTemporaryGoal() {
+  try {
+    return localStorage.getItem(todayTemporaryGoalKey()) !== null;
+  } catch {
+    return false;
+  }
+}
+
 function clearTodayTemporaryGoal() {
   try {
     localStorage.removeItem(todayTemporaryGoalKey());
@@ -587,6 +595,24 @@ function isDefaultGoalDone() {
 
 function isCurrentTodayGoalDone() {
   return isDailyStateCurrent() && todayNewWords >= dailyGoal;
+}
+
+function resolveLoadedDailyGoal({ logGoal = 0, queueGoal = 0, completedCount = 0 } = {}) {
+  const explicitTemporaryGoal = hasTodayTemporaryGoal() ? readTodayTemporaryGoal() : 0;
+  if (explicitTemporaryGoal > defaultDailyGoal) {
+    return Math.max(defaultDailyGoal, explicitTemporaryGoal);
+  }
+  const candidateGoal = Math.max(Number(logGoal || 0), Number(queueGoal || 0), defaultDailyGoal);
+  const completed = Number(completedCount || 0);
+  if (candidateGoal > defaultDailyGoal && completed > defaultDailyGoal) {
+    return Math.max(candidateGoal, completed);
+  }
+  return defaultDailyGoal;
+}
+
+function getDailyQueueLocalSaveMessage() {
+  if (isOfflineMode()) return '离线模式：每日队列已保存在本设备';
+  return '每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步';
 }
 
 function hasOpenTodayQueue() {
@@ -1496,8 +1522,7 @@ async function loadTodayLog() {
   todayNewWords = todayLog?.new_words || 0;
   if (todayLog?.log_date === getDateKeyFor(new Date()) && todayLog.completed === true) writeDailyCheckinDone();
   const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
-  const localTemporaryGoal = readTodayTemporaryGoal();
-  dailyGoal = Math.max(defaultDailyGoal, logGoal, localTemporaryGoal);
+  dailyGoal = resolveLoadedDailyGoal({ logGoal, completedCount: todayNewWords });
   setGoalInputValue(defaultDailyGoal);
   invalidateCalendarCache();
   // 全部数据加载完毕，统一渲染
@@ -1516,7 +1541,7 @@ async function loadDailyQueue() {
   let queueChanged = false;
   let forceQueueLocal = false;
   const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
-  const localTemporaryGoal = readTodayTemporaryGoal();
+  const localTemporaryGoal = hasTodayTemporaryGoal() ? readTodayTemporaryGoal() : 0;
   if (saved?.syncError) {
     showToast(`每日队列未能云端同步：${saved.syncError}`);
     setSyncBadge('队列同步失败', '');
@@ -1527,7 +1552,15 @@ async function loadDailyQueue() {
   if (hasSavedQueueState) {
     todayQueueRecord = saved;
     const savedGoal = normalizeDailyGoalValue(saved.goal, defaultDailyGoal);
-    dailyGoal = Math.max(savedGoal, logGoal, localTemporaryGoal, defaultDailyGoal);
+    dailyGoal = resolveLoadedDailyGoal({
+      logGoal,
+      queueGoal: savedGoal,
+      completedCount: Math.max(Number(todayLog?.new_words || 0), savedCompletedRefs.length)
+    });
+    if (savedGoal > dailyGoal || logGoal > dailyGoal) {
+      forceQueueLocal = true;
+      queueChanged = true;
+    }
     setGoalInputValue(defaultDailyGoal);
     const rawSavedCompleted = normalizeWordRoList(savedCompletedRefs);
     const todaySavedCompleted = rawSavedCompleted.filter(ro => wasWordCompletedOnActiveDate(ro));
@@ -1540,9 +1573,13 @@ async function loadDailyQueue() {
     const uniqueSavedQueue = normalizeWordRoList(savedWordRefs);
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
     todayQueue = uniqueSavedQueue.filter(ro => getWordByRo(ro) && !setHasRo(todayQueueCompleted, ro));
-    queueChanged = todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
+    queueChanged = queueChanged || todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
-    dailyGoal = Math.max(logGoal, localTemporaryGoal, defaultDailyGoal);
+    dailyGoal = resolveLoadedDailyGoal({
+      logGoal,
+      queueGoal: localTemporaryGoal,
+      completedCount: todayLog?.new_words || 0
+    });
     setGoalInputValue(defaultDailyGoal);
     todayQueueCompleted = new Set();
     todaySeenWords = readTodaySeenWords();
@@ -1578,7 +1615,7 @@ async function loadDailyQueue() {
   if (todayNewWords !== previousTodayCount || todayLog?.goal !== dailyGoal) {
     await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
       completed: isDailyCheckinDone(),
-      forceLocal: todayNewWords < previousTodayCount
+      forceLocal: todayNewWords < previousTodayCount || Number(todayLog?.goal || 0) > dailyGoal
     });
     invalidateCalendarCache();
   }
@@ -1586,7 +1623,7 @@ async function loadDailyQueue() {
     showToast(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
     setSyncBadge('队列同步失败', '');
   } else if (todayQueueRecord?.local) {
-    showToast('每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步');
+    showToast(getDailyQueueLocalSaveMessage());
   }
   dailyQueueLoaded = true;
   dailyQueueVersion++;
@@ -2038,6 +2075,7 @@ async function extendTodayGoalCustom() {
 }
 
 async function saveTodayQueue(options = {}) {
+  if (!ensureDailyStateCurrent({ reload: true })) return null;
   if (dailyGoal > defaultDailyGoal) writeTodayTemporaryGoal(dailyGoal);
   const payload = {
     goal: dailyGoal,
@@ -3611,7 +3649,7 @@ function updateReviewBadge() {
 
 function openDailyCheckinModal() {
   if (!ensureDailyStateCurrent({ reload: true })) return;
-  if (!isCurrentTodayGoalDone()) return;
+  if (!isDefaultGoalDone()) return;
   const modal = document.getElementById('daily-checkin-modal');
   if (!modal) return;
   setText('checkin-fixed-goal', defaultDailyGoal);

@@ -44,6 +44,99 @@ revoke all on function public.admin_set_user_role(uuid, text) from public;
 revoke all on function public.admin_set_user_role(uuid, text) from anon;
 grant execute on function public.admin_set_user_role(uuid, text) to authenticated;
 
+create or replace function public.admin_delete_user_profile(target_user_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_role text;
+begin
+  if not public.current_user_is_admin() then
+    raise exception 'Only admins can reject user profiles';
+  end if;
+  if target_user_id = (select auth.uid()) then
+    raise exception 'Admins cannot reject their own profile';
+  end if;
+
+  select role into target_role
+    from public.profiles
+   where id = target_user_id;
+
+  if target_role is null then
+    return 'missing';
+  end if;
+  if target_role = 'admin' then
+    raise exception 'Admins cannot reject another admin profile';
+  end if;
+  if target_role = 'pending' then
+    delete from public.profiles
+     where id = target_user_id
+       and role = 'pending';
+    return 'deleted';
+  end if;
+
+  update public.profiles
+     set role = 'rejected'
+   where id = target_user_id;
+  return 'rejected';
+end;
+$$;
+
+revoke all on function public.admin_delete_user_profile(uuid) from public;
+revoke all on function public.admin_delete_user_profile(uuid) from anon;
+grant execute on function public.admin_delete_user_profile(uuid) to authenticated;
+
+create or replace function public.admin_load_all_progress()
+returns setof public.progress
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.current_user_is_admin() then
+    raise exception 'Only admins can read class progress';
+  end if;
+
+  return query
+    select *
+      from public.progress
+     order by updated_at desc;
+end;
+$$;
+
+revoke all on function public.admin_load_all_progress() from public;
+revoke all on function public.admin_load_all_progress() from anon;
+grant execute on function public.admin_load_all_progress() to authenticated;
+
+create or replace function public.admin_get_class_recent_logs(days_count integer default 30)
+returns setof public.daily_log
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  since_date date;
+begin
+  if not public.current_user_is_admin() then
+    raise exception 'Only admins can read class logs';
+  end if;
+
+  since_date := current_date - greatest(0, coalesce(days_count, 30) - 1);
+
+  return query
+    select *
+      from public.daily_log
+     where log_date >= since_date
+     order by log_date desc;
+end;
+$$;
+
+revoke all on function public.admin_get_class_recent_logs(integer) from public;
+revoke all on function public.admin_get_class_recent_logs(integer) from anon;
+grant execute on function public.admin_get_class_recent_logs(integer) to authenticated;
+
 alter table public.profiles enable row level security;
 revoke update on public.profiles from authenticated;
 grant select on public.profiles to authenticated;
