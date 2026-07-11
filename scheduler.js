@@ -3,6 +3,14 @@
   const ACTION_FUZZY = 'fuzzy';
   const ACTION_KNOWN = 'known';
   const CARD_STATES = ['new', 'learning', 'review', 'reinforcing', 'mastered'];
+  const CARD_STATE_MATURITY = Object.freeze({
+    new: 0,
+    learning: 1,
+    relearning: 1,
+    reinforcing: 2,
+    review: 3,
+    mastered: 4
+  });
   const STABLE_INTERVAL_DAYS = [1, 3, 7, 15, 30, 60];
   const RECENT_RESULT_LIMIT = 5;
   const TEN_MINUTES_MS = 10 * 60 * 1000;
@@ -39,7 +47,7 @@
     return [];
   }
 
-  function getLegacyReviewStage(progress = {}) {
+  function getReviewStage(progress = {}) {
     return Number(
       progress.reviewStage ??
       progress.reviewCount ??
@@ -49,10 +57,31 @@
     ) || 0;
   }
 
+  function cardStateMaturity(state) {
+    return CARD_STATE_MATURITY[state] ?? 0;
+  }
+
+  function isProgressDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
+    const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
+    const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
+    const existingReviewStage = getReviewStage(existingProgress);
+    const incomingReviewStage = getReviewStage(incomingProgress);
+    const existingInterval = Number(existingScheduler.intervalDays || 0);
+    const incomingInterval = Number(incomingScheduler.intervalDays || 0);
+    const existingRank = cardStateMaturity(existingScheduler.cardState);
+    const incomingRank = cardStateMaturity(incomingScheduler.cardState);
+    return (
+      incomingReps < existingReps ||
+      incomingReviewStage < existingReviewStage ||
+      incomingRank < existingRank ||
+      (incomingInterval < existingInterval && incomingReps <= existingReps)
+    );
+  }
+
   function legacyIntervalDays(progress = {}) {
     const direct = Number(progress.intervalDays ?? progress.interval_days ?? 0) || 0;
     if (direct > 0) return direct;
-    const stage = getLegacyReviewStage(progress);
+    const stage = getReviewStage(progress);
     if (stage <= 0) return 0;
     return STABLE_INTERVAL_DAYS[Math.min(stage - 1, STABLE_INTERVAL_DAYS.length - 1)] || 1;
   }
@@ -74,7 +103,7 @@
     const qt = Number(progress.qt ?? progress.quiz_total ?? 0) || 0;
     const qr = Number(progress.qr ?? progress.quiz_right ?? 0) || 0;
     const level = progress.level || 'unknown';
-    const reviewStage = getLegacyReviewStage(progress);
+    const reviewStage = getReviewStage(progress);
     const dueAt = legacyDueAt(progress);
     const memoryStrength = Number(progress.memoryStrength ?? progress.memory_strength ?? 0) || 0;
     const intervalDays = legacyIntervalDays(progress);
@@ -247,6 +276,9 @@
     normalizeSchedulerProgress,
     scheduleCardReview,
     isSchedulerDue,
+    getReviewStage,
+    cardStateMaturity,
+    isProgressDowngrade,
     recentAccuracy,
     consecutiveKnown
   };
