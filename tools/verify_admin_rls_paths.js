@@ -65,6 +65,6 @@ assert(sql.includes("target_role = 'admin'"), 'profile rejection RPC must protec
 });
 
 assert(index.includes('api.js?v=20260711-admin-rpc-rls'), 'api.js cache-busting version must move with RLS API changes');
-assert(serviceWorker.includes("ro-vocab-pwa-v13"), 'service worker cache name must move with RLS API changes');
+assert(serviceWorker.includes("ro-vocab-pwa-v14"), 'service worker cache name must move with RLS API changes');
 
 console.log('admin RLS path verification passed');

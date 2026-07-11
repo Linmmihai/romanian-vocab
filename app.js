@@ -612,7 +612,7 @@ function resolveLoadedDailyGoal({ logGoal = 0, queueGoal = 0, completedCount = 0
 
 function getDailyQueueLocalSaveMessage() {
   if (isOfflineMode()) return '离线模式：每日队列已保存在本设备';
-  return '每日队列暂存在本设备；请应用 daily_queue 数据库表以支持多设备同步';
+  return '每日队列已保存在本设备，暂未同步到其他设备';
 }
 
 function hasOpenTodayQueue() {
@@ -3002,7 +3002,7 @@ function handleProgressSaveStatus(status) {
   }
   if (status.memoryBackedByDb === false) {
     setSyncBadge('本机备份', 'saved');
-    showProgressSaveWarning('需加强记录暂存在本机；数据库缺少新进度字段');
+    showProgressSaveWarning('部分学习状态已保存在本设备，云端同步恢复后会自动重试');
     return true;
   }
   return false;
