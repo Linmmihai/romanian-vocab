@@ -602,10 +602,6 @@ if (typeof window !== 'undefined') {
   window.__rvDebugDailyQueuePerfCounters = dailyQueuePerfCounters;
 }
 
-function isTodayStudyBlocked() {
-  return shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal();
-}
-
 function isActiveTodayQueueWord(w) {
   if (!w || isRetryDeferred(w)) return false;
   const p = getProgress(w.ro);
@@ -798,14 +794,6 @@ function writeTodayAccuracyStats(stats) {
       total: Math.max(0, Number(stats.total || 0))
     }));
   } catch {}
-}
-
-function recordTodayAccuracyAttempt(correct) {
-  const stats = readTodayAccuracyStats();
-  stats.total += 1;
-  if (correct) stats.correct += 1;
-  writeTodayAccuracyStats(stats);
-  return stats;
 }
 
 function queueTodayAccuracyAttempt(correct) {
@@ -2042,13 +2030,6 @@ function commitTodayWordExposure(wordRo, options = {}) {
   return { counted: !wasSeen, reachedGoal: false };
 }
 
-async function recordTodayWord(wordRo, options = {}) {
-  const canonicalRo = canonicalWordRo(wordRo);
-  if (!canonicalRo) return false;
-  await ensureStartedProgressForTodayWord(canonicalRo);
-  return commitTodayWordExposure(canonicalRo, options);
-}
-
 async function completeTodayQueueWord(wordRo, options = {}) {
   const canonicalRo = canonicalWordRo(wordRo);
   if (!canonicalRo) return false;
@@ -2863,26 +2844,6 @@ function handleProgressSaveStatus(status) {
   return false;
 }
 
-async function apiSaveProgressWithSessionRetry(userId, wordRo, known, qr, qt, level, review, memory) {
-  const word = getWordByRo(wordRo);
-  const wordId = word?.id ?? null;
-  const displayRo = word?.ro || canonicalWordRo(wordRo);
-  try {
-    return await apiSaveProgress(userId, wordId, displayRo, known, qr, qt, level, review, null, memory);
-  } catch (firstError) {
-    if (isOfflineMode()) throw firstError;
-    try {
-      const { data, error } = await sb.auth.refreshSession();
-      if (error) throw error;
-      if (data?.user) currentUser = data.user;
-      return await apiSaveProgress(currentUser.id, wordId, displayRo, known, qr, qt, level, review, null, memory);
-    } catch (retryError) {
-      retryError.firstError = firstError;
-      throw retryError;
-    }
-  }
-}
-
 function isCoreMemoryExercise(options = {}) {
   return !options.exerciseType || ['translation', 'listening'].includes(options.exerciseType);
 }
@@ -3108,10 +3069,6 @@ function buildNextProgressForInteraction(wordRo, interactionType, extraOptions =
   const options = { ...next.options, ...extraOptions };
   const { memory, progress } = buildProgressUpdate(prev, next.known, next.qr, next.qt, next.success, options);
   return { canonicalRo, prev, next, options, memory, progress };
-}
-
-function runAfterCardSwap(task) {
-  setTimeout(task, CARD_CONTENT_SWAP_DELAY_MS + 20);
 }
 
 function scheduleIdleTask(task, delay = FAST_PERSIST_DELAY_MS) {
@@ -4134,15 +4091,6 @@ function setFlashcardAnswerButtonsDisabled(disabled) {
 }
 
 /**
- * 记录当前卡片为「今日已完成任务」
- */
-async function recordDailyWord() {
-  const w = getCurrentFlashWord();
-  if (!w) return;
-  await completeTodayQueueWord(w.ro);
-}
-
-/**
  * 只更新今天日历格子颜色，不重新请求数据库
  */
 function updateTodayCalendarCell() {
@@ -4729,11 +4677,6 @@ function startDefaultSmartQuiz() {
   document.getElementById('m-ro')?.classList.toggle('active', false);
   showQuizSetup();
   startQuiz();
-}
-
-function getActiveStudyPool() {
-  const scoped = curCat === '全部' ? W : W.filter(w => w.cat === curCat);
-  return sortByReviewPriority(scoped);
 }
 
 function getScopedPracticePool() {
@@ -5710,11 +5653,6 @@ function renderFrontExampleRecall(id, w, example) {
     <div class="front-recall-cloze">空格处先回忆罗语：____${zh ? `（${escapeHtml(zh)}）` : ''}</div>`;
 }
 
-function pickExampleTemplate(templates, seed) {
-  if (!Array.isArray(templates) || !templates.length) return null;
-  return templates[Math.abs(hashText(seed)) % templates.length];
-}
-
 function hashText(value) {
   return [...String(value || '')].reduce((hash, ch) => ((hash << 5) - hash + ch.charCodeAt(0)) | 0, 0);
 }
@@ -5860,24 +5798,6 @@ function getChineseCorpusTranslation(row) {
     if (direct?.text) return direct.text;
   }
   return '';
-}
-
-function inferPartOfSpeech(w, grammar = '') {
-  const cat = normalizeCategory(w?.cat);
-  const ro = String(w?.ro || '').trim().toLocaleLowerCase('ro');
-  if (ro.startsWith('a ') || grammar.includes('verb') || grammar.includes('动词') || cat === 'verb') return 'verb';
-  if (grammar.includes('adj') || grammar.includes('形容词') || cat === 'adjective') return 'adjective';
-  if (grammar.includes('adv') || grammar.includes('副词') || cat === 'adverb') return 'adverb';
-  if (grammar.includes('prep') || grammar.includes('介词') || cat === 'preposition') return 'preposition';
-  if (grammar.includes('pron') || grammar.includes('代词') || cat === 'pronoun') return 'pronoun';
-  return 'noun';
-}
-
-function getVerbInfinitiveForSentence(ro) {
-  const value = String(ro || '').trim();
-  const reflexive = /^a\s+se\s+/i.test(value);
-  const text = value.replace(/^a\s+se\s+/i, '').replace(/^a\s+/i, '').trim();
-  return text ? { text, reflexive } : null;
 }
 
 function speakDetailWord(rate) {

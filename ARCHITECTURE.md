@@ -66,3 +66,5 @@ npm --prefix "app build" run build:web
 ```
 
 GitHub Actions 会在每个 PR 和 `main` 推送时执行同样的检查。
+
+`tools/verify_dead_code.js` 还会检查只声明但没有运行时调用点的函数。确实需要作为浏览器控制台或兼容 API 保留的入口，必须在该检查中写明保留原因。

@@ -13,12 +13,12 @@ const progressModel = read('progress-model.js');
 const dailyPlan = read('daily-plan.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260711-daily-plan',
-  'progress-model.js?v=20260711-daily-plan',
-  'daily-plan.js?v=20260711-daily-plan',
-  'api.js?v=20260711-daily-plan',
+  'scheduler.js?v=20260711-quality-cleanup',
+  'progress-model.js?v=20260711-quality-cleanup',
+  'daily-plan.js?v=20260711-quality-cleanup',
+  'api.js?v=20260711-quality-cleanup',
   'auth.js?v=20260619-direct-front-reset',
-  'app.js?v=20260711-daily-plan'
+  'app.js?v=20260711-quality-cleanup'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -28,7 +28,7 @@ assert(build.includes("'progress-model.js',"), 'web build completeness list must
 assert(build.includes("'daily-plan.js'"), 'web build must copy and require the daily planner');
 assert(serviceWorker.includes("'./progress-model.js'"), 'PWA app shell must include the progress model');
 assert(serviceWorker.includes("'./daily-plan.js'"), 'PWA app shell must include the daily planner');
-assert(serviceWorker.includes("ro-vocab-pwa-v17"), 'PWA cache must advance with the daily planner extraction');
+assert(serviceWorker.includes("ro-vocab-pwa-v18"), 'PWA cache must advance with the quality cleanup');
 assert(progressModel.includes('function mergeEntries'), 'progress model must own entry merge behavior');
 assert(progressModel.includes('function selectSchedulerBase'), 'progress model must own scheduler snapshot selection');
 assert(dailyPlan.includes('function composeOpenQueue'), 'daily planner must own fixed-quota queue composition');
