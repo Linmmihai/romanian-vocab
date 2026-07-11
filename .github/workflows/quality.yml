@@ -1,0 +1,31 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app build/package-lock.json
+
+      - name: Install build dependencies
+        run: npm ci --prefix "app build"
+
+      - name: Run behavior and architecture checks
+        run: node tools/run_checks.js
+
+      - name: Build web application
+        run: npm --prefix "app build" run build:web
