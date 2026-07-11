@@ -32,7 +32,7 @@ await build({
   outfile: path.join(out, 'vendor', 'supabase.js')
 });
 
-const files = ['scheduler.js', 'api.js', 'auth.js', 'app.js', 'manifest.webmanifest', 'sw.js'];
+const files = ['scheduler.js', 'progress-model.js', 'api.js', 'auth.js', 'app.js', 'manifest.webmanifest', 'sw.js'];
 for (const file of files) {
   await copyFile(path.join(webRoot, file), path.join(out, file));
 }
@@ -66,6 +66,7 @@ await writeFile(path.join(out, 'index.html'), html);
 const requiredFiles = [
   'index.html',
   'scheduler.js',
+  'progress-model.js',
   'api.js',
   'auth.js',
   'app.js',
