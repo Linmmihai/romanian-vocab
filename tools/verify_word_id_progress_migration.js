@@ -7,6 +7,8 @@ const api = fs.readFileSync(path.join(root, 'api.js'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'tools/progress_word_id_migration.sql'), 'utf8');
 const queueBackfill = fs.readFileSync(path.join(root, 'tools/daily_queue_word_id_backfill.sql'), 'utf8');
+const legacyConsolidation = fs.readFileSync(path.join(root, 'tools/consolidate_legacy_progress_variants.sql'), 'utf8');
+const stateRepair = fs.readFileSync(path.join(root, 'tools/repair_legacy_consolidation_state.sql'), 'utf8');
 
 assert(api.includes("onConflict: 'user_id,word_id'"), 'apiSaveProgress must upsert by user_id,word_id');
 assert(api.includes('word_id: stableWordId'), 'apiSaveProgress payload must include word_id');
@@ -22,6 +24,20 @@ assert(migration.indexOf('delete from public.progress') < migration.indexOf('pro
 assert(queueBackfill.includes('with ordinality'), 'queue backfill must preserve the original queue order');
 assert(queueBackfill.includes('matches.reference_count = matches.matched_count'), 'queue backfill must reject partial word-id arrays');
 assert(queueBackfill.includes("'partial_queue_arrays'"), 'queue backfill must report partial-array safety violations');
+assert(legacyConsolidation.includes('private.progress_legacy_variant_backup_20260711'), 'legacy consolidation must back up both rows privately');
+assert(legacyConsolidation.includes("'legacy'::text as row_role"), 'legacy consolidation must label backed-up source rows');
+assert(legacyConsolidation.includes("'current'::text as row_role"), 'legacy consolidation must back up the stable target row');
+assert(legacyConsolidation.includes("then 'stress_hyphens'"), 'legacy consolidation must recognize the reviewed stress format');
+assert(legacyConsolidation.includes("then 'parenthetical_note'"), 'legacy consolidation must recognize the reviewed note format');
+assert(legacyConsolidation.includes("where match_rule is not null"), 'legacy consolidation must exclude unproven mappings');
+assert(legacyConsolidation.indexOf('update public.progress current') < legacyConsolidation.indexOf('delete from public.progress legacy'), 'legacy evidence must merge before the source row is removed');
+assert(legacyConsolidation.includes("backup.row_role = 'legacy'"), 'deletion must be limited to backed-up legacy rows');
+assert(legacyConsolidation.includes('remaining_progress_without_word_id'), 'legacy consolidation must report the remaining unresolved count');
+const schedulerStateMerge = legacyConsolidation.slice(legacyConsolidation.indexOf('greatest(current.weak_cleared_at'));
+assert(schedulerStateMerge.indexOf("then 'reinforcing'") < schedulerStateMerge.indexOf("then 'mastered'"), 'reinforcement must take precedence when merging scheduler state');
+assert(stateRepair.includes('private.progress_legacy_variant_backup_20260711'), 'state repair must use the private backup as its source of truth');
+assert(stateRepair.includes("card_state = 'reinforcing'"), 'state repair must restore the reinforcement state');
+assert(stateRepair.includes('remaining_state_mismatches'), 'state repair must report unresolved state mismatches');
 
 let W = [];
 let wordIdIndex = new Map();
