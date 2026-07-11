@@ -143,14 +143,6 @@ function rebuildWordRoIndex() {
   });
 }
 
-function getProgressGrammarQr(progress = {}) {
-  return Number(progress.grammarQr || progress.grammar_qr || 0) || 0;
-}
-
-function getProgressGrammarQt(progress = {}) {
-  return Number(progress.grammarQt || progress.grammar_qt || 0) || 0;
-}
-
 function normalizeScheduler(progress = {}, now = new Date()) {
   if (window.RomanianVocabScheduler?.normalizeSchedulerProgress) {
     return window.RomanianVocabScheduler.normalizeSchedulerProgress(progress, now);
@@ -168,83 +160,6 @@ function normalizeScheduler(progress = {}, now = new Date()) {
     recentResults: Array.isArray(progress.recentResults) ? progress.recentResults : [],
     needsReinforcement: !!(progress.needsReinforcement || progress.needs_reinforcement),
     lastReviewedAt: progress.lastReviewedAt || progress.last_reviewed_at || null
-  };
-}
-
-function mergeRecentResults(existing = [], incoming = []) {
-  const results = [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])]
-    .map(String)
-    .filter(Boolean);
-  return results.slice(-5);
-}
-
-function isSchedulerProgressDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
-  if (!window.RomanianVocabScheduler?.isProgressDowngrade) return true;
-  return window.RomanianVocabScheduler.isProgressDowngrade(
-    existingScheduler,
-    incomingScheduler,
-    existingProgress,
-    incomingProgress
-  );
-}
-
-function mergeProgressEntry(existing = null, incoming = {}) {
-  if (!existing) return incoming;
-  const existingQt = Number(existing.qt || 0);
-  const incomingQt = Number(incoming.qt || 0);
-  const base = incomingQt >= existingQt ? incoming : existing;
-  const other = base === incoming ? existing : incoming;
-  const reviewStage = Math.max(
-    window.RomanianVocabScheduler.getReviewStage(existing),
-    window.RomanianVocabScheduler.getReviewStage(incoming)
-  );
-  const nextReviewAt = newerIsoLike(existing.nextReviewAt || existing.nextReview, incoming.nextReviewAt || incoming.nextReview);
-  const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
-  const wasMasteredAt = newerIsoLike(existing.wasMasteredAt, incoming.wasMasteredAt);
-  const existingScheduler = normalizeScheduler(existing);
-  const incomingScheduler = normalizeScheduler(incoming);
-  const incomingWouldDowngrade = isSchedulerProgressDowngrade(existingScheduler, incomingScheduler, existing, incoming);
-  const schedulerBase = incomingWouldDowngrade
-    ? existingScheduler
-    : (new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime() >=
-      new Date(existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0).getTime()
-        ? incomingScheduler
-        : existingScheduler);
-  const schedulerFields = {
-    cardState: schedulerBase.cardState,
-    dueAt: schedulerBase.dueAt || null,
-    intervalDays: Number(schedulerBase.intervalDays || 0),
-    memoryStrength: Number(schedulerBase.memoryStrength || 0),
-    reps: Math.max(Number(existingScheduler.reps || 0), Number(incomingScheduler.reps || 0)),
-    correctCount: Math.max(Number(existingScheduler.correctCount || 0), Number(incomingScheduler.correctCount || 0)),
-    fuzzyCount: Math.max(Number(existingScheduler.fuzzyCount || 0), Number(incomingScheduler.fuzzyCount || 0)),
-    forgetCount: Math.max(Number(existingScheduler.forgetCount || 0), Number(incomingScheduler.forgetCount || 0)),
-    lapses: Math.max(Number(existingScheduler.lapses || 0), Number(incomingScheduler.lapses || 0)),
-    recentResults: Array.isArray(schedulerBase.recentResults) ? schedulerBase.recentResults : mergeRecentResults(existingScheduler.recentResults, incomingScheduler.recentResults),
-    needsReinforcement: !!schedulerBase.needsReinforcement,
-    lastReviewedAt: lastReviewedAt || schedulerBase.lastReviewedAt || null
-  };
-  return {
-    ...other,
-    ...base,
-    qr: Math.max(Number(existing.qr || 0), Number(incoming.qr || 0)),
-    qt: Math.max(existingQt, incomingQt),
-    known: !!(existing.known || incoming.known),
-    seen: !!(existing.seen || incoming.seen || existing.known || incoming.known || existingQt || incomingQt || reviewStage),
-    seenViaCard: !!(existing.seenViaCard || incoming.seenViaCard),
-    reviewStage,
-    reviewCount: reviewStage,
-    nextReviewAt: nextReviewAt || base.nextReviewAt || other.nextReviewAt,
-    lastReviewedAt: lastReviewedAt || base.lastReviewedAt || other.lastReviewedAt,
-    ...schedulerFields,
-    grammarQr: Math.max(getProgressGrammarQr(existing), getProgressGrammarQr(incoming)),
-    grammarQt: Math.max(getProgressGrammarQt(existing), getProgressGrammarQt(incoming)),
-    wasMasteredAt: wasMasteredAt || null,
-    wrongCount: Math.max(Number(existing.wrongCount || 0), Number(incoming.wrongCount || 0)),
-    errorStreak: Math.max(Number(existing.errorStreak || 0), Number(incoming.errorStreak || 0)),
-    correctStreakSinceWrong: Math.max(Number(existing.correctStreakSinceWrong || 0), Number(incoming.correctStreakSinceWrong || 0)),
-    lastWrongAt: newerIsoLike(existing.lastWrongAt, incoming.lastWrongAt) || null,
-    weakClearedAt: newerIsoLike(existing.weakClearedAt, incoming.weakClearedAt) || null
   };
 }
 
@@ -295,19 +210,13 @@ function debugProgressWrite(source, wordRo, previous, next, extra = {}) {
   }));
 }
 
-function newerIsoLike(a, b) {
-  if (!a) return b || null;
-  if (!b) return a || null;
-  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
-}
-
 function normalizeProgressMap(map = {}) {
   const normalized = {};
   Object.entries(map || {}).forEach(([rawKey, progress]) => {
     const word = resolveWordFromProgressKey(rawKey, progress);
     const key = word ? String(word.id) : progressFallbackKey(rawKey, progress);
     if (!key) return;
-    normalized[key] = mergeProgressEntry(normalized[key], {
+    normalized[key] = window.RomanianVocabProgressModel.mergeEntries(normalized[key], {
       ...(progress || {}),
       wordId: word?.id ?? progress?.wordId ?? progress?.word_id ?? null,
       word_id: word?.id ?? progress?.word_id ?? progress?.wordId ?? null,
@@ -346,7 +255,7 @@ function setProgress(wordRef, progress, options = {}) {
   if (key) {
     const previous = progressMap[key] || null;
     const nextProgress = {
-      ...(options.replace ? progress : mergeProgressEntry(previous, progress)),
+      ...(options.replace ? progress : window.RomanianVocabProgressModel.mergeEntries(previous, progress)),
       wordId: word?.id ?? progress?.wordId ?? progress?.word_id ?? null,
       word_id: word?.id ?? progress?.word_id ?? progress?.wordId ?? null,
       wordRo: word?.ro ?? progress?.wordRo ?? progress?.word_ro ?? '',
@@ -2507,8 +2416,8 @@ function getDifficultScore(w) {
   const p = getProgress(w.ro) || {};
   const qt = p.qt || 0;
   const qr = p.qr || 0;
-  const grammarQt = getProgressGrammarQt(p);
-  const grammarQr = getProgressGrammarQr(p);
+  const grammarQt = window.RomanianVocabProgressModel.getGrammarTotal(p);
+  const grammarQr = window.RomanianVocabProgressModel.getGrammarRight(p);
   const coreWrong = Math.max(0, qt - qr);
   const grammarWrong = Math.max(0, grammarQt - grammarQr);
   const wrong = Math.max(Number(p.wrongCount || 0), coreWrong + grammarWrong);
@@ -3016,8 +2925,12 @@ function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options 
   const nextQr = coreMemory ? (qr || 0) : (prev.qr || 0);
   const nextQt = coreMemory ? (qt || 0) : (prev.qt || 0);
   const nextKnown = coreMemory ? known : !!prev.known;
-  const grammarQr = coreMemory ? getProgressGrammarQr(prev) : getProgressGrammarQr(prev) + (success ? 1 : 0);
-  const grammarQt = coreMemory ? getProgressGrammarQt(prev) : getProgressGrammarQt(prev) + 1;
+  const grammarQr = coreMemory
+    ? window.RomanianVocabProgressModel.getGrammarRight(prev)
+    : window.RomanianVocabProgressModel.getGrammarRight(prev) + (success ? 1 : 0);
+  const grammarQt = coreMemory
+    ? window.RomanianVocabProgressModel.getGrammarTotal(prev)
+    : window.RomanianVocabProgressModel.getGrammarTotal(prev) + 1;
   const calculatedLevel = calcLevel(nextQr, nextQt, nextKnown, { ...prev, ...review });
   const level = coreMemory
     ? resolveNextStoredLevel(prev, calculatedLevel, success, options)

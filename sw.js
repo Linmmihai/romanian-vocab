@@ -1,8 +1,9 @@
-const CACHE_NAME = 'ro-vocab-pwa-v15';
+const CACHE_NAME = 'ro-vocab-pwa-v16';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
   './scheduler.js',
+  './progress-model.js',
   './api.js',
   './auth.js',
   './app.js',

@@ -2,76 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const scheduler = require('../scheduler.js');
-
-function newerIsoLike(a, b) {
-  if (!a) return b || null;
-  if (!b) return a || null;
-  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
-}
-
-function getProgressReviewStage(progress = {}) {
-  return Number(progress.reviewStage ?? progress.review_stage ?? progress.reviewCount ?? progress.review_count ?? 0) || 0;
-}
-
-function normalizeScheduler(progress = {}) {
-  return {
-    cardState: progress.cardState || progress.card_state || 'new',
-    dueAt: progress.dueAt || progress.due_at || progress.nextReviewAt || null,
-    intervalDays: Number(progress.intervalDays ?? progress.interval_days ?? 0) || 0,
-    memoryStrength: Number(progress.memoryStrength ?? progress.memory_strength ?? 0) || 0,
-    reps: Number(progress.reps ?? progress.qt ?? 0) || 0,
-    correctCount: Number(progress.correctCount ?? progress.correct_count ?? progress.qr ?? 0) || 0,
-    fuzzyCount: Number(progress.fuzzyCount ?? progress.fuzzy_count ?? 0) || 0,
-    forgetCount: Number(progress.forgetCount ?? progress.forget_count ?? Math.max(0, (progress.qt || 0) - (progress.qr || 0))) || 0,
-    lapses: Number(progress.lapses ?? 0) || 0,
-    recentResults: Array.isArray(progress.recentResults) ? progress.recentResults : [],
-    needsReinforcement: !!(progress.needsReinforcement || progress.needs_reinforcement),
-    lastReviewedAt: progress.lastReviewedAt || progress.last_reviewed_at || null
-  };
-}
-
-function mergeProgressEntry(existing = null, incoming = {}) {
-  if (!existing) return incoming;
-  const existingQt = Number(existing.qt || 0);
-  const incomingQt = Number(incoming.qt || 0);
-  const base = incomingQt >= existingQt ? incoming : existing;
-  const other = base === incoming ? existing : incoming;
-  const reviewStage = Math.max(getProgressReviewStage(existing), getProgressReviewStage(incoming));
-  const nextReviewAt = newerIsoLike(existing.nextReviewAt || existing.nextReview, incoming.nextReviewAt || incoming.nextReview);
-  const lastReviewedAt = newerIsoLike(existing.lastReviewedAt, incoming.lastReviewedAt);
-  const existingScheduler = normalizeScheduler(existing);
-  const incomingScheduler = normalizeScheduler(incoming);
-  const incomingWouldDowngrade = scheduler.isProgressDowngrade(existingScheduler, incomingScheduler, existing, incoming);
-  const schedulerBase = incomingWouldDowngrade
-    ? existingScheduler
-    : (new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime() >=
-      new Date(existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0).getTime()
-        ? incomingScheduler
-        : existingScheduler);
-  return {
-    ...other,
-    ...base,
-    known: !!(existing.known || incoming.known),
-    seen: !!(existing.seen || incoming.seen || existing.known || incoming.known || existingQt || incomingQt || reviewStage),
-    qr: Math.max(Number(existing.qr || 0), Number(incoming.qr || 0)),
-    qt: Math.max(existingQt, incomingQt),
-    reviewStage,
-    reviewCount: reviewStage,
-    nextReviewAt: nextReviewAt || base.nextReviewAt || other.nextReviewAt,
-    lastReviewedAt: lastReviewedAt || base.lastReviewedAt || other.lastReviewedAt,
-    cardState: schedulerBase.cardState,
-    dueAt: schedulerBase.dueAt || null,
-    intervalDays: Number(schedulerBase.intervalDays || 0),
-    memoryStrength: Number(schedulerBase.memoryStrength || 0),
-    reps: Math.max(Number(existingScheduler.reps || 0), Number(incomingScheduler.reps || 0)),
-    correctCount: Math.max(Number(existingScheduler.correctCount || 0), Number(incomingScheduler.correctCount || 0)),
-    fuzzyCount: Math.max(Number(existingScheduler.fuzzyCount || 0), Number(incomingScheduler.fuzzyCount || 0)),
-    forgetCount: Math.max(Number(existingScheduler.forgetCount || 0), Number(incomingScheduler.forgetCount || 0)),
-    lapses: Math.max(Number(existingScheduler.lapses || 0), Number(incomingScheduler.lapses || 0)),
-    recentResults: Array.isArray(schedulerBase.recentResults) ? schedulerBase.recentResults : [],
-    needsReinforcement: !!schedulerBase.needsReinforcement
-  };
-}
+const progressModel = require('../progress-model.js');
 
 function hasWordProgress(progress) {
   if (!progress) return false;
@@ -80,7 +11,7 @@ function hasWordProgress(progress) {
     progress.known ||
     Number(progress.qt || 0) ||
     Number(progress.qr || 0) ||
-    getProgressReviewStage(progress) ||
+    scheduler.getReviewStage(progress) ||
     progress.lastReviewedAt
   );
 }
@@ -119,6 +50,9 @@ const matureProgress = {
   lastReviewedAt: '2026-06-20T00:00:00.000Z'
 };
 
+assert.strictEqual(progressModel.getGrammarRight({ grammar_qr: 3 }), 3);
+assert.strictEqual(progressModel.getGrammarTotal({ grammarQt: 5 }), 5);
+
 {
   const accidentalFreshWrite = {
     known: true,
@@ -133,7 +67,7 @@ const matureProgress = {
     reps: 1,
     lastReviewedAt: '2026-06-21T00:00:00.000Z'
   };
-  const merged = mergeProgressEntry(matureProgress, accidentalFreshWrite);
+  const merged = progressModel.mergeEntries(matureProgress, accidentalFreshWrite);
   assert.strictEqual(merged.cardState, 'review', 'mature cardState must not be downgraded');
   assert.strictEqual(merged.dueAt, matureProgress.dueAt, 'mature dueAt must not be replaced by fresh-card dueAt');
   assert.strictEqual(merged.intervalDays, 30, 'mature interval must be preserved');
@@ -156,7 +90,7 @@ const matureProgress = {
     reps: 21,
     lastReviewedAt: '2026-06-21T00:00:00.000Z'
   };
-  const merged = mergeProgressEntry(matureProgress, nextRealReview);
+  const merged = progressModel.mergeEntries(matureProgress, nextRealReview);
   assert.strictEqual(merged.dueAt, nextRealReview.dueAt, 'legitimate higher-rep review update should advance dueAt');
   assert.strictEqual(merged.intervalDays, 60, 'legitimate higher-rep review update should advance interval');
   assert.strictEqual(merged.reps, 21, 'legitimate higher-rep review update should advance reps');
@@ -184,8 +118,8 @@ const matureProgress = {
 }
 
 {
-  const once = mergeProgressEntry(matureProgress, matureProgress);
-  const twice = mergeProgressEntry(once, matureProgress);
+  const once = progressModel.mergeEntries(matureProgress, matureProgress);
+  const twice = progressModel.mergeEntries(once, matureProgress);
   assert.deepStrictEqual(twice, once, 'migration/load merge should be idempotent for identical mature progress');
 }
 
@@ -198,8 +132,10 @@ const matureProgress = {
   assert(app.includes("if (dailyQueueLoaded) ensureTodayQueueHasActiveCards('applyFilters:today-before')"), 'applyFilters must not persist queue repair before daily queue load');
   assert(app.includes('blocked-progress-not-loaded'), 'answer/list/repair paths must be blocked before progress load');
   assert(app.includes('debugProgressWrite'), 'progress writes should be instrumented behind debug mode');
-  assert(app.includes('RomanianVocabScheduler.isProgressDowngrade'), 'front-end progress merge must use the shared downgrade policy');
-  assert(api.includes('RomanianVocabScheduler.isProgressDowngrade'), 'local/cloud progress merge must use the shared downgrade policy');
+  assert(app.includes('RomanianVocabProgressModel.mergeEntries'), 'front-end progress writes must use the shared progress model');
+  assert(api.includes('RomanianVocabProgressModel.selectSchedulerBase'), 'local/cloud progress merge must use the shared progress model');
+  assert(!app.includes('function mergeProgressEntry'), 'front-end must not redefine progress merge rules');
+  assert(!api.includes('function isSchedulerMergeDowngrade'), 'API layer must not redefine scheduler merge rules');
   assert(!app.includes('function schedulerMaturityRank'), 'front-end must not duplicate scheduler maturity rules');
   assert(!api.includes('function schedulerMaturityRank'), 'API layer must not duplicate scheduler maturity rules');
   assert(!app.includes('function getProgressReviewStage'), 'front-end must use the shared review-stage adapter');

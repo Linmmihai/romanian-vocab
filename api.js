@@ -669,40 +669,6 @@ function mergeProgressMemory(progress, backup = {}) {
   };
 }
 
-function validIso(value) {
-  if (!value) return null;
-  const time = new Date(value).getTime();
-  return Number.isFinite(time) ? new Date(time).toISOString() : null;
-}
-
-function newerIso(a, b) {
-  const aIso = validIso(a);
-  const bIso = validIso(b);
-  if (!aIso) return bIso;
-  if (!bIso) return aIso;
-  return new Date(aIso).getTime() >= new Date(bIso).getTime() ? aIso : bIso;
-}
-
-function laterReviewIso(a, b, fallback = new Date().toISOString()) {
-  return newerIso(a, b) || fallback;
-}
-
-function normalizeProgressLevel(progress = {}) {
-  const qt = Number(progress.qt || 0);
-  const qr = Number(progress.qr || 0);
-  const reviewStage = RomanianVocabScheduler.getReviewStage(progress);
-  if (qt >= 3 && qr / qt >= 0.8 && reviewStage >= 2) return 'mastered';
-  if (
-    progress.seen ||
-    progress.known ||
-    qt ||
-    qr ||
-    reviewStage ||
-    progress.lastReviewedAt
-  ) return 'learning';
-  return 'unknown';
-}
-
 function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const cloudProgress = cloudRow ? rowToProgress(cloudRow) : {};
   const qr = Math.max(Number(localProgress.qr || 0), Number(cloudProgress.qr || 0));
@@ -716,27 +682,19 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const correctStreakSinceWrong = Math.max(Number(localProgress.correctStreakSinceWrong || 0), Number(cloudProgress.correctStreakSinceWrong || 0));
   const grammarQr = Math.max(Number(localProgress.grammarQr || 0), Number(cloudProgress.grammarQr || 0));
   const grammarQt = Math.max(Number(localProgress.grammarQt || 0), Number(cloudProgress.grammarQt || 0), grammarQr);
-  const lastReviewedAt = newerIso(localProgress.lastReviewedAt, cloudProgress.lastReviewedAt) || new Date().toISOString();
-  const lastWrongAt = newerIso(localProgress.lastWrongAt, cloudProgress.lastWrongAt);
-  const weakClearedAt = newerIso(localProgress.weakClearedAt, cloudProgress.weakClearedAt);
-  const wasMasteredAt = newerIso(localProgress.wasMasteredAt, cloudProgress.wasMasteredAt);
-  const localScheduler = typeof RomanianVocabScheduler !== 'undefined'
-    ? RomanianVocabScheduler.normalizeSchedulerProgress(localProgress)
-    : localProgress;
-  const cloudScheduler = typeof RomanianVocabScheduler !== 'undefined'
-    ? RomanianVocabScheduler.normalizeSchedulerProgress(cloudProgress)
-    : cloudProgress;
-  const localSchedulerTime = new Date(localScheduler.lastReviewedAt || localScheduler.dueAt || 0).getTime();
-  const cloudSchedulerTime = new Date(cloudScheduler.lastReviewedAt || cloudScheduler.dueAt || 0).getTime();
-  const localWouldDowngrade = isSchedulerMergeDowngrade(cloudScheduler, localScheduler, cloudProgress, localProgress);
-  const schedulerBase = localWouldDowngrade
-    ? cloudScheduler
-    : (localSchedulerTime >= cloudSchedulerTime ? localScheduler : cloudScheduler);
-  const nextReviewAt = laterReviewIso(
+  const lastReviewedAt = RomanianVocabProgressModel.newerIso(localProgress.lastReviewedAt, cloudProgress.lastReviewedAt) || new Date().toISOString();
+  const lastWrongAt = RomanianVocabProgressModel.newerIso(localProgress.lastWrongAt, cloudProgress.lastWrongAt);
+  const weakClearedAt = RomanianVocabProgressModel.newerIso(localProgress.weakClearedAt, cloudProgress.weakClearedAt);
+  const wasMasteredAt = RomanianVocabProgressModel.newerIso(localProgress.wasMasteredAt, cloudProgress.wasMasteredAt);
+  const {
+    existingScheduler: cloudScheduler,
+    incomingScheduler: localScheduler,
+    schedulerBase
+  } = RomanianVocabProgressModel.selectSchedulerBase(cloudProgress, localProgress);
+  const nextReviewAt = RomanianVocabProgressModel.newerIso(
     localProgress.nextReviewAt || localProgress.nextReview,
-    cloudProgress.nextReviewAt || cloudProgress.nextReview,
-    lastReviewedAt
-  );
+    cloudProgress.nextReviewAt || cloudProgress.nextReview
+  ) || lastReviewedAt;
   const dueAt = schedulerBase.dueAt || nextReviewAt;
   const merged = {
     ...cloudProgress,
@@ -770,18 +728,8 @@ function mergeCloudProgress(localProgress = {}, cloudRow = null) {
     lastWrongAt,
     weakClearedAt
   };
-  merged.level = normalizeProgressLevel(merged);
+  merged.level = RomanianVocabProgressModel.normalizeLevel(merged);
   return merged;
-}
-
-function isSchedulerMergeDowngrade(existingScheduler = {}, incomingScheduler = {}, existingProgress = {}, incomingProgress = {}) {
-  if (typeof RomanianVocabScheduler === 'undefined' || !RomanianVocabScheduler.isProgressDowngrade) return true;
-  return RomanianVocabScheduler.isProgressDowngrade(
-    existingScheduler,
-    incomingScheduler,
-    existingProgress,
-    incomingProgress
-  );
 }
 
 function normalizeRoArray(values = []) {
