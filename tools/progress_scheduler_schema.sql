@@ -50,8 +50,15 @@ set
     else round((coalesce(quiz_right, 0)::numeric / greatest(coalesce(quiz_total, 0), 1)) * 60
       + least(greatest(review_stage, review_count, 0), 6) * 7)
   end)),
+  needs_reinforcement = needs_reinforcement or (
+    coalesce(error_streak, 0) > 0
+    and (weak_cleared_at is null or last_wrong_at is null or weak_cleared_at < last_wrong_at)
+  ),
   card_state = case
-    when needs_reinforcement then 'reinforcing'
+    when needs_reinforcement or (
+      coalesce(error_streak, 0) > 0
+      and (weak_cleared_at is null or last_wrong_at is null or weak_cleared_at < last_wrong_at)
+    ) then 'reinforcing'
     when level = 'mastered' then 'review'
     when coalesce(quiz_total, 0) > 0 or known or review_stage > 0 or review_count > 0 then 'learning'
     else card_state
@@ -59,8 +66,15 @@ set
   last_reviewed_at = coalesce(last_reviewed_at, updated_at, now())
 where true;
 
+alter table public.progress validate constraint progress_card_state_check;
+
+create index if not exists progress_user_due_at_idx
+  on public.progress (user_id, due_at);
+
 comment on column public.progress.card_state is 'Scheduler state: new, learning, review, reinforcing, mastered.';
 comment on column public.progress.due_at is 'Canonical next due timestamp for the lightweight scheduler.';
 comment on column public.progress.interval_days is 'Current review interval in days.';
 comment on column public.progress.memory_strength is 'Internal 0-100 memory strength score.';
 comment on column public.progress.recent_results is 'Recent scheduler outcomes: unknown, fuzzy, known.';
+
+notify pgrst, 'reload schema';

@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const api = fs.readFileSync(path.join(root, 'api.js'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'tools/progress_word_id_migration.sql'), 'utf8');
+const queueBackfill = fs.readFileSync(path.join(root, 'tools/daily_queue_word_id_backfill.sql'), 'utf8');
 
 assert(api.includes("onConflict: 'user_id,word_id'"), 'apiSaveProgress must upsert by user_id,word_id');
 assert(api.includes('word_id: stableWordId'), 'apiSaveProgress payload must include word_id');
@@ -15,6 +16,12 @@ assert(app.includes('function progressKeyForWordRef'), 'app must resolve progres
 assert(app.includes('word_id: queueIdsToWordIds(todayQueue)'), 'daily queue payload must carry word ids');
 assert(migration.includes('add column if not exists word_id integer references public.words(id)'), 'migration must add progress.word_id');
 assert(migration.includes('progress_user_word_id_unique_idx'), 'migration must add a user_id,word_id unique index');
+assert(migration.includes('private.progress_word_id_duplicate_backup_20260711'), 'migration must preserve duplicate semantic rows before consolidation');
+assert(migration.includes('candidate_rank > 1'), 'migration must remove only backed-up duplicate candidates');
+assert(migration.indexOf('delete from public.progress') < migration.indexOf('progress_user_word_id_unique_idx'), 'duplicate consolidation must happen before the unique word-id index');
+assert(queueBackfill.includes('with ordinality'), 'queue backfill must preserve the original queue order');
+assert(queueBackfill.includes('matches.reference_count = matches.matched_count'), 'queue backfill must reject partial word-id arrays');
+assert(queueBackfill.includes("'partial_queue_arrays'"), 'queue backfill must report partial-array safety violations');
 
 let W = [];
 let wordIdIndex = new Map();

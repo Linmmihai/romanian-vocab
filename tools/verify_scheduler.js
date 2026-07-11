@@ -1,5 +1,15 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const scheduler = require('../scheduler.js');
+
+const schedulerMigration = fs.readFileSync(path.join(__dirname, 'progress_scheduler_schema.sql'), 'utf8');
+assert(schedulerMigration.includes('add column if not exists card_state'), 'scheduler migration must persist card state');
+assert(schedulerMigration.includes('add column if not exists due_at'), 'scheduler migration must persist due dates');
+assert(schedulerMigration.includes('add column if not exists recent_results jsonb'), 'scheduler migration must persist recent outcomes as jsonb');
+assert(schedulerMigration.includes('progress_user_due_at_idx'), 'scheduler migration must index per-user due lookups');
+assert(schedulerMigration.includes('validate constraint progress_card_state_check'), 'scheduler migration must validate the card-state constraint after backfill');
+assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;
