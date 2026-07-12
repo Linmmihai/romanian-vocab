@@ -1,13 +1,16 @@
-const CACHE_NAME = 'ro-vocab-pwa-v18';
+const CACHE_NAME = 'ro-vocab-pwa-v19';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
   './scheduler.js',
   './progress-model.js',
   './daily-plan.js',
+  './romanian-text.js',
   './api.js',
+  './telemetry.js',
   './auth.js',
   './app.js',
+  './pwa.js',
   './manifest.webmanifest',
   './manifest/icon-192.png',
   './manifest/icon-512.png',
@@ -22,8 +25,12 @@ self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(APP_SHELL_PATHS);
-    await self.skipWaiting();
+    if (!self.registration.active) await self.skipWaiting();
   })());
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {

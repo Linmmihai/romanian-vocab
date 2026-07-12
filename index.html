@@ -397,7 +397,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .empty-state{text-align:center;padding:2rem;color:var(--text3);font-size:14px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 20px;border-radius:99px;font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
+.pwa-update-notice{position:fixed;right:16px;bottom:16px;z-index:350;display:flex;align-items:center;gap:12px;background:#172033;color:white;border:1px solid #334155;border-radius:var(--radius-sm);box-shadow:0 12px 28px rgba(23,32,51,.22);padding:10px 12px;font-size:13px;font-weight:650}
+.pwa-update-notice button{border:1px solid #64748b;border-radius:var(--radius-sm);background:white;color:#172033;padding:6px 9px;font:inherit;font-weight:750;cursor:pointer}
+.pwa-update-notice button:disabled{opacity:.55;cursor:wait}
 @media(max-width:560px){.toast{bottom:calc(64px + env(safe-area-inset-bottom));max-width:calc(100vw - 24px);width:max-content;border-radius:var(--radius-sm);text-align:center}}
+@media(max-width:560px){.pwa-update-notice{left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));justify-content:space-between}}
 </style>
 </head>
 <body>
@@ -1138,32 +1142,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- ── JS 文件加载顺序：scheduler → models → api → auth → app ───── -->
-<script src="scheduler.js?v=20260711-quality-cleanup"></script>
-<script src="progress-model.js?v=20260711-quality-cleanup"></script>
-<script src="daily-plan.js?v=20260711-quality-cleanup"></script>
-<script src="api.js?v=20260711-quality-cleanup"></script>
+<!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260712-reliability';</script>
+<script src="scheduler.js?v=20260712-reliability"></script>
+<script src="progress-model.js?v=20260712-reliability"></script>
+<script src="daily-plan.js?v=20260712-reliability"></script>
+<script src="romanian-text.js?v=20260712-reliability"></script>
+<script src="api.js?v=20260712-reliability"></script>
+<script src="telemetry.js?v=20260712-reliability"></script>
 <script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260711-quality-cleanup"></script>
-<script>
-const isLocalDevHost = ['127.0.0.1', 'localhost'].includes(location.hostname);
-if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isLocalDevHost) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
-      .then(registration => registration.update())
-      .catch(() => {});
-  });
-}
-if ('serviceWorker' in navigator && isLocalDevHost) {
-  navigator.serviceWorker.getRegistrations()
-    .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
-    .catch(() => {});
-}
-if ('caches' in window && isLocalDevHost) {
-  caches.keys()
-    .then(keys => Promise.all(keys.map(key => caches.delete(key))))
-    .catch(() => {});
-}
-</script>
+<script src="app.js?v=20260712-reliability"></script>
+<script src="pwa.js?v=20260712-reliability"></script>
 </body>
 </html>

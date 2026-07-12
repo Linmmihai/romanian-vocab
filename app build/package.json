@@ -7,6 +7,7 @@
     "export:vocab": "node scripts/export-vocab.mjs",
     "build:examples": "node scripts/build-examples.mjs",
     "build:web": "node scripts/build-web.mjs",
+    "test:e2e": "playwright test",
     "cap:sync": "npm run build:examples && npm run build:web && npx cap sync android",
     "apk:debug": "npm run cap:sync && cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ANDROID_HOME=$HOME/Library/Android/sdk ./gradlew assembleDebug"
   },
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.2.0",
+    "@playwright/test": "^1.55.1",
     "esbuild": "^0.25.4"
   }
 }

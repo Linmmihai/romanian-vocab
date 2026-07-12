@@ -1105,6 +1105,10 @@ async function apiLoadProgress(userId) {
   });
   if (legacyRows) {
     console.warn(`Loaded ${legacyRows} legacy progress row(s) without word_id; using normalized word_ro fallback until migration/backfill is complete.`);
+    window.reportClientIssue?.('legacy_progress_fallback', 'Progress rows without stable word ID', {
+      operation: 'load_progress',
+      count: legacyRows
+    });
   }
   Object.entries(pendingProgress).forEach(([key, progress]) => {
     const wordId = getProgressEntryWordId(key, progress);
@@ -1279,6 +1283,15 @@ async function apiLoadAllProgress() {
     from += 1000;
   }
   return all;
+}
+
+async function apiLoadClientEventSummary(days = 7) {
+  if (isOfflineMode()) return [];
+  const { data, error } = await sb.rpc('admin_get_client_event_summary', {
+    days_count: Math.max(1, Math.min(30, Number(days) || 7))
+  });
+  if (error) throw new Error(error.message);
+  return data || [];
 }
 
 /**
@@ -1599,6 +1612,24 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
 }
 
 // ── 报错反馈 ──────────────────────────────────────────────
+
+async function apiReportClientEvent(eventType, details = {}) {
+  if (isOfflineMode() || !currentUser?.id) return { saved: false, reason: 'offline_or_signed_out' };
+  const normalizedType = String(eventType || 'client_error').replace(/[^a-z0-9_]/gi, '_').slice(0, 48);
+  const safeDetails = Object.fromEntries(Object.entries(details)
+    .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
+    .slice(0, 12)
+    .map(([key, value]) => [String(key).slice(0, 40), typeof value === 'string' ? value.slice(0, 240) : value]));
+  const { error } = await sb.from('client_events').insert({
+    user_id: currentUser.id,
+    event_type: normalizedType,
+    details: safeDetails,
+    app_version: String(window.ROMANIAN_VOCAB_APP_VERSION || 'unknown').slice(0, 64)
+  });
+  if (error) throw new Error(error.message);
+  return { saved: true };
+}
+window.apiReportClientEvent = apiReportClientEvent;
 
 /**
  * 提交一条用户报错

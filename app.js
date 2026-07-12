@@ -1,7 +1,6 @@
 // ============================================================
 //  app.js — 主应用逻辑
-//  卡片记忆 / 测验 / 词汇表 / 管理员 / 报错弹窗 / 编辑弹窗
-//  如需修改界面功能，只改这个文件
+//  页面状态、交互、渲染和跨模块流程编排
 // ============================================================
 
 // ── 全局状态 ─────────────────────────────────────────────
@@ -63,6 +62,14 @@ const fastProgressQueue = new Map();
 const CARD_FLIP_TRANSITION_MS = 180;
 const CARD_CONTENT_SWAP_DELAY_MS = 95;
 const FAST_PERSIST_DELAY_MS = 900;
+const {
+  autoStressWord,
+  getStressDisplay,
+  normalizeStressText,
+  lowerRo,
+  stressToHtml,
+  getGrammarInfo
+} = window.RomanianVocabText;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -1078,6 +1085,7 @@ function showVocabLoading() {
 }
 
 function showVocabLoadError(error) {
+  window.reportClientIssue?.('words_load_failed', error, { operation: 'load_words' });
   const loading = document.getElementById('flash-loading');
   if (!loading) return;
   loading.style.display = 'flex';
@@ -1137,6 +1145,7 @@ async function loadProgress() {
     replaceProgressMap(loadedProgress);
     progressLoaded = true;
     if (progressSource === 'localFallback') {
+      window.reportClientIssue?.('progress_load_fallback', progressError, { operation: 'load_progress' });
       setSyncBadge('本机待同步', '');
       showProgressSaveWarning(`云端进度读取失败，已显示本机保存的进度：${progressError || '请稍后重试'}`);
     } else if (progressSource === 'cloudWithPending') {
@@ -1153,6 +1162,7 @@ async function loadProgress() {
       setSyncBadge('本机待同步', '');
     }
   } catch (error) {
+    window.reportClientIssue?.('progress_load_failed', error, { operation: 'load_progress' });
     const fallback = typeof readLocalProgressFallback === 'function'
       ? readLocalProgressFallback(currentUser.id)
       : {};
@@ -1364,12 +1374,14 @@ async function syncDailyStateToCloud() {
 function saveTodayLogBackground(promise, label = '今日记录待同步') {
   return promise.then(result => {
     if (result?.syncError) {
+      window.reportClientIssue?.('daily_sync_deferred', result.syncError, { operation: 'save_today_log' });
       console.warn('Today log saved locally; cloud sync pending', result.syncError);
       setSyncBadge(label, '');
       showProgressSaveWarning(`今日记录暂存本机：${result.syncError}`);
     }
     return result;
   }).catch(error => {
+    window.reportClientIssue?.('daily_sync_failed', error, { operation: 'save_today_log' });
     console.warn('Today log background save failed', error);
     setSyncBadge(label, '');
     showProgressSaveWarning('今日记录暂存本机，云端同步稍后重试');
@@ -2186,7 +2198,6 @@ const LEVEL_LABEL = { unknown: '未学', queued: '今日待学', learning: '学�
 const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', review: 'var(--red)', reinforcing: 'var(--red)', mastered: 'var(--green)' };
 const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', review: 'var(--red-bg)', reinforcing: 'var(--red-bg)', mastered: 'var(--green-bg)' };
 const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', review: 'var(--red-text)', reinforcing: 'var(--red-text)', mastered: 'var(--green-text)' };
-const RO_VOWELS = 'aeiouăâîAEIOUĂÂÎ';
 const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
 const REINFORCEMENT_MIN_LEARNING_MISSES = 2;
 const REVIEW_INTERVALS = [
@@ -2527,45 +2538,6 @@ function formatReviewDue(iso) {
   return `${Math.ceil(hours / 24)}天后`;
 }
 
-function isRoVowel(ch) {
-  return RO_VOWELS.includes(ch);
-}
-
-function autoStressToken(token) {
-  const groups = [];
-  let start = -1;
-
-  for (let i = 0; i < token.length; i++) {
-    if (isRoVowel(token[i])) {
-      if (start === -1) start = i;
-    } else if (start !== -1) {
-      groups.push({ start, end: i });
-      start = -1;
-    }
-  }
-  if (start !== -1) groups.push({ start, end: token.length });
-  if (!groups.length) return token;
-
-  const target = groups[Math.max(0, groups.length - 2)];
-  return token
-    .split('')
-    .map((ch, i) => (i >= target.start && i < target.end ? ch.toUpperCase() : ch))
-    .join('');
-}
-
-function autoStressWord(value) {
-  return String(value || '')
-    .split(/([\s-]+)/)
-    .map(part => (/^[\s-]+$/.test(part) ? part : autoStressToken(part)))
-    .join('');
-}
-
-function getStressDisplay(w) {
-  const manual = String(w?.ipa || '').trim();
-  if (manual) return { text: manual, auto: false };
-  return { text: autoStressWord(w?.ro || ''), auto: true };
-}
-
 function isGrammarUnverified(w) {
   return /待核对|待补充|未核对/.test(getGrammarInfo(w));
 }
@@ -2582,74 +2554,10 @@ function unverifiedBadgeHtml(w) {
   return isWordUnverified(w) ? '<span class="unverified-badge">未核对</span>' : '';
 }
 
-function normalizeStressText(value) {
-  return String(value || '')
-    .replace(/^\/|\/$/g, '')
-    .replace(/[ˌ']/g, '')
-    .trim();
-}
-
-function lowerRo(value) {
-  return String(value || '').toLocaleLowerCase('ro');
-}
-
-function underlineTokenByUppercase(token) {
-  const chars = [...token];
-  const upperIndexes = chars
-    .map((ch, i) => (/[A-ZĂÂÎȘȚ]/.test(ch) ? i : -1))
-    .filter(i => i >= 0);
-  if (!upperIndexes.length) return escapeHtml(lowerRo(token));
-
-  const start = upperIndexes[0];
-  const end = upperIndexes[upperIndexes.length - 1] + 1;
-  return `${escapeHtml(lowerRo(chars.slice(0, start).join('')))}<span class="stress-mark">${escapeHtml(lowerRo(chars.slice(start, end).join('')))}</span>${escapeHtml(lowerRo(chars.slice(end).join('')))}`;
-}
-
-function underlineTokenByStressMark(token) {
-  const idx = token.indexOf('ˈ');
-  if (idx < 0) return underlineTokenByUppercase(token);
-  const clean = token.replace('ˈ', '');
-  const chars = [...clean];
-  const start = [...token.slice(0, idx)].length;
-  let end = chars.length;
-  for (let i = start + 1; i < chars.length; i++) {
-    if (/[-.\s/]/.test(chars[i])) { end = i; break; }
-  }
-  return `${escapeHtml(lowerRo(chars.slice(0, start).join('')))}<span class="stress-mark">${escapeHtml(lowerRo(chars.slice(start, end).join('')))}</span>${escapeHtml(lowerRo(chars.slice(end).join('')))}`;
-}
-
-function stressToHtml(text) {
-  const normalized = normalizeStressText(text);
-  if (!normalized) return '';
-  return normalized
-    .split(/(\s+)/)
-    .map(part => (/^\s+$/.test(part) ? part : underlineTokenByStressMark(part)))
-    .join('');
-}
-
 function setStressHtml(id, w) {
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = stressToHtml(getStressDisplay(w).text);
-}
-
-function inferGrammarInfo(w) {
-  const cat = String(w?.cat || '');
-  const ro = String(w?.ro || '').toLocaleLowerCase('ro');
-  if (cat.includes('动词')) return '动词 · 变位待补充';
-  if (cat.includes('形容词')) return '形容词';
-  if (cat.includes('副词')) return '副词';
-  if (cat.includes('介词')) return '介词';
-  if (cat.includes('连词') || cat.includes('连接词')) return '连词';
-  if (cat.includes('代词')) return '代词';
-  if (cat.includes('数词')) return '数词';
-  if (cat.includes('感叹')) return '感叹词';
-  if (/(a|ea|e|i|î)$/.test(ro) && cat.includes('动')) return '动词 · 变位待补充';
-  return '名词 · 复数待补充';
-}
-
-function getGrammarInfo(w) {
-  return String(w?.grammar_note || w?.grammar || w?.forms || w?.hint || '').trim() || inferGrammarInfo(w);
 }
 
 function setGrammarText(id, w, stress = null) {
@@ -2832,11 +2740,13 @@ function showProgressSaveWarning(message) {
 function handleProgressSaveStatus(status) {
   if (!status) return false;
   if (status.memoryBackup?.ok === false) {
+    window.reportClientIssue?.('local_backup_failed', status.memoryBackup.error || 'Local backup failed', { operation: 'progress_backup' });
     setSyncBadge('本机备份失败', '');
     showProgressSaveWarning('本机加强记录备份保存失败，请导出进度或清理浏览器存储');
     return true;
   }
   if (status.memoryBackedByDb === false) {
+    window.reportClientIssue?.('progress_sync_deferred', status.fallbackWarning || 'Progress saved locally', { operation: 'save_progress' });
     setSyncBadge('本机备份', 'saved');
     showProgressSaveWarning('部分学习状态已保存在本设备，云端同步恢复后会自动重试');
     return true;
@@ -6206,14 +6116,16 @@ async function loadAdminStats() {
   el.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
-    const [reportsResult, progressResult, pendingWordsResult] = await Promise.allSettled([
+    const [reportsResult, progressResult, pendingWordsResult, clientEventsResult] = await Promise.allSettled([
       apiLoadReports(),
       apiLoadAllProgress(),
-      apiLoadPendingWords()
+      apiLoadPendingWords(),
+      apiLoadClientEventSummary(7)
     ]);
     const reports = reportsResult.status === 'fulfilled' ? reportsResult.value : [];
     const allProgress = progressResult.status === 'fulfilled' ? progressResult.value : [];
     const pendingWords = pendingWordsResult.status === 'fulfilled' ? pendingWordsResult.value : [];
+    const clientEvents = clientEventsResult.status === 'fulfilled' ? clientEventsResult.value : [];
     const categoryStats = getAdminCategoryStats();
     const reportStats = getAdminReportStats(reports);
     const wrongStats = getAdminWrongStats(allProgress);
@@ -6242,6 +6154,10 @@ async function loadAdminStats() {
       <div class="admin-chart">
         <div class="admin-chart-title">答错率最高的词 <span style="font-weight:400;color:var(--text2)">共 ${totalAnswers} 次练习记录</span></div>
         ${progressResult.status === 'fulfilled' ? renderAdminWrongRows(wrongStats) : `<div class="empty-state">答题记录无法读取：${escapeHtml(progressResult.reason.message)}</div>`}
+      </div>
+      <div class="admin-chart">
+        <div class="admin-chart-title">最近 7 天客户端故障</div>
+        ${clientEventsResult.status === 'fulfilled' ? renderClientEventRows(clientEvents) : `<div class="empty-state">故障汇总无法读取：${escapeHtml(clientEventsResult.reason.message)}</div>`}
       </div>`;
     renderMissingIpaPanel();
     renderPendingWordsPanel(pendingWords);
@@ -6252,6 +6168,20 @@ async function loadAdminStats() {
     loadAdminPendingWords();
     renderPendingGrammarPanel();
   }
+}
+
+function renderClientEventRows(rows = []) {
+  if (!rows.length) return '<div class="empty-state">最近 7 天没有收到客户端故障</div>';
+  return rows.slice(0, 12).map(row => {
+    const lastSeen = row.last_seen ? new Date(row.last_seen).toLocaleString('zh') : '未知';
+    return `<div class="admin-word-row">
+      <div>
+        <div class="admin-word-name">${escapeHtml(row.event_type)}</div>
+        <div class="admin-word-meta">影响 ${Number(row.affected_users || 0)} 位用户 · 最近 ${escapeHtml(lastSeen)} · ${escapeHtml(row.app_version || 'unknown')}</div>
+      </div>
+      <div class="admin-word-score">${Number(row.event_count || 0)}次</div>
+    </div>`;
+  }).join('');
 }
 
 function renderMissingIpaPanel() {
