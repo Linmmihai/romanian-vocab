@@ -180,12 +180,20 @@
       lastReviewedAt: validIso(progress.lastReviewedAt || progress.last_reviewed_at)
     };
     const reinforcementCleared = wasReinforcementCleared(progress);
-    normalized.needsReinforcement = !reinforcementCleared && (
+    // Anki keeps failed new cards in the learning queue. Reinforcement/relearning
+    // is reserved for cards that have already graduated and then lapsed.
+    const hasReviewHistory = normalized.lapses > 0 ||
+      !!(progress.wasMasteredAt || progress.was_mastered_at) ||
+      ['review', 'mastered'].includes(progress.cardState || progress.card_state);
+    normalized.needsReinforcement = !reinforcementCleared && hasReviewHistory && (
       normalized.needsReinforcement ||
       normalized.forgetCount >= 2 ||
-      normalized.lapses >= 2 ||
+      normalized.lapses > 0 ||
       repeatedWeakResults(normalized.recentResults)
     );
+    if (normalized.cardState === 'reinforcing' && !hasReviewHistory) {
+      normalized.cardState = 'learning';
+    }
     if (reinforcementCleared && normalized.cardState === 'reinforcing') {
       normalized.cardState = normalized.reps || normalized.intervalDays ? 'review' : 'learning';
     }
@@ -226,12 +234,17 @@
 
     if (action === ACTION_UNKNOWN) {
       result.forgetCount += 1;
-      result.lapses += wasReviewLike || prev.reps > 0 ? 1 : 0;
+      result.lapses += wasReviewLike ? 1 : 0;
       result.memoryStrength = clamp(prev.memoryStrength - 25, 0, 100);
       result.intervalDays = 0;
       result.dueAt = addMinutesIso(now, 10);
       result.cardState = wasReviewLike ? 'reinforcing' : 'learning';
-      result.needsReinforcement = wasReviewLike || result.forgetCount >= 2 || repeatedWeakResults(result.recentResults);
+      result.needsReinforcement = wasReviewLike && (
+        prev.needsReinforcement ||
+        result.lapses > 0 ||
+        result.forgetCount >= 2 ||
+        repeatedWeakResults(result.recentResults)
+      );
     } else if (action === ACTION_FUZZY) {
       result.fuzzyCount += 1;
       result.memoryStrength = clamp(prev.memoryStrength + (wasReviewLike ? -3 : 8), 0, 100);
@@ -239,7 +252,9 @@
       result.dueAt = addDaysIso(now, result.intervalDays || 1);
       result.cardState = wasReviewLike && result.needsReinforcement ? 'reinforcing' : 'learning';
       if (wasReviewLike && !result.needsReinforcement) result.cardState = 'review';
-      result.needsReinforcement = result.needsReinforcement || repeatedWeakResults(result.recentResults);
+      result.needsReinforcement = wasReviewLike && (
+        result.needsReinforcement || repeatedWeakResults(result.recentResults)
+      );
       if (result.needsReinforcement && wasReviewLike) result.cardState = 'reinforcing';
     } else if (action === ACTION_KNOWN) {
       result.correctCount += 1;

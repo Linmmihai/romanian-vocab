@@ -74,6 +74,7 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
 
 {
   const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const index = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
   assert(app.includes('activeOpenCount >= activeSlots'), 'expected queue repair to backfill until active cards cover remaining quota');
@@ -93,6 +94,16 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');
   assert(app.includes('todayQueueCompleted.size'), 'expected metrics cache key to include completed queue size');
   assert(app.includes('getDailyWordList:using-active-queue-before-load'), 'expected active repaired queues to render before dailyQueueLoaded settles');
+  assert(app.includes("if (isDueLearningStepWord(w)) return 0;"), 'expected due learning steps to have first queue priority');
+  assert(app.includes("if (isDueGraduatedReviewWord(w)) return 1;"), 'expected graduated reviews to follow learning steps');
+  assert(app.includes("if (isUnseenWord(w)) return 3;"), 'expected unseen cards to remain behind learning and review cards');
+  assert(app.includes("queuePhase === 'learning-due'"), 'expected learning steps to have a distinct visible state');
+  assert(app.includes("queuePhase === 'review-due' || queuePhase === 'relearning-due'"), 'expected due review and relearning cards to render as review');
+  assert(index.includes('id="today-step-learning"'), 'expected a separate learning-step stage in the daily path');
+  assert(index.includes('id="today-step-review"'), 'expected a separate due-review stage in the daily path');
+  assert(index.includes('id="today-step-new"'), 'expected a separate new-card stage in the daily path');
+  assert(index.indexOf('id="today-step-learning"') < index.indexOf('id="today-step-review"'), 'learning steps must appear before reviews');
+  assert(index.indexOf('id="today-step-review"') < index.indexOf('id="today-step-new"'), 'reviews must appear before new cards');
 }
 
 console.log('daily queue repair verification passed');

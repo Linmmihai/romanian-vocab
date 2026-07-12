@@ -270,25 +270,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rank-score strong{display:block;font-size:20px;color:var(--text);line-height:1.1}
 /* GUIDE */
 .guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
-.guide-title{font-size:16px;font-weight:800;margin-bottom:6px}
-.guide-subtitle{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5}
-.alphabet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px;margin-bottom:14px}
-.alphabet-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 4px;text-align:center;color:var(--text);min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s,border-color .12s,background .12s,box-shadow .12s}
+.guide-hero{background:linear-gradient(135deg,#eff6ff 0%,#fff 62%,#f0fdf4 100%);border-color:#bfdbfe}
+.guide-kicker{font-size:11px;font-weight:850;letter-spacing:.08em;color:var(--blue-text);text-transform:uppercase;margin-bottom:5px}
+.guide-title{font-size:18px;font-weight:850;margin-bottom:6px}
+.guide-subtitle{font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6}
+.guide-note{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;margin-bottom:14px;border-radius:var(--radius-sm);background:var(--yellow-bg);color:var(--text2);font-size:12px;line-height:1.55}
+.guide-note strong{color:var(--text);white-space:nowrap}
+.guide-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:18px 0 9px}
+.guide-section-title{font-size:14px;font-weight:850;color:var(--text)}
+.guide-section-hint{font-size:11px;color:var(--text3);text-align:right}
+.alphabet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,1fr));gap:7px;margin-bottom:14px}
+.alphabet-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 5px;text-align:center;color:var(--text);min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s,border-color .12s,background .12s,box-shadow .12s}
 .alphabet-item:hover,.alphabet-item:focus-visible,.ph-item:hover,.ph-item:focus-visible{border-color:var(--blue);background:var(--blue-bg);outline:none}
 .alphabet-item.active,.ph-item.active{border-color:var(--blue);background:var(--blue-bg);box-shadow:0 0 0 2px rgba(37,99,235,0.12)}
 .alphabet-letter{font-size:20px;font-weight:800;line-height:1}
-.alphabet-read{font-size:11px;color:var(--text2);font-weight:700;margin-top:6px;line-height:1.1}
-.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.ph-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center;cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s}
-.ph-letter{font-size:20px;font-weight:800;font-family:monospace;color:var(--text)}
-.ph-sound{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4}
+.alphabet-read{font-size:11px;color:var(--text2);font-weight:750;margin-top:6px;line-height:1.1}
+.alphabet-sound{font-size:10px;color:var(--blue-text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:4px;line-height:1.1}
+.ph-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ph-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:left;cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s}
+.ph-letter{font-size:17px;font-weight:850;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text)}
+.ph-sound{font-size:12px;color:var(--text2);margin-top:5px;line-height:1.55}
+.ph-example{font-size:11px;color:var(--blue-text);font-weight:700;margin-top:5px}
 .pronunciation-panel{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text2);font-size:13px}
 .pronunciation-panel strong{color:var(--text);font-size:16px}
+.guide-source{font-size:11px;color:var(--text3);line-height:1.5;margin-top:10px}
+.guide-source a{color:var(--blue-text);font-weight:700;text-decoration:none}
 .manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
 .manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
-@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,1fr)}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-logo{font-size:16px}.topbar-badge{max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.flash-controls-body{padding:0 10px 10px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
+@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-logo{font-size:16px}.topbar-badge{max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.flash-controls-body{padding:0 10px 10px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
 /* LIST */
 .search-bar{margin-bottom:1rem}
 .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;outline:none;background:white}
@@ -488,17 +499,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="today-focus-action" id="today-focus-action">继续学习</div>
       </div>
       <div class="today-steps">
+        <div class="today-step" id="today-step-learning">
+          <div class="today-step-label">先学习中</div>
+          <div class="today-step-meta" id="today-step-learning-meta">0 个到点</div>
+        </div>
         <div class="today-step" id="today-step-review">
-          <div class="today-step-label">先复习</div>
+          <div class="today-step-label">再到期复习</div>
           <div class="today-step-meta" id="today-step-review-meta">0 个到期</div>
         </div>
-        <div class="today-step" id="today-step-learn">
-          <div class="today-step-label">再学新词</div>
-          <div class="today-step-meta" id="today-step-learn-meta">0 / 20</div>
-        </div>
-        <div class="today-step" id="today-step-quiz">
-          <div class="today-step-label">最后测验</div>
-          <div class="today-step-meta" id="today-step-quiz-meta">智能练习</div>
+        <div class="today-step" id="today-step-new">
+          <div class="today-step-label">最后学新词</div>
+          <div class="today-step-meta" id="today-step-new-meta">0 个待学</div>
         </div>
       </div>
     </div>
@@ -562,14 +573,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="review-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div style="font-size:15px;font-weight:800" id="flash-mode-title">今日任务</div>
-            <div style="font-size:12px;color:var(--text2)">智能每日队列</div>
+            <div style="font-size:12px;color:var(--text2)">Anki 式每日队列</div>
           </div>
           <div class="review-grid">
-            <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">全库到期</div></div>
-            <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日进度</div></div>
-            <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">队列空位</div></div>
+            <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">学习/复习到期</div></div>
+            <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日完成</div></div>
+            <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">待学新词</div></div>
           </div>
-          <div class="review-note" id="review-note">按艾宾浩斯曲线优先复习到期词。</div>
+          <div class="review-note" id="review-note">按学习步骤、到期复习、新词的顺序出卡。</div>
         </div>
         <div class="cat-panel">
           <div class="cat-panel-title">分类筛选</div>
@@ -779,89 +790,106 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- 指南 -->
   <div class="page" id="page-guide">
-    <div class="guide-card">
-      <div class="guide-title">字母表</div>
-      <div class="guide-subtitle">罗马尼亚语使用拉丁字母。点击任意字母或特殊读音，可以听对应发音。</div>
+    <div class="guide-card guide-hero">
+      <div class="guide-kicker">Pronunție · 发音入门</div>
+      <div class="guide-title">先听音值，再记字母名称</div>
+      <div class="guide-subtitle">罗马尼亚语字母表有 31 个字母。字母名称用于拼读，真正读单词时要看字母在词中的音值。点击卡片会朗读字母名称和一个罗马尼亚语示例词。</div>
+      <div class="guide-note"><strong>请注意</strong><span>中文提示只帮助定位发音，不是完全等音。优先模仿示例词；播放时应选择罗马尼亚语语音，若设备没有该语音，页面会明确提醒。</span></div>
+      <div class="guide-section-head">
+        <div class="guide-section-title">31 个字母及名称</div>
+        <div class="guide-section-hint">蓝色一行是常见音值，不是字母名称</div>
+      </div>
       <div class="alphabet-grid">
-        <div class="alphabet-item" data-speak="a" data-tts="Litera A se pronunță a."><div class="alphabet-letter">A</div><div class="alphabet-read">a</div></div>
-        <div class="alphabet-item" data-speak="ă" data-tts="Sunetul ă, ca în măr." data-tts-mode="override"><div class="alphabet-letter">Ă</div><div class="alphabet-read">ă</div></div>
-        <div class="alphabet-item" data-speak="â din a" data-tts="Litera Â se numește â din a. Sunetul este ca în român."><div class="alphabet-letter">Â</div><div class="alphabet-read">â din a</div></div>
-        <div class="alphabet-item" data-speak="be" data-tts="Litera B se pronunță be."><div class="alphabet-letter">B</div><div class="alphabet-read">be</div></div>
-        <div class="alphabet-item" data-speak="ce" data-tts="Litera C se pronunță ce."><div class="alphabet-letter">C</div><div class="alphabet-read">ce</div></div>
-        <div class="alphabet-item" data-speak="de" data-tts="Litera D se pronunță de."><div class="alphabet-letter">D</div><div class="alphabet-read">de</div></div>
-        <div class="alphabet-item" data-speak="e" data-tts="Litera E se pronunță e."><div class="alphabet-letter">E</div><div class="alphabet-read">e</div></div>
-        <div class="alphabet-item" data-speak="ef" data-tts="Litera F se pronunță ef."><div class="alphabet-letter">F</div><div class="alphabet-read">ef</div></div>
-        <div class="alphabet-item" data-speak="ge" data-tts="Litera G se pronunță ge."><div class="alphabet-letter">G</div><div class="alphabet-read">ge</div></div>
-        <div class="alphabet-item" data-speak="haș" data-tts="Litera H se pronunță haș."><div class="alphabet-letter">H</div><div class="alphabet-read">haș</div></div>
-        <div class="alphabet-item" data-speak="i" data-tts="Litera I se pronunță i."><div class="alphabet-letter">I</div><div class="alphabet-read">i</div></div>
-        <div class="alphabet-item" data-speak="î din i" data-tts="Litera Î se numește î din i. Sunetul este ca în învăț."><div class="alphabet-letter">Î</div><div class="alphabet-read">î din i</div></div>
-        <div class="alphabet-item" data-speak="jî" data-tts="Litera J se pronunță jî."><div class="alphabet-letter">J</div><div class="alphabet-read">jî</div></div>
-        <div class="alphabet-item" data-speak="ca" data-tts="Litera K se pronunță ca."><div class="alphabet-letter">K</div><div class="alphabet-read">ca</div></div>
-        <div class="alphabet-item" data-speak="el" data-tts="Litera L se pronunță el."><div class="alphabet-letter">L</div><div class="alphabet-read">el</div></div>
-        <div class="alphabet-item" data-speak="em" data-tts="Litera M se pronunță em."><div class="alphabet-letter">M</div><div class="alphabet-read">em</div></div>
-        <div class="alphabet-item" data-speak="en" data-tts="Litera N se pronunță en."><div class="alphabet-letter">N</div><div class="alphabet-read">en</div></div>
-        <div class="alphabet-item" data-speak="o" data-tts="Litera O se pronunță o."><div class="alphabet-letter">O</div><div class="alphabet-read">o</div></div>
-        <div class="alphabet-item" data-speak="pe" data-tts="Litera P se pronunță pe."><div class="alphabet-letter">P</div><div class="alphabet-read">pe</div></div>
-        <div class="alphabet-item" data-speak="chiu" data-tts="Litera Q se pronunță chiu."><div class="alphabet-letter">Q</div><div class="alphabet-read">chiu</div></div>
-        <div class="alphabet-item" data-speak="er" data-tts="Litera R se pronunță er."><div class="alphabet-letter">R</div><div class="alphabet-read">er</div></div>
-        <div class="alphabet-item" data-speak="es" data-tts="Litera S se pronunță es."><div class="alphabet-letter">S</div><div class="alphabet-read">es</div></div>
-        <div class="alphabet-item" data-speak="șe" data-tts="Litera Ș se pronunță șe."><div class="alphabet-letter">Ș</div><div class="alphabet-read">șe</div></div>
-        <div class="alphabet-item" data-speak="te" data-tts="Litera T se pronunță te."><div class="alphabet-letter">T</div><div class="alphabet-read">te</div></div>
-        <div class="alphabet-item" data-speak="țe" data-tts="Litera Ț se pronunță țe."><div class="alphabet-letter">Ț</div><div class="alphabet-read">țe</div></div>
-        <div class="alphabet-item" data-speak="u" data-tts="Litera U se pronunță u."><div class="alphabet-letter">U</div><div class="alphabet-read">u</div></div>
-        <div class="alphabet-item" data-speak="ve" data-tts="Litera V se pronunță ve."><div class="alphabet-letter">V</div><div class="alphabet-read">ve</div></div>
-        <div class="alphabet-item" data-speak="dublu ve" data-tts="Litera W se pronunță dublu ve."><div class="alphabet-letter">W</div><div class="alphabet-read">dublu ve</div></div>
-        <div class="alphabet-item" data-speak="ics" data-tts="X" data-tts-lang="en-US" data-tts-mode="override"><div class="alphabet-letter">X</div><div class="alphabet-read">ics</div></div>
-        <div class="alphabet-item" data-speak="igrec" data-tts="Litera Y se pronunță igrec."><div class="alphabet-letter">Y</div><div class="alphabet-read">igrec</div></div>
-        <div class="alphabet-item" data-speak="zet" data-tts="Litera Z se pronunță zet."><div class="alphabet-letter">Z</div><div class="alphabet-read">zet</div></div>
+        <div class="alphabet-item" data-speak="a" data-tts="Litera A se numește a. Exemplu: apă."><div class="alphabet-letter">A</div><div class="alphabet-read">a</div><div class="alphabet-sound">/a/</div></div>
+        <div class="alphabet-item" data-speak="ă" data-tts="Litera Ă se numește ă. Exemplu: măr."><div class="alphabet-letter">Ă</div><div class="alphabet-read">ă</div><div class="alphabet-sound">/ə/</div></div>
+        <div class="alphabet-item" data-speak="î din a" data-tts="Litera Â se numește î din a. Exemplu: român."><div class="alphabet-letter">Â</div><div class="alphabet-read">î din a</div><div class="alphabet-sound">/ɨ/</div></div>
+        <div class="alphabet-item" data-speak="be" data-tts="Litera B se numește be. Exemplu: bun."><div class="alphabet-letter">B</div><div class="alphabet-read">be</div><div class="alphabet-sound">/b/</div></div>
+        <div class="alphabet-item" data-speak="ce" data-tts="Litera C se numește ce. Exemple: casă și cer."><div class="alphabet-letter">C</div><div class="alphabet-read">ce</div><div class="alphabet-sound">/k/, /tʃ/</div></div>
+        <div class="alphabet-item" data-speak="de" data-tts="Litera D se numește de. Exemplu: doi."><div class="alphabet-letter">D</div><div class="alphabet-read">de</div><div class="alphabet-sound">/d/</div></div>
+        <div class="alphabet-item" data-speak="e" data-tts="Litera E se numește e. Exemple: elev și este."><div class="alphabet-letter">E</div><div class="alphabet-read">e</div><div class="alphabet-sound">/e/, /je/</div></div>
+        <div class="alphabet-item" data-speak="ef" data-tts="Litera F se numește ef. Exemplu: foc."><div class="alphabet-letter">F</div><div class="alphabet-read">ef</div><div class="alphabet-sound">/f/</div></div>
+        <div class="alphabet-item" data-speak="ge" data-tts="Litera G se numește ge. Exemple: gară și ger."><div class="alphabet-letter">G</div><div class="alphabet-read">ge</div><div class="alphabet-sound">/g/, /dʒ/</div></div>
+        <div class="alphabet-item" data-speak="haș" data-tts="Litera H se numește haș. Exemplu: hartă."><div class="alphabet-letter">H</div><div class="alphabet-read">haș</div><div class="alphabet-sound">/h/</div></div>
+        <div class="alphabet-item" data-speak="i" data-tts="Litera I se numește i. Exemple: inimă și pomi."><div class="alphabet-letter">I</div><div class="alphabet-read">i</div><div class="alphabet-sound">/i/, /j/, ʲ</div></div>
+        <div class="alphabet-item" data-speak="î din i" data-tts="Litera Î se numește î din i. Exemplu: învăț."><div class="alphabet-letter">Î</div><div class="alphabet-read">î din i</div><div class="alphabet-sound">/ɨ/</div></div>
+        <div class="alphabet-item" data-speak="je" data-tts="Litera J se numește je. Exemplu: joc."><div class="alphabet-letter">J</div><div class="alphabet-read">je</div><div class="alphabet-sound">/ʒ/</div></div>
+        <div class="alphabet-item" data-speak="ka" data-tts="Litera K se numește ka. Exemplu: kilogram."><div class="alphabet-letter">K</div><div class="alphabet-read">ka</div><div class="alphabet-sound">/k/</div></div>
+        <div class="alphabet-item" data-speak="el" data-tts="Litera L se numește el. Exemplu: lună."><div class="alphabet-letter">L</div><div class="alphabet-read">el</div><div class="alphabet-sound">/l/</div></div>
+        <div class="alphabet-item" data-speak="em" data-tts="Litera M se numește em. Exemplu: mare."><div class="alphabet-letter">M</div><div class="alphabet-read">em</div><div class="alphabet-sound">/m/</div></div>
+        <div class="alphabet-item" data-speak="en" data-tts="Litera N se numește en. Exemplu: nor."><div class="alphabet-letter">N</div><div class="alphabet-read">en</div><div class="alphabet-sound">/n/</div></div>
+        <div class="alphabet-item" data-speak="o" data-tts="Litera O se numește o. Exemplu: om."><div class="alphabet-letter">O</div><div class="alphabet-read">o</div><div class="alphabet-sound">/o/</div></div>
+        <div class="alphabet-item" data-speak="pe" data-tts="Litera P se numește pe. Exemplu: pom."><div class="alphabet-letter">P</div><div class="alphabet-read">pe</div><div class="alphabet-sound">/p/</div></div>
+        <div class="alphabet-item" data-speak="kü" data-tts="Litera Q se numește kü. Apare mai ales în cuvinte străine."><div class="alphabet-letter">Q</div><div class="alphabet-read">kü</div><div class="alphabet-sound">rar</div></div>
+        <div class="alphabet-item" data-speak="er" data-tts="Litera R se numește er. Exemplu: rar."><div class="alphabet-letter">R</div><div class="alphabet-read">er</div><div class="alphabet-sound">/r/</div></div>
+        <div class="alphabet-item" data-speak="es" data-tts="Litera S se numește es. Exemplu: soare."><div class="alphabet-letter">S</div><div class="alphabet-read">es</div><div class="alphabet-sound">/s/</div></div>
+        <div class="alphabet-item" data-speak="șe" data-tts="Litera Ș se numește șe. Exemplu: șase."><div class="alphabet-letter">Ș</div><div class="alphabet-read">șe</div><div class="alphabet-sound">/ʃ/</div></div>
+        <div class="alphabet-item" data-speak="te" data-tts="Litera T se numește te. Exemplu: timp."><div class="alphabet-letter">T</div><div class="alphabet-read">te</div><div class="alphabet-sound">/t/</div></div>
+        <div class="alphabet-item" data-speak="țe" data-tts="Litera Ț se numește țe. Exemplu: țară."><div class="alphabet-letter">Ț</div><div class="alphabet-read">țe</div><div class="alphabet-sound">/ts/</div></div>
+        <div class="alphabet-item" data-speak="u" data-tts="Litera U se numește u. Exemple: unu și oameni."><div class="alphabet-letter">U</div><div class="alphabet-read">u</div><div class="alphabet-sound">/u/, /w/</div></div>
+        <div class="alphabet-item" data-speak="ve" data-tts="Litera V se numește ve. Exemplu: vin."><div class="alphabet-letter">V</div><div class="alphabet-read">ve</div><div class="alphabet-sound">/v/</div></div>
+        <div class="alphabet-item" data-speak="dublu ve" data-tts="Litera W se numește dublu ve. Apare mai ales în cuvinte străine."><div class="alphabet-letter">W</div><div class="alphabet-read">dublu ve</div><div class="alphabet-sound">rar</div></div>
+        <div class="alphabet-item" data-speak="iks" data-tts="Litera X se numește iks. Exemple: pix și examen."><div class="alphabet-letter">X</div><div class="alphabet-read">iks</div><div class="alphabet-sound">/ks/, /gz/</div></div>
+        <div class="alphabet-item" data-speak="i grec" data-tts="Litera Y se numește i grec. Apare mai ales în cuvinte străine."><div class="alphabet-letter">Y</div><div class="alphabet-read">i grec</div><div class="alphabet-sound">rar</div></div>
+        <div class="alphabet-item" data-speak="ze" data-tts="Litera Z se numește ze. Exemplu: zi."><div class="alphabet-letter">Z</div><div class="alphabet-read">ze</div><div class="alphabet-sound">/z/</div></div>
       </div>
       <div class="pronunciation-panel" id="pronunciation-panel">
-        <span id="pronunciation-status">点击任意字母播放发音</span>
+        <span id="pronunciation-status">点击任意卡片播放罗马尼亚语示例</span>
         <button class="btn-sm" id="pronunciation-repeat" onclick="repeatGuidePronunciation()" disabled>重播</button>
       </div>
-      <div class="ph-grid">
-        <div class="ph-item" data-speak="ă" data-tts="Sunetul ă, ca în măr." data-tts-mode="override"><div class="ph-letter">ă</div><div class="ph-sound">类似"呃"，短促</div></div>
-        <div class="ph-item" data-speak="î" data-tts="Sunetul î, ca în învăț. Sunetul â, ca în român."><div class="ph-letter">â / î</div><div class="ph-sound">类似"嗯"，舌后</div></div>
-        <div class="ph-item" data-speak="ș" data-tts="Sunetul ș, ca în șase."><div class="ph-letter">ș</div><div class="ph-sound">类似"sh"（师）</div></div>
-        <div class="ph-item" data-speak="ț" data-tts="Sunetul ț, ca în țară."><div class="ph-letter">ț</div><div class="ph-sound">类似"ts"（次）</div></div>
-        <div class="ph-item" data-speak="ce ci" data-tts="Ce, ca în ceai. Ci, ca în cine."><div class="ph-letter">ce/ci</div><div class="ph-sound">类似"ch"（吃）</div></div>
-        <div class="ph-item" data-speak="ge gi" data-tts="Ge, ca în ger. Gi, ca în girafă."><div class="ph-letter">ge/gi</div><div class="ph-sound">类似"j"（日）</div></div>
-        <div class="ph-item" data-speak="che" data-tts="Che, ca în cheie."><div class="ph-letter">ch</div><div class="ph-sound">类似"k"（克）</div></div>
-        <div class="ph-item" data-speak="ghe" data-tts="Ghe, ca în gheață."><div class="ph-letter">gh</div><div class="ph-sound">类似"g"（哥）</div></div>
-        <div class="ph-item" data-speak="oa" data-tts="Oa, ca în oameni."><div class="ph-letter">oa</div><div class="ph-sound">类似"wa"</div></div>
+      <div class="guide-section-head">
+        <div class="guide-section-title">最容易读错的规则</div>
+        <div class="guide-section-hint">IPA 比中文近似更可靠</div>
       </div>
+      <div class="ph-grid">
+        <div class="ph-item" data-speak="ă, sunetul ə" data-tts="Sunetul ă. Exemple: măr, apă."><div class="ph-letter">ă · /ə/</div><div class="ph-sound">中央元音，短而放松；中文没有完全对应音，不要读成完整的“饿”。</div><div class="ph-example">măr · apă</div></div>
+        <div class="ph-item" data-speak="â și î, sunetul ɨ" data-tts="Literele â și î redau același sunet. Exemple: român, învăț."><div class="ph-letter">â / î · /ɨ/</div><div class="ph-sound">两者音值相同。通常词中写 â，词首和词尾写 î；舌位高、嘴唇不圆。</div><div class="ph-example">român · învăț</div></div>
+        <div class="ph-item" data-speak="ș, sunetul ʃ" data-tts="Sunetul ș. Exemplu: șase."><div class="ph-letter">ș · /ʃ/</div><div class="ph-sound">接近英语 sh；气流连续，不要读成汉语卷舌声母。</div><div class="ph-example">șase</div></div>
+        <div class="ph-item" data-speak="ț, sunetul ts" data-tts="Sunetul ț. Exemplu: țară."><div class="ph-letter">ț · /ts/</div><div class="ph-sound">清塞擦音，接近词尾连读的 ts，不送出很强的气。</div><div class="ph-example">țară</div></div>
+        <div class="ph-item" data-speak="c, ce, ci, che, chi" data-tts="C se aude k în casă. Ce și ci se aud în cer și cine. Che și chi păstrează sunetul k, ca în cheie și chip."><div class="ph-letter">c / ce·ci / che·chi</div><div class="ph-sound">c 在 a、ă、â、o、u 前读 /k/；ce/ci 读 /tʃ/；che/chi 仍读 /k/，h 不单独发音。</div><div class="ph-example">casă · cer · cine · cheie · chip</div></div>
+        <div class="ph-item" data-speak="g, ge, gi, ghe, ghi" data-tts="G se aude g în gară. Ge și gi se aud în ger și girafă. Ghe și ghi păstrează sunetul g, ca în ghem și ghid."><div class="ph-letter">g / ge·gi / ghe·ghi</div><div class="ph-sound">g 在 a、ă、â、o、u 前读 /g/；ge/gi 读 /dʒ/；ghe/ghi 仍读 /g/。</div><div class="ph-example">gară · ger · girafă · ghem · ghid</div></div>
+        <div class="ph-item" data-speak="e inițial, uneori je" data-tts="În unele cuvinte vechi, e inițial se aude cu un i înainte. Exemple: eu, el, este."><div class="ph-letter">e → /je/（部分词）</div><div class="ph-sound">在 eu、el、ea、ei、ele 及 este/eram 等常用旧词里，词首 e 前带轻微 /j/；并非所有 e 都这样读。</div><div class="ph-example">eu · el · este</div></div>
+        <div class="ph-item" data-speak="i final șoptit" data-tts="În cuvântul pomi, i final este foarte scurt. Compară pom și pomi."><div class="ph-letter">词尾 i · /ʲ/</div><div class="ph-sound">许多辅音后的词尾 i 很轻，只软化前面的辅音，不另成完整音节。</div><div class="ph-example">pom ↔ pomi · lup ↔ lupi</div></div>
+        <div class="ph-item" data-speak="x, ks sau gz" data-tts="Litera x se aude diferit. Exemple: pix și examen."><div class="ph-letter">x · /ks/ 或 /gz/</div><div class="ph-sound">常读 /ks/；在部分元音之间或特定词中读 /gz/，需要随词记忆。</div><div class="ph-example">pix · examen</div></div>
+        <div class="ph-item" data-speak="r românesc" data-tts="Sunetul r. Exemple: rar, România."><div class="ph-letter">r · /r/</div><div class="ph-sound">舌尖轻触或颤动，不能按英语 r 发音；先从一次轻触开始练。</div><div class="ph-example">rar · România</div></div>
+      </div>
+      <div class="guide-source">字母名称、顺序和主要音值依据罗马尼亚语规范工具 <a href="https://doom.lingv.ro/studiu_introductiv/semne_grafice" target="_blank" rel="noopener noreferrer">DOOM³《罗马尼亚语字母表与音值》</a>整理；借词和专名可能保留来源语言的读法。</div>
     </div>
     <div class="guide-card">
-      <div class="guide-title">使用手册</div>
-      <div class="guide-subtitle">建议按“学习 → 测验 → 需加强 → 统计复盘”的节奏学习；指南、管理员后台和退出入口已集中到右上角账号菜单。</div>
+      <div class="guide-kicker">Cum înveți · 如何使用</div>
+      <div class="guide-title">按队列顺序学习，不必自己挑词</div>
+      <div class="guide-subtitle">“今日任务”会按学习步骤到点 → 到期复习 → 新词的顺序出卡。先清完当前阶段，再进入下一阶段。</div>
       <div class="manual-grid">
         <div class="manual-item">
-          <div class="manual-title">学习</div>
-          <div class="manual-text">优先完成到期复习，再学习新词。点卡片或上下滑动翻面，左右滑动切换卡片。</div>
+          <div class="manual-title">① 今日顺序</div>
+          <div class="manual-text">先处理已经到点的学习步骤，再做正式到期复习，最后学习今日新词。等待中的卡片会在时间到后自动回到前面。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">词汇</div>
-          <div class="manual-text">快速搜索中文、罗语或分类。管理员可在账号菜单进入后台，审核新增词汇和维护词库。</div>
+          <div class="manual-title">② 翻卡与作答</div>
+          <div class="manual-text">先回忆，再点卡片或上下滑动翻面。按真实记忆选择“不认识 / 模糊 / 认识”；左右滑动只切换当前队列中的卡片。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">测验</div>
-          <div class="manual-text">用翻译、名词复数、动词变位和重音题检查记忆。已掌握的词答错后会进入需加强，新词会按复习间隔重新出现。</div>
+          <div class="manual-title">③ 间隔复习</div>
+          <div class="manual-text">答错的新词会进入较短的学习间隔；已经学会的词答错后会重新学习。不要为了完成数字而把模糊词标成“认识”。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">需加强</div>
-          <div class="manual-text">集中练习需要补练的词。连续答对 3 次后，词条会从需加强列表移出。</div>
+          <div class="manual-title">测验与需加强</div>
+          <div class="manual-text">测验用于主动回忆翻译、复数、变位和重音。曾经掌握但后来不稳定的词会进入“需加强”，连续答对后移出。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">统计</div>
-          <div class="manual-text">个人统计分为概览、练习、词汇和备份；班级排行也放在统计里，方便复盘学习情况。</div>
+          <div class="manual-title">查词与加词</div>
+          <div class="manual-text">在“词汇”中搜索中文、罗语或分类，也可把指定词加入今日队列。管理员可从账号菜单进入后台维护词库。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">账号菜单</div>
-          <div class="manual-text">右上角账号菜单集中放置账号信息、指南、退出；管理员还会看到管理员后台入口。</div>
+          <div class="manual-title">统计与备份</div>
+          <div class="manual-text">“统计”展示学习进度、练习表现、词汇状态和班级排行；“备份”可导出本机进度，建议定期保存。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">重音标记</div>
-          <div class="manual-text">词条中用下划线标出重音音节。编辑时可用大写或 IPA 的 ˈ 标重音。</div>
+          <div class="manual-text">词条中用下划线标出重读元音。编辑词条时可用大写元音或 IPA 的 ˈ 标记重音；它只是学习提示，不属于正常拼写。</div>
+        </div>
+        <div class="manual-item">
+          <div class="manual-title">账号与同步</div>
+          <div class="manual-text">账号信息、指南、退出和管理员入口都在右上角账号菜单。顶部同步状态会提示云端保存情况；离线时仍可继续学习。</div>
         </div>
       </div>
     </div>
@@ -1143,15 +1171,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260712-reliability';</script>
-<script src="scheduler.js?v=20260712-reliability"></script>
-<script src="progress-model.js?v=20260712-reliability"></script>
-<script src="daily-plan.js?v=20260712-reliability"></script>
-<script src="romanian-text.js?v=20260712-reliability"></script>
-<script src="api.js?v=20260712-reliability"></script>
-<script src="telemetry.js?v=20260712-reliability"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260712-anki-guide';</script>
+<script src="scheduler.js?v=20260712-anki-guide"></script>
+<script src="progress-model.js?v=20260712-anki-guide"></script>
+<script src="daily-plan.js?v=20260712-anki-guide"></script>
+<script src="romanian-text.js?v=20260712-anki-guide"></script>
+<script src="api.js?v=20260712-anki-guide"></script>
+<script src="telemetry.js?v=20260712-anki-guide"></script>
 <script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260712-reliability"></script>
-<script src="pwa.js?v=20260712-reliability"></script>
+<script src="app.js?v=20260712-anki-guide"></script>
+<script src="pwa.js?v=20260712-anki-guide"></script>
 </body>
 </html>

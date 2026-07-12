@@ -12,10 +12,10 @@ assert(schedulerMigration.includes('add column if not exists recent_results json
 assert(schedulerMigration.includes('progress_user_due_at_idx'), 'scheduler migration must index per-user due lookups');
 assert(schedulerMigration.includes('validate constraint progress_card_state_check'), 'scheduler migration must validate the card-state constraint after backfill');
 assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
-assert(index.includes('scheduler.js?v=20260712-reliability'), 'scheduler cache buster must move with reliability changes');
-assert(index.includes('api.js?v=20260712-reliability'), 'API cache buster must match the reliability release');
-assert(index.includes('app.js?v=20260712-reliability'), 'app cache buster must match the reliability release');
-assert(serviceWorker.includes('ro-vocab-pwa-v19'), 'service worker cache must move with reliability changes');
+assert(index.includes('scheduler.js?v=20260712-anki-queue'), 'scheduler cache buster must move with Anki queue changes');
+assert(index.includes('api.js?v=20260712-anki-queue'), 'API cache buster must match the Anki queue release');
+assert(index.includes('app.js?v=20260712-anki-queue'), 'app cache buster must match the Anki queue release');
+assert(serviceWorker.includes('ro-vocab-pwa-v20'), 'service worker cache must move with Anki queue changes');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -55,6 +55,13 @@ function approx(actual, expected, tolerance = 1000) {
   assert.strictEqual(result.cardState, 'learning');
   approx(dueDiff(result), TEN_MINUTES);
   assert.strictEqual(result.forgetCount, 1);
+  assert.strictEqual(result.lapses, 0, 'a failed new card must not count as a review lapse');
+  assert.strictEqual(result.needsReinforcement, false, 'a failed new card must stay in learning, not reinforcement');
+
+  const secondFailure = scheduler.scheduleCardReview(result, scheduler.ACTION_UNKNOWN, { now: NOW });
+  assert.strictEqual(secondFailure.cardState, 'learning');
+  assert.strictEqual(secondFailure.lapses, 0, 'repeated learning failures must not become review lapses');
+  assert.strictEqual(secondFailure.needsReinforcement, false, 'repeated learning failures must remain in the learning queue');
 }
 
 {
@@ -62,13 +69,33 @@ function approx(actual, expected, tolerance = 1000) {
   assert.strictEqual(result.cardState, 'learning');
   approx(dueDiff(result), DAY);
   assert.strictEqual(result.fuzzyCount, 1);
+  assert.strictEqual(result.needsReinforcement, false, 'a fuzzy new card must not enter reinforcement');
 }
 
 {
   const result = scheduler.scheduleCardReview({}, scheduler.ACTION_KNOWN, { now: NOW });
-  assert(['learning', 'review'].includes(result.cardState));
+  assert.strictEqual(result.cardState, 'learning', 'first successful new-card answer should remain in the learning steps');
   approx(dueDiff(result), DAY);
   assert.strictEqual(result.correctCount, 1);
+
+  const graduated = scheduler.scheduleCardReview(result, scheduler.ACTION_KNOWN, {
+    now: new Date(new Date(NOW).getTime() + DAY).toISOString()
+  });
+  assert.strictEqual(graduated.cardState, 'review', 'second successful learning step should graduate the card to review');
+  assert(graduated.intervalDays > result.intervalDays, 'graduated review interval must grow beyond the learning interval');
+}
+
+{
+  const repaired = scheduler.normalizeSchedulerProgress({
+    cardState: 'reinforcing',
+    reps: 2,
+    forgetCount: 2,
+    recentResults: ['unknown', 'unknown'],
+    needsReinforcement: true,
+    lapses: 0
+  }, NOW);
+  assert.strictEqual(repaired.cardState, 'learning', 'legacy new-card misses must be repaired back to learning');
+  assert.strictEqual(repaired.needsReinforcement, false, 'legacy new-card misses must not remain reinforced');
 }
 
 {

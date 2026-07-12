@@ -1547,11 +1547,30 @@ function isDueReviewWord(w) {
   return !!(hasWordProgress(p) && isReviewDue(p));
 }
 
-function isOverdueLearningOrReinforcingWord(w) {
+function getStudyQueuePhase(w) {
   const p = getProgress(w?.ro);
-  if (!hasWordProgress(p) || !isReviewDue(p)) return false;
+  if (!hasWordProgress(p)) return 'new';
   const scheduler = normalizeScheduler(p);
-  return scheduler.cardState === 'learning' || scheduler.cardState === 'reinforcing' || scheduler.needsReinforcement;
+  const due = isReviewDue(p);
+  if (scheduler.cardState === 'learning') return due ? 'learning-due' : 'learning-waiting';
+  if (scheduler.cardState === 'reinforcing' || scheduler.needsReinforcement) {
+    return due ? 'relearning-due' : 'relearning-waiting';
+  }
+  if (due) return 'review-due';
+  return scheduler.cardState === 'mastered' ? 'mastered' : 'scheduled';
+}
+
+function isDueLearningStepWord(w) {
+  const phase = getStudyQueuePhase(w);
+  return phase === 'learning-due' || phase === 'relearning-due';
+}
+
+function isDueGraduatedReviewWord(w) {
+  return getStudyQueuePhase(w) === 'review-due';
+}
+
+function isOverdueLearningOrReinforcingWord(w) {
+  return isDueLearningStepWord(w);
 }
 
 function getReinforcementWordsDueToday(words = W) {
@@ -1574,6 +1593,14 @@ function getRemainingDueReviewWords(words = W) {
   return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueReviewWord(w));
 }
 
+function getRemainingDueLearningStepWords(words = W) {
+  return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueLearningStepWord(w));
+}
+
+function getRemainingGraduatedReviewWords(words = W) {
+  return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueGraduatedReviewWord(w));
+}
+
 function getRemainingTodayReviewWords() {
   return getRemainingDueReviewWords(W).filter(w => !isRetryDeferred(w));
 }
@@ -1584,8 +1611,8 @@ function isDailyQueueCandidate(w) {
 
 function getDailyPhasePriority(w) {
   if (!w?.ro) return 9;
-  if (isOverdueLearningOrReinforcingWord(w)) return 0;
-  if (isDueReviewWord(w)) return 1;
+  if (isDueLearningStepWord(w)) return 0;
+  if (isDueGraduatedReviewWord(w)) return 1;
   const scheduler = normalizeScheduler(getProgress(w.ro) || {});
   if (scheduler.needsReinforcement || scheduler.cardState === 'reinforcing') return 2;
   if (isUnseenWord(w)) return 3;
@@ -1838,9 +1865,11 @@ function getAuxiliaryLabels(w) {
   if (!w) return [];
   const labels = [];
   const scheduler = normalizeScheduler(getProgress(w.ro) || {});
+  const queuePhase = getStudyQueuePhase(w);
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) labels.push('今日任务');
   if (!hasWordProgress(getProgress(w.ro)) && !setHasRo(todaySeenWords, w.ro)) labels.push('新词');
-  if (isDueReviewWord(w)) labels.push('到期复习');
+  if (queuePhase === 'learning-due') labels.push('学习步骤到点');
+  if (queuePhase === 'review-due' || queuePhase === 'relearning-due') labels.push('到期复习');
   if ((scheduler.needsReinforcement || scheduler.cardState === 'reinforcing' || isWrongWord(w.ro)) && !labels.includes('需加强')) labels.push('需加强');
   return labels;
 }
@@ -2361,10 +2390,12 @@ function sortByReviewPriority(words) {
 function getProgressLevel(wordRo) {
   const p = getProgress(wordRo) || {};
   const scheduler = normalizeScheduler(p);
+  const word = getWordByRo(wordRo) || { ro: wordRo };
+  const queuePhase = getStudyQueuePhase(word);
   if (!hasWordProgress(p) && roListIncludes(todayQueue, wordRo) && !setHasRo(todayQueueCompleted, wordRo)) return 'queued';
-  if (hasWordProgress(p) && (scheduler.needsReinforcement || scheduler.cardState === 'reinforcing')) return 'reinforcing';
+  if (queuePhase === 'review-due' || queuePhase === 'relearning-due') return 'review';
+  if (queuePhase === 'learning-due' || queuePhase === 'learning-waiting' || queuePhase === 'relearning-waiting') return 'learning';
   if (hasWordProgress(p) && scheduler.cardState === 'mastered') return 'mastered';
-  if (hasWordProgress(p) && isReviewDue(p)) return 'review';
   if (hasWordProgress(p) && scheduler.cardState === 'review') return getStoredLevel(p);
   if (!hasWordProgress(p) && setHasRo(todayQueueCompleted, wordRo)) return 'learning';
   if (!hasWordProgress(p) && setHasRo(todaySeenWords, wordRo)) return 'learning';
@@ -2596,11 +2627,20 @@ function getReviewPanelMetrics(scoped) {
     });
     return reviewPanelMetricsCache.metrics;
   }
-  const activeOpenQueueCount = todayQueue
+  const scopedKeys = new Set(scoped.map(w => roKey(w.ro)));
+  const openQueueWords = todayQueue
     .filter(ro => !setHasRo(todayQueueCompleted, ro))
     .map(ro => getWordByRo(ro))
-    .filter(isActiveTodayQueueWord)
-    .length;
+    .filter(Boolean)
+    .filter(w => scopedKeys.has(roKey(w.ro)));
+  const activeOpenQueueCount = openQueueWords.filter(isActiveTodayQueueWord).length;
+  const newOpenQueueCount = openQueueWords.filter(isUnseenWord).length;
+  const waitingLearningCount = openQueueWords.filter(w => {
+    const phase = getStudyQueuePhase(w);
+    return phase === 'learning-waiting' || phase === 'relearning-waiting';
+  }).length;
+  const dueLearning = getRemainingDueLearningStepWords(scoped).length;
+  const dueReview = getRemainingGraduatedReviewWords(scoped).length;
   const due = getRemainingDueReviewWords(scoped).length;
   const rawUnseenRemaining = getUnseenWords(scoped)
     .filter(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro))
@@ -2609,13 +2649,26 @@ function getReviewPanelMetrics(scoped) {
   const remainingDueReviews = getRemainingTodayReviewWords().length;
   const availableNewSlots = Math.max(0, remainingSlots - activeOpenQueueCount);
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
-  const metrics = { due, remainingSlots, remainingDueReviews, unseenRemaining };
+  const metrics = {
+    due,
+    dueLearning,
+    dueReview,
+    waitingLearningCount,
+    newOpenQueueCount,
+    remainingSlots,
+    remainingDueReviews,
+    unseenRemaining
+  };
   reviewPanelMetricsCache = { key, metrics };
   finishDailyQueuePerf(perf, {
     cacheHit: false,
     vocabScanned: scoped.length,
     activeOpenQueueCount,
     unseenRemaining,
+    dueLearning,
+    dueReview,
+    waitingLearningCount,
+    newOpenQueueCount,
     remainingDueReviews
   });
   return metrics;
@@ -2625,28 +2678,51 @@ function renderReviewPanel() {
   const dueEl = document.getElementById('review-due-count');
   if (!dueEl) return;
   const scoped = getCurrentScopeWords();
-  const { due, remainingSlots, remainingDueReviews, unseenRemaining } = getReviewPanelMetrics(scoped);
+  const {
+    due,
+    dueLearning,
+    dueReview,
+    waitingLearningCount,
+    newOpenQueueCount,
+    remainingSlots,
+    remainingDueReviews,
+    unseenRemaining
+  } = getReviewPanelMetrics(scoped);
   const current = filtered[idx];
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
-  setText('review-new-remaining', unseenRemaining);
-  const nextBatch = Math.min(20, Math.max(0, remainingDueReviews || remainingSlots));
+  setText('review-new-remaining', newOpenQueueCount);
+  const nextLearningBatch = Math.min(20, Math.max(0, dueLearning));
+  const nextReviewBatch = Math.min(20, Math.max(0, dueReview));
   const currentGoalDone = isCurrentTodayGoalDone();
   const baseGoalDone = isDefaultGoalDone();
   const summaryText = currentGoalDone
     ? `已完成 ${todayNewWords}/${dailyGoal}`
-    : (remainingDueReviews > 0 ? `先复习 ${nextBatch} 个` : `继续 ${Math.min(20, remainingSlots)} 个任务`);
+    : (dueLearning > 0
+      ? `先做 ${nextLearningBatch} 个学习步骤`
+      : (dueReview > 0 ? `再复习 ${nextReviewBatch} 个` : `学习 ${newOpenQueueCount} 个新词`));
   setText('flash-control-summary', summaryText);
   const taskType = current ? getDailyTaskType(current) : '';
   const baseNote = currentGoalDone
     ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
     : (baseGoalDone
       ? `今日固定目标已完成：${todayNewWords}/${defaultDailyGoal} 个；临时加量进度 ${todayNewWords}/${dailyGoal}。`
-      : (remainingDueReviews > 0
-        ? `先完成一组 ${nextBatch} 个到期复习，再学习新词。${taskType ? `当前卡片：${taskType}。` : ''}`
-        : `继续完成今日任务，建议一次做 ${Math.min(20, remainingSlots)} 个。${taskType ? `当前卡片：${taskType}。` : ''}`));
+      : (dueLearning > 0
+        ? `先完成 ${nextLearningBatch} 个已到点的学习步骤，再处理正式复习。${taskType ? `当前卡片：${taskType}。` : ''}`
+        : (dueReview > 0
+          ? `再完成 ${nextReviewBatch} 个到期复习，之后才进入新词。${taskType ? `当前卡片：${taskType}。` : ''}`
+          : `现在可以学习新词；等待中的学习步骤会到点后优先出现。${taskType ? `当前卡片：${taskType}。` : ''}`)));
   setText('review-note', lastLearningHint || baseNote);
-  renderTodayFocus({ due, remainingSlots, remainingDueReviews, unseenRemaining });
+  renderTodayFocus({
+    due,
+    dueLearning,
+    dueReview,
+    waitingLearningCount,
+    newOpenQueueCount,
+    remainingSlots,
+    remainingDueReviews,
+    unseenRemaining
+  });
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
 }
@@ -2665,22 +2741,29 @@ function renderTodayFocus(metrics = null) {
   const scoped = getCurrentScopeWords();
   const m = metrics || getReviewPanelMetrics(scoped);
   const currentDone = isCurrentTodayGoalDone();
-  const dueCount = m.remainingDueReviews ?? getRemainingDueReviewWords(W).length;
-  const wrongCount = getWrongWords().length;
-  const remainingTasks = Math.max(0, dailyGoal - todayNewWords);
-  const reviewState = dueCount > 0 ? 'active' : 'done';
-  const learnState = dueCount > 0 ? '' : (currentDone ? 'done' : 'active');
-  const quizState = dueCount === 0 && currentDone ? 'active' : '';
+  const learningDueCount = Number(m.dueLearning || 0);
+  const reviewDueCount = Number(m.dueReview || 0);
+  const waitingLearningCount = Number(m.waitingLearningCount || 0);
+  const newOpenQueueCount = Number(m.newOpenQueueCount || 0);
+  const learningState = learningDueCount > 0 ? 'active' : (waitingLearningCount > 0 ? '' : 'done');
+  const reviewState = learningDueCount > 0 ? '' : (reviewDueCount > 0 ? 'active' : 'done');
+  const newState = learningDueCount > 0 || reviewDueCount > 0 ? '' : (currentDone ? 'done' : 'active');
+  setStepState('today-step-learning', learningState);
   setStepState('today-step-review', reviewState);
-  setStepState('today-step-learn', learnState);
-  setStepState('today-step-quiz', quizState);
-  setText('today-step-review-meta', dueCount > 0 ? `${dueCount} 个到期` : '已清空');
-  setText('today-step-learn-meta', currentDone ? `${todayNewWords} / ${dailyGoal}` : `还差 ${remainingTasks} 个`);
-  setText('today-step-quiz-meta', wrongCount > 0 ? `${wrongCount} 个需加强` : '智能练习');
-  const title = dueCount > 0
-    ? `今日路径：先复习 ${dueCount} 个`
-    : (currentDone ? '今日路径：做一轮智能测验' : `今日路径：继续 ${Math.min(20, remainingTasks)} 个任务`);
-  const action = dueCount > 0 ? '复习优先' : (currentDone ? '巩固检查' : '继续学习');
+  setStepState('today-step-new', newState);
+  setText('today-step-learning-meta', learningDueCount > 0
+    ? `${learningDueCount} 个到点`
+    : (waitingLearningCount > 0 ? `${waitingLearningCount} 个等待` : '已清空'));
+  setText('today-step-review-meta', reviewDueCount > 0 ? `${reviewDueCount} 个到期` : '已清空');
+  setText('today-step-new-meta', currentDone ? '今日已完成' : `${newOpenQueueCount} 个待学`);
+  const title = learningDueCount > 0
+    ? `今日顺序：先完成 ${learningDueCount} 个学习步骤`
+    : (reviewDueCount > 0
+      ? `今日顺序：再复习 ${reviewDueCount} 个到期词`
+      : (currentDone ? '今日任务已完成' : `今日顺序：现在学习 ${newOpenQueueCount} 个新词`));
+  const action = learningDueCount > 0
+    ? '学习步骤优先'
+    : (reviewDueCount > 0 ? '到期复习优先' : (currentDone ? '完成' : '新词阶段'));
   setText('today-focus-title', title);
   setText('today-focus-action', action);
 }
@@ -4046,12 +4129,15 @@ function markCard(answer) {
   try {
     const wasReviewingHistory = !!flashOverrideRo;
     const p = getProgress(w.ro);
-    const isReviewTask = flashMode === 'review' || (flashMode === 'today' && p && (p.qt || p.known));
-    const interaction = flashMode === 'review'
+    const schedulerBefore = normalizeScheduler(p || {});
+    const queuePhaseBefore = getStudyQueuePhase(w);
+    const isReviewTask = queuePhaseBefore === 'review-due' ||
+      queuePhaseBefore === 'relearning-due' ||
+      schedulerBefore.cardState === 'mastered' ||
+      (schedulerBefore.cardState === 'reinforcing' && schedulerBefore.lapses > 0);
+    const interaction = isReviewTask
       ? (isKnownAction ? 'review_correct' : (isFuzzyAction ? 'review_fuzzy' : 'review_wrong'))
-      : (isReviewTask
-        ? (isKnownAction ? 'review_correct' : (isFuzzyAction ? 'review_fuzzy' : 'review_wrong'))
-        : (isKnownAction ? 'flashcard_known' : (isFuzzyAction ? 'flashcard_fuzzy' : 'flashcard_unknown')));
+      : (isKnownAction ? 'flashcard_known' : (isFuzzyAction ? 'flashcard_fuzzy' : 'flashcard_unknown'));
     if (flashMode === 'today') queueTodayAccuracyAttempt(isKnownAction);
     const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
     setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() }, { source: 'markCard' });
@@ -4069,9 +4155,11 @@ function markCard(answer) {
       dailyStateResult = isOpenTodayWord
         ? commitTodayWordExposure(w.ro, { fast: true, deferGoalPrompt: true })
         : null;
-      lastLearningHint = `已保留「${w.zh || w.ro}」在今日任务里；明确认识后才会完成这个词。`;
+      lastLearningHint = `「${w.zh || w.ro}」仍在学习步骤中；到点后会优先重试，明确认识后才完成今日任务。`;
     } else if (isUnknownAction) {
-      showToast(`这个词会在约 ${LEARNING_RETRY_INTERVAL.label} 后重新出现；如果之后仍答错，会进入需加强列表`);
+      showToast(isReviewTask
+        ? `已进入重新学习，约 ${LEARNING_RETRY_INTERVAL.label} 后优先复习`
+        : `仍在学习中，约 ${LEARNING_RETRY_INTERVAL.label} 后作为学习步骤优先重试`);
     } else if (isFuzzyAction) {
       showToast('已按模糊处理，系统会安排较近的复习');
     }
@@ -4221,7 +4309,23 @@ let guidePronunciationLabel = '';
 let guidePronunciationTts = '';
 let guidePronunciationLang = 'ro-RO';
 
-function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '', ttsLang = 'ro-RO') {
+function waitForSpeechVoices(timeoutMs = 700) {
+  const current = speechSynthesis.getVoices();
+  if (current.length) return Promise.resolve(current);
+  return new Promise((resolve) => {
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      speechSynthesis.removeEventListener?.('voiceschanged', finish);
+      resolve(speechSynthesis.getVoices());
+    };
+    speechSynthesis.addEventListener?.('voiceschanged', finish, { once: true });
+    setTimeout(finish, timeoutMs);
+  });
+}
+
+async function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '', ttsLang = 'ro-RO') {
   const value = String(text || '').trim();
   if (!value) return;
   const ttsValue = String(ttsText || value).trim();
@@ -4241,16 +4345,24 @@ function speakGuidePronunciation(text, label, sourceEl = null, ttsText = '', tts
     return;
   }
   speechSynthesis.cancel();
+  const voices = await waitForSpeechVoices();
+  const preferredVoice = voices.find(v => v.lang.toLowerCase() === lang.toLowerCase()) ||
+    voices.find(v => v.lang.toLowerCase().startsWith(lang.split('-')[0].toLowerCase()));
+  if (lang.startsWith('ro') && !preferredVoice) {
+    if (status) status.innerHTML = `<strong>${escapeHtml(guidePronunciationLabel)}</strong> · 未检测到罗马尼亚语语音，已停止播放以免误导`;
+    showToast('请先在系统语音设置中安装罗马尼亚语语音');
+    return;
+  }
   const utterance = new SpeechSynthesisUtterance(ttsValue);
   utterance.lang = lang;
   utterance.rate = 0.8;
-  const voices = speechSynthesis.getVoices();
-  const preferredVoice = voices.find(v => v.lang === lang) || voices.find(v => v.lang.startsWith(lang.split('-')[0]));
   if (preferredVoice) utterance.voice = preferredVoice;
-  if (lang.startsWith('ro') && !preferredVoice) {
-    const status = document.getElementById('pronunciation-status');
-    if (status) status.innerHTML += ' <span style="font-size:12px;color:var(--yellow-text)">未检测到罗马尼亚语语音，系统发音可能偏差</span>';
-  }
+  utterance.onend = () => {
+    if (status) status.innerHTML = `已播放 <strong>${escapeHtml(guidePronunciationLabel)}</strong> · ${escapeHtml(value)}`;
+  };
+  utterance.onerror = () => {
+    if (status) status.innerHTML = `<strong>${escapeHtml(guidePronunciationLabel)}</strong> · 播放失败，请检查系统语音设置`;
+  };
   speechSynthesis.speak(utterance);
 }
 
@@ -4271,7 +4383,7 @@ document.addEventListener('click', (event) => {
   const item = event.target.closest?.('.alphabet-item[data-speak],.ph-item[data-speak]');
   if (!item) return;
   const label = item.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || item.dataset.speak;
-  const ttsText = item.dataset.ttsMode === 'override' ? item.dataset.tts : '';
+  const ttsText = item.dataset.tts || '';
   speakGuidePronunciation(item.dataset.speak, label, item, ttsText, item.dataset.ttsLang || 'ro-RO');
 });
 
@@ -4280,7 +4392,7 @@ document.addEventListener('keydown', (event) => {
   if (!item || (event.key !== 'Enter' && event.key !== ' ')) return;
   event.preventDefault();
   const label = item.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || item.dataset.speak;
-  const ttsText = item.dataset.ttsMode === 'override' ? item.dataset.tts : '';
+  const ttsText = item.dataset.tts || '';
   speakGuidePronunciation(item.dataset.speak, label, item, ttsText, item.dataset.ttsLang || 'ro-RO');
 });
 

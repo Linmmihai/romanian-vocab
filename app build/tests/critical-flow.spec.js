@@ -30,6 +30,23 @@ test('offline study answer persists and advances the fixed daily goal', async ({
   expect(pageErrors).toEqual([]);
 });
 
+test('failed new cards stay in Anki learning steps instead of becoming reinforcement', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  await expect(page.locator('.today-step-label')).toHaveText(['先学习中', '再到期复习', '最后学新词']);
+  await page.locator('#main-card').click();
+  const wordRo = (await page.locator('#fc-ro').innerText()).trim();
+  await page.locator('#mark-unknown-btn').click();
+  await expect(page.locator('#review-new-count')).toHaveText('0/20');
+
+  await page.locator('.nav-tab[data-page="list"]').click();
+  await page.locator('#search-input').fill(wordRo);
+  const row = page.locator('.word-row');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('学习中');
+  await expect(row).not.toContainText('需加强');
+});
+
 test('primary navigation remains usable on a mobile viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterOfflineApp(page);
