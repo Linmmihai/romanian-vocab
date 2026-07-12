@@ -11,14 +11,20 @@ const app = read('app.js');
 const api = read('api.js');
 const progressModel = read('progress-model.js');
 const dailyPlan = read('daily-plan.js');
+const romanianText = read('romanian-text.js');
+const telemetry = read('telemetry.js');
+const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260711-quality-cleanup',
-  'progress-model.js?v=20260711-quality-cleanup',
-  'daily-plan.js?v=20260711-quality-cleanup',
-  'api.js?v=20260711-quality-cleanup',
+  'scheduler.js?v=20260712-reliability',
+  'progress-model.js?v=20260712-reliability',
+  'daily-plan.js?v=20260712-reliability',
+  'romanian-text.js?v=20260712-reliability',
+  'api.js?v=20260712-reliability',
+  'telemetry.js?v=20260712-reliability',
   'auth.js?v=20260619-direct-front-reset',
-  'app.js?v=20260711-quality-cleanup'
+  'app.js?v=20260712-reliability',
+  'pwa.js?v=20260712-reliability'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -26,18 +32,28 @@ assert(scriptOrder.every((position, index) => index === 0 || position > scriptOr
 assert(build.includes("'progress-model.js'"), 'web build must copy the progress model');
 assert(build.includes("'progress-model.js',"), 'web build completeness list must require the progress model');
 assert(build.includes("'daily-plan.js'"), 'web build must copy and require the daily planner');
+assert(build.includes("'romanian-text.js'"), 'web build must copy and require Romanian text helpers');
+assert(build.includes("'telemetry.js'"), 'web build must copy and require telemetry');
+assert(build.includes("'pwa.js'"), 'web build must copy and require the PWA update controller');
 assert(serviceWorker.includes("'./progress-model.js'"), 'PWA app shell must include the progress model');
 assert(serviceWorker.includes("'./daily-plan.js'"), 'PWA app shell must include the daily planner');
-assert(serviceWorker.includes("ro-vocab-pwa-v18"), 'PWA cache must advance with the quality cleanup');
+assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
+assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
+assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
+assert(serviceWorker.includes("ro-vocab-pwa-v19"), 'PWA cache must advance with reliability changes');
 assert(progressModel.includes('function mergeEntries'), 'progress model must own entry merge behavior');
 assert(progressModel.includes('function selectSchedulerBase'), 'progress model must own scheduler snapshot selection');
 assert(dailyPlan.includes('function composeOpenQueue'), 'daily planner must own fixed-quota queue composition');
 assert(dailyPlan.includes('function buildTieredPlan'), 'daily planner must own tiered plan composition');
+assert(romanianText.includes('function stressToHtml'), 'Romanian text module must own stress rendering');
+assert(telemetry.includes('function reportClientIssue'), 'telemetry must own client issue reporting');
+assert(pwa.includes('function showUpdatePrompt'), 'PWA controller must own the update prompt');
 assert(progressModel.includes('getGrammarRight: grammarRight'), 'progress model must expose grammar-right normalization');
 assert(progressModel.includes('getGrammarTotal: grammarTotal'), 'progress model must expose grammar-total normalization');
 assert(!app.includes('function mergeProgressEntry'), 'app.js must not own progress merge behavior');
 assert(!api.includes('function isSchedulerMergeDowngrade'), 'api.js must not own scheduler selection behavior');
 assert(!app.includes('function buildSmartDailyPlan'), 'app.js must not keep the obsolete duplicate planner');
+assert(!app.includes('function autoStressToken'), 'app.js must not own Romanian stress parsing');
 assert(!app.includes('getProgressGrammarQr'), 'app.js must not call the removed grammar-right helper');
 assert(!app.includes('getProgressGrammarQt'), 'app.js must not call the removed grammar-total helper');
 

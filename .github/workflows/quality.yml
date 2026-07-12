@@ -29,3 +29,9 @@ jobs:
 
       - name: Build web application
         run: npm --prefix "app build" run build:web
+
+      - name: Install browser for end-to-end checks
+        run: npx --prefix "app build" playwright install --with-deps chromium
+
+      - name: Run critical browser flows
+        run: npm --prefix "app build" run test:e2e

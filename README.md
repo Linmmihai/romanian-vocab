@@ -36,8 +36,11 @@
 ├── scheduler.js               # 单张卡片的调度与防进度倒退规则
 ├── progress-model.js          # 学习进度合并与证据选择
 ├── daily-plan.js              # 每日队列去重、排序和固定配额规划
+├── romanian-text.js           # 罗语重音和语法文本纯函数
 ├── app.js                     # 页面状态、交互、渲染和流程编排
 ├── api.js                     # Supabase 与本地/离线存储逻辑
+├── telemetry.js               # 隐私安全的客户端故障记录
+├── pwa.js                     # PWA 更新检测和刷新提示
 ├── auth.js                    # 登录、注册、离线登录、退出登录
 ├── data/vocab.json            # 内置词库，离线模式也会使用
 ├── tools/                     # 数据库迁移和自动化回归检查
@@ -159,6 +162,7 @@ versionName
 ```bash
 node tools/run_checks.js
 npm --prefix "app build" run build:web
+npm --prefix "app build" run test:e2e
 ```
 
 - 如果之后还要继续更新 APK，请保留整个项目文件夹，尤其是根目录源码和 `app build/android/` 目录。
