@@ -13,11 +13,11 @@ test('offline study answer persists and advances the fixed daily goal', async ({
   page.on('pageerror', error => pageErrors.push(error.message));
   await enterOfflineApp(page);
 
-  await expect(page.locator('#review-new-count')).toHaveText('0/20');
+  await expect(page.locator('#review-new-count')).toHaveText('0/200');
   await page.locator('#main-card').click();
   await expect(page.locator('#mark-known-btn')).toBeVisible();
   await page.locator('#mark-known-btn').click();
-  await expect(page.locator('#review-new-count')).toHaveText('1/20');
+  await expect(page.locator('#review-new-count')).toHaveText('1/200');
 
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('progress:local-offline-user');
@@ -26,18 +26,18 @@ test('offline study answer persists and advances the fixed daily goal', async ({
 
   await page.reload();
   await expect(page.locator('#app-screen')).toBeVisible();
-  await expect(page.locator('#review-new-count')).toHaveText('1/20');
+  await expect(page.locator('#review-new-count')).toHaveText('1/200');
   expect(pageErrors).toEqual([]);
 });
 
 test('failed new cards stay in Anki learning steps instead of becoming reinforcement', async ({ page }) => {
   await enterOfflineApp(page);
 
-  await expect(page.locator('.today-step-label')).toHaveText(['先学习中', '再到期复习', '最后学新词']);
+  await expect(page.locator('#today-focus-meta')).toContainText('复习优先');
   await page.locator('#main-card').click();
   const wordRo = (await page.locator('#fc-ro').innerText()).trim();
   await page.locator('#mark-unknown-btn').click();
-  await expect(page.locator('#review-new-count')).toHaveText('0/20');
+  await expect(page.locator('#review-new-count')).toHaveText('0/200');
 
   await page.locator('.nav-tab[data-page="list"]').click();
   await page.locator('#search-input').fill(wordRo);

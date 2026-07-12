@@ -43,6 +43,8 @@ let lastLearningHint = '';
 let progressVersion = 0;
 let dailyQueueVersion = 0;
 let reviewPanelMetricsCache = { key: '', metrics: null };
+let listVisibleLimit = 40;
+let listRenderTimer = null;
 
 let editingWordId = null;
 let editingReportId = null;
@@ -79,14 +81,15 @@ let wbStreaks = {};
 let wbGraduated = 0;
 let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
+const DEFAULT_DAILY_GOAL = 200;
 const DAILY_GOAL_MAX = 5000;
 const PENDING_PROGRESS_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 const CLOUD_PROGRESS_REFRESH_COOLDOWN_MS = 60 * 1000;
 const IDLE_PROGRESS_BACKUP_MS = 150 * 1000;
 
 // 每日任务目标状态
-let dailyGoal = 20;        // 今天实际任务量，允许临时扩展
-let defaultDailyGoal = 20; // 用户主动保存的每日固定目标
+let dailyGoal = DEFAULT_DAILY_GOAL;        // 今天实际处理量，允许临时扩展
+let defaultDailyGoal = DEFAULT_DAILY_GOAL; // 用户主动保存的每日固定处理目标
 let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
 let todaySeenWords = new Set(); // 今天已经见过的词 id 集合
 let todayLog = null;
@@ -109,8 +112,23 @@ const DEFAULT_REMINDER_SETTINGS = {
   lastSentDate: ''
 };
 
-function normalizeDailyGoalValue(value, fallback = 20) {
-  return Math.max(1, Math.min(DAILY_GOAL_MAX, Number(value) || fallback || 20));
+function normalizeDailyGoalValue(value, fallback = DEFAULT_DAILY_GOAL) {
+  return Math.max(1, Math.min(DAILY_GOAL_MAX, Number(value) || fallback || DEFAULT_DAILY_GOAL));
+}
+
+async function migrateLegacyDailyGoal(userId, profileGoal) {
+  const rawGoal = Number(profileGoal || 0);
+  const migrationKey = `daily_goal_200_migrated:${userId || 'local'}`;
+  if (rawGoal !== 20 || localStorage.getItem(migrationKey) === '1') {
+    return normalizeDailyGoalValue(profileGoal, DEFAULT_DAILY_GOAL);
+  }
+  try {
+    await apiSetDailyGoal(userId, DEFAULT_DAILY_GOAL);
+    localStorage.setItem(migrationKey, '1');
+  } catch (error) {
+    console.warn('Daily goal migration will retry later', error);
+  }
+  return DEFAULT_DAILY_GOAL;
 }
 
 function normalizeWordText(value) {
@@ -669,7 +687,7 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
   activeOpenCount = activeOpenWords.length;
   deferredOpenCount = deferredOpenWords.length;
   activeSlots = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
-  if (!options.force && (activeOpenCount >= activeSlots || !activeSlots || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal())) {
+  if (!options.force && (activeOpenCount + deferredOpenCount >= activeSlots || !activeSlots || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal())) {
     debugDailyQueue('ensureTodayQueueHasActiveCards:fast-active', {
       reason,
       activeOpenCount,
@@ -823,7 +841,7 @@ function getTodayCheckinAccuracy() {
   const total = stats.total + pendingTodayAccuracyStats.total;
   const correct = stats.correct + pendingTodayAccuracyStats.correct;
   if (total > 0) return Math.round(correct / total * 100);
-  const base = Math.max(1, Number(defaultDailyGoal || dailyGoal || 20));
+  const base = Math.max(1, Number(defaultDailyGoal || dailyGoal || DEFAULT_DAILY_GOAL));
   return Math.min(100, Math.round(Math.min(todayNewWords, base) / base * 100));
 }
 
@@ -874,6 +892,38 @@ const GRAMMAR_CATEGORIES = [
 ];
 
 const CATEGORY_ORDER = ['全部', ...SUBJECT_CATEGORIES, ...GRAMMAR_CATEGORIES];
+
+const CATEGORY_LABELS = {
+  '全部': '全部',
+  'Daily Life': '日常生活',
+  Philosophy: '哲学',
+  Economics: '经济',
+  Law: '法律',
+  Education: '教育',
+  Literature: '文学',
+  History: '历史',
+  Science: '科学',
+  Engineering: '工程技术',
+  Agriculture: '农业',
+  Medicine: '医学',
+  'Military Science': '军事',
+  Management: '管理',
+  Art: '艺术',
+  Clasificare: '分类',
+  verb: '动词',
+  adjective: '形容词',
+  adverb: '副词',
+  conjunction: '连词',
+  preposition: '介词',
+  pronoun: '代词',
+  numeral: '数词',
+  interjection: '感叹词'
+};
+
+function getCategoryLabel(category) {
+  const normalized = normalizeCategory(category);
+  return CATEGORY_LABELS[normalized] || normalized;
+}
 
 const CATEGORY_ALIASES = {
   '日常': 'Daily Life',
@@ -1010,7 +1060,7 @@ async function onLogin(user) {
   if (userRole === 'pending') { showPendingScreen(); return; }
 
   const nickname = profile?.nickname || user.email.split('@')[0];
-  defaultDailyGoal = normalizeDailyGoalValue(profile?.daily_goal, 20);
+  defaultDailyGoal = await migrateLegacyDailyGoal(user.id, profile?.daily_goal);
   dailyGoal = defaultDailyGoal;
   progressLoaded = false;
 
@@ -1519,7 +1569,7 @@ async function loadDailyQueue() {
 }
 
 function buildDailyQueueWords(goal) {
-  const cap = Math.max(1, Number(goal || 20));
+  const cap = Math.max(1, Number(goal || DEFAULT_DAILY_GOAL));
   return buildReviewFirstDailyPlan(W, cap);
 }
 
@@ -1630,7 +1680,7 @@ function sortDailyPhaseWords(words = []) {
 }
 
 function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
-  const cap = Math.max(1, Number(limit || dailyGoal || 20));
+  const cap = Math.max(1, Number(limit || dailyGoal || DEFAULT_DAILY_GOAL));
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
   const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
   const overdueLearning = sortReviewDueWithWeakPriority(usable).filter(isOverdueLearningOrReinforcingWord);
@@ -1648,7 +1698,7 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
 
 function buildOpenTodayQueue(goal = dailyGoal) {
   debugDailyQueue('buildOpenTodayQueue:before', { goal });
-  const cap = Math.max(1, Number(goal || dailyGoal || 20));
+  const cap = Math.max(1, Number(goal || dailyGoal || DEFAULT_DAILY_GOAL));
   const completedKeys = new Set([...todayQueueCompleted].map(roKey));
   const openWords = normalizeWordRoList(todayQueue).map(ro => getWordByRo(ro)).filter(word => {
     if (!word || completedKeys.has(roKey(word.ro))) return false;
@@ -1696,7 +1746,7 @@ function buildOpenTodayQueue(goal = dailyGoal) {
 
 function appendExplicitTodayQueueCards(targetGoal = dailyGoal) {
   const completedCount = todayQueueCompleted.size;
-  const targetOpen = Math.max(0, Number(targetGoal || dailyGoal || 20) - completedCount);
+  const targetOpen = Math.max(0, Number(targetGoal || dailyGoal || DEFAULT_DAILY_GOAL) - completedCount);
   const missing = Math.max(0, targetOpen - todayQueue.length);
   if (!missing) return 0;
   const queuedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
@@ -1760,7 +1810,7 @@ function getDailyWordList(words = W, options = {}) {
     return [];
   }
   if (!options.skipRepair) ensureTodayQueueHasActiveCards('getDailyWordList');
-  const limit = Math.max(1, Number(options.limit || dailyGoal || 20));
+  const limit = Math.max(1, Number(options.limit || dailyGoal || DEFAULT_DAILY_GOAL));
   const scoped = options.ignoreCategory || curCat === '全部'
     ? words
     : words.filter(w => w.cat === curCat);
@@ -1896,7 +1946,7 @@ function setGoalInputValue(value) {
   if (input) input.value = value;
 }
 
-async function setDailyGoalAndRebuild(goal, message = '每日任务目标已更新') {
+async function setDailyGoalAndRebuild(goal, message = '每日处理目标已更新') {
   const nextGoal = normalizeDailyGoalValue(goal, defaultDailyGoal);
   defaultDailyGoal = nextGoal;
   dailyGoal = nextGoal;
@@ -1925,7 +1975,7 @@ async function extendTodayGoal(amount) {
   const base = Math.max(dailyGoal, todayNewWords);
   const nextGoal = Math.min(DAILY_GOAL_MAX, base + extra);
   if (nextGoal <= dailyGoal && dailyGoal >= DAILY_GOAL_MAX) {
-    showToast(`每日任务目标最高为 ${DAILY_GOAL_MAX}`);
+    showToast(`每日处理目标最高为 ${DAILY_GOAL_MAX}`);
     return;
   }
   dailyGoal = nextGoal;
@@ -2223,10 +2273,10 @@ function isStartedNotMastered(progress) {
   return getStoredLevel(progress) !== 'mastered';
 }
 
-const LEVEL_LABEL = { unknown: '未学', queued: '今日待学', learning: '学习中', review: '待复习', reinforcing: '需加强', mastered: '已掌握' };
-const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', review: 'var(--red)', reinforcing: 'var(--red)', mastered: 'var(--green)' };
-const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', review: 'var(--red-bg)', reinforcing: 'var(--red-bg)', mastered: 'var(--green-bg)' };
-const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', review: 'var(--red-text)', reinforcing: 'var(--red-text)', mastered: 'var(--green-text)' };
+const LEVEL_LABEL = { unknown: '未学', queued: '今日待学', learning: '学习中', review: '待复习', reinforcing: '学习中', mastered: '已掌握' };
+const LEVEL_COLOR = { unknown: 'var(--text3)', queued: 'var(--blue)', learning: 'var(--yellow)', review: 'var(--red)', reinforcing: 'var(--yellow)', mastered: 'var(--green)' };
+const LEVEL_BG    = { unknown: 'var(--bg3)', queued: 'var(--blue-bg)', learning: '#fffbeb', review: 'var(--red-bg)', reinforcing: '#fffbeb', mastered: 'var(--green-bg)' };
+const LEVEL_TC    = { unknown: 'var(--text2)', queued: 'var(--blue-text)', learning: 'var(--yellow-text)', review: 'var(--red-text)', reinforcing: 'var(--yellow-text)', mastered: 'var(--green-text)' };
 const LEARNING_RETRY_INTERVAL = { label: '10分钟', ms: 10 * 60 * 1000 };
 const REINFORCEMENT_MIN_LEARNING_MISSES = 2;
 const REVIEW_INTERVALS = [
@@ -2307,7 +2357,7 @@ async function addWordToTodayQueue(wordRo) {
   const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
   if (!remainingSlots) {
-    showToast('今日新词名额已用完；提高今日任务目标后可以继续添加新词');
+    showToast('今日固定处理队列已满；提高每日处理目标后可以继续添加新词');
     return;
   }
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
@@ -2745,27 +2795,18 @@ function renderTodayFocus(metrics = null) {
   const reviewDueCount = Number(m.dueReview || 0);
   const waitingLearningCount = Number(m.waitingLearningCount || 0);
   const newOpenQueueCount = Number(m.newOpenQueueCount || 0);
-  const learningState = learningDueCount > 0 ? 'active' : (waitingLearningCount > 0 ? '' : 'done');
-  const reviewState = learningDueCount > 0 ? '' : (reviewDueCount > 0 ? 'active' : 'done');
-  const newState = learningDueCount > 0 || reviewDueCount > 0 ? '' : (currentDone ? 'done' : 'active');
-  setStepState('today-step-learning', learningState);
-  setStepState('today-step-review', reviewState);
-  setStepState('today-step-new', newState);
-  setText('today-step-learning-meta', learningDueCount > 0
-    ? `${learningDueCount} 个到点`
-    : (waitingLearningCount > 0 ? `${waitingLearningCount} 个等待` : '已清空'));
-  setText('today-step-review-meta', reviewDueCount > 0 ? `${reviewDueCount} 个到期` : '已清空');
-  setText('today-step-new-meta', currentDone ? '今日已完成' : `${newOpenQueueCount} 个待学`);
-  const title = learningDueCount > 0
-    ? `今日顺序：先完成 ${learningDueCount} 个学习步骤`
-    : (reviewDueCount > 0
-      ? `今日顺序：再复习 ${reviewDueCount} 个到期词`
-      : (currentDone ? '今日任务已完成' : `今日顺序：现在学习 ${newOpenQueueCount} 个新词`));
+  const title = `今日处理 ${todayNewWords}/${dailyGoal}`;
   const action = learningDueCount > 0
-    ? '学习步骤优先'
-    : (reviewDueCount > 0 ? '到期复习优先' : (currentDone ? '完成' : '新词阶段'));
+    ? `学习步骤 ${learningDueCount}`
+    : (reviewDueCount > 0 ? `到期复习 ${reviewDueCount}` : (currentDone ? '已完成' : `新词 ${newOpenQueueCount}`));
+  const meta = currentDone
+    ? '今天的固定处理目标已经完成，可以打卡或明确选择继续加量。'
+    : (waitingLearningCount > 0 && !learningDueCount && !reviewDueCount
+      ? `${waitingLearningCount} 个学习步骤正在等待；当前先处理队列中的新词。`
+      : `复习优先，不足 ${dailyGoal} 个的名额由新词补满。`);
   setText('today-focus-title', title);
   setText('today-focus-action', action);
+  setText('today-focus-meta', meta);
 }
 
 function setFlashMode(mode) {
@@ -2775,7 +2816,10 @@ function setFlashMode(mode) {
   flashHistory = [];
   flashOverrideRo = null;
   const card = document.getElementById('main-card');
-  if (card) card.classList.remove('flipped');
+  if (card) {
+    card.classList.remove('flipped');
+    setCardFlipAccessibility('main-card', false);
+  }
   applyFilters();
   renderCard();
 }
@@ -3169,14 +3213,21 @@ async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
 // ── 导航 ─────────────────────────────────────────────────
 
 function switchPage(p) {
-  if (p !== 'quiz' && isQuizInProgress()) resetQuizSession();
+  if (p !== 'quiz' && isQuizInProgress()) {
+    const answered = qRoundTotal;
+    resetQuizSession();
+    showToast(answered ? `本轮测验已结束，已作答 ${answered} 题` : '本轮测验已结束');
+  }
   if (p !== 'wrongbook' && wbAutoAdvanceTimer) {
     clearTimeout(wbAutoAdvanceTimer);
     wbAutoAdvanceTimer = null;
   }
   const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'guide', 'admin'];
   pages.forEach((s) => {
-    document.querySelectorAll(`.nav-tab[data-page="${s}"]`).forEach(tab => tab.classList.toggle('active', s === p));
+    document.querySelectorAll(`.nav-tab[data-page="${s}"]`).forEach(tab => {
+      tab.classList.toggle('active', s === p);
+      tab.setAttribute('aria-selected', s === p ? 'true' : 'false');
+    });
     const page = document.getElementById('page-' + s);
     if (page) page.classList.toggle('active', s === p);
   });
@@ -3195,7 +3246,9 @@ function switchStatsPanel(panel = 'personal') {
   const statsPage = document.getElementById('page-stats');
   if (!statsPage) return;
   document.querySelectorAll('#page-stats .stats-subtab').forEach(tab => {
-    tab.classList.toggle('active', tab.id === `stats-tab-${next}`);
+    const active = tab.id === `stats-tab-${next}`;
+    tab.classList.toggle('active', active);
+    if (tab.id.startsWith('stats-tab-')) tab.setAttribute('aria-selected', active ? 'true' : 'false');
   });
   document.querySelectorAll('#page-stats .stats-pane').forEach(pane => {
     pane.classList.toggle('active', pane.id === `stats-pane-${next}`);
@@ -3215,7 +3268,9 @@ function switchPersonalStatsPanel(panel = 'overview') {
   const statsPage = document.getElementById('page-stats');
   if (!statsPage) return;
   document.querySelectorAll('#page-stats .stats-subtab[id^="personal-stats-tab-"]').forEach(tab => {
-    tab.classList.toggle('active', tab.id === `personal-stats-tab-${next}`);
+    const active = tab.id === `personal-stats-tab-${next}`;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
   });
   document.querySelectorAll('#page-stats .stats-pane[id^="personal-stats-pane-"]').forEach(pane => {
     pane.classList.toggle('active', pane.id === `personal-stats-pane-${next}`);
@@ -3273,6 +3328,7 @@ function closeTopModal() {
     ['add-word-modal', closeAddWordModal],
     ['edit-modal', closeEditModal],
     ['account-modal', closeAccountModal],
+    ['daily-checkin-modal', closeDailyCheckinModal],
     ['password-reset-modal', closePasswordResetModal],
     ['report-modal', closeReportModal],
     ['word-detail-modal', closeWordDetail]
@@ -3409,6 +3465,7 @@ function toggleAdminSection(id) {
   const section = document.getElementById(id);
   if (!section) return;
   section.classList.toggle('collapsed');
+  section.querySelector(':scope > .admin-section-header')?.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
   saveAdminSectionState();
 }
 
@@ -3416,7 +3473,9 @@ function switchAdminPanel(panel = 'overview') {
   const allowed = new Set(['overview', 'content', 'users']);
   const next = allowed.has(panel) ? panel : 'overview';
   document.querySelectorAll('#page-admin .admin-subtab').forEach(tab => {
-    tab.classList.toggle('active', tab.id === `admin-tab-${next}`);
+    const active = tab.id === `admin-tab-${next}`;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
   });
   document.querySelectorAll('#page-admin .admin-pane').forEach(pane => {
     pane.classList.toggle('active', pane.id === `admin-pane-${next}`);
@@ -3544,7 +3603,7 @@ function renderDailyGoal() {
   const checkinDone = isDailyCheckinDone();
   const canExtend = currentDone && checkinDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
-  const title = currentDone ? '今日任务已完成' : (baseDone ? '今日固定目标已完成' : '今日任务');
+  const title = currentDone ? '今日处理目标已完成' : (baseDone ? '今日固定处理目标已完成' : '今日处理进度');
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">
@@ -3747,7 +3806,7 @@ function buildCats() {
   primary = primary.slice(0, 9);
   const secondary = cats.filter(c => !primary.includes(c));
   const buttonHtml = (c) =>
-    `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat(decodeURIComponent('${encodedArg(c)}'))">${escapeHtml(c)}</button>`;
+    `<button class="cat-chip${c === curCat ? ' active' : ''}" onclick="setCat(decodeURIComponent('${encodedArg(c)}'))">${escapeHtml(getCategoryLabel(c))}</button>`;
   document.getElementById('cat-bar').innerHTML = [
     ...primary.map(buttonHtml),
     secondary.length ? `<details class="cat-more">
@@ -3798,8 +3857,8 @@ function renderCard() {
       }
     }
     debugDailyQueue('renderCard:empty');
-    setText('fc-cat', curCat === '全部' ? '' : curCat);
-    setText('fc-cat2', curCat === '全部' ? '' : curCat);
+    setText('fc-cat', curCat === '全部' ? '' : getCategoryLabel(curCat));
+    setText('fc-cat2', curCat === '全部' ? '' : getCategoryLabel(curCat));
     const frontHint = document.getElementById('fc-front-hint');
     const hasOpenQueue = hasOpenTodayQueue();
     const deferredQueueCount = getDeferredTodayQueueCount();
@@ -3882,7 +3941,7 @@ function renderCardFront(w) {
   const frontHint = document.getElementById('fc-front-hint');
   if (frontHint) frontHint.textContent = '先在心里说出罗语，再点卡片看答案';
   const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
-  document.getElementById('fc-cat').textContent = `${w.cat || ''}${taskType}`;
+  document.getElementById('fc-cat').textContent = `${getCategoryLabel(w.cat)}${taskType}`;
   document.getElementById('fc-zh').textContent = w.zh;
   const verifyEl = document.getElementById('fc-verify');
   if (verifyEl) {
@@ -3898,7 +3957,7 @@ function renderCardFront(w) {
 
 function renderCardBack(w) {
   const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
-  document.getElementById('fc-cat2').textContent = `${w.cat || ''}${taskType}`;
+  document.getElementById('fc-cat2').textContent = `${getCategoryLabel(w.cat)}${taskType}`;
   document.getElementById('fc-ro').textContent = w.ro;
   const stress = getStressDisplay(w);
   setStressHtml('fc-ipa', w);
@@ -3915,6 +3974,7 @@ function renderCardBack(w) {
 function flipCard() {
   flipped = !flipped;
   document.getElementById('main-card').classList.toggle('flipped', flipped);
+  setCardFlipAccessibility('main-card', flipped);
 }
 
 function renderFlashCardAfterFrontReset() {
@@ -3928,6 +3988,7 @@ function renderFlashCardAfterFrontReset() {
   if (nextWord) renderCardFront(nextWord);
   flipped = false;
   card.classList.remove('flipped');
+  setCardFlipAccessibility('main-card', false);
   if (flashCardRenderTimer) clearTimeout(flashCardRenderTimer);
   flashCardRenderTimer = setTimeout(() => {
     flashCardRenderTimer = null;
@@ -3955,6 +4016,7 @@ function renderNextFlashCardInstantFront() {
   card.style.transition = 'none';
   flipped = false;
   card.classList.remove('flipped');
+  setCardFlipAccessibility('main-card', false);
   renderCard();
   // Force the non-flipped state to commit before restoring the normal answer flip.
   card.offsetHeight;
@@ -4292,6 +4354,20 @@ function bindCardGestures() {
   cardGesturesBound = true;
 }
 
+function setCardFlipAccessibility(cardId, isFlipped) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  card.setAttribute('aria-expanded', isFlipped ? 'true' : 'false');
+  card.setAttribute('aria-label', isFlipped ? '翻回题目' : '翻转查看答案');
+  const faces = card.querySelectorAll('.card-face');
+  faces[0]?.setAttribute('aria-hidden', isFlipped ? 'true' : 'false');
+  faces[1]?.setAttribute('aria-hidden', isFlipped ? 'false' : 'true');
+  if (cardId === 'main-card') {
+    const answerRow = card.nextElementSibling;
+    if (answerRow?.classList.contains('card-answer-row')) answerRow.setAttribute('aria-hidden', isFlipped ? 'false' : 'true');
+  }
+}
+
 function speak(rate) {
   const w = getCurrentFlashWord();
   if (!w || !String(w.ro || '').trim()) return;
@@ -4376,6 +4452,83 @@ function initGuidePronunciation() {
     el.setAttribute('tabindex', '0');
     const label = el.querySelector('.alphabet-letter,.ph-letter')?.textContent?.trim() || el.dataset.speak || '发音';
     el.setAttribute('aria-label', `播放 ${label} 的发音`);
+  });
+}
+
+function initAccessibleModals() {
+  const focusReturn = new WeakMap();
+  document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+    const dialog = overlay.querySelector('.modal');
+    if (!dialog) return;
+    overlay.setAttribute('aria-hidden', overlay.style.display === 'none' ? 'true' : 'false');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
+    dialog.querySelectorAll('.form-group label:not([for])').forEach((label) => {
+      const control = label.parentElement?.querySelector('input:not([type="hidden"]),select,textarea');
+      if (control?.id) label.setAttribute('for', control.id);
+    });
+    let wasOpen = overlay.style.display !== 'none';
+    new MutationObserver(() => {
+      const isOpen = overlay.style.display !== 'none';
+      overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+      if (isOpen && !wasOpen) {
+        focusReturn.set(overlay, document.activeElement);
+        requestAnimationFrame(() => {
+          const first = dialog.querySelector('.modal-close,input:not([type="hidden"]),select,textarea,button');
+          (first || dialog).focus();
+        });
+      } else if (!isOpen && wasOpen) {
+        const previous = focusReturn.get(overlay);
+        if (previous?.isConnected) previous.focus();
+      }
+      wasOpen = isOpen;
+    }).observe(overlay, { attributes: true, attributeFilter: ['style'] });
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    const overlay = Array.from(document.querySelectorAll('.modal-overlay')).find(el => el.style.display !== 'none');
+    const dialog = overlay?.querySelector('.modal');
+    if (!dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll('button,input:not([type="hidden"]),select,textarea,[tabindex]:not([tabindex="-1"])'))
+      .filter(el => !el.disabled && el.offsetParent !== null);
+    if (!focusable.length) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+}
+
+function initAccessibleControls() {
+  document.querySelectorAll('.admin-section-header').forEach((header) => {
+    const section = header.closest('.admin-section');
+    header.setAttribute('role', 'button');
+    header.setAttribute('tabindex', '0');
+    header.setAttribute('aria-expanded', section?.classList.contains('collapsed') ? 'false' : 'true');
+    header.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      header.click();
+    });
+  });
+  document.querySelectorAll('.logout-link').forEach((link) => {
+    link.setAttribute('role', 'button');
+    link.setAttribute('tabindex', '0');
+    link.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      link.click();
+    });
   });
 }
 
@@ -4475,8 +4628,8 @@ function renderWrongbookCard() {
   const streak = wbStreaks[w.ro] || 0;
   const remainingToGraduate = Math.max(0, WB_GRADUATE - streak);
 
-  document.getElementById('wb-cat').textContent = w.cat || '';
-  document.getElementById('wb-cat2').textContent = w.cat || '';
+  document.getElementById('wb-cat').textContent = getCategoryLabel(w.cat);
+  document.getElementById('wb-cat2').textContent = getCategoryLabel(w.cat);
   document.getElementById('wb-zh').textContent = w.zh;
   document.getElementById('wb-ro').textContent = w.ro;
   setStressHtml('wb-ipa', w);
@@ -4495,11 +4648,13 @@ function renderWrongbookCard() {
   // 重置卡片翻转
   wbFlipped = false;
   document.getElementById('wb-card').classList.remove('flipped');
+  setCardFlipAccessibility('wb-card', false);
 }
 
 function flipWbCard() {
   wbFlipped = !wbFlipped;
   document.getElementById('wb-card').classList.toggle('flipped', wbFlipped);
+  setCardFlipAccessibility('wb-card', wbFlipped);
 }
 
 function renderWrongbookCardAfterFrontReset() {
@@ -4510,6 +4665,7 @@ function renderWrongbookCardAfterFrontReset() {
   }
   wbFlipped = false;
   card.classList.remove('flipped');
+  setCardFlipAccessibility('wb-card', false);
   if (wrongbookCardRenderTimer) clearTimeout(wrongbookCardRenderTimer);
   wrongbookCardRenderTimer = setTimeout(() => {
     wrongbookCardRenderTimer = null;
@@ -4939,16 +5095,17 @@ function showQuizSetup() {
     : `${getPracticeScopeLabel()} · ${modeName}${qExerciseMode === 'translation' ? ` · ${qMode === 'zh' ? '中文到罗语' : '罗语到中文'}` : ''}`;
   document.getElementById('quiz-area').innerHTML = `
     <div class="quiz-section quiz-start-panel">
-      <div class="quiz-start-meta">${curCat !== '全部' ? curCat : '全部分类'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
+      <div class="quiz-start-meta">${curCat !== '全部' ? getCategoryLabel(curCat) : '全部分类'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
       <div class="quiz-start-title">${escapeHtml(primaryTitle)}</div>
       <div class="quiz-start-sub">${escapeHtml(primarySub)}</div>
       <div style="font-size:13px;font-weight:750;margin-bottom:.8rem;color:var(--text2)">本轮题目数</div>
       <div class="quiz-size-row">
-        <button class="qsize-btn${qSize===20?' active':''}" data-n="20" onclick="setQSize(20)">20题</button>
-        <button class="qsize-btn${qSize===50?' active':''}" data-n="50" onclick="setQSize(50)">50题</button>
-        <button class="qsize-btn${qSize===100?' active':''}" data-n="100" onclick="setQSize(100)">100题</button>
-        <button class="qsize-btn${qSize===0?' active':''}" data-n="0" onclick="setQSize(0)">全部(${pool.length}题)</button>
+        <button class="qsize-btn${qSize===20?' active':''}" aria-pressed="${qSize===20}" data-n="20" onclick="setQSize(20)">20题</button>
+        <button class="qsize-btn${qSize===50?' active':''}" aria-pressed="${qSize===50}" data-n="50" onclick="setQSize(50)">50题</button>
+        <button class="qsize-btn${qSize===100?' active':''}" aria-pressed="${qSize===100}" data-n="100" onclick="setQSize(100)">100题</button>
+        <button class="qsize-btn${qSize===0?' active':''}" aria-pressed="${qSize===0}" data-n="0" onclick="setQSize(0)">全部(${pool.length}题)</button>
       </div>
+      ${qSize === 0 ? `<div class="quiz-all-warning">全部题量较大，建议先完成 20–100 题的短测验。</div>` : ''}
       ${pool.length ? `<button class="btn-primary" style="max-width:220px;margin:0 auto" onclick="startQuiz()">${escapeHtml(primaryTitle)}</button>` : '<div class="empty-state">当前模式没有足够的已核对数据。请先由管理员核对词条。</div>'}
     </div>`;
 }
@@ -4977,6 +5134,21 @@ function renderExerciseAnswerButton(option, answer, label) {
   return `<button class="opt" data-quiz-action="exercise" data-ok="${ok ? '1' : '0'}" data-option="${escapeHtml(option)}">${label}</button>`;
 }
 
+function renderQuizSessionTools() {
+  return `<div class="quiz-session-tools">
+    <span>快捷键：1–4 选择 · Enter 下一题</span>
+    <button class="quiz-exit-btn" type="button" onclick="endQuizEarly()">结束本轮</button>
+  </div>`;
+}
+
+function endQuizEarly() {
+  if (!isQuizInProgress()) {
+    showQuizSetup();
+    return;
+  }
+  showResult({ endedEarly: true });
+}
+
 function renderQuiz() {
   if (qIdx >= qList.length) { showResult(); return; }
   const pct = Math.round(qIdx / qList.length * 100);
@@ -4996,6 +5168,7 @@ function renderQuiz() {
       <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
       </div>
+      ${renderQuizSessionTools()}
       <div class="quiz-q">听音选择中文</div>
       <div class="quiz-sub">先听罗马尼亚语，再选择对应中文</div>
       <button class="btn-primary" style="max-width:180px;margin:0 auto 1rem;display:block" onclick="speakQuizWord(0.9)">播放</button>
@@ -5018,6 +5191,7 @@ function renderQuiz() {
       <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
       </div>
+      ${renderQuizSessionTools()}
       <div class="quiz-q">${escapeHtml(ex.question)}</div>
       <div class="quiz-sub">${escapeHtml(ex.sub)}</div>
       <div class="opts">${opts.map(o => {
@@ -5052,6 +5226,7 @@ function renderQuiz() {
     <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
     </div>
+    ${renderQuizSessionTools()}
     <div class="quiz-q">${escapeHtml(qText)}</div>
     <div class="quiz-sub">${qMode === 'zh' ? '选择对应的罗马尼亚语' : '选择对应的中文'}</div>
     <div class="opts">${opts.map(o => {
@@ -5114,12 +5289,15 @@ async function answerExerciseQ(btn, ok) {
 
 function nextQ() { qIdx++; renderQuiz(); }
 
-function showResult() {
+function showResult(options = {}) {
+  const endedEarly = !!options.endedEarly;
   qStarted = false;
   const pct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
   const wrongCount = getWrongWords().length;
   const dueCount = getRemainingDueReviewWords(W).length;
-  const nextTitle = qRoundWrong > 0
+  const nextTitle = endedEarly
+    ? `本轮已完成 ${qRoundTotal}/${qList.length} 题`
+    : qRoundWrong > 0
     ? `本轮错了 ${qRoundWrong} 题`
     : (dueCount > 0 ? `还有 ${dueCount} 个到期词` : '本轮状态稳定');
   const nextText = qRoundWrong > 0
@@ -5135,7 +5313,7 @@ function showResult() {
   document.getElementById('quiz-area').innerHTML = `
     <div class="result-box">
       <div class="result-score">${qRoundRight}/${qRoundTotal}</div>
-      <div class="result-label">本轮正确率 ${pct}% · ${pct >= 80 ? '稳定' : pct >= 60 ? '还需巩固' : '需要加强'}</div>
+      <div class="result-label">${qRoundTotal ? `本轮正确率 ${pct}% · ${pct >= 80 ? '稳定' : pct >= 60 ? '还需巩固' : '需要加强'}` : '本轮尚未作答'}</div>
       <div class="result-next">
         <div class="result-next-title">${escapeHtml(nextTitle)}</div>
         <div class="result-next-text">${escapeHtml(nextText)}</div>
@@ -5167,7 +5345,7 @@ function isDailyLogCompleted(log) {
   if (!log) return false;
   if (typeof log.completed === 'boolean') return log.completed;
   const completedTasks = Number(log.new_words || 0);
-  const goal = Number(log.goal || dailyGoal || 20);
+  const goal = Number(log.goal || dailyGoal || DEFAULT_DAILY_GOAL);
   return goal > 0 && completedTasks >= goal;
 }
 
@@ -5258,15 +5436,16 @@ function renderStudyCoach(summary, logs = []) {
   if (wrongCount) items.push({ title: `再练 ${wrongCount} 个需加强词`, meta: '把最近答错的词单独修掉', kind: 'wrong' });
   if (weakCount) items.push({ title: `继续练 ${weakCount} 个学习中词`, meta: '还没稳定掌握，适合短轮测验', kind: 'weak' });
   if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, meta: `${todayNewWords}/${dailyGoal} 已完成`, kind: 'today' });
-  if (weakCat) items.push({ title: `薄弱分类：${weakCat.cat}`, meta: `掌握率 ${weakCat.pct}%，建议按分类补强`, kind: 'cat', arg: weakCat.cat });
+  if (weakCat) items.push({ title: `掌握较少：${getCategoryLabel(weakCat.cat)}`, meta: `当前掌握率 ${weakCat.pct}%，可以按分类练习`, kind: 'cat', arg: weakCat.cat });
   if (!items.length) items.push({ title: `做一轮智能测验`, meta: `当前正确率 ${summary.accuracy}%，用测验检查是否真的记住`, kind: 'quiz' });
+  const actionLabels = { due: '开始复习', wrong: '开始加强', weak: '开始练习', today: '继续任务', cat: '分类练习', quiz: '开始测验' };
   el.innerHTML = items.slice(0, 4).map(item => `
     <div class="hard-row">
       <div class="hard-main">
         <div class="hard-word">${escapeHtml(item.title)}</div>
         <div class="hard-meta">${escapeHtml(item.meta || '')}</div>
       </div>
-      <button class="btn-sm" onclick="startCoachAction(decodeURIComponent('${encodedArg(item.kind)}'),decodeURIComponent('${encodedArg(item.arg || '')}'))">开始</button>
+      <button class="btn-sm" onclick="startCoachAction(decodeURIComponent('${encodedArg(item.kind)}'),decodeURIComponent('${encodedArg(item.arg || '')}'))">${actionLabels[item.kind] || '开始'}</button>
     </div>`).join('');
 }
 
@@ -5485,7 +5664,7 @@ function renderCategoryMastery() {
 
   document.getElementById('cat-mastery').innerHTML = rows.length ? rows.map(r => `
     <div class="cat-row">
-      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cat}</div>
+      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(getCategoryLabel(r.cat))}</div>
       <div class="cat-meter"><div class="cat-fill" style="width:${r.pct}%"></div></div>
       <div style="text-align:right;color:var(--text2)">${r.pct}%</div>
     </div>`).join('') : '<div class="empty-state">还没有分类数据</div>';
@@ -5499,19 +5678,22 @@ function renderHardestWords() {
     const s = getDifficultScore(w);
     const rate = Math.round(s.rate * 100);
     const p = getProgress(w.ro) || {};
-    const stage = window.RomanianVocabScheduler.getReviewStage(p);
     return `<div class="hard-row">
       <div class="hard-main">
         <div class="hard-word">${escapeHtml(w.zh || '')} · ${escapeHtml(w.ro || '')}</div>
-        <div class="hard-meta">${escapeHtml(w.cat || '')} · 复习阶段 ${stage} · 连错 ${s.streak}</div>
+        <div class="hard-meta">${escapeHtml(getCategoryLabel(w.cat))} · 累计答错 ${s.wrong} 次 · 连续答错 ${s.streak}</div>
       </div>
-      <div class="hard-score">${s.wrong}错 · ${rate}%</div>
+      <div class="hard-score">错误率 ${rate}%</div>
     </div>`;
   }).join('') : '<div class="empty-state">还没有需加强记录</div>';
 }
 
 async function renderLeaderboard() {
   const el = document.getElementById('leaderboard-list');
+  if (isOfflineMode()) {
+    el.innerHTML = '<div class="empty-state">班级排行需要登录后查看；本机学习数据不会参与排名。</div>';
+    return;
+  }
   el.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
@@ -5623,7 +5805,7 @@ function renderWordDetail(w) {
       ${isWordUnverified(w) ? '<span class="unverified-badge" style="width:max-content">未核对</span>' : ''}
     </div>
     <div class="detail-grid">
-      <div class="detail-chip"><div class="detail-label">分类</div><div class="detail-value">${escapeHtml(w.cat || '')}</div></div>
+      <div class="detail-chip"><div class="detail-label">分类</div><div class="detail-value">${escapeHtml(getCategoryLabel(w.cat))}</div></div>
       <div class="detail-chip"><div class="detail-label">熟练度</div><div class="detail-value">${escapeHtml(getLevelLabel(w.ro))}</div></div>
       <div class="detail-chip"><div class="detail-label">语法</div><div class="detail-value">${escapeHtml(getGrammarInfo(w))}${stress.auto ? ' · 自动重音待校对' : ''}</div></div>
       <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${window.RomanianVocabScheduler.getReviewStage(p)}</div></div>
@@ -5856,10 +6038,75 @@ function listQueueAction(w) {
   return `<button class="queue-btn" onclick="addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入学习</button>`;
 }
 
+function ensureListCategoryFilter() {
+  const select = document.getElementById('list-category-filter');
+  if (!select) return;
+  const categories = [...new Set(W.map(w => normalizeCategory(w.cat)).filter(Boolean))]
+    .sort((a, b) => categoryRank(a) - categoryRank(b) || String(a).localeCompare(String(b), 'zh'));
+  const signature = categories.join('|');
+  if (select.dataset.signature === signature) return;
+  const selected = select.value || 'all';
+  select.innerHTML = '<option value="all">全部分类</option>' + categories.map(category =>
+    `<option value="${escapeHtml(category)}">${escapeHtml(getCategoryLabel(category))}</option>`
+  ).join('');
+  select.value = categories.includes(selected) ? selected : 'all';
+  select.dataset.signature = signature;
+}
+
+function scheduleRenderList() {
+  listVisibleLimit = 40;
+  if (listRenderTimer) clearTimeout(listRenderTimer);
+  listRenderTimer = setTimeout(() => {
+    listRenderTimer = null;
+    renderList();
+  }, 120);
+}
+
+function resetListPageAndRender() {
+  listVisibleLimit = 40;
+  renderList();
+}
+
+function resetListFilters() {
+  const search = document.getElementById('search-input');
+  const status = document.getElementById('list-status-filter');
+  const category = document.getElementById('list-category-filter');
+  if (search) search.value = '';
+  if (status) status.value = 'all';
+  if (category) category.value = 'all';
+  resetListPageAndRender();
+  search?.focus();
+}
+
+function loadMoreWords() {
+  listVisibleLimit += 40;
+  renderList();
+}
+
 function renderList() {
-  if (!W.length) return;
-  const q = (document.getElementById('search-input') || { value: '' }).value.toLowerCase();
-  const f = W.filter(w => !q || w.zh.includes(q) || w.ro.toLowerCase().includes(q) || (w.cat || '').includes(q));
+  const list = document.getElementById('word-list');
+  if (!list) return;
+  if (!W.length) {
+    list.innerHTML = '<div class="empty-state">词库正在加载，请稍候…</div>';
+    return;
+  }
+  ensureListCategoryFilter();
+  const q = String(document.getElementById('search-input')?.value || '').trim().toLocaleLowerCase('ro');
+  const status = document.getElementById('list-status-filter')?.value || 'all';
+  const category = document.getElementById('list-category-filter')?.value || 'all';
+  const f = W.filter(w => {
+    const normalizedCategory = normalizeCategory(w.cat);
+    const categoryLabel = getCategoryLabel(normalizedCategory).toLocaleLowerCase('zh');
+    const matchesText = !q ||
+      String(w.zh || '').toLocaleLowerCase('zh').includes(q) ||
+      String(w.ro || '').toLocaleLowerCase('ro').includes(q) ||
+      normalizedCategory.toLocaleLowerCase('en').includes(q) ||
+      categoryLabel.includes(q);
+    const level = getProgressLevel(w.ro);
+    const matchesStatus = status === 'all' || level === status || (status === 'learning' && level === 'reinforcing');
+    const matchesCategory = category === 'all' || normalizedCategory === category;
+    return matchesText && matchesStatus && matchesCategory;
+  });
   const editBtns = (w) => userRole === 'admin'
     ? `<details class="word-actions">
          <summary aria-label="词条操作">⋯</summary>
@@ -5869,7 +6116,8 @@ function renderList() {
          </div>
        </details>`
     : '';
-  document.getElementById('word-list').innerHTML = f.slice(0, 200).map(w => {
+  const visible = f.slice(0, listVisibleLimit);
+  list.innerHTML = visible.map(w => {
     const lv = getProgressLevel(w.ro);
     const stress = getStressDisplay(w);
     const grammar = getGrammarInfo(w);
@@ -5880,14 +6128,24 @@ function renderList() {
         <div class="word-ipa${isWordUnverified(w) ? ' unverified-text' : ''}">${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${stress.auto ? ' · 自动重音' : ''} ${unverifiedBadgeHtml(w)}</div>
       </div>
       <div class="word-meta">
-        <div class="word-cat">${escapeHtml(w.cat || '')}</div>
+        <div class="word-cat">${escapeHtml(getCategoryLabel(w.cat))}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${LEVEL_BG[lv]};color:${LEVEL_TC[lv]};white-space:nowrap">${getLevelLabel(w.ro)}</span>
         <button class="queue-btn" onclick="openWordDetail(decodeURIComponent('${encodedArg(w.ro)}'))">详情</button>
         ${listQueueAction(w)}
         ${editBtns(w)}
       </div>
     </div>`;
-  }).join('') + (f.length > 200 ? `<div style="text-align:center;padding:12px;font-size:13px;color:var(--text3)">显示前200条，请搜索缩小范围</div>` : '');
+  }).join('');
+  if (!f.length) {
+    list.innerHTML = `<div class="empty-state">没有找到匹配的词汇。<button class="btn-sm" type="button" onclick="resetListFilters()" style="margin-top:10px">清空搜索与筛选</button></div>`;
+  }
+  const summary = document.getElementById('list-summary');
+  if (summary) summary.textContent = f.length ? `找到 ${f.length} 个 · 已显示 ${visible.length}` : '找到 0 个';
+  const loadMore = document.getElementById('list-load-more');
+  if (loadMore) {
+    loadMore.style.display = visible.length < f.length ? 'block' : 'none';
+    loadMore.textContent = `再显示 ${Math.min(40, f.length - visible.length)} 条`;
+  }
 }
 
 function getMissingIpaWords() {
@@ -6805,7 +7063,7 @@ function buildWeeklyUserRows(users, progressRows, logs, watchSettings = {}) {
     userLogs.forEach(l => { logByDate[l.log_date] = l; });
     const filled = recentDates.map(date => {
       const raw = logByDate[date];
-      const goal = Number(raw?.goal || u.daily_goal || 20);
+      const goal = Number(raw?.goal || u.daily_goal || DEFAULT_DAILY_GOAL);
       const newWords = Number(raw?.new_words || 0);
       const completed = isDailyLogCompleted({ ...raw, new_words: newWords, goal });
       return { log_date: date, new_words: newWords, goal, completed };
@@ -6824,7 +7082,7 @@ function buildWeeklyUserRows(users, progressRows, logs, watchSettings = {}) {
       name: u.nickname || (u.email ? u.email.split('@')[0] : '同学'),
       email: u.email || '',
       role: u.role,
-      dailyGoal: u.daily_goal || 20,
+      dailyGoal: u.daily_goal || DEFAULT_DAILY_GOAL,
       tasks7,
       completedDays,
       activeDays,
@@ -7012,4 +7270,8 @@ window.repeatGuidePronunciation = repeatGuidePronunciation;
 window.speakGuidePronunciation = speakGuidePronunciation;
 bindCardGestures();
 initGuidePronunciation();
+initAccessibleModals();
+initAccessibleControls();
+setCardFlipAccessibility('main-card', false);
+setCardFlipAccessibility('wb-card', false);
 init();

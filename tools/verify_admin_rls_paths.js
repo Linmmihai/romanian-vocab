@@ -85,7 +85,7 @@ assert(sql.includes("revoke all on function public.handle_new_user() from authen
   assert(sql.includes(`grant execute on function public.${signature} to authenticated;`), `expected authenticated grant for ${signature}`);
 });
 
-assert(index.includes('api.js?v=20260712-anki-queue'), 'api.js cache-busting version must move with Anki queue changes');
-assert(serviceWorker.includes("ro-vocab-pwa-v20"), 'service worker cache name must move with Anki queue changes');
+assert(index.includes('api.js?v=20260712-ux-200'), 'api.js cache-busting version must move with the UX and 200-task release');
+assert(serviceWorker.includes("ro-vocab-pwa-v22"), 'service worker cache name must move with the UX release');
 
 console.log('admin RLS path verification passed');

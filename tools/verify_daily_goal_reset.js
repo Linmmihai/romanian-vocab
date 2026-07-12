@@ -3,12 +3,12 @@ const fs = require('fs');
 const path = require('path');
 
 const DAILY_GOAL_MAX = 5000;
-let defaultDailyGoal = 20;
+let defaultDailyGoal = 200;
 let temporaryGoal = 0;
 let hasTemporaryGoal = false;
 
-function normalizeDailyGoalValue(value, fallback = 20) {
-  return Math.max(1, Math.min(DAILY_GOAL_MAX, Number(value) || fallback || 20));
+function normalizeDailyGoalValue(value, fallback = 200) {
+  return Math.max(1, Math.min(DAILY_GOAL_MAX, Number(value) || fallback || 200));
 }
 
 function readTodayTemporaryGoal() {
@@ -33,8 +33,8 @@ function resolveLoadedDailyGoal({ logGoal = 0, queueGoal = 0, completedCount = 0
 }
 
 function simulateLoadedQueueCorrection({
-  savedGoal = 20,
-  logGoal = 20,
+  savedGoal = 200,
+  logGoal = 200,
   completedCount = 0,
   queueWasNormalized = false,
   completedWasTrimmed = false
@@ -59,7 +59,7 @@ function simulateLoadedQueueCorrection({
   temporaryGoal = 0;
   assert.strictEqual(
     resolveLoadedDailyGoal({ logGoal: 5000, queueGoal: 5000, completedCount: 0 }),
-    20,
+    200,
     'stale unlimited goal with no explicit today extension must reset to the default goal'
   );
 }
@@ -68,8 +68,8 @@ function simulateLoadedQueueCorrection({
   hasTemporaryGoal = false;
   temporaryGoal = 0;
   assert.strictEqual(
-    resolveLoadedDailyGoal({ logGoal: 5000, queueGoal: 5000, completedCount: 20 }),
-    20,
+    resolveLoadedDailyGoal({ logGoal: 5000, queueGoal: 5000, completedCount: 200 }),
+    200,
     'stale unlimited goal at the default completion count must not block check-in'
   );
 }
@@ -78,7 +78,7 @@ function simulateLoadedQueueCorrection({
   hasTemporaryGoal = true;
   temporaryGoal = 5000;
   assert.strictEqual(
-    resolveLoadedDailyGoal({ logGoal: 20, queueGoal: 20, completedCount: 20 }),
+    resolveLoadedDailyGoal({ logGoal: 200, queueGoal: 200, completedCount: 200 }),
     5000,
     'same-day explicit unlimited mode must remain active'
   );
@@ -88,8 +88,8 @@ function simulateLoadedQueueCorrection({
   hasTemporaryGoal = false;
   temporaryGoal = 0;
   assert.strictEqual(
-    resolveLoadedDailyGoal({ logGoal: 50, queueGoal: 50, completedCount: 35 }),
-    50,
+    resolveLoadedDailyGoal({ logGoal: 250, queueGoal: 250, completedCount: 235 }),
+    250,
     'a same-day extended goal with progress beyond the default should be preserved'
   );
 }
@@ -100,13 +100,13 @@ function simulateLoadedQueueCorrection({
   const result = simulateLoadedQueueCorrection({
     savedGoal: 5000,
     logGoal: 5000,
-    completedCount: 20,
+    completedCount: 200,
     queueWasNormalized: false,
     completedWasTrimmed: false
   });
   assert.deepStrictEqual(
     result,
-    { dailyGoal: 20, queueChanged: true, forceQueueLocal: true },
+    { dailyGoal: 200, queueChanged: true, forceQueueLocal: true },
     'stale cloud queue/log goal must be marked for force-local overwrite even when queue rows need no cleanup'
   );
 }
@@ -115,15 +115,15 @@ function simulateLoadedQueueCorrection({
   hasTemporaryGoal = false;
   temporaryGoal = 0;
   const result = simulateLoadedQueueCorrection({
-    savedGoal: 20,
-    logGoal: 20,
-    completedCount: 20,
+    savedGoal: 200,
+    logGoal: 200,
+    completedCount: 200,
     queueWasNormalized: false,
     completedWasTrimmed: false
   });
   assert.deepStrictEqual(
     result,
-    { dailyGoal: 20, queueChanged: false, forceQueueLocal: false },
+    { dailyGoal: 200, queueChanged: false, forceQueueLocal: false },
     'normal default-goal queue should not be rewritten just because it was loaded'
   );
 }
@@ -139,8 +139,8 @@ function simulateLoadedQueueCorrection({
   assert(app.includes('if (!ensureDailyStateCurrent({ reload: true })) return null;'), 'queue saves should not persist stale previous-day runtime state');
   assert(app.includes('Number(todayLog?.goal || 0) > dailyGoal'), 'cloud daily log with stale higher goal should be overwritten');
   assert(app.includes('queueChanged = queueChanged || todayQueue.length !== originalQueueLength'), 'stale-goal queue correction must not be overwritten by later normalization checks');
-  assert(index.includes('app.js?v=20260712-anki-queue'), 'app.js cache-busting version must include Anki queue changes');
-  assert(serviceWorker.includes("ro-vocab-pwa-v20"), 'service worker cache name must move with app shell behavior changes');
+  assert(index.includes('app.js?v=20260712-ux-200'), 'app.js cache-busting version must include the 200-task UX release');
+  assert(serviceWorker.includes("ro-vocab-pwa-v22"), 'service worker cache name must move with app shell behavior changes');
 }
 
 console.log('daily goal reset verification passed');

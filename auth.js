@@ -105,8 +105,12 @@ function openAccountModal() {
   const nickname = document.getElementById('user-chip')?.childNodes?.[0]?.textContent || currentUser.email?.split('@')[0] || '当前账号';
   document.getElementById('account-name-line').textContent = nickname;
   document.getElementById('account-email-line').textContent = currentUser.email || '本机离线账号';
-  document.getElementById('account-role-line').textContent = `${isFounderAccount() ? '创始人 · ' : ''}${userRole === 'admin' ? '管理员' : '普通用户'}`;
+  const roleLabel = currentUser?.id === OFFLINE_USER_ID || isOfflineMode()
+    ? '本机离线模式'
+    : (userRole === 'admin' ? '管理员' : '普通用户');
+  document.getElementById('account-role-line').textContent = `${isFounderAccount() ? '创始人 · ' : ''}${roleLabel}`;
   modal.style.display = 'flex';
+  window.renderDailyReminderSettings?.();
 }
 
 function toggleAccountMenu(event) {

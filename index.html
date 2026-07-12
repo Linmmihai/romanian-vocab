@@ -19,9 +19,10 @@
 /* ============================================================
    styles — 如需修改样式，只改这里
    ============================================================ */
-:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#94a3b8;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--red:#dc2626;--red-bg:#fef2f2;--red-text:#991b1b;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--yellow-border:#fbbf24;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,0.08)}
+:root{--bg:#fbfaf7;--bg2:#f4f4f1;--bg3:#e7e5df;--text:#172033;--text2:#64748b;--text3:#6b7280;--border:#e2e0d8;--border2:#ccc8bd;--blue:#2563eb;--blue-bg:#eff6ff;--blue-text:#1d4ed8;--green:#10b981;--green-bg:#ecfdf5;--green-text:#065f46;--red:#dc2626;--red-bg:#fef2f2;--red-text:#991b1b;--yellow:#f59e0b;--yellow-bg:#fffbeb;--yellow-text:#92400e;--yellow-border:#fbbf24;--radius:10px;--radius-sm:6px;--shadow:0 1px 3px rgba(23,32,51,0.08)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[role="button"]:focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:2px}
 /* AUTH */
 #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
 .auth-card{background:white;border-radius:16px;box-shadow:0 4px 24px rgba(23,32,51,0.08);padding:2rem;width:100%;max-width:400px;position:relative;overflow:hidden}
@@ -74,6 +75,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .account-menu .btn-sm:hover{background:var(--bg2)}
 .btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
 .btn-sm:hover{background:var(--bg2)}
+.topbar-guide-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;color:var(--blue-text);border-color:#bfdbfe;background:var(--blue-bg);font-weight:750;white-space:nowrap}
+.topbar-guide-btn:hover{background:#dbeafe}
+.topbar-guide-icon{font-size:14px;font-weight:900;line-height:1}
 .nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow:visible;scrollbar-width:none;position:relative;flex-wrap:nowrap}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tab{white-space:nowrap;padding:8px 16px;border:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;position:relative}
@@ -116,6 +120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .today-focus-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
 .today-focus-title{font-size:14px;font-weight:850;color:var(--text)}
 .today-focus-action{font-size:12px;color:var(--blue-text);font-weight:750;white-space:nowrap}
+.today-focus-meta{font-size:12px;color:var(--text2);line-height:1.5}
 .today-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .today-step{background:var(--bg2);border:1px solid transparent;border-radius:var(--radius-sm);padding:8px 7px;min-width:0}
 .today-step.active{background:var(--blue-bg);border-color:var(--blue);color:var(--blue-text)}
@@ -205,6 +210,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .quiz-start-title{font-size:17px;font-weight:850;margin-bottom:6px;color:var(--text)}
 .quiz-start-sub{font-size:13px;color:var(--text2);line-height:1.45;margin:0 auto 1rem;max-width:420px}
 .quiz-size-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}
+.quiz-all-warning{font-size:12px;color:var(--yellow-text);background:var(--yellow-bg);border-radius:var(--radius-sm);padding:8px 10px;margin:-10px auto 14px;max-width:420px}
+.quiz-session-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 12px;font-size:12px;color:var(--text2)}
+.quiz-exit-btn{padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text2);cursor:pointer;font-size:12px;font-weight:700}
 .qmode-bar{display:flex;gap:8px;margin-bottom:1rem}
 .quiz-section .qmode-bar{margin-bottom:0}
 .qmode-btn{flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:white;color:var(--text2);font-weight:500}
@@ -299,12 +307,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
 .manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
-@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-logo{font-size:16px}.topbar-badge{max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.flash-controls-body{padding:0 10px 10px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
+@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.topbar-guide-icon{display:none}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.flash-controls-body{padding:0 10px 10px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
+@media(max-width:380px){.topbar-badge{display:none}}
+@media(max-width:560px){.nav-tab,.qsize-btn,.opt,.queue-btn,.know-yes,.know-fuzzy,.know-no,.spk,.report-btn,.btn-primary,.btn-cancel,.btn-save,.restart-btn,.next-btn,.list-filter-row select{min-height:44px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
 /* LIST */
-.search-bar{margin-bottom:1rem}
+.list-tools{position:sticky;top:52px;z-index:80;background:var(--bg);padding:0 0 10px}
+.search-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:8px}
 .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;outline:none;background:white}
 .search-bar input:focus{border-color:var(--blue)}
+.list-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.list-filter-row select{min-width:120px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;color:var(--text2);font-size:13px}
+.list-summary{margin-left:auto;color:var(--text2);font-size:12px}
 .word-list{display:grid;gap:6px}
+.list-load-more{display:block;margin:14px auto 0;min-width:160px}
 .word-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
 .word-zh{font-size:16px;font-weight:800;line-height:1.25}
 .word-ro{font-size:14px;color:var(--text);font-weight:650;margin-top:3px}
@@ -468,10 +484,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="topbar-right">
       <span class="user-chip" id="user-chip"></span>
       <span class="sync-badge" id="sync-badge" role="status" aria-live="polite"></span>
+      <button class="btn-sm topbar-guide-btn" type="button" onclick="openGuideFromAccount()" aria-label="打开学习指南"><span class="topbar-guide-icon" aria-hidden="true">？</span><span class="topbar-guide-label">指南</span></button>
       <div class="account-menu-wrap" id="account-menu-wrap">
         <button class="btn-sm" onclick="toggleAccountMenu(event)">账号</button>
         <div class="account-menu">
-          <button class="btn-sm" onclick="openAccountModal()">账号设置</button>
+          <button class="btn-sm" onclick="openAccountModal()">账号与提醒</button>
           <button class="btn-sm" id="admin-tab" style="display:none" onclick="openAdminFromAccount()">管理员后台</button>
           <button class="btn-sm" onclick="openGuideFromAccount()">指南</button>
           <button class="btn-sm" onclick="doLogout()">退出</button>
@@ -479,12 +496,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
   </div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" data-page="flash" onclick="switchPage('flash')">学习 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
-    <button class="nav-tab" data-page="quiz" onclick="switchPage('quiz')">测验</button>
-    <button class="nav-tab" data-page="list" onclick="switchPage('list')">词汇</button>
-    <button class="nav-tab" data-page="stats" onclick="switchPage('stats')">统计</button>
-    <button class="nav-tab" data-page="wrongbook" onclick="switchPage('wrongbook')">需加强 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+  <div class="nav-tabs" role="tablist" aria-label="主要功能">
+    <button class="nav-tab active" role="tab" aria-selected="true" aria-controls="page-flash" data-page="flash" onclick="switchPage('flash')">学习 <span id="review-tab-badge" style="display:none;font-size:11px;background:var(--blue);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-quiz" data-page="quiz" onclick="switchPage('quiz')">测验</button>
+    <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-list" data-page="list" onclick="switchPage('list')">词汇</button>
+    <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-stats" data-page="stats" onclick="switchPage('stats')">统计</button>
+    <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-wrongbook" data-page="wrongbook" onclick="switchPage('wrongbook')">需加强 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
   </div>
 
   <!-- 卡片记忆 -->
@@ -498,25 +515,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="today-focus-title" id="today-focus-title">今日路径</div>
         <div class="today-focus-action" id="today-focus-action">继续学习</div>
       </div>
-      <div class="today-steps">
-        <div class="today-step" id="today-step-learning">
-          <div class="today-step-label">先学习中</div>
-          <div class="today-step-meta" id="today-step-learning-meta">0 个到点</div>
-        </div>
-        <div class="today-step" id="today-step-review">
-          <div class="today-step-label">再到期复习</div>
-          <div class="today-step-meta" id="today-step-review-meta">0 个到期</div>
-        </div>
-        <div class="today-step" id="today-step-new">
-          <div class="today-step-label">最后学新词</div>
-          <div class="today-step-meta" id="today-step-new-meta">0 个待学</div>
-        </div>
-      </div>
+      <div class="today-focus-meta" id="today-focus-meta">复习优先，不足目标的名额自动补入新词。</div>
     </div>
     <div id="flash-content" class="flash-study" style="display:none">
       <div class="card-wrap">
-        <div class="card" id="main-card" onclick="flipCard()">
-          <div class="card-face">
+        <div class="card" id="main-card" role="button" tabindex="0" aria-expanded="false" aria-label="翻转查看答案" onclick="flipCard()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();flipCard()}">
+          <div class="card-face" aria-hidden="false">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
               <div class="card-cat" id="fc-cat" style="margin-bottom:0"></div>
               <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
@@ -526,7 +530,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <div class="card-zh" id="fc-zh"></div>
             <div class="front-recall" id="fc-front-example" style="display:none"></div>
           </div>
-          <div class="card-face card-back">
+          <div class="card-face card-back" aria-hidden="true">
             <div class="card-back-top">
               <div class="card-cat" id="fc-cat2"></div>
               <div class="card-ro" id="fc-ro"></div>
@@ -548,7 +552,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             </div>
           </div>
         </div>
-        <div class="card-answer-row">
+        <div class="card-answer-row" aria-hidden="true">
           <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识</button>
           <button type="button" class="know-fuzzy" id="mark-fuzzy-btn" style="flex:1;padding:9px">≈ 模糊</button>
           <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识</button>
@@ -577,7 +581,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           </div>
           <div class="review-grid">
             <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">学习/复习到期</div></div>
-            <div class="review-metric"><div class="review-n" id="review-new-count">0/20</div><div class="review-l">今日完成</div></div>
+            <div class="review-metric"><div class="review-n" id="review-new-count">0/200</div><div class="review-l">已处理</div></div>
             <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">待学新词</div></div>
           </div>
           <div class="review-note" id="review-note">按学习步骤、到期复习、新词的顺序出卡。</div>
@@ -591,15 +595,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="daily-goal-panel">
           <div id="daily-goal-bar"></div>
           <div class="goal-setting-row">
-            <span style="font-size:13px;color:var(--text2)">每日任务目标：</span>
-            <input type="number" id="goal-input" min="1" max="5000" style="width:72px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="20">
-            <span style="font-size:13px;color:var(--text2)">个任务</span>
+            <label for="goal-input" style="font-size:13px;color:var(--text2)">每日处理目标：</label>
+            <input type="number" id="goal-input" min="1" max="5000" style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="200">
+            <span style="font-size:13px;color:var(--text2)">个词（复习优先，不足补新词）</span>
             <button class="btn-sm" onclick="saveGoalSetting()">保存</button>
-          </div>
-          <div class="reminder-row">
-            <label class="reminder-toggle"><input type="checkbox" id="reminder-enabled" onchange="saveDailyReminderSettings()"> 未完成时提醒</label>
-            <input type="time" id="reminder-time" value="20:30" onchange="saveDailyReminderSettings()">
-            <span id="reminder-status">提醒已关闭</span>
           </div>
         </div>
       </div>
@@ -620,7 +619,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="wb-empty" class="loading-screen" style="display:none">
       <div style="font-size:48px">🎉</div>
       <div style="font-size:16px;font-weight:600;color:var(--text)">暂时没有需要加强的词</div>
-      <div style="font-size:14px;color:var(--text2);text-align:center">去测验里复盘已学词，反复薄弱的词会出现在这里</div>
+      <div style="font-size:14px;color:var(--text2);text-align:center">曾经掌握、后来答错的词会出现在这里；连续答对 3 次后移出</div>
       <button class="btn-sm" style="margin-top:8px" onclick="switchPage('quiz')">去测验 →</button>
     </div>
 
@@ -640,13 +639,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span style="font-size:13px;font-weight:600" id="wb-streak"></span>
       </div>
       <div class="card-wrap">
-        <div class="card" id="wb-card" onclick="flipWbCard()">
-          <div class="card-face">
+        <div class="card" id="wb-card" role="button" tabindex="0" aria-expanded="false" aria-label="翻转查看答案" onclick="flipWbCard()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();flipWbCard()}">
+          <div class="card-face" aria-hidden="false">
             <div class="card-cat" id="wb-cat"></div>
             <div class="card-hint-txt">点击翻转 · 记住后再作答</div>
             <div class="card-zh" id="wb-zh"></div>
           </div>
-          <div class="card-face card-back">
+          <div class="card-face card-back" aria-hidden="true">
             <div class="card-back-top">
               <div class="card-cat" id="wb-cat2"></div>
               <div class="card-ro" id="wb-ro"></div>
@@ -721,21 +720,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- 学习统计 -->
   <div class="page" id="page-stats">
     <div class="stats-subnav" role="tablist" aria-label="统计">
-      <button class="stats-subtab active" id="stats-tab-personal" onclick="switchStatsPanel('personal')">个人统计</button>
-      <button class="stats-subtab" id="stats-tab-leaderboard" onclick="switchStatsPanel('leaderboard')">班级排行</button>
+      <button class="stats-subtab active" role="tab" aria-selected="true" id="stats-tab-personal" onclick="switchStatsPanel('personal')">个人统计</button>
+      <button class="stats-subtab" role="tab" aria-selected="false" id="stats-tab-leaderboard" onclick="switchStatsPanel('leaderboard')">班级排行</button>
     </div>
     <div class="stats-pane active" id="stats-pane-personal">
     <div class="stats-subnav" role="tablist" aria-label="个人统计">
-      <button class="stats-subtab active" id="personal-stats-tab-overview" onclick="switchPersonalStatsPanel('overview')">概览</button>
-      <button class="stats-subtab" id="personal-stats-tab-practice" onclick="switchPersonalStatsPanel('practice')">练习</button>
-      <button class="stats-subtab" id="personal-stats-tab-words" onclick="switchPersonalStatsPanel('words')">词汇</button>
-      <button class="stats-subtab" id="personal-stats-tab-backup" onclick="switchPersonalStatsPanel('backup')">备份</button>
+      <button class="stats-subtab active" role="tab" aria-selected="true" id="personal-stats-tab-overview" onclick="switchPersonalStatsPanel('overview')">概览</button>
+      <button class="stats-subtab" role="tab" aria-selected="false" id="personal-stats-tab-practice" onclick="switchPersonalStatsPanel('practice')">练习</button>
+      <button class="stats-subtab" role="tab" aria-selected="false" id="personal-stats-tab-words" onclick="switchPersonalStatsPanel('words')">词汇</button>
+      <button class="stats-subtab" role="tab" aria-selected="false" id="personal-stats-tab-backup" onclick="switchPersonalStatsPanel('backup')">备份</button>
     </div>
     <div class="stats-pane active" id="personal-stats-pane-overview">
     <div class="metric-grid">
       <div class="metric"><div class="metric-n" id="stat-streak">0</div><div class="metric-l">连续学习天数</div></div>
-      <div class="metric"><div class="metric-n" id="stat-30days">0</div><div class="metric-l">近30天任务</div></div>
-      <div class="metric"><div class="metric-n" id="stat-accuracy">0%</div><div class="metric-l">测验正确率</div></div>
+      <div class="metric"><div class="metric-n" id="stat-30days">0</div><div class="metric-l">近30天完成任务</div></div>
+      <div class="metric"><div class="metric-n" id="stat-accuracy">0%</div><div class="metric-l">累计测验正确率</div></div>
     </div>
     <div class="panel">
       <div class="panel-title"><span>下一步建议</span><span style="font-size:12px;color:var(--text2)">按当前记录生成</span></div>
@@ -758,7 +757,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="cat-mastery"></div>
     </div>
     <div class="panel">
-      <div class="panel-title"><span>高频错词</span><span style="font-size:12px;color:var(--text2)">按错误率和连错排序</span></div>
+      <div class="panel-title"><span>需要关注的词</span><span style="font-size:12px;color:var(--text2)">按错误率和连续答错排序</span></div>
       <div id="hardest-words"></div>
     </div>
     <div class="panel">
@@ -857,7 +856,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="guide-card">
       <div class="guide-kicker">Cum înveți · 如何使用</div>
       <div class="guide-title">按队列顺序学习，不必自己挑词</div>
-      <div class="guide-subtitle">“今日任务”会按学习步骤到点 → 到期复习 → 新词的顺序出卡。先清完当前阶段，再进入下一阶段。</div>
+      <div class="guide-subtitle">默认每天处理 200 个词：先放学习步骤和到期复习，不足 200 的名额再补新词。答“不认识/模糊”的词会留在当天固定队列中等待重试，不会偷偷补入第 201 个。</div>
       <div class="manual-grid">
         <div class="manual-item">
           <div class="manual-title">① 今日顺序</div>
@@ -889,7 +888,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div class="manual-item">
           <div class="manual-title">账号与同步</div>
-          <div class="manual-text">账号信息、指南、退出和管理员入口都在右上角账号菜单。顶部同步状态会提示云端保存情况；离线时仍可继续学习。</div>
+          <div class="manual-text">顶部“指南”按钮可随时打开本页，账号菜单里也保留备用入口；每日提醒放在“账号与提醒”中。同步状态会提示云端保存情况。</div>
         </div>
       </div>
     </div>
@@ -897,16 +896,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- 词汇表 -->
   <div class="page" id="page-list">
-    <div class="search-bar"><input id="search-input" placeholder="搜索中文、罗语或分类..." oninput="renderList()"></div>
+    <div class="list-tools">
+      <div class="search-bar">
+        <input id="search-input" aria-label="搜索词汇" placeholder="搜索中文、罗语或分类..." oninput="scheduleRenderList()">
+        <button class="btn-sm" type="button" onclick="resetListFilters()">清空</button>
+      </div>
+      <div class="list-filter-row">
+        <select id="list-status-filter" aria-label="按学习状态筛选" onchange="resetListPageAndRender()">
+          <option value="all">全部状态</option>
+          <option value="unknown">未学</option>
+          <option value="queued">今日待学</option>
+          <option value="learning">学习中</option>
+          <option value="review">待复习</option>
+          <option value="mastered">已掌握</option>
+        </select>
+        <select id="list-category-filter" aria-label="按分类筛选" onchange="resetListPageAndRender()"><option value="all">全部分类</option></select>
+        <span class="list-summary" id="list-summary">正在整理词汇…</span>
+      </div>
+    </div>
     <div class="word-list" id="word-list"></div>
+    <button class="btn-sm list-load-more" id="list-load-more" type="button" onclick="loadMoreWords()" style="display:none">再显示 40 条</button>
   </div>
 
   <!-- 管理员 -->
   <div class="page" id="page-admin">
     <div class="admin-subnav" role="tablist" aria-label="管理员后台">
-      <button class="admin-subtab active" id="admin-tab-overview" onclick="switchAdminPanel('overview')">概览</button>
-      <button class="admin-subtab" id="admin-tab-content" onclick="switchAdminPanel('content')">内容</button>
-      <button class="admin-subtab" id="admin-tab-users" onclick="switchAdminPanel('users')">用户</button>
+      <button class="admin-subtab active" role="tab" aria-selected="true" id="admin-tab-overview" onclick="switchAdminPanel('overview')">概览</button>
+      <button class="admin-subtab" role="tab" aria-selected="false" id="admin-tab-content" onclick="switchAdminPanel('content')">内容</button>
+      <button class="admin-subtab" role="tab" aria-selected="false" id="admin-tab-users" onclick="switchAdminPanel('users')">用户</button>
     </div>
     <div class="admin-pane active" id="admin-pane-overview">
     <div class="admin-section" id="admin-section-stats">
@@ -1012,21 +1029,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── 词条详情 ──────────────────────────────────────── -->
-<div class="modal-overlay" id="word-detail-modal" style="display:none" onclick="if(event.target===this)closeWordDetail()">
-  <div class="modal">
+<div class="modal-overlay" id="word-detail-modal" style="display:none" aria-hidden="true" onclick="if(event.target===this)closeWordDetail()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="词条详情" tabindex="-1">
     <div class="modal-title">词条详情 <button class="modal-close" onclick="closeWordDetail()">✕</button></div>
     <div id="word-detail-body"></div>
   </div>
 </div>
 
-<!-- ── 账号设置 ──────────────────────────────────────── -->
-<div class="modal-overlay" id="account-modal" style="display:none" onclick="if(event.target===this)closeAccountModal()">
-  <div class="modal">
-    <div class="modal-title">账号设置 <button class="modal-close" onclick="closeAccountModal()">✕</button></div>
+<!-- ── 账号与提醒 ────────────────────────────────────── -->
+<div class="modal-overlay" id="account-modal" style="display:none" aria-hidden="true" onclick="if(event.target===this)closeAccountModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="账号与提醒" tabindex="-1">
+    <div class="modal-title">账号与提醒 <button class="modal-close" onclick="closeAccountModal()" aria-label="关闭账号与提醒">✕</button></div>
     <div class="account-help">
       <div id="account-name-line" style="font-weight:700;color:var(--text);margin-bottom:4px"></div>
       <div id="account-email-line"></div>
       <div id="account-role-line"></div>
+    </div>
+    <div class="form-group">
+      <label class="reminder-toggle"><input type="checkbox" id="reminder-enabled" onchange="saveDailyReminderSettings()"> 每日目标未完成时提醒</label>
+    </div>
+    <div class="reminder-row" style="margin-top:0">
+      <label for="reminder-time">提醒时间</label>
+      <input type="time" id="reminder-time" value="20:30" onchange="saveDailyReminderSettings()">
+      <span id="reminder-status">提醒已关闭</span>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeAccountModal()">关闭</button>
@@ -1035,14 +1060,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── 今日打卡 ──────────────────────────────────────── -->
-<div class="modal-overlay" id="daily-checkin-modal" style="display:none">
-  <div class="modal">
+<div class="modal-overlay" id="daily-checkin-modal" style="display:none" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="今日打卡" tabindex="-1">
     <div class="modal-title">今日打卡 <button class="modal-close" onclick="closeDailyCheckinModal()">✕</button></div>
     <div style="display:grid;gap:12px">
-      <div style="font-size:18px;font-weight:800;color:var(--text)">固定目标已完成</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">固定处理目标已完成</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <div class="review-metric"><div class="review-n" id="checkin-fixed-goal">0</div><div class="review-l">固定目标</div></div>
-        <div class="review-metric"><div class="review-n" id="checkin-today-count">0</div><div class="review-l">今日完成</div></div>
+        <div class="review-metric"><div class="review-n" id="checkin-fixed-goal">0</div><div class="review-l">处理目标</div></div>
+        <div class="review-metric"><div class="review-n" id="checkin-today-count">0</div><div class="review-l">今日已处理</div></div>
         <div class="review-metric"><div class="review-n" id="checkin-accuracy">0%</div><div class="review-l">今日正确率</div></div>
       </div>
       <div style="font-size:13px;color:var(--text2);line-height:1.6">今天的目标已完成。可以到此为止，也可以明确选择继续；系统不会自动加量。</div>
@@ -1057,8 +1082,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── 重置密码 ──────────────────────────────────────── -->
-<div class="modal-overlay" id="password-reset-modal" style="display:none">
-  <div class="modal">
+<div class="modal-overlay" id="password-reset-modal" style="display:none" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="设置新密码" tabindex="-1">
     <div class="modal-title">设置新密码</div>
     <div class="account-help">请设置一个新的登录密码。完成后下次使用新密码登录。</div>
     <div class="form-group"><label>新密码（至少 6 位）</label><input type="password" id="reset-new-pass" autocomplete="new-password" placeholder="请输入新密码"></div>
@@ -1070,8 +1095,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── 报错弹窗（用户） ──────────────────────────────── -->
-<div class="modal-overlay" id="report-modal" style="display:none" onclick="if(event.target===this)closeReportModal()">
-  <div class="modal">
+<div class="modal-overlay" id="report-modal" style="display:none" aria-hidden="true" onclick="if(event.target===this)closeReportModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="报告错误" tabindex="-1">
     <div class="modal-title">⚠ 报告错误 <button class="modal-close" onclick="closeReportModal()">✕</button></div>
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px">
       <div style="font-weight:600" id="rm-word-zh"></div>
@@ -1100,8 +1125,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── 编辑弹窗（管理员） ────────────────────────────── -->
-<div class="modal-overlay" id="edit-modal" style="display:none" onclick="if(event.target===this)closeEditModal()">
-  <div class="modal">
+<div class="modal-overlay" id="edit-modal" style="display:none" aria-hidden="true" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="编辑词汇" tabindex="-1">
     <div class="modal-title">✏️ 编辑词汇 <button class="modal-close" onclick="closeEditModal()">✕</button></div>
     <div class="form-group"><label>中文</label><input type="text" id="em-zh"></div>
     <div class="form-group"><label>罗马尼亚语</label><input type="text" id="em-ro"></div>
@@ -1119,8 +1144,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── 添加词汇弹窗（管理员） ────────────────────────────── -->
-<div class="modal-overlay" id="add-word-modal" style="display:none" onclick="if(event.target===this)closeAddWordModal()">
-  <div class="modal">
+<div class="modal-overlay" id="add-word-modal" style="display:none" aria-hidden="true" onclick="if(event.target===this)closeAddWordModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="添加词汇" tabindex="-1">
     <div class="modal-title"><span id="aw-title">📚 添加词汇</span> <button class="modal-close" onclick="closeAddWordModal()">✕</button></div>
 
     <!-- 模式切换 -->
@@ -1171,15 +1196,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260712-anki-guide';</script>
-<script src="scheduler.js?v=20260712-anki-guide"></script>
-<script src="progress-model.js?v=20260712-anki-guide"></script>
-<script src="daily-plan.js?v=20260712-anki-guide"></script>
-<script src="romanian-text.js?v=20260712-anki-guide"></script>
-<script src="api.js?v=20260712-anki-guide"></script>
-<script src="telemetry.js?v=20260712-anki-guide"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260712-ux-200';</script>
+<script src="scheduler.js?v=20260712-ux-200"></script>
+<script src="progress-model.js?v=20260712-ux-200"></script>
+<script src="daily-plan.js?v=20260712-ux-200"></script>
+<script src="romanian-text.js?v=20260712-ux-200"></script>
+<script src="api.js?v=20260712-ux-200"></script>
+<script src="telemetry.js?v=20260712-ux-200"></script>
 <script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260712-anki-guide"></script>
-<script src="pwa.js?v=20260712-anki-guide"></script>
+<script src="app.js?v=20260712-ux-200"></script>
+<script src="pwa.js?v=20260712-ux-200"></script>
 </body>
 </html>

@@ -39,6 +39,15 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
 }
 
 {
+  const reviews = Array.from({ length: 3 }, (_, index) => `review-${index}`);
+  const unseen = Array.from({ length: 250 }, (_, index) => `new-${String(index).padStart(3, '0')}`);
+  const plan = dailyPlan.buildTieredPlan([reviews, unseen], { limit: 200, keyOf: roKey });
+  assert.deepStrictEqual(plan.slice(0, 3), reviews, 'due reviews must occupy the first slots in the 200-task queue');
+  assert.strictEqual(plan.filter(ro => ro.startsWith('new-')).length, 197, 'new words must fill exactly the quota left after reviews');
+  assert.strictEqual(plan.length, 200, 'daily processing queue must stop at the fixed 200-task quota');
+}
+
+{
   const todayQueue = Array.from({ length: 20 }, (_, index) => `retry-${index}`);
   const deferred = [...todayQueue];
   const unseen = Array.from({ length: 135 }, (_, index) => `new-${index}`);
@@ -77,7 +86,7 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   const index = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
-  assert(app.includes('activeOpenCount >= activeSlots'), 'expected queue repair to backfill until active cards cover remaining quota');
+  assert(app.includes('activeOpenCount + deferredOpenCount >= activeSlots'), 'expected deferred retries to keep occupying the fixed daily quota');
   assert(app.includes('cap - Number(todayNewWords || 0)'), 'expected open slots to use the canonical daily completion count');
   assert(app.includes("path = 'global-due-only'"), 'expected global due reviews to block daily new cards');
   assert(app.includes('isTodayBlockingReviewWord'), 'expected blocking review cards in today mode to count when known');
@@ -99,11 +108,9 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("if (isUnseenWord(w)) return 3;"), 'expected unseen cards to remain behind learning and review cards');
   assert(app.includes("queuePhase === 'learning-due'"), 'expected learning steps to have a distinct visible state');
   assert(app.includes("queuePhase === 'review-due' || queuePhase === 'relearning-due'"), 'expected due review and relearning cards to render as review');
-  assert(index.includes('id="today-step-learning"'), 'expected a separate learning-step stage in the daily path');
-  assert(index.includes('id="today-step-review"'), 'expected a separate due-review stage in the daily path');
-  assert(index.includes('id="today-step-new"'), 'expected a separate new-card stage in the daily path');
-  assert(index.indexOf('id="today-step-learning"') < index.indexOf('id="today-step-review"'), 'learning steps must appear before reviews');
-  assert(index.indexOf('id="today-step-review"') < index.indexOf('id="today-step-new"'), 'reviews must appear before new cards');
+  assert(index.includes('id="today-focus-meta"'), 'expected one concise daily-plan explanation instead of repeated stage cards');
+  assert(index.includes('复习优先，不足目标的名额自动补入新词'), 'expected the daily quota composition rule to be visible');
+  assert(app.includes('const DEFAULT_DAILY_GOAL = 200;'), 'expected the default daily processing quota to be 200');
 }
 
 console.log('daily queue repair verification passed');

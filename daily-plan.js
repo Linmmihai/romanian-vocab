@@ -25,30 +25,31 @@
 
   function buildTieredPlan(tiers = [], options = {}) {
     const keyOf = options.keyOf || (value => String(value || ''));
-    const limit = Math.max(1, Number(options.limit || 20));
+    const limit = Math.max(1, Number(options.limit || 200));
     return uniqueBy(tiers.flatMap(tier => Array.isArray(tier) ? tier : []), keyOf).slice(0, limit);
   }
 
   function composeOpenQueue(options = {}) {
     const keyOf = options.keyOf || (value => String(value || ''));
     const sortWords = options.sortWords || (items => uniqueBy(items, keyOf));
-    const goal = Math.max(1, Number(options.goal || 20));
+    const goal = Math.max(1, Number(options.goal || 200));
     const completedCount = Math.max(0, Number(options.completedCount || 0));
     const openSlots = Math.max(0, goal - completedCount);
-    const deferred = uniqueBy(options.deferred || [], keyOf);
+    const deferred = uniqueBy(options.deferred || [], keyOf).slice(0, openSlots);
     if (!openSlots) {
       return { words: deferred, active: [], replacements: [], deferred, openSlots };
     }
-    const active = sortWords(uniqueBy(options.active || [], keyOf)).slice(0, openSlots);
+    const activeSlots = Math.max(0, openSlots - deferred.length);
+    const active = sortWords(uniqueBy(options.active || [], keyOf)).slice(0, activeSlots);
     const used = new Set([...active, ...deferred].map(keyOf));
-    const missing = Math.max(0, openSlots - active.length);
+    const missing = Math.max(0, activeSlots - active.length);
     const replacements = missing
       ? sortWords(uniqueBy(options.candidates || [], keyOf))
           .filter(item => !used.has(keyOf(item)))
           .slice(0, missing)
       : [];
     return {
-      words: uniqueBy([...active, ...replacements, ...deferred], keyOf),
+      words: uniqueBy([...active, ...replacements, ...deferred], keyOf).slice(0, openSlots),
       active,
       replacements,
       deferred,

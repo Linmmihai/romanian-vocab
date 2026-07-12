@@ -61,4 +61,4 @@ alter table public.progress
   add column if not exists weak_cleared_at timestamptz;
 
 alter table public.profiles
-  alter column daily_goal set default 20;
+  alter column daily_goal set default 200;

@@ -12,10 +12,10 @@ assert(schedulerMigration.includes('add column if not exists recent_results json
 assert(schedulerMigration.includes('progress_user_due_at_idx'), 'scheduler migration must index per-user due lookups');
 assert(schedulerMigration.includes('validate constraint progress_card_state_check'), 'scheduler migration must validate the card-state constraint after backfill');
 assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
-assert(index.includes('scheduler.js?v=20260712-anki-queue'), 'scheduler cache buster must move with Anki queue changes');
-assert(index.includes('api.js?v=20260712-anki-queue'), 'API cache buster must match the Anki queue release');
-assert(index.includes('app.js?v=20260712-anki-queue'), 'app cache buster must match the Anki queue release');
-assert(serviceWorker.includes('ro-vocab-pwa-v20'), 'service worker cache must move with Anki queue changes');
+assert(index.includes('scheduler.js?v=20260712-ux-200'), 'scheduler cache buster must move with the UX release');
+assert(index.includes('api.js?v=20260712-ux-200'), 'API cache buster must match the UX release');
+assert(index.includes('app.js?v=20260712-ux-200'), 'app cache buster must match the UX release');
+assert(serviceWorker.includes('ro-vocab-pwa-v22'), 'service worker cache must move with the UX release');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;

@@ -16,15 +16,15 @@ const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260712-anki-guide',
-  'progress-model.js?v=20260712-anki-guide',
-  'daily-plan.js?v=20260712-anki-guide',
-  'romanian-text.js?v=20260712-anki-guide',
-  'api.js?v=20260712-anki-guide',
-  'telemetry.js?v=20260712-anki-guide',
+  'scheduler.js?v=20260712-ux-200',
+  'progress-model.js?v=20260712-ux-200',
+  'daily-plan.js?v=20260712-ux-200',
+  'romanian-text.js?v=20260712-ux-200',
+  'api.js?v=20260712-ux-200',
+  'telemetry.js?v=20260712-ux-200',
   'auth.js?v=20260619-direct-front-reset',
-  'app.js?v=20260712-anki-guide',
-  'pwa.js?v=20260712-anki-guide'
+  'app.js?v=20260712-ux-200',
+  'pwa.js?v=20260712-ux-200'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -40,7 +40,7 @@ assert(serviceWorker.includes("'./daily-plan.js'"), 'PWA app shell must include 
 assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v21"), 'PWA cache must advance with guide pronunciation changes');
+assert(serviceWorker.includes("ro-vocab-pwa-v22"), 'PWA cache must advance with the UX and 200-task model');
 assert(progressModel.includes('function mergeEntries'), 'progress model must own entry merge behavior');
 assert(progressModel.includes('function selectSchedulerBase'), 'progress model must own scheduler snapshot selection');
 assert(dailyPlan.includes('function composeOpenQueue'), 'daily planner must own fixed-quota queue composition');

@@ -15,6 +15,8 @@ assert(guideStart >= 0 && guideEnd > guideStart, 'guide section must exist');
 const guide = html.slice(guideStart, guideEnd);
 const alphabet = guide.match(/<div class="alphabet-item"[^>]*>/g) || [];
 
+assert(html.includes('class="btn-sm topbar-guide-btn"'), 'guide must have a visible topbar shortcut outside the account menu');
+assert(html.includes('aria-label="打开学习指南"'), 'topbar guide shortcut must have a clear accessible label');
 assert(alphabet.length === 31, `Romanian alphabet must contain 31 cards, found ${alphabet.length}`);
 assert(alphabet.every(card => card.includes('data-speak=') && card.includes('data-tts=')), 'every alphabet card must include a label and Romanian TTS phrase');
 assert(!guide.includes('data-tts-lang="en'), 'guide must never force Romanian letters through an English voice');

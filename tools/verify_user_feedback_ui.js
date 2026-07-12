@@ -21,13 +21,13 @@ assert(queueMessage.includes('暂未同步到其他设备'), 'local queue messag
 const saveWarning = functionBlock(app, 'handleProgressSaveStatus');
 assert(!/数据库缺少|数据库字段/.test(saveWarning), 'progress warning should use user-facing language');
 
-assert(html.includes('.sync-badge{display:inline-block;max-width:82px'), 'mobile sync status should remain visible');
+assert(html.includes('.sync-badge{display:inline-block;max-width:72px'), 'mobile sync status should remain visible');
 const baseToastRule = html.indexOf('.toast{position:fixed;bottom:24px');
 const mobileToastRule = html.indexOf('.toast{bottom:calc(64px + env(safe-area-inset-bottom))', baseToastRule);
 assert(baseToastRule !== -1 && mobileToastRule > baseToastRule, 'mobile toast override should follow the base rule and clear the bottom navigation');
 assert(html.includes('id="toast" role="status" aria-live="polite"'), 'toast should announce status updates accessibly');
 assert(html.includes('id="sync-badge" role="status" aria-live="polite"'), 'sync status should announce changes accessibly');
-assert(html.includes('app.js?v=20260712-anki-queue'), 'app cache buster should include the Anki queue release');
-assert(serviceWorker.includes('ro-vocab-pwa-v20'), 'service worker cache should include the Anki queue release');
+assert(html.includes('app.js?v=20260712-ux-200'), 'app cache buster should include the UX and 200-task release');
+assert(serviceWorker.includes('ro-vocab-pwa-v22'), 'service worker cache should include the UX release');
 
 console.log('user feedback UI verification passed');

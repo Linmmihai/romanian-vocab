@@ -48,12 +48,13 @@ const sb = typeof supabase !== 'undefined' && supabase?.createClient
   : createUnavailableSupabaseClient();
 
 const OFFLINE_USER_ID = 'local-offline-user';
+const API_DEFAULT_DAILY_GOAL = 200;
 const OFFLINE_PROFILE = {
   id: OFFLINE_USER_ID,
   email: 'offline@local.app',
   nickname: '本机学习',
   role: 'user',
-  daily_goal: 20,
+  daily_goal: API_DEFAULT_DAILY_GOAL,
   offline: true
 };
 const PROGRESS_LOAD_TIMEOUT_MS = 3500;
@@ -778,7 +779,7 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     ...(cloudPayload.word_ro || []),
     ...(localPayload.word_ro || [])
   ]).filter(value => !completedKeys.has(value.toLocaleLowerCase('ro')));
-  const goal = Math.max(Number(localPayload.goal || 20), Number(cloudPayload.goal || 20), 1);
+  const goal = Math.max(Number(localPayload.goal || API_DEFAULT_DAILY_GOAL), Number(cloudPayload.goal || API_DEFAULT_DAILY_GOAL), 1);
   return {
     ...cloudPayload,
     ...localPayload,
@@ -795,7 +796,7 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
 function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal = localPayload.goal, options = {}) {
   if (!cloudPayload) return localPayload;
   const newWords = Math.max(Number(localPayload.new_words || 0), Number(cloudPayload.new_words || 0));
-  const goal = Math.max(Number(localPayload.goal || 20), Number(cloudPayload.goal || 20), 1);
+  const goal = Math.max(Number(localPayload.goal || API_DEFAULT_DAILY_GOAL), Number(cloudPayload.goal || API_DEFAULT_DAILY_GOAL), 1);
   const doneGoal = Math.max(Number(completionGoal || goal), 1);
   const hasLocalCompleted = typeof localPayload.completed === 'boolean';
   const hasCloudCompleted = typeof cloudPayload.completed === 'boolean';
@@ -1488,7 +1489,7 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
     return {
       user_id: userId,
       queue_date: date,
-      goal: parsed.goal || goal || 20,
+      goal: parsed.goal || goal || API_DEFAULT_DAILY_GOAL,
       word_id: normalizeIdArray(parsed.word_id),
       word_ro: Array.isArray(parsed.word_ro) ? parsed.word_ro : [],
       completed_word_id: normalizeIdArray(parsed.completed_word_id),
@@ -1503,7 +1504,7 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
 
 function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
   const payload = {
-    goal: queue.goal || 20,
+    goal: queue.goal || API_DEFAULT_DAILY_GOAL,
     word_id: normalizeIdArray(queue.word_id),
     word_ro: queue.word_ro || [],
     completed_word_id: normalizeIdArray(queue.completed_word_id),
@@ -1547,7 +1548,7 @@ async function apiGetDailyQueue(userId, goal) {
       return {
         user_id: userId,
         queue_date: today,
-        goal: goal || 20,
+        goal: goal || API_DEFAULT_DAILY_GOAL,
         word_id: [],
         word_ro: [],
         completed_word_id: [],
@@ -1565,7 +1566,7 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
   const payload = {
     user_id: userId,
     queue_date: today,
-    goal: queue.goal || 20,
+    goal: queue.goal || API_DEFAULT_DAILY_GOAL,
     word_id: normalizeIdArray(queue.word_id),
     word_ro: queue.word_ro || [],
     completed_word_id: normalizeIdArray(queue.completed_word_id),
@@ -1795,7 +1796,7 @@ async function apiGetTodayLog(userId, goal) {
       user_id: userId,
       log_date: today,
       new_words: 0,
-      goal: goal || 20,
+      goal: goal || API_DEFAULT_DAILY_GOAL,
       completed: false,
       updated_at: updatedAt
     };
@@ -1850,7 +1851,7 @@ async function apiGetTodayLog(userId, goal) {
   try {
     ({ data: created, error: createError } = await withTimeout(
       sb.from('daily_log')
-        .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || 20, completed: false })
+        .insert({ user_id: userId, log_date: today, new_words: 0, goal: goal || API_DEFAULT_DAILY_GOAL, completed: false })
         .select()
         .single(),
       PROGRESS_LOAD_TIMEOUT_MS,
@@ -1987,7 +1988,7 @@ async function apiGetClassRecentLogs(days = 30) {
 async function apiGetDailyGoal(userId) {
   if (isOfflineMode()) return apiGetLocalDailyGoal(userId);
   const { data } = await sb.from('profiles').select('daily_goal').eq('id', userId).single();
-  return data?.daily_goal || 20;
+  return data?.daily_goal || API_DEFAULT_DAILY_GOAL;
 }
 
 /**
@@ -2003,5 +2004,5 @@ async function apiSetDailyGoal(userId, goal) {
 }
 
 function apiGetLocalDailyGoal(userId = OFFLINE_USER_ID) {
-  return Number(localStorage.getItem(localKey(userId, 'daily_goal'))) || 20;
+  return Number(localStorage.getItem(localKey(userId, 'daily_goal'))) || API_DEFAULT_DAILY_GOAL;
 }
