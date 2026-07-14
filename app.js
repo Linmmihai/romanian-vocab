@@ -235,21 +235,27 @@ function debugProgressWrite(source, wordRo, previous, next, extra = {}) {
   }));
 }
 
-function normalizeProgressMap(map = {}) {
+function mergeProgressMaps(...maps) {
   const normalized = {};
-  Object.entries(map || {}).forEach(([rawKey, progress]) => {
-    const word = resolveWordFromProgressKey(rawKey, progress);
-    const key = word ? String(word.id) : progressFallbackKey(rawKey, progress);
-    if (!key) return;
-    normalized[key] = window.RomanianVocabProgressModel.mergeEntries(normalized[key], {
-      ...(progress || {}),
-      wordId: word?.id ?? progress?.wordId ?? progress?.word_id ?? null,
-      word_id: word?.id ?? progress?.word_id ?? progress?.wordId ?? null,
-      wordRo: word?.ro ?? progress?.wordRo ?? progress?.word_ro ?? '',
-      word_ro: word?.ro ?? progress?.word_ro ?? progress?.wordRo ?? ''
+  maps.forEach(map => {
+    Object.entries(map || {}).forEach(([rawKey, progress]) => {
+      const word = resolveWordFromProgressKey(rawKey, progress);
+      const key = word ? String(word.id) : progressFallbackKey(rawKey, progress);
+      if (!key) return;
+      normalized[key] = window.RomanianVocabProgressModel.mergeEntries(normalized[key], {
+        ...(progress || {}),
+        wordId: word?.id ?? progress?.wordId ?? progress?.word_id ?? null,
+        word_id: word?.id ?? progress?.word_id ?? progress?.wordId ?? null,
+        wordRo: word?.ro ?? progress?.wordRo ?? progress?.word_ro ?? '',
+        word_ro: word?.ro ?? progress?.word_ro ?? progress?.wordRo ?? ''
+      });
     });
   });
   return normalized;
+}
+
+function normalizeProgressMap(map = {}) {
+  return mergeProgressMaps(map);
 }
 
 function replaceProgressMap(map = {}) {
@@ -687,7 +693,7 @@ function ensureTodayQueueHasActiveCards(reason = 'unspecified', options = {}) {
   activeOpenCount = activeOpenWords.length;
   deferredOpenCount = deferredOpenWords.length;
   activeSlots = Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0));
-  if (!options.force && (activeOpenCount + deferredOpenCount >= activeSlots || !activeSlots || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal())) {
+  if (!options.force && (activeOpenCount >= activeSlots || !activeSlots || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal())) {
     debugDailyQueue('ensureTodayQueueHasActiveCards:fast-active', {
       reason,
       activeOpenCount,
@@ -1247,7 +1253,9 @@ async function refreshCloudProgressAfterLocalLoad() {
     localStorage.setItem(refreshKey, String(Date.now()));
     const loadedProgress = await apiLoadProgress(currentUser.id);
     const progressSource = loadedProgress.__progressSource || 'cloud';
-    replaceProgressMap(loadedProgress);
+    // A background refresh must never replace a richer local/pending record
+    // with an older cloud snapshot.
+    replaceProgressMap(mergeProgressMaps(progressMap, loadedProgress));
     progressLoaded = true;
     const stillPending = progressSource === 'cloudWithPending' || hasPendingProgress(loadedProgress) || hasPendingSync();
     setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
@@ -1819,25 +1827,6 @@ function getDailyWordList(words = W, options = {}) {
     : new Set(scoped.map(w => roKey(w.ro)));
   const globalDueWords = sortDailyPhaseWords(getRemainingTodayReviewWords())
     .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)));
-  if (globalDueWords.length) {
-    const result = globalDueWords.slice(0, limit);
-    resultSize = result.length;
-    path = 'global-due-only';
-    debugDailyQueue('getDailyWordList:global-due-only', {
-      options,
-      scopedCount: scoped.length,
-      globalDueCount: globalDueWords.length,
-      resultSize: result.length
-    });
-    finishDailyQueuePerf(perf, {
-      path,
-      resultSize,
-      vocabScanned: words.length,
-      openWordCount: 0,
-      options
-    });
-    return result;
-  }
   const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
   const openWords = openQueuedRos
     .map(ro => getWordByRo(ro))
@@ -1845,36 +1834,23 @@ function getDailyWordList(words = W, options = {}) {
     .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)))
     .filter(w => !isRetryDeferred(w));
   const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
-  if (dueOpenWords.length) {
-    if (dueOpenWords.length >= limit) {
-      const result = sortDailyPhaseWords(dueOpenWords).slice(0, limit);
-      resultSize = result.length;
-      path = 'due-only';
-      debugDailyQueue('getDailyWordList:due-only', {
-        options,
-        scopedCount: scoped.length,
-        openWordCount: openWords.length,
-        dueOpenCount: dueOpenWords.length,
-        resultSize: result.length
-      });
-      finishDailyQueuePerf(perf, {
-        path,
-        resultSize,
-        vocabScanned: words.length,
-        openWordCount: openWords.length,
-        options
-      });
-      return result;
-    }
-    const nonDueOpenWords = openWords.filter(w => !dueOpenWords.some(due => roKey(due.ro) === roKey(w.ro)));
-    const result = sortDailyPhaseWords([...dueOpenWords, ...nonDueOpenWords]).slice(0, limit);
+  const allDueWords = uniqueWordsByRo([...globalDueWords, ...dueOpenWords]);
+  if (allDueWords.length) {
+    const dueKeys = new Set(allDueWords.map(w => roKey(w.ro)));
+    const nonDueOpenWords = sortDailyPhaseWords(openWords.filter(w => !dueKeys.has(roKey(w.ro))));
+    const result = window.RomanianVocabDailyPlan.interleavePriority(
+      sortDailyPhaseWords(allDueWords),
+      nonDueOpenWords,
+      { limit, primaryBatch: 3, keyOf: w => roKey(w?.ro) }
+    );
     resultSize = result.length;
-    path = 'due-plus-non-due';
-    debugDailyQueue('getDailyWordList:due-plus-non-due', {
+    path = nonDueOpenWords.length ? 'due-interleaved' : 'due-only';
+    debugDailyQueue('getDailyWordList:due-interleaved', {
       options,
       scopedCount: scoped.length,
       openWordCount: openWords.length,
-      dueOpenCount: dueOpenWords.length,
+      globalDueCount: globalDueWords.length,
+      dueOpenCount: allDueWords.length,
       nonDueOpenCount: nonDueOpenWords.length,
       resultSize: result.length
     });
@@ -2775,13 +2751,6 @@ function renderReviewPanel() {
   });
   document.querySelectorAll('.study-mode-btn[data-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === flashMode));
   setText('flash-mode-title', getFlashModeLabel());
-}
-
-function setStepState(id, state) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.toggle('active', state === 'active');
-  el.classList.toggle('done', state === 'done');
 }
 
 function renderTodayFocus(metrics = null) {
@@ -5560,7 +5529,7 @@ async function importProgressBackup(file) {
     const payload = JSON.parse(await file.text());
     if (!payload || payload.app !== 'romanian-vocab' || !payload.progress) throw new Error('文件格式不正确');
     const incoming = payload.progress || {};
-    replaceProgressMap({ ...progressMap, ...incoming });
+    replaceProgressMap(mergeProgressMaps(progressMap, incoming));
     const rows = Object.entries(incoming);
     let importWarningShown = false;
     let importedRows = 0;

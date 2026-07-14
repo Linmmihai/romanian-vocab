@@ -97,6 +97,46 @@ assert.strictEqual(progressModel.getGrammarTotal({ grammarQt: 5 }), 5);
 }
 
 {
+  const legitimateLapse = {
+    ...matureProgress,
+    qt: 21,
+    reps: 21,
+    cardState: 'reinforcing',
+    dueAt: '2026-06-21T00:10:00.000Z',
+    nextReviewAt: '2026-06-21T00:10:00.000Z',
+    intervalDays: 0,
+    memoryStrength: 63,
+    lapses: 2,
+    needsReinforcement: true,
+    lastReviewedAt: '2026-06-21T00:00:00.000Z'
+  };
+  const merged = progressModel.mergeEntries(matureProgress, legitimateLapse);
+  assert.strictEqual(merged.cardState, 'reinforcing', 'a real newer answer must be allowed to move a review card into relearning');
+  assert.strictEqual(merged.reps, 21, 'a real newer answer must advance reps');
+  assert.strictEqual(merged.seen, true, 'a lapsed learned card must never become unseen');
+  assert.strictEqual(merged.known, true, 'a lapsed learned card must preserve durable recognition history');
+}
+
+{
+  const stalePending = {
+    word_id: matureProgress.word_id,
+    known: false,
+    seen: false,
+    qr: 0,
+    qt: 0,
+    reviewStage: 0,
+    cardState: 'new',
+    reps: 0,
+    lastReviewedAt: '2026-06-22T00:00:00.000Z',
+    pendingSync: true
+  };
+  const merged = progressModel.mergeEntries(matureProgress, stalePending);
+  assert.strictEqual(merged.cardState, 'review', 'a stale pending overlay must not replace mature cloud scheduler state');
+  assert.strictEqual(merged.seen, true, 'a stale pending overlay must not make a learned word unseen');
+  assert.strictEqual(merged.qt, 20, 'a stale pending overlay must not erase answer history');
+}
+
+{
   const progressMap = { learned: matureProgress, due: { ...matureProgress, cardState: 'review', dueAt: '2026-06-21T00:00:00.000Z' } };
   const unseen = [{ ro: 'learned' }, { ro: 'due' }, { ro: 'brand-new' }]
     .filter((word) => isUnseenWord(word, progressMap))
@@ -134,6 +174,11 @@ assert.strictEqual(progressModel.getGrammarTotal({ grammarQt: 5 }), 5);
   assert(app.includes('debugProgressWrite'), 'progress writes should be instrumented behind debug mode');
   assert(app.includes('RomanianVocabProgressModel.mergeEntries'), 'front-end progress writes must use the shared progress model');
   assert(api.includes('RomanianVocabProgressModel.selectSchedulerBase'), 'local/cloud progress merge must use the shared progress model');
+  assert(api.includes('function mergeStoredProgress'), 'all storage overlays must use one monotonic progress merge helper');
+  assert(api.includes('map[nextKey] = mergeStoredProgress(map[nextKey]'), 'pending progress must merge with cloud progress instead of overwriting it');
+  assert(api.includes('const { preferCloud = !isOfflineMode() } = options;'), 'online vocabulary loading must be cloud-first');
+  assert(api.includes("sb.from('words').select('id,ro').in('id', candidateWordIds)"), 'pending progress retries must validate word IDs against the current cloud vocabulary');
+  assert(api.includes('resolveCurrentWordForProgress'), 'stale word IDs must be rebound through the current normalized Romanian text index');
   assert(!app.includes('function mergeProgressEntry'), 'front-end must not redefine progress merge rules');
   assert(!api.includes('function isSchedulerMergeDowngrade'), 'API layer must not redefine scheduler merge rules');
   assert(!app.includes('function schedulerMaturityRank'), 'front-end must not duplicate scheduler maturity rules');

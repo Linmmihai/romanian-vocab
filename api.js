@@ -60,7 +60,9 @@ const OFFLINE_PROFILE = {
 const PROGRESS_LOAD_TIMEOUT_MS = 3500;
 const WORDS_LOAD_TIMEOUT_MS = 3500;
 const BUNDLED_WORDS_LOAD_TIMEOUT_MS = 6000;
-const WORDS_CACHE_KEY = 'words_cache:v2';
+// v3 invalidates caches created before online users became cloud-first. Those
+// caches can contain deleted word IDs that violate progress.word_id's FK.
+const WORDS_CACHE_KEY = 'words_cache:v3';
 const WORDS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
@@ -212,6 +214,15 @@ function getProgressEntryWordRo(progress = {}, fallback = '') {
   return progress?.wordRo || progress?.word_ro || fallback || '';
 }
 
+function resolveCurrentWordForProgress(key, progress = {}) {
+  const storedWordRo = getProgressEntryWordRo(progress, String(key || '').replace(/^legacy:/, ''));
+  const currentWord = typeof getWordByRo === 'function' ? getWordByRo(storedWordRo) : null;
+  return {
+    wordId: currentWord?.id ?? getProgressEntryWordId(key, progress),
+    wordRo: currentWord?.ro || storedWordRo
+  };
+}
+
 function readProgressMemoryBackup(userId) {
   return readJson(progressMemoryKey(userId), {});
 }
@@ -258,13 +269,13 @@ function readLocalProgressFallback(userId) {
     const wordId = getProgressEntryWordId(key, progress);
     const wordRo = getProgressEntryWordRo(progress, key);
     const nextKey = progressEntryKey(wordId, wordRo) || key;
-    map[nextKey] = mergeProgressMemory({ ...(progress || {}), word_id: wordId, word_ro: wordRo }, memoryBackup[nextKey] || memoryBackup[key]);
+    map[nextKey] = mergeStoredProgress(map[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo }, memoryBackup[nextKey] || memoryBackup[key]);
   });
   Object.entries(pendingProgress).forEach(([key, progress]) => {
     const wordId = getProgressEntryWordId(key, progress);
     const wordRo = getProgressEntryWordRo(progress, key);
     const nextKey = progressEntryKey(wordId, wordRo) || key;
-    map[nextKey] = mergeProgressMemory({ ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    map[nextKey] = mergeStoredProgress(map[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
   });
   return map;
 }
@@ -278,7 +289,7 @@ function writeLocalProgressSnapshot(userId, progressMap = {}) {
     const wordRo = getProgressEntryWordRo(progress, key);
     const nextKey = progressEntryKey(wordId, wordRo);
     if (!nextKey) return;
-    snapshot[nextKey] = { ...(progress || {}), word_id: wordId, word_ro: wordRo };
+    snapshot[nextKey] = mergeStoredProgress(snapshot[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo });
     delete snapshot[nextKey].pendingSync;
   });
   try {
@@ -670,6 +681,11 @@ function mergeProgressMemory(progress, backup = {}) {
   };
 }
 
+function mergeStoredProgress(existing = null, incoming = {}, backup = {}) {
+  const merged = RomanianVocabProgressModel.mergeEntries(existing, incoming || {});
+  return mergeProgressMemory(merged, backup);
+}
+
 function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const cloudProgress = cloudRow ? rowToProgress(cloudRow) : {};
   const qr = Math.max(Number(localProgress.qr || 0), Number(cloudProgress.qr || 0));
@@ -819,7 +835,7 @@ function mergeDailyLogPayload(localPayload, cloudPayload = null, completionGoal 
  * @returns {Promise<Array>} 词汇数组
  */
 async function apiLoadWords(options = {}) {
-  const { preferCloud = false } = options;
+  const { preferCloud = !isOfflineMode() } = options;
   if (isOfflineMode()) return loadBundledWords();
   if (!preferCloud) return loadBundledWords();
   let all = [], from = 0;
@@ -830,7 +846,8 @@ async function apiLoadWords(options = {}) {
         WORDS_LOAD_TIMEOUT_MS,
         '云端词库读取超时'
       );
-      if (error || !data || !data.length) break;
+      if (error) throw new Error(error.message);
+      if (!data || !data.length) break;
       all = all.concat(data);
       if (data.length < 1000) break;
       from += 1000;
@@ -1102,7 +1119,7 @@ async function apiLoadProgress(userId) {
     const progress = rowToProgress(r);
     const key = progressEntryKey(r.word_id, r.word_ro);
     if (!r.word_id) legacyRows++;
-    map[key] = mergeProgressMemory(progress, memoryBackup[key] || memoryBackup[r.word_ro]);
+    map[key] = mergeStoredProgress(map[key], progress, memoryBackup[key] || memoryBackup[r.word_ro]);
   });
   if (legacyRows) {
     console.warn(`Loaded ${legacyRows} legacy progress row(s) without word_id; using normalized word_ro fallback until migration/backfill is complete.`);
@@ -1115,7 +1132,7 @@ async function apiLoadProgress(userId) {
     const wordId = getProgressEntryWordId(key, progress);
     const wordRo = getProgressEntryWordRo(progress, key);
     const nextKey = progressEntryKey(wordId, wordRo) || key;
-    map[nextKey] = mergeProgressMemory({ ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    map[nextKey] = mergeStoredProgress(map[nextKey], { ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
   });
   writeLocalProgressSnapshot(userId, map);
   return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
@@ -1128,19 +1145,30 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
     .sort((a, b) => String(a[1]?.pendingSyncAt || '').localeCompare(String(b[1]?.pendingSyncAt || '')));
   const batch = entries.slice(0, Math.max(1, Number(limit || PENDING_PROGRESS_RETRY_LIMIT)));
   let saved = 0;
+  let unresolved = 0;
   for (let i = 0; i < batch.length; i += PENDING_PROGRESS_RETRY_CONCURRENCY) {
     const chunk = batch.slice(i, i + PENDING_PROGRESS_RETRY_CONCURRENCY);
-    const wordIds = chunk
-      .map(([key, p]) => getProgressEntryWordId(key, p))
-      .filter(Boolean);
-    const { data: cloudRows, error: cloudError } = wordIds.length
-      ? await sb.from('progress').select('*').eq('user_id', userId).in('word_id', wordIds)
-      : { data: [], error: null };
+    const candidates = chunk.map(([key, progress]) => resolveCurrentWordForProgress(key, progress));
+    const candidateWordIds = [...new Set(candidates.map(candidate => candidate.wordId).filter(Boolean))];
+    const [{ data: validWords, error: wordsError }, { data: cloudRows, error: cloudError }] = await Promise.all([
+      candidateWordIds.length
+        ? sb.from('words').select('id,ro').in('id', candidateWordIds)
+        : Promise.resolve({ data: [], error: null }),
+      candidateWordIds.length
+        ? sb.from('progress').select('*').eq('user_id', userId).in('word_id', candidateWordIds)
+        : Promise.resolve({ data: [], error: null })
+    ]);
+    if (wordsError) throw new Error(wordsError.message);
     if (cloudError) throw new Error(cloudError.message);
+    const validWordById = new Map((validWords || []).map(word => [String(word.id), word]));
     const cloudById = new Map((cloudRows || []).map(row => [String(row.word_id), row]));
-    const results = await Promise.allSettled(chunk.map(async ([key, p]) => {
-      const wordId = getProgressEntryWordId(key, p);
-      const wordRo = getProgressEntryWordRo(p, '');
+    const results = await Promise.allSettled(chunk.map(async ([key, p], index) => {
+      const candidate = candidates[index];
+      const wordId = candidate.wordId;
+      if (!wordId || !validWordById.has(String(wordId))) {
+        return { unresolved: true };
+      }
+      const wordRo = validWordById.get(String(wordId)).ro || candidate.wordRo;
       const mergedProgress = mergeCloudProgress(p, wordId ? cloudById.get(String(wordId)) : null);
       await apiSaveProgress(
         userId,
@@ -1177,24 +1205,28 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
           pendingSyncToken: p.pendingSyncToken || p.pending_sync_token || ''
         }
       );
+      return { unresolved: false };
     }));
     const savedKeys = [];
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
+      if (result.status === 'fulfilled' && !result.value?.unresolved) {
         saved++;
         savedKeys.push({
           key: chunk[index][0],
           pendingSyncToken: chunk[index][1]?.pendingSyncToken || chunk[index][1]?.pending_sync_token || ''
         });
+      } else if (result.status === 'fulfilled') {
+        unresolved++;
+        console.warn('Pending progress references a word missing from the current cloud vocabulary', chunk[index][0]);
       } else {
         console.warn('Pending progress retry failed', chunk[index][0], result.reason);
       }
     });
     clearPendingProgressBatch(userId, savedKeys);
   }
-  const failed = batch.length - saved;
+  const failed = batch.length - saved - unresolved;
   const remaining = Math.max(0, entries.length - saved);
-  return { attempted: batch.length, saved, failed, remaining, totalPending: entries.length };
+  return { attempted: batch.length, saved, failed, unresolved, remaining, totalPending: entries.length };
 }
 
 async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RETRY_LIMIT) {

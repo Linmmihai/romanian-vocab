@@ -11,7 +11,8 @@ const dailyPlan = read('daily-plan.js');
 
 assert(app.includes('const DEFAULT_DAILY_GOAL = 200;'), 'app default processing goal must be 200');
 assert(api.includes('const API_DEFAULT_DAILY_GOAL = 200;'), 'API/offline default processing goal must be 200');
-assert(dailyPlan.includes('openSlots - deferred.length'), 'deferred retries must continue occupying fixed quota slots');
+assert(dailyPlan.includes('const activeSlots = openSlots;'), 'waiting retries must not consume answerable daily quota slots');
+assert(dailyPlan.includes('function interleavePriority'), 'review priority must still leave active learning cards reachable');
 assert(html.includes('复习优先，不足目标的名额自动补入新词'), 'home must explain review-first quota composition once');
 assert(!html.includes('id="today-step-learning"'), 'repeated daily-stage cards should be removed from the home page');
 

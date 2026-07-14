@@ -61,6 +61,23 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
 {
   const todayQueue = Array.from({ length: 20 }, (_, index) => `retry-${index}`);
   const deferred = [...todayQueue];
+  const unseen = Array.from({ length: 20 }, (_, index) => `new-${index}`);
+  const repaired = repairTodayQueue({ todayQueue, deferred, unseen, dailyGoal: 20, todayNewWords: 0 });
+  assert.strictEqual(repaired.filter(ro => ro.startsWith('new-')).length, 20, 'waiting review steps must not consume active new-card slots');
+  assert.strictEqual(repaired.filter(ro => ro.startsWith('retry-')).length, 20, 'waiting review steps must remain queued for their due time');
+}
+
+{
+  const due = Array.from({ length: 8 }, (_, index) => `review-${index}`);
+  const unseen = Array.from({ length: 4 }, (_, index) => `new-${index}`);
+  const plan = dailyPlan.interleavePriority(due, unseen, { limit: 12, primaryBatch: 3, keyOf: roKey });
+  assert.deepStrictEqual(plan.slice(0, 4), ['review-0', 'review-1', 'review-2', 'new-0'], 'due reviews should be prioritized without monopolizing study');
+  assert.strictEqual(plan.filter(ro => ro.startsWith('new-')).length, 4, 'interleaving must keep new cards reachable while reviews are due');
+}
+
+{
+  const todayQueue = Array.from({ length: 20 }, (_, index) => `retry-${index}`);
+  const deferred = [...todayQueue];
   const repaired = repairTodayQueue({ todayQueue, deferred, unseen: [], dailyGoal: 170, todayNewWords: 7 });
   assert.deepStrictEqual(repaired, todayQueue, 'expected deferred-only queue to remain when no unseen cards are eligible');
 }
@@ -86,9 +103,10 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   const index = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(app.includes('function ensureTodayQueueHasActiveCards'), 'expected centralized queue repair function');
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
-  assert(app.includes('activeOpenCount + deferredOpenCount >= activeSlots'), 'expected deferred retries to keep occupying the fixed daily quota');
+  assert(app.includes('activeOpenCount >= activeSlots'), 'expected only active cards to satisfy the remaining daily quota');
   assert(app.includes('cap - Number(todayNewWords || 0)'), 'expected open slots to use the canonical daily completion count');
-  assert(app.includes("path = 'global-due-only'"), 'expected global due reviews to block daily new cards');
+  assert(!app.includes("path = 'global-due-only'"), 'global due reviews must not block every queued new card');
+  assert(app.includes('RomanianVocabDailyPlan.interleavePriority'), 'today mode must interleave prioritized reviews with active learning cards');
   assert(app.includes('isTodayBlockingReviewWord'), 'expected blocking review cards in today mode to count when known');
   assert(app.includes('const completesTodayTask = isKnownAction;'), 'expected fuzzy answers not to complete daily tasks');
   assert(app.includes('function appendExplicitTodayQueueCards'), 'expected explicit goal changes to keep their fast append path');

@@ -70,6 +70,7 @@
     const incomingInterval = Number(incomingScheduler.intervalDays || 0);
     const existingRank = cardStateMaturity(existingScheduler.cardState);
     const incomingRank = cardStateMaturity(incomingScheduler.cardState);
+    if (incomingReps > existingReps) return false;
     return (
       incomingReps < existingReps ||
       incomingReviewStage < existingReviewStage ||
