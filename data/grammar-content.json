@@ -1,0 +1,1182 @@
+{
+  "version": 1,
+  "topics": {
+    "grammar-001": {
+      "overview": "罗马尼亚语的词会根据功能分成可变词类和不变词类。判断一个形式时，先看它在句中做什么，再看它是否随性、数、格、人称或时态变化。",
+      "keyPoints": [
+        "名词、冠词、形容词、代词、数词和动词通常会发生词形变化。",
+        "副词、介词、连词和感叹词通常保持原形，但会影响短语和分句之间的关系。",
+        "同一个词的词类要结合句法位置判断，例如 bine 通常是副词，bun 则是形容词。"
+      ],
+      "examples": [
+        { "ro": "Fata citește repede.", "zh": "女孩读得很快。fata 是名词，citește 是动词，repede 是副词。" }
+      ]
+    },
+    "grammar-002": {
+      "overview": "中性陈述句常用“主语 + 谓语 + 宾语”，但罗马尼亚语依靠动词词尾和格标记传递信息，因此语序比中文更灵活。",
+      "keyPoints": [
+        "没有特殊强调时，先使用 SVO：谁 + 做什么 + 对什么。",
+        "形容词、介词短语和状语可以扩展三个核心成分，但不要遮住句子的谓语中心。",
+        "成分前置通常表示话题或对比，不等于可以随意打乱语序。"
+      ],
+      "examples": [
+        { "ro": "Maria citește o carte interesantă.", "zh": "Maria 在读一本有趣的书。" },
+        { "ro": "Cartea aceasta, Maria o citește acum.", "zh": "这本书，Maria 现在正在读；前置成分带有话题强调。" }
+      ]
+    },
+    "grammar-003": {
+      "overview": "罗马尼亚语动词词尾通常已经标出人称，所以主语代词在不需要强调或消除歧义时可以省略。",
+      "keyPoints": [
+        "Merg 已包含“我去”的人称信息，不必总说 Eu merg。",
+        "需要对比、纠正或强调时保留主语：Eu merg, dar el rămâne。",
+        "第三人称上下文不清楚时，说出 el、ea、ei、ele 可以避免指代含混。"
+      ],
+      "examples": [
+        { "ro": "Locuiesc în București.", "zh": "我住在布加勒斯特；主语 eu 被省略。" },
+        { "ro": "Eu gătesc, iar tu speli vasele.", "zh": "我做饭，而你洗碗；主语用于对比。" }
+      ]
+    },
+    "grammar-004": {
+      "overview": "普通否定把 nu 放在变位动词前；出现 nimeni、nimic、niciodată 等否定词时，罗马尼亚语通常仍保留 nu，形成否定一致。",
+      "keyPoints": [
+        "基本结构是 nu + 动词：Nu înțeleg。",
+        "非重读代词位于 nu 与动词之间：Nu îl cunosc。",
+        "nimeni、nimic、niciun 等位于动词后时通常与 nu 共现，这不是逻辑上的双重否定。"
+      ],
+      "examples": [
+        { "ro": "Nu văd pe nimeni aici.", "zh": "我在这里一个人也没看见。" },
+        { "ro": "Nu i-am spus nimic.", "zh": "我什么也没告诉他/她。" }
+      ]
+    },
+    "grammar-005": {
+      "overview": "一般疑问句主要依靠语调，特殊疑问句则把 cine、ce、care、unde、când、cum、de ce 等疑问成分放在显眼位置。",
+      "keyPoints": [
+        "一般疑问句不需要英语式助动词倒装：Vii mâine?",
+        "疑问词在句中承担真实成分功能，介词不能随意省略：Cu cine vorbești?",
+        "care 会按格变化，如 cărui、cărei、căror。"
+      ],
+      "examples": [
+        { "ro": "Ai timp acum?", "zh": "你现在有时间吗？" },
+        { "ro": "De ce înveți româna?", "zh": "你为什么学习罗马尼亚语？" }
+      ]
+    },
+    "grammar-006": {
+      "overview": "一致关系要求彼此关联的词在性、数、格或人称上相互匹配。先找到中心词，再让修饰语和谓语跟随它变化。",
+      "keyPoints": [
+        "主语决定谓语的人称和数：Fata vine / Fetele vin。",
+        "名词决定冠词和形容词的性数格形式：o carte nouă / două cărți noi。",
+        "礼貌代词 dumneavoastră 使用第二人称复数动词，即使只指一个人。"
+      ],
+      "examples": [
+        { "ro": "Studentele sunt obosite.", "zh": "女学生们累了；复数阴性主语与表语一致。" }
+      ]
+    },
+    "grammar-007": {
+      "overview": "罗马尼亚语会通过前置、后置、重读代词和语调突出话题或焦点。改变语序往往会改变信息重点，而不是基本事实。",
+      "keyPoints": [
+        "中性语序先提供已知信息，再给新信息。",
+        "宾语前置时常配合非重读代词复现：Cartea am citit-o。",
+        "人称代词显式出现通常带对比：Eu am spus, nu el。"
+      ],
+      "examples": [
+        { "ro": "Pe Maria am văzut-o ieri.", "zh": "我昨天见到的是 Maria；宾语被前置强调。" }
+      ]
+    },
+    "grammar-008": {
+      "overview": "名词有阳性、阴性和中性三种语法性。中性名词单数按阳性一致，复数按阴性一致，因此最好把单复数形式一起记。",
+      "keyPoints": [
+        "阳性常与 un / doi 搭配，阴性常与 o / două 搭配。",
+        "中性使用 un scaun，但复数是 două scaune。",
+        "词尾只能提供线索，不能完全代替词典信息。"
+      ],
+      "examples": [
+        { "ro": "un băiat – doi băieți; o fată – două fete; un hotel – două hoteluri", "zh": "阳性、阴性和中性名词的典型数词搭配。" }
+      ]
+    },
+    "grammar-009": {
+      "overview": "罗马尼亚语复数没有单一词缀，需要同时学习复数词尾和可能发生的词干变化。",
+      "keyPoints": [
+        "常见复数结尾包括 -i、-e、-uri，但不能只凭性别机械选择。",
+        "元音或辅音可能交替：carte → cărți，băiat → băieți。",
+        "学习新名词时建议记录“单数 + 复数 + 定冠词形式”。"
+      ],
+      "examples": [
+        { "ro": "o casă – două case; un pom – doi pomi; un lucru – două lucruri", "zh": "三个常见复数模型。" }
+      ]
+    },
+    "grammar-010": {
+      "overview": "不定冠词用于首次引入、非特指或表示类别：单数阳性/中性用 un，单数阴性用 o，复数常用 niște。",
+      "keyPoints": [
+        "un student、un oraș；o studentă、o idee。",
+        "niște 可与各性别复数名词搭配，也常带“若干”的语感。",
+        "表达职业、身份或不可数概念时，某些结构可以不用冠词。"
+      ],
+      "examples": [
+        { "ro": "Am cumpărat o carte și niște caiete.", "zh": "我买了一本书和一些练习本。" }
+      ]
+    },
+    "grammar-011": {
+      "overview": "罗马尼亚语定冠词通常附着在名词末尾，用来指向双方已知、前文提过或语境中唯一的对象。",
+      "keyPoints": [
+        "常见形式包括 băiatul、fata、hotelul、cărțile。",
+        "词尾附着可能引发拼写或语音变化，不能简单在任何名词后加同一个形式。",
+        "定冠词还参与属格与格和某些形容词结构。"
+      ],
+      "examples": [
+        { "ro": "Am văzut un film. Filmul a fost foarte bun.", "zh": "我看了一部电影。那部电影很好；第二次提及使用定冠词。" }
+      ]
+    },
+    "grammar-012": {
+      "overview": "主格主要标记主语和表语，宾格主要标记直接宾语及多数介词后的成分。许多名词两格同形，要靠句法位置判断。",
+      "keyPoints": [
+        "主语通常与谓语一致：Studentul citește。",
+        "人或特指直接宾语常由 pe 标记，并可能发生代词复现。",
+        "多数常用介词如 cu、de、la、pentru 支配宾格。"
+      ],
+      "examples": [
+        { "ro": "Studentul citește cartea.", "zh": "学生在读书；studentul 是主格主语，cartea 是宾格直接宾语。" }
+      ]
+    },
+    "grammar-013": {
+      "overview": "属格表达所属或限定关系，与格表达接受者、受益者等间接关系；两者在名词和冠词系统中常共享形式。",
+      "keyPoints": [
+        "定指名词常通过词尾表达：cartea studentului。",
+        "al、a、ai、ale 会与被拥有或被限定的名词一致，而不是与所有者一致。",
+        "与格非重读代词常与名词间接宾语复现：Îi dau Mariei cartea。"
+      ],
+      "examples": [
+        { "ro": "I-am trimis profesorului un mesaj.", "zh": "我给老师发了一条消息；profesorului 是与格。" },
+        { "ro": "Aceasta este cartea colegului meu.", "zh": "这是我同事的书；colegului 是属格。" }
+      ]
+    },
+    "grammar-014": {
+      "overview": "呼格用于直接称呼对方。它可以有专门词尾，也可以沿用普通形式；书写时通常用逗号与句子主体隔开。",
+      "keyPoints": [
+        "常见称呼形式有 Marie!、domnule!、prietene!。",
+        "现代口语中普通形式也很常见：Maria, vino aici。",
+        "呼格不充当主语，称呼后面的动词仍按实际听话者变位。"
+      ],
+      "examples": [
+        { "ro": "Domnule profesor, am o întrebare.", "zh": "老师先生，我有一个问题。" }
+      ]
+    },
+    "grammar-015": {
+      "overview": "人名和地名的格变化取决于名称的性别、词尾和是否能接受后置冠词。很多阳性人名和外来名使用前置 lui。",
+      "keyPoints": [
+        "常见结构是 cartea lui Andrei，但 Maria 常用 Mariei。",
+        "带定冠词形态的国家或地区名可按普通名词变化。",
+        "正式写作中应查询专名的规范变格，避免完全照搬外语形式。"
+      ],
+      "examples": [
+        { "ro": "I-am dat lui Victor adresa Mariei.", "zh": "我把 Maria 的地址给了 Victor。" }
+      ]
+    },
+    "grammar-016": {
+      "overview": "冠词选择取决于对象是否特指、是否已知，以及名词所处的结构。罗马尼亚语不能把中文“一个/这个”的直觉直接机械套用。",
+      "keyPoints": [
+        "首次引入常用不定冠词，再次提及常用定冠词。",
+        "表达职业、材料、学科、泛指活动和某些介词搭配时可以出现零冠词。",
+        "带形容词、所有词或介词的名词短语可能改变冠词的位置与形式。"
+      ],
+      "examples": [
+        { "ro": "Beau cafea dimineața, dar cafeaua aceasta este prea tare.", "zh": "我早上喝咖啡，但这杯咖啡太浓；泛指用零冠词，特指用定冠词。" }
+      ]
+    },
+    "grammar-017": {
+      "overview": "形容词要与所修饰名词保持性和数一致。不要只记一个词典形式，应至少同时观察阳性单数、阴性单数和复数。",
+      "keyPoints": [
+        "四形式形容词如 bun：bun、bună、buni、bune。",
+        "两形式形容词可能只区分单复数或只在部分位置区分性别。",
+        "多个名词共同受一个形容词修饰时，要根据整体的性数选择复数形式。"
+      ],
+      "examples": [
+        { "ro": "un băiat bun, o fată bună, doi băieți buni, două fete bune", "zh": "bun 的四种常见一致形式。" }
+      ]
+    },
+    "grammar-018": {
+      "overview": "形容词通常放在名词后；放在名词前常带评价、强调、固定表达或意义差异。",
+      "keyPoints": [
+        "名词后位置更中性，适合分类和客观描述。",
+        "名词前位置常突出说话人的评价或形成固定搭配。",
+        "少数形容词换位后意义会改变，需要按短语记忆。"
+      ],
+      "examples": [
+        { "ro": "un om mare / un mare om", "zh": "前者通常是“身材高大的人”，后者是“伟大的人”。" }
+      ]
+    },
+    "grammar-019": {
+      "overview": "比较级通常用 mai + 形容词；最高级用 cel/cea/cei/cele mai，并让冠词成分与中心名词一致。",
+      "keyPoints": [
+        "较高程度：mai bun decât...；同等：la fel de bun ca...。",
+        "相对最高级需要 cel mai，绝对最高程度常用 foarte、extrem de。",
+        "decât 通常引出不等比较，ca 或 la fel ca 常引出同等比较。"
+      ],
+      "examples": [
+        { "ro": "Ana este mai înaltă decât Maria.", "zh": "Ana 比 Maria 高。" },
+        { "ro": "Aceasta este cea mai ușoară lecție.", "zh": "这是最容易的一课。" }
+      ]
+    },
+    "grammar-020": {
+      "overview": "一些高频形容词会发生词干变化，另一些外来形容词保持不变。是否变形应结合具体词和实际用法判断。",
+      "keyPoints": [
+        "bun、rău、mic 等词在比较和词形变化中有高频特殊形式。",
+        "不变形容词在不同性数名词后保持同一形式，但冠词和其他修饰语仍需一致。",
+        "遇到外来词时优先核对词典，而不是自行添加罗马尼亚语词尾。"
+      ],
+      "examples": [
+        { "ro": "un pulover bej / două fuste bej", "zh": "bej 在两个短语中保持不变。" }
+      ]
+    },
+    "grammar-021": {
+      "overview": "基数词表达数量。unu/una 和 doi/două 会区分性别，20 以上整数与名词之间通常需要 de。",
+      "keyPoints": [
+        "用作计数时常见 un băiat、o fată、doi băieți、două fete。",
+        "20 及以上通常说 douăzeci de cărți，但 19 cărți 不加 de。",
+        "以 1–19 结尾的复合数词是否加 de，要看整个数词的结构和规范用法。"
+      ],
+      "examples": [
+        { "ro": "Am douăzeci de lei și două cărți.", "zh": "我有二十列伊和两本书。" }
+      ]
+    },
+    "grammar-022": {
+      "overview": "序数词通常由 al/a + 数词 + -lea/-a 构成，并随所指对象的性别选择 al 或 a。",
+      "keyPoints": [
+        "阳性常见 al doilea、al treilea；阴性常见 a doua、a treia。",
+        "第一和第一位使用 primul / prima 等高频形式。",
+        "带名词时注意冠词和词序：al doilea capitol。"
+      ],
+      "examples": [
+        { "ro": "Locuiesc la etajul al treilea.", "zh": "我住在三楼。" }
+      ]
+    },
+    "grammar-023": {
+      "overview": "分数、倍数、集合数和分配数分别回答“几分之几、几倍、合在一起几个、每组几个”，形式不能互相替换。",
+      "keyPoints": [
+        "分数常见 o jumătate、o treime、două treimi。",
+        "amândoi/amândouă 表示“两者都”，并随性别变化。",
+        "câte doi / câte două 表示“每两个一组”。"
+      ],
+      "examples": [
+        { "ro": "Copiii au intrat câte doi.", "zh": "孩子们两个一组地进来了。" },
+        { "ro": "Amândouă răspunsurile sunt corecte.", "zh": "两个答案都正确。" }
+      ]
+    },
+    "grammar-024": {
+      "overview": "日期、钟点、年龄、价格和度量会调用不同的介词与数词结构，最好按完整表达记忆。",
+      "keyPoints": [
+        "钟点常用 la：la ora trei；日期常用 pe：pe 15 iulie。",
+        "表达年龄使用 a avea：Am douăzeci de ani。",
+        "度量单位前的 de 服从基数词规则：treizeci de kilometri。"
+      ],
+      "examples": [
+        { "ro": "Ne vedem pe 16 iulie, la ora nouă.", "zh": "我们7月16日九点见。" }
+      ]
+    },
+    "grammar-025": {
+      "overview": "重读人称代词可以独立出现，用于主语、介词后宾语或强调对比；它们与贴近动词的非重读代词功能不同。",
+      "keyPoints": [
+        "主格形式是 eu、tu、el、ea、noi、voi、ei、ele。",
+        "介词后常见 mine、tine、el、ea、noi、voi、ei、ele。",
+        "主语代词显式出现往往表示对比或澄清。"
+      ],
+      "examples": [
+        { "ro": "Eu vorbesc cu ea, nu cu el.", "zh": "我和她说话，不是和他；两个代词都带对比。" }
+      ]
+    },
+    "grammar-026": {
+      "overview": "宾格非重读代词替代直接宾语，通常放在变位动词前，并会在元音、复合时态和命令式环境中发生缩合或换位。",
+      "keyPoints": [
+        "基本形式：mă、te、îl、o、ne、vă、îi、le。",
+        "复合过去时中常见 l-am văzut、am văzut-o；阴性单数 o 的位置较特殊。",
+        "肯定命令式后置并用连字符：Ajută-mă!"
+      ],
+      "examples": [
+        { "ro": "O cunosc bine, dar nu o văd des.", "zh": "我很了解她，但不常见到她。" }
+      ]
+    },
+    "grammar-027": {
+      "overview": "与格非重读代词表示接受者、受益者或体验者，通常位于变位动词前。",
+      "keyPoints": [
+        "基本形式：îmi、îți、îi、ne、vă、le。",
+        "元音前可能缩合：mi-a spus、ți-am dat、i-a trimis。",
+        "罗马尼亚语常同时出现非重读代词和名词间接宾语。"
+      ],
+      "examples": [
+        { "ro": "I-am dat Anei cheia.", "zh": "我把钥匙给了 Ana；i- 与 Anei 共同指向接受者。" }
+      ]
+    },
+    "grammar-028": {
+      "overview": "同一句中同时替代间接宾语和直接宾语时，通常按“与格代词 + 宾格代词 + 动词”排列，并发生固定缩合。",
+      "keyPoints": [
+        "常见组合有 mi-l、mi-o、ți-l、ți-o、i-l、i-o、ni-l、vi-l、li-l。",
+        "复数直接宾语常用 mi-i / mi le 等形式。",
+        "肯定命令式和部分非限定形式中，组合会后置并使用连字符。"
+      ],
+      "examples": [
+        { "ro": "Mi-ai dat cartea? Da, mi-ai dat-o ieri.", "zh": "你把书给我了吗？是的，你昨天给我了。" }
+      ]
+    },
+    "grammar-029": {
+      "overview": "指人的特指直接宾语通常需要 pe；当宾语明确、前置或为人称代词时，还常用非重读代词复现。",
+      "keyPoints": [
+        "pe 主要标记人、拟人对象或明确特指的直接宾语。",
+        "Pe Maria o cunosc 中，pe Maria 与 o 指向同一宾语。",
+        "并非所有人的宾语都机械使用 pe，泛指和某些固定结构需要单独判断。"
+      ],
+      "examples": [
+        { "ro": "Îl aștept pe profesor în fața școlii.", "zh": "我在学校前面等老师。" }
+      ]
+    },
+    "grammar-030": {
+      "overview": "反身代词表示动作回到主语，也可表达相互、被动、无人称或构成固定代词式动词；不能把每个 se 都翻成“自己”。",
+      "keyPoints": [
+        "宾格反身形式：mă、te、se、ne、vă、se。",
+        "与格反身形式：îmi、îți、își、ne、vă、își。",
+        "判断 se 的功能要看动词词义以及句中是否存在真实宾语。"
+      ],
+      "examples": [
+        { "ro": "Maria se spală.", "zh": "Maria 在洗自己；真正反身。" },
+        { "ro": "Aici se vorbește românește.", "zh": "这里说罗马尼亚语；se 构成无人称表达。" }
+      ]
+    },
+    "grammar-031": {
+      "overview": "所有形容词跟随所拥有的名词保持性数一致，而人称由所有者决定；独立使用时常配合 al、a、ai、ale。",
+      "keyPoints": [
+        "cartea mea 中 mea 与阴性单数 cartea 一致。",
+        "său 可指“他的”或“她的”，正式表达中也可改用 lui / ei 消除歧义。",
+        "al meu、a mea、ai mei、ale mele 可独立代替“我的那个/那些”。"
+      ],
+      "examples": [
+        { "ro": "Prietenii mei locuiesc aproape, iar ai ei locuiesc în Cluj.", "zh": "我的朋友住得近，她的朋友住在克卢日。" }
+      ]
+    },
+    "grammar-032": {
+      "overview": "指示词区分近指与远指，并根据是否位于名词前后选择不同形式；口语形式 ăsta、aia 等语域更随意。",
+      "keyPoints": [
+        "名词后常见 băiatul acesta，名词通常带定冠词。",
+        "名词前常见 acest băiat，形式更短，名词通常不再带后置定冠词。",
+        "acesta / acela 可独立作代词，并随性数格变化。"
+      ],
+      "examples": [
+        { "ro": "Îmi place această carte, nu cartea aceea.", "zh": "我喜欢这本书，不喜欢那本。" }
+      ]
+    },
+    "grammar-033": {
+      "overview": "cine、ce、care、cât 既能提问，也能连接关系从句。作为关系词时，它们在从句中承担主语、宾语或介词宾语等功能。",
+      "keyPoints": [
+        "care 会根据从句内部功能使用 pe care、cu care、căruia 等形式。",
+        "先行词决定关系词的指向，但关系词的格由从句内部结构决定。",
+        "直接宾语 pe care 通常配合非重读代词复现。"
+      ],
+      "examples": [
+        { "ro": "Cartea pe care am cumpărat-o este utilă.", "zh": "我买的那本书很有用；pe care 与 -o 都是从句宾语标记。" }
+      ]
+    },
+    "grammar-034": {
+      "overview": "不定代词和限定词指向身份、数量或范围未完全确定的人和事物。词形选择取决于它是否独立使用以及修饰什么名词。",
+      "keyPoints": [
+        "cineva、ceva 表示“某人、某事”；oricine、orice 表示“任何人、任何事”。",
+        "fiecare 通常与单数搭配，强调逐一分配。",
+        "alt、același、unii 等会参与冠词和一致变化。"
+      ],
+      "examples": [
+        { "ro": "Fiecare student a primit câte un formular.", "zh": "每位学生都收到了一份表格。" }
+      ]
+    },
+    "grammar-035": {
+      "overview": "nimeni、nimic、niciun 等否定代词或限定词与谓语后的 nu 共同构成否定一致。",
+      "keyPoints": [
+        "nimeni 指人，nimic 指事物，niciun/nicio 修饰名词。",
+        "否定词在动词后时通常不能删除 nu：Nu vine nimeni。",
+        "否定词前置时规范结构仍常保留 nu：Nimeni nu știe。"
+      ],
+      "examples": [
+        { "ro": "Nicio soluție nu este perfectă.", "zh": "没有任何解决方案是完美的。" }
+      ]
+    },
+    "grammar-036": {
+      "overview": "însuși 表示“本人、亲自”，形式同时反映被强调对象的人称、性和数，主要用于正式或强调语体。",
+      "keyPoints": [
+        "常见形式包括 eu însumi/însămi、tu însuți/însăți、el însuși、ea însăși。",
+        "复数形式包括 noi înșine/însene、voi înșivă/însevă、ei înșiși、ele înseși。",
+        "它通常紧邻被强调成分，但具体位置可随信息重点变化。"
+      ],
+      "examples": [
+        { "ro": "Directoarea însăși a răspuns la întrebare.", "zh": "女校长本人回答了这个问题。" }
+      ]
+    },
+    "grammar-037": {
+      "overview": "传统语法按不定式结尾把动词分成四大变位类，但现在时内部还有多个模型。词尾可以帮助分类，却不能单独预测所有变位。",
+      "keyPoints": [
+        "第一类以 -a 结尾，第二类以 -ea 结尾，第三类以 -e 结尾，第四类以 -i 或 -î 结尾。",
+        "部分第一、第四类动词在现在时加入 -ez-、-esc- 等扩展成分。",
+        "学习新动词时至少同时记录不定式、现在时第一人称、第三人称和过去分词。"
+      ],
+      "examples": [
+        { "ro": "a cânta – cânt – cântă – cântat", "zh": "第一变位类 a cânta 的四个关键形式。" }
+      ],
+      "paradigm": {
+        "title": "四类常见不定式词缀",
+        "note": "这是传统总分类；实际现在时有多个子模型和词干变化。",
+        "rows": [
+          { "label": "第一类", "form": "-a；过去分词常见 -at", "example": "a cânta → cântat" },
+          { "label": "第二类", "form": "-ea；过去分词常见 -ut", "example": "a vedea → văzut" },
+          { "label": "第三类", "form": "-e；过去分词可为 -ut/-s/-t", "example": "a face → făcut" },
+          { "label": "第四类", "form": "-i/-î；过去分词常见 -it/-ât", "example": "a citi → citit; a hotărî → hotărât" }
+        ]
+      }
+    },
+    "grammar-038": {
+      "overview": "直陈式现在时用来表达当前动作、习惯和一般事实。规则模型通常由词干加人称词尾构成，但部分动词还会出现扩展成分或词干交替。",
+      "keyPoints": [
+        "先从不定式确定变位模型，再确认词干是否发生语音变化。",
+        "第一和第三人称有时是零词尾，不能只靠最后一个字母判断人称。",
+        "第三人称单复数在不少模型中同形。"
+      ],
+      "examples": [
+        { "ro": "Eu cânt în fiecare zi, iar ei cântă în weekend.", "zh": "我每天唱歌，他们周末唱歌。" }
+      ],
+      "paradigm": {
+        "title": "现在时常规模型：a cânta",
+        "note": "词干为 cânt-；下表是第一变位类无 -ez- 扩展的典型模型。",
+        "rows": [
+          { "label": "eu", "form": "-∅", "example": "eu cânt" },
+          { "label": "tu", "form": "-i", "example": "tu cânți" },
+          { "label": "el/ea", "form": "-ă", "example": "el cântă" },
+          { "label": "noi", "form": "-ăm", "example": "noi cântăm" },
+          { "label": "voi", "form": "-ați", "example": "voi cântați" },
+          { "label": "ei/ele", "form": "-ă", "example": "ei cântă" }
+        ]
+      }
+    },
+    "grammar-039": {
+      "overview": "高频不规则动词不能仅靠常规词缀推导。最有效的记忆单位是六个人称完整范式，再结合一个常用句型。",
+      "keyPoints": [
+        "a fi 和 a avea 同时承担实义动词与助动词功能，优先熟记。",
+        "a vrea、a putea、a ști 等动词会频繁引出 să 从句。",
+        "不规则常发生在词干而不只是词尾，因此要按整组形式学习。"
+      ],
+      "examples": [
+        { "ro": "Pot să vin, dar vreau să știu ora exactă.", "zh": "我能来，但我想知道确切时间。" }
+      ],
+      "paradigm": {
+        "title": "高频不规则现在时",
+        "note": "每行依次为 eu / tu / el-ea / noi / voi / ei-ele。",
+        "rows": [
+          { "label": "a fi", "form": "sunt, ești, este/e, suntem, sunteți, sunt", "example": "Suntem gata." },
+          { "label": "a avea", "form": "am, ai, are, avem, aveți, au", "example": "Am timp." },
+          { "label": "a vrea", "form": "vreau, vrei, vrea, vrem, vreți, vor", "example": "Vreau să plec." },
+          { "label": "a putea", "form": "pot, poți, poate, putem, puteți, pot", "example": "Putem intra." },
+          { "label": "a ști", "form": "știu, știi, știe, știm, știți, știu", "example": "Știu răspunsul." },
+          { "label": "a merge", "form": "merg, mergi, merge, mergem, mergeți, merg", "example": "Merg la lucru." }
+        ]
+      }
+    },
+    "grammar-040": {
+      "overview": "复合过去时表达已经完成的过去事件，由 a avea 的专用助动形式加不变的过去分词构成，是现代口语最常用的完成过去时。",
+      "keyPoints": [
+        "结构是 am/ai/a/am/ați/au + 过去分词。",
+        "主动语态中，过去分词通常不随主语性数变化。",
+        "否定把 nu 放在助动词前，常缩合为 n-am、n-ai、n-a 等。"
+      ],
+      "examples": [
+        { "ro": "Am terminat proiectul ieri.", "zh": "我昨天完成了项目。" }
+      ],
+      "paradigm": {
+        "title": "复合过去时：a cânta",
+        "note": "过去分词 cântat 保持不变，变化发生在助动词。",
+        "rows": [
+          { "label": "eu", "form": "am + cântat", "example": "eu am cântat" },
+          { "label": "tu", "form": "ai + cântat", "example": "tu ai cântat" },
+          { "label": "el/ea", "form": "a + cântat", "example": "ea a cântat" },
+          { "label": "noi", "form": "am + cântat", "example": "noi am cântat" },
+          { "label": "voi", "form": "ați + cântat", "example": "voi ați cântat" },
+          { "label": "ei/ele", "form": "au + cântat", "example": "ei au cântat" }
+        ]
+      }
+    },
+    "grammar-041": {
+      "overview": "未完成过去时把事件作为过去的背景、持续状态或重复习惯来呈现，不强调终点。",
+      "keyPoints": [
+        "常见构成是词干 + -a-/-ea-/-ia- + 人称词尾。",
+        "六个人称尾部规律高度稳定：-m、-i、-∅、-m、-ți、-u。",
+        "与复合过去时搭配时，imperfect 描写背景，perfect compus 推进完成事件。"
+      ],
+      "examples": [
+        { "ro": "Citeam când m-ai sunat.", "zh": "你打电话给我时，我正在读书。" }
+      ],
+      "paradigm": {
+        "title": "未完成过去时：a lucra",
+        "note": "a lucra 使用 -a-；a vedea、a cere 等常使用 -ea-。",
+        "rows": [
+          { "label": "eu", "form": "-am", "example": "eu lucram" },
+          { "label": "tu", "form": "-ai", "example": "tu lucrai" },
+          { "label": "el/ea", "form": "-a", "example": "ea lucra" },
+          { "label": "noi", "form": "-am", "example": "noi lucram" },
+          { "label": "voi", "form": "-ați", "example": "voi lucrați" },
+          { "label": "ei/ele", "form": "-au", "example": "ei lucrau" }
+        ]
+      }
+    },
+    "grammar-042": {
+      "overview": "过去完成时表示某个动作在另一个过去时间点之前已经完成。它是综合式，核心标记是 -se-。",
+      "keyPoints": [
+        "常见结构包含变位类元音 + -se- + 人称词尾。",
+        "人称尾部通常是 -m、-și、-∅、-răm、-răți、-ră。",
+        "使用时必须有明确或可推断的另一个过去参照点。"
+      ],
+      "examples": [
+        { "ro": "Când am ajuns, ei plecaseră deja.", "zh": "我到达时，他们已经离开了。" }
+      ],
+      "paradigm": {
+        "title": "过去完成时：a lucra",
+        "note": "可识别为 lucra- + se + 人称尾部。",
+        "rows": [
+          { "label": "eu", "form": "-asem", "example": "eu lucrasem" },
+          { "label": "tu", "form": "-aseși", "example": "tu lucraseși" },
+          { "label": "el/ea", "form": "-ase", "example": "el lucrase" },
+          { "label": "noi", "form": "-aserăm", "example": "noi lucraserăm" },
+          { "label": "voi", "form": "-aserăți", "example": "voi lucraserăți" },
+          { "label": "ei/ele", "form": "-aseră", "example": "ei lucraseră" }
+        ]
+      }
+    },
+    "grammar-043": {
+      "overview": "简单过去时表达完成事件，主要见于文学叙事和罗马尼亚部分地区的日常口语。多数学习者先做到能识别即可。",
+      "keyPoints": [
+        "它是综合式，不使用助动词。",
+        "不同变位类有不同的过去时构形成分，常见人称尾部可通过完整范式识别。",
+        "标准日常交流中通常优先使用复合过去时。"
+      ],
+      "examples": [
+        { "ro": "Intră în cameră, privi în jur și zâmbi.", "zh": "他/她走进房间，环顾四周，然后笑了；典型文学叙事。" }
+      ],
+      "paradigm": {
+        "title": "简单过去时：a lucra",
+        "note": "这是第一变位类的常见模型；重音和词干可能随动词变化。",
+        "rows": [
+          { "label": "eu", "form": "-ai", "example": "eu lucrai" },
+          { "label": "tu", "form": "-ași", "example": "tu lucrași" },
+          { "label": "el/ea", "form": "-ă", "example": "ea lucră" },
+          { "label": "noi", "form": "-arăm", "example": "noi lucrarăm" },
+          { "label": "voi", "form": "-arăți", "example": "voi lucrarăți" },
+          { "label": "ei/ele", "form": "-ară", "example": "ei lucrară" }
+        ]
+      }
+    },
+    "grammar-044": {
+      "overview": "现代罗马尼亚语有多种将来表达。voi + 不定式较中性或正式，o să + 虚拟式现在时在口语中非常常见。",
+      "keyPoints": [
+        "正式常用 voi、vei、va、vom、veți、vor + 不定式。",
+        "口语常用 o să + 按人称变化的虚拟式现在时。",
+        "am să + 虚拟式也存在，但语体更口语化，使用范围较窄。"
+      ],
+      "examples": [
+        { "ro": "Mâine voi lucra de acasă. / Mâine o să lucrez de acasă.", "zh": "明天我会在家工作；两种形式语义接近，语体不同。" }
+      ],
+      "paradigm": {
+        "title": "两种常用将来时：a lucra",
+        "note": "斜线前为 voi + 不定式，斜线后为 o să + 虚拟式现在时。",
+        "rows": [
+          { "label": "eu", "form": "voi lucra / o să lucrez", "example": "Eu voi lucra mâine." },
+          { "label": "tu", "form": "vei lucra / o să lucrezi", "example": "Tu o să lucrezi aici." },
+          { "label": "el/ea", "form": "va lucra / o să lucreze", "example": "Ea va lucra cu noi." },
+          { "label": "noi", "form": "vom lucra / o să lucrăm", "example": "Noi vom lucra împreună." },
+          { "label": "voi", "form": "veți lucra / o să lucrați", "example": "Voi o să lucrați luni." },
+          { "label": "ei/ele", "form": "vor lucra / o să lucreze", "example": "Ei vor lucra remote." }
+        ]
+      }
+    },
+    "grammar-045": {
+      "overview": "虚拟式现在时由 să + 动词构成，常用于愿望、能力、必要、目的以及由另一个动词支配的补语从句。",
+      "keyPoints": [
+        "第一、第二人称通常与直陈式现在时同形。",
+        "第三人称单复数同形，并常与直陈式第三人称形成 -ă / -e 对换。",
+        "否定形式是 să nu + 动词。"
+      ],
+      "examples": [
+        { "ro": "Vreau să învăț româna mai bine.", "zh": "我想把罗马尼亚语学得更好。" }
+      ],
+      "paradigm": {
+        "title": "虚拟式现在时：a cânta",
+        "note": "所有形式前都有 să；第三人称单数和复数相同。",
+        "rows": [
+          { "label": "eu", "form": "să + -∅", "example": "să cânt" },
+          { "label": "tu", "form": "să + -i", "example": "să cânți" },
+          { "label": "el/ea", "form": "să + -e", "example": "să cânte" },
+          { "label": "noi", "form": "să + -ăm", "example": "să cântăm" },
+          { "label": "voi", "form": "să + -ați", "example": "să cântați" },
+          { "label": "ei/ele", "form": "să + -e", "example": "să cânte" }
+        ]
+      }
+    },
+    "grammar-046": {
+      "overview": "虚拟式完成时表示先于主句或参照时间发生的动作，常带遗憾、评价、假设或未实现色彩。所有人称使用同一结构。",
+      "keyPoints": [
+        "固定结构是 să fi + 过去分词。",
+        "fi 不随人称变化，过去分词在主动结构中通常也不变化。",
+        "否定为 să nu fi + 过去分词。"
+      ],
+      "examples": [
+        { "ro": "Ar fi fost bine să fi venit mai devreme.", "zh": "如果你早点来就好了。" }
+      ],
+      "paradigm": {
+        "title": "虚拟式完成时的固定构成",
+        "note": "六个人称形式相同，人称由上下文或主语表达。",
+        "rows": [
+          { "label": "肯定", "form": "să + fi + 过去分词", "example": "să fi lucrat" },
+          { "label": "否定", "form": "să + nu + fi + 过去分词", "example": "să nu fi uitat" },
+          { "label": "反身", "form": "să + 反身代词 + fi + 过去分词", "example": "să se fi întors" }
+        ]
+      }
+    },
+    "grammar-047": {
+      "overview": "条件式现在时由专用助动形式加不定式构成，用于愿望、礼貌请求、假设结果和未经证实的信息。",
+      "keyPoints": [
+        "结构是 aș、ai、ar、am、ați、ar + 不定式。",
+        "实义动词保持不定式，不再按人称加词尾。",
+        "否定在助动词前：nu aș / n-aș。"
+      ],
+      "examples": [
+        { "ro": "Aș dori o cafea, vă rog.", "zh": "我想要一杯咖啡，谢谢；礼貌请求。" }
+      ],
+      "paradigm": {
+        "title": "条件式现在时：a lucra",
+        "note": "人称由助动形式表达，lucra 保持不变。",
+        "rows": [
+          { "label": "eu", "form": "aș + lucra", "example": "eu aș lucra" },
+          { "label": "tu", "form": "ai + lucra", "example": "tu ai lucra" },
+          { "label": "el/ea", "form": "ar + lucra", "example": "ea ar lucra" },
+          { "label": "noi", "form": "am + lucra", "example": "noi am lucra" },
+          { "label": "voi", "form": "ați + lucra", "example": "voi ați lucra" },
+          { "label": "ei/ele", "form": "ar + lucra", "example": "ei ar lucra" }
+        ]
+      }
+    },
+    "grammar-048": {
+      "overview": "条件式完成时表达过去未实现的愿望、反事实结果或对过去事件的推测。",
+      "keyPoints": [
+        "结构是 aș、ai、ar、am、ați、ar + fi + 过去分词。",
+        "fi 和过去分词保持固定，人称变化只体现在第一个助动形式。",
+        "过去反事实的 dacă 从句和主句常都使用条件式完成时。"
+      ],
+      "examples": [
+        { "ro": "Dacă aș fi știut, aș fi venit mai devreme.", "zh": "如果我早知道，我就会早点来。" }
+      ],
+      "paradigm": {
+        "title": "条件式完成时：a lucra",
+        "note": "助动形式 + fi + lucrat；后两部分不随人称变化。",
+        "rows": [
+          { "label": "eu", "form": "aș fi lucrat", "example": "Eu aș fi lucrat aici." },
+          { "label": "tu", "form": "ai fi lucrat", "example": "Tu ai fi lucrat cu noi." },
+          { "label": "el/ea", "form": "ar fi lucrat", "example": "Ea ar fi lucrat ieri." },
+          { "label": "noi", "form": "am fi lucrat", "example": "Noi am fi lucrat împreună." },
+          { "label": "voi", "form": "ați fi lucrat", "example": "Voi ați fi lucrat acasă." },
+          { "label": "ei/ele", "form": "ar fi lucrat", "example": "Ei ar fi lucrat mai mult." }
+        ]
+      }
+    },
+    "grammar-049": {
+      "overview": "命令式只直接区分第二人称单数和复数。肯定与否定的单数形式常来自不同基础，因此需要一起学习。",
+      "keyPoints": [
+        "复数/礼貌命令通常等于直陈式现在时第二人称复数。",
+        "单数否定常用 nu + 不定式：nu cânta!",
+        "肯定命令中的非重读代词后置并加连字符：spune-mi!"
+      ],
+      "examples": [
+        { "ro": "Ascultă-mă și nu pleca!", "zh": "听我说，别走！" }
+      ],
+      "paradigm": {
+        "title": "命令式常见构成",
+        "note": "单数肯定需结合具体动词模型；复数形式较规则。",
+        "rows": [
+          { "label": "tu 肯定", "form": "常见第三人称单数或第二人称单数形式", "example": "cântă! / dormi!" },
+          { "label": "tu 否定", "form": "nu + 不定式", "example": "nu cânta! / nu dormi!" },
+          { "label": "voi 肯定", "form": "第二人称复数现在时", "example": "cântați!" },
+          { "label": "voi 否定", "form": "nu + 第二人称复数现在时", "example": "nu cântați!" },
+          { "label": "常见不规则", "form": "fii / fiți; du / duceți", "example": "Fii atent! Du-te acasă!" }
+        ]
+      }
+    },
+    "grammar-050": {
+      "overview": "推测式用来表示说话人根据迹象作出的推断或对信息真实性保留态度。现代口语最常见的是 o fi...、or fi... 等结构。",
+      "keyPoints": [
+        "对正在进行的动作，可用推测助动形式 + fi + 副动词。",
+        "对已经完成的动作，可用推测助动形式 + fi + 过去分词。",
+        "这些形式带有明显语体差异，理解常见结构比机械套用完整范式更重要。"
+      ],
+      "examples": [
+        { "ro": "O fi dormind acum.", "zh": "他/她现在大概正在睡觉。" },
+        { "ro": "Or fi ajuns deja.", "zh": "他们大概已经到了。" }
+      ],
+      "paradigm": {
+        "title": "推测式常见构成",
+        "note": "口语中常用 o/or；完整人称形式和语域存在变体。",
+        "rows": [
+          { "label": "进行中的推测", "form": "推测助动形式 + fi + 副动词", "example": "o fi lucrând" },
+          { "label": "已完成的推测", "form": "推测助动形式 + fi + 过去分词", "example": "o fi lucrat" },
+          { "label": "复数推测", "form": "or fi + 副动词/过去分词", "example": "or fi venind / or fi venit" }
+        ]
+      }
+    },
+    "grammar-051": {
+      "overview": "分析式被动由按时态和人称变化的 a fi 加过去分词构成；过去分词要与被动句主语保持性数一致。",
+      "keyPoints": [
+        "时态信息由 a fi 承担：este invitat、a fost invitat、va fi invitat。",
+        "过去分词像形容词一样一致：invitat、invitată、invitați、invitate。",
+        "施事需要表达时常用 de 或 de către 引出。"
+      ],
+      "examples": [
+        { "ro": "Scrisorile au fost trimise de secretară.", "zh": "信件由秘书寄出；trimise 与阴性复数 scrisorile 一致。" }
+      ],
+      "paradigm": {
+        "title": "现在时被动：a invita",
+        "note": "a fi 按人称变化，invitat 根据主语性数选择词尾。",
+        "rows": [
+          { "label": "eu", "form": "sunt + invitat/invitată", "example": "Eu sunt invitată." },
+          { "label": "tu", "form": "ești + invitat/invitată", "example": "Tu ești invitat." },
+          { "label": "el/ea", "form": "este + invitat/invitată", "example": "Ea este invitată." },
+          { "label": "noi", "form": "suntem + invitați/invitate", "example": "Noi suntem invitați." },
+          { "label": "voi", "form": "sunteți + invitați/invitate", "example": "Voi sunteți invitate." },
+          { "label": "ei/ele", "form": "sunt + invitați/invitate", "example": "Ele sunt invitate." }
+        ]
+      }
+    },
+    "grammar-052": {
+      "overview": "反身或代词式动词按普通动词模型变位，同时在动词前使用与主语人称一致的反身代词。",
+      "keyPoints": [
+        "宾格反身系列是 mă、te、se、ne、vă、se。",
+        "复合时态中代词放在助动词前并可能缩合：m-am spălat。",
+        "有些动词必须带反身代词才能表达目标词义，如 a se gândi。"
+      ],
+      "examples": [
+        { "ro": "Ne trezim la șapte și ne pregătim repede.", "zh": "我们七点起床，然后很快做好准备。" }
+      ],
+      "paradigm": {
+        "title": "反身现在时：a se spăla",
+        "note": "代词与主语一致，动词仍按 a spăla 的普通现在时变位。",
+        "rows": [
+          { "label": "eu", "form": "mă + spăl", "example": "eu mă spăl" },
+          { "label": "tu", "form": "te + speli", "example": "tu te speli" },
+          { "label": "el/ea", "form": "se + spală", "example": "ea se spală" },
+          { "label": "noi", "form": "ne + spălăm", "example": "noi ne spălăm" },
+          { "label": "voi", "form": "vă + spălați", "example": "voi vă spălați" },
+          { "label": "ei/ele", "form": "se + spală", "example": "ei se spală" }
+        ]
+      }
+    },
+    "grammar-053": {
+      "overview": "不定式以 a + 动词形式出现，supin 通常由 de + 过去分词同形形式构成。两者都不按人称变化，但句法用途不同。",
+      "keyPoints": [
+        "不定式常见于词典形式、某些介词后和分析式将来时、条件式。",
+        "supin 常表达用途、待完成事项、能力或必要：de citit。",
+        "现代罗马尼亚语很多补语位置更偏好 să + 虚拟式，而不是不定式。"
+      ],
+      "examples": [
+        { "ro": "Am multe de făcut, dar vreau să termin azi.", "zh": "我有很多事情要做，但我想今天完成。" }
+      ],
+      "paradigm": {
+        "title": "非限定形式的构成",
+        "note": "这些形式本身不标人称；人称关系由主句或上下文提供。",
+        "rows": [
+          { "label": "现在不定式", "form": "a + 动词不定式", "example": "a lucra" },
+          { "label": "完成不定式", "form": "a fi + 过去分词", "example": "a fi lucrat" },
+          { "label": "supin", "form": "de + 过去分词同形形式", "example": "de lucrat" },
+          { "label": "必要结构", "form": "a avea + de + supin", "example": "am de lucrat" }
+        ]
+      }
+    },
+    "grammar-054": {
+      "overview": "过去分词参与复合时态和被动结构；副动词表示同时、方式、原因等附带动作。两者的常见词缀与变位类有关。",
+      "keyPoints": [
+        "过去分词常见结尾有 -at、-ut、-s、-t、-it、-ât。",
+        "副动词常见结尾有 -ând、-ind；反身代词后置时常加入连接音 -u-。",
+        "副动词的隐含主语通常与主句主语一致，否则要避免歧义。"
+      ],
+      "examples": [
+        { "ro": "Citind mesajul, Ana a zâmbit.", "zh": "Ana 读着消息笑了。" },
+        { "ro": "S-a întors zâmbind.", "zh": "他/她微笑着回来了。" }
+      ],
+      "paradigm": {
+        "title": "过去分词与副动词的常见词缀",
+        "note": "不规则形式较多，新动词仍应核对词典。",
+        "rows": [
+          { "label": "-a 动词", "form": "过去分词 -at；副动词常见 -ând", "example": "cânta → cântat / cântând" },
+          { "label": "-ea 动词", "form": "过去分词常见 -ut；副动词常见 -ând", "example": "vedea → văzut / văzând" },
+          { "label": "-e 动词", "form": "过去分词 -ut/-s/-t；副动词依模型", "example": "face → făcut / făcând" },
+          { "label": "-i 动词", "form": "过去分词常见 -it；副动词常见 -ind", "example": "citi → citit / citind" },
+          { "label": "-î 动词", "form": "过去分词常见 -ât；副动词常见 -ând", "example": "hotărî → hotărât / hotărând" }
+        ]
+      }
+    },
+    "grammar-055": {
+      "overview": "选择时态时先判断事件与参照点的关系：现在是否持续、过去是否完成、是否作为背景、是否先于另一过去事件，以及说话人是否把它当作事实。",
+      "keyPoints": [
+        "复合过去时推进已完成事件，未完成过去时铺陈背景或习惯。",
+        "过去完成时标记“过去之前”，将来时标记说话时之后。",
+        "条件式、虚拟式和推测式还同时表达愿望、依赖、假设或不确定性。"
+      ],
+      "examples": [
+        { "ro": "Ploua când am ieșit, iar până am ajuns acasă se oprise deja.", "zh": "我出门时正在下雨，而我到家前雨已经停了。" }
+      ],
+      "paradigm": {
+        "title": "用 a lucra 对比主要时间关系",
+        "note": "表格不是把形式互相替换，而是帮助先建立事件时间线。",
+        "rows": [
+          { "label": "现在", "form": "lucrez", "example": "Lucrez acum." },
+          { "label": "完成过去", "form": "am lucrat", "example": "Am lucrat ieri." },
+          { "label": "过去背景/习惯", "form": "lucram", "example": "Lucram când ai sunat." },
+          { "label": "过去之前", "form": "lucrasem", "example": "Lucrasem deja când ai venit." },
+          { "label": "将来", "form": "voi lucra / o să lucrez", "example": "Voi lucra mâine." },
+          { "label": "假设", "form": "aș lucra", "example": "Aș lucra dacă aș avea timp." }
+        ]
+      }
+    },
+    "grammar-056": {
+      "overview": "副词修饰动词、形容词、另一个副词或整个句子，常表达方式、时间、地点、程度和说话人态度。",
+      "keyPoints": [
+        "方式副词常回答 cum，时间副词回答 când，地点副词回答 unde。",
+        "许多阳性单数形容词形式也可作方式副词：El vorbește clar。",
+        "副词通常不做性数格一致，但位置会影响修饰范围。"
+      ],
+      "examples": [
+        { "ro": "Ea vorbește foarte clar aici.", "zh": "她在这里说得非常清楚；foarte 修饰 clar，aici 表地点。" }
+      ]
+    },
+    "grammar-057": {
+      "overview": "副词比较通常沿用形容词的分析式结构：mai 表较高级，cel mai 表相对最高级，但副词本身不发生性数变化。",
+      "keyPoints": [
+        "mai repede decât... 表示“比……更快”。",
+        "la fel de bine ca... 表示同等程度。",
+        "cel mai bine 中 cel 通常保持阳性单数形式，因为它修饰的是动作方式。"
+      ],
+      "examples": [
+        { "ro": "Ana vorbește mai repede decât mine, dar Mihai vorbește cel mai clar.", "zh": "Ana 比我说得快，但 Mihai 说得最清楚。" }
+      ]
+    },
+    "grammar-058": {
+      "overview": "cu、de、din、la、pe、pentru、fără、până 等高频介词通常支配宾格。名词形式常与主格相同，但代词会显示差别。",
+      "keyPoints": [
+        "介词和后接成分构成一个整体，不能只背中文对译。",
+        "重读代词在介词后常用 mine、tine 等宾格形式。",
+        "介词后的冠词使用取决于名词是否特指和具体搭配。"
+      ],
+      "examples": [
+        { "ro": "Vorbesc cu tine despre proiect.", "zh": "我和你谈论这个项目；cu 和 despre 都引出宾格结构。" }
+      ]
+    },
+    "grammar-059": {
+      "overview": "一部分介词要求属格或与格。判断时既要记介词本身，也要观察后接名词、冠词和代词的格形式。",
+      "keyPoints": [
+        "datorită、mulțumită、grație 常支配与格。",
+        "asupra、contra、înaintea、în spatele 等常支配属格。",
+        "人称代词在这些结构中可能使用专门形式，如 datorită lui、în fața ei。"
+      ],
+      "examples": [
+        { "ro": "Am reușit datorită ajutorului tău.", "zh": "多亏你的帮助，我成功了。" },
+        { "ro": "Mașina este în fața casei.", "zh": "汽车在房子前面；casei 为属格。" }
+      ]
+    },
+    "grammar-060": {
+      "overview": "多词介词作为一个整体表达空间、原因、替代、关系等含义。内部词不能随意替换，后接格也由整个结构决定。",
+      "keyPoints": [
+        "常见结构有 față de、în loc de、în legătură cu、din cauza。",
+        "din cauza 通常引出负面原因，datorită 更常引出正面或中性原因。",
+        "多词介词应按搭配记忆，并记录后面接什么格或介词形式。"
+      ],
+      "examples": [
+        { "ro": "Ședința a fost amânată din cauza vremii.", "zh": "会议因天气原因被推迟。" }
+      ]
+    },
+    "grammar-061": {
+      "overview": "并列连词连接地位相同的词、短语或分句，并说明它们之间是联合、转折、选择还是结果关系。",
+      "keyPoints": [
+        "și 表联合，dar / iar 表转折或对照，sau / ori 表选择。",
+        "ci 通常出现在否定后的纠正结构：nu..., ci...。",
+        "deci 表结果或结论，不要与表示原因的 pentru că 混用。"
+      ],
+      "examples": [
+        { "ro": "Nu plec azi, ci mâine.", "zh": "我不是今天走，而是明天走。" },
+        { "ro": "Plouă, deci rămânem acasă.", "zh": "下雨了，所以我们待在家。" }
+      ]
+    },
+    "grammar-062": {
+      "overview": "从属连词把一个分句嵌入另一个分句，并标明补语、条件、让步、原因、目的或结果等关系。",
+      "keyPoints": [
+        "că 常引出陈述内容，să 常引出愿望、要求或目的。",
+        "dacă 表条件或间接是非疑问，deși 表让步。",
+        "fiindcă、deoarece 表原因，ca să 表目的，încât 表结果。"
+      ],
+      "examples": [
+        { "ro": "Am venit ca să discutăm problema, deși este târziu.", "zh": "我来是为了讨论问题，尽管已经很晚了。" }
+      ]
+    },
+    "grammar-063": {
+      "overview": "感叹词和语气小词直接表达呼唤、惊讶、鼓励、提醒或说话人态度，语义高度依赖语调和交际场景。",
+      "keyPoints": [
+        "hai 常用于催促或共同建议，uite / iată 用于引起注意。",
+        "vai 表惊讶、痛苦或担忧，măi 常见于熟人称呼。",
+        "这些形式语体色彩明显，正式写作中应谨慎使用。"
+      ],
+      "examples": [
+        { "ro": "Hai să plecăm! Uite autobuzul!", "zh": "我们走吧！看，公交车来了！" }
+      ]
+    },
+    "grammar-064": {
+      "overview": "句法分析需要区分短语、分句和完整句子。最可靠的起点是先找每个谓语，再判断围绕谓语组织了哪些成分。",
+      "keyPoints": [
+        "短语通常没有完整谓语，分句通常围绕一个谓语建立。",
+        "一个复句可以包含主句和多个从句。",
+        "连接词只是线索；省略连接词时仍要依据谓语和意义划分边界。"
+      ],
+      "examples": [
+        { "ro": "Știu că Maria vine când termină cursul.", "zh": "我知道 Maria 下课后会来；句中有三个谓语和三个分句。" }
+      ]
+    },
+    "grammar-065": {
+      "overview": "主语是谓语所陈述的对象，可以明示、由动词词尾隐含、由多个成分并列，也可以在无人称结构中不存在。",
+      "keyPoints": [
+        "明示主语通常与谓语保持人称和数一致。",
+        "动词词尾足够清楚时，主语代词可以省略。",
+        "天气动词和 trebuie 等结构不能强行补出普通人称主语。"
+      ],
+      "examples": [
+        { "ro": "Maria și Andrei au sosit, dar plouă încă.", "zh": "Maria 和 Andrei 到了，但还在下雨；前句有复合主语，后句无人称。" }
+      ]
+    },
+    "grammar-066": {
+      "overview": "动词谓语本身表达完整动作或状态；系表结构则由系词连接主语与表语，核心描述落在表语上。",
+      "keyPoints": [
+        "a fi 最常作系词，但 a deveni、a rămâne、a părea 等也可承担类似功能。",
+        "名词性表语可以是形容词、名词或介词短语。",
+        "表语形容词通常与主语保持性数一致。"
+      ],
+      "examples": [
+        { "ro": "Copiii au devenit foarte liniștiți.", "zh": "孩子们变得很安静；au devenit 是系词结构，liniștiți 是表语。" }
+      ]
+    },
+    "grammar-067": {
+      "overview": "特殊主谓一致需要在语法形式和实际意义之间选择。集合名词、数量短语、并列主语和礼貌代词最容易造成犹豫。",
+      "keyPoints": [
+        "并列主语通常要求复数谓语。",
+        "集合名词和数量结构可能按中心名词单数一致，也可能受成员意义影响。",
+        "dumneavoastră 一律搭配第二人称复数动词。"
+      ],
+      "examples": [
+        { "ro": "Dumneavoastră aveți dreptate.", "zh": "您说得对；即使只指一人也用 aveți。" },
+        { "ro": "Maria și fratele ei vin mâine.", "zh": "Maria 和她哥哥明天来；并列主语用复数 vin。" }
+      ]
+    },
+    "grammar-068": {
+      "overview": "定语限定或描述名词，同位语则用另一个名词性成分重新命名或解释同一对象。",
+      "keyPoints": [
+        "定语可由形容词、属格名词、介词短语或关系从句实现。",
+        "解释性同位语通常用逗号隔开，限定性同位语往往不隔开。",
+        "判断时看两个成分是“修饰关系”还是“指向同一对象”。"
+      ],
+      "examples": [
+        { "ro": "Andrei, colegul meu, locuiește în Brașov.", "zh": "我的同事 Andrei 住在布拉索夫；colegul meu 是解释性同位语。" }
+      ]
+    },
+    "grammar-069": {
+      "overview": "直接宾语是动作直接作用的对象，间接宾语常表示接受者或受益者，介词宾语则由动词固定要求的介词引出。",
+      "keyPoints": [
+        "直接宾语常可用 îl/o/îi/le 替代，人或特指对象可能带 pe。",
+        "间接宾语常用与格形式及 îmi/îți/îi/ne/vă/le。",
+        "介词宾语的介词由动词搭配决定：a depinde de、a se gândi la。"
+      ],
+      "examples": [
+        { "ro": "I-am trimis Mariei fotografia și m-am gândit la ea.", "zh": "我把照片发给了 Maria，并想到了她；包含直接宾语、间接宾语和介词宾语。" }
+      ]
+    },
+    "grammar-070": {
+      "overview": "时间、地点和方式状语说明事件何时、何地以及如何发生，可以由副词、名词短语或介词短语表达。",
+      "keyPoints": [
+        "状语通常可以移动，但位置变化可能改变信息重点。",
+        "同一介词结构在不同动词后可能承担不同状语功能。",
+        "方式副词与表语形容词要区分：lucrează atent / este atent。"
+      ],
+      "examples": [
+        { "ro": "Mâine lucrăm atent la bibliotecă.", "zh": "明天我们在图书馆认真工作；分别包含时间、方式和地点状语。" }
+      ]
+    },
+    "grammar-071": {
+      "overview": "原因、目的、条件、让步和结果描述事件之间的逻辑关系。先判断意义，再选择介词短语或相应从句。",
+      "keyPoints": [
+        "原因常用 din cauza、pentru că；目的常用 pentru、ca să。",
+        "条件常用 dacă，让步常用 deși / chiar dacă。",
+        "结果常用 de aceea、astfel încât 或 încât。"
+      ],
+      "examples": [
+        { "ro": "Deși ploua, am ieșit ca să cumpăr pâine.", "zh": "尽管下雨，我还是出去买面包；包含让步和目的。" }
+      ]
+    },
+    "grammar-072": {
+      "overview": "并列把语法地位相同的成分连接起来。共同成分可以省略，但省略后仍要保证关系清楚、结构平行。",
+      "keyPoints": [
+        "联合、转折、选择和结果并列使用不同连接词。",
+        "共享谓语或宾语时可省略重复部分。",
+        "长并列结构应保持词类和句法功能一致，避免一半是名词、一半是从句。"
+      ],
+      "examples": [
+        { "ro": "Ana citește romane, iar Mihai, poezie.", "zh": "Ana 读小说，而 Mihai 读诗；第二分句省略了 citește。" }
+      ]
+    },
+    "grammar-073": {
+      "overview": "从属关系意味着一个分句在另一个分句中承担成分或修饰功能。划分从句时要同时看谓语、连接标记和支配词。",
+      "keyPoints": [
+        "先圈出所有变位谓语，再确定每个从句的边界。",
+        "că、să、dacă、care 等通常提示从句类型，但不能单独决定功能。",
+        "主句中的动词、名词或形容词可能支配特定语气和连接词。"
+      ],
+      "examples": [
+        { "ro": "Cred că trebuie să plecăm.", "zh": "我认为我们必须离开；că 从句内部又包含 să 从句。" }
+      ]
+    },
+    "grammar-074": {
+      "overview": "主语从句整体充当主语，表语从句整体说明主语是什么或处于何种情况。两者常出现在评价和系表结构中。",
+      "keyPoints": [
+        "E important să... 中 să 从句是逻辑主语。",
+        "Problema este că... 中 că 从句是表语。",
+        "主语从句后主句谓语常使用中性单数形式。"
+      ],
+      "examples": [
+        { "ro": "Este important să ajungem la timp.", "zh": "准时到达很重要；să ajungem... 是主语从句。" },
+        { "ro": "Problema este că nu avem timp.", "zh": "问题是我们没有时间；că... 是表语从句。" }
+      ]
+    },
+    "grammar-075": {
+      "overview": "宾语从句整体补足动词、形容词或介词的意义，可由 că、să、dacă 或疑问词引导。",
+      "keyPoints": [
+        "陈述内容常用 că，愿望、要求和可能性常用 să。",
+        "间接是非疑问常用 dacă：Nu știu dacă vine。",
+        "间接特殊疑问保留疑问词，但不需要直接问句语调。"
+      ],
+      "examples": [
+        { "ro": "Știu că vine, dar nu știu când ajunge.", "zh": "我知道他/她会来，但不知道什么时候到。" }
+      ]
+    },
+    "grammar-076": {
+      "overview": "关系从句修饰先行词，关系词同时连接从句并在从句内部承担成分功能。",
+      "keyPoints": [
+        "先行词决定关系词指谁，从句谓语决定关系词做什么成分。",
+        "介词必须保留在关系词前：cu care、despre care。",
+        "pe care 作直接宾语时通常配合 îl/o/îi/le 复现。"
+      ],
+      "examples": [
+        { "ro": "Persoana cu care vorbeam este profesoara mea.", "zh": "刚才和我说话的人是我的老师。" }
+      ]
+    },
+    "grammar-077": {
+      "overview": "状语从句把时间、地点、方式、原因、目的、条件、让步、结果或比较关系扩展成完整分句。",
+      "keyPoints": [
+        "先识别逻辑关系，再选择 când、unde、cum、pentru că、ca să、dacă、deși、încât 等标记。",
+        "目的从句通常使用 să，事实性原因从句通常使用直陈式。",
+        "连接词相似时要比较语义和语体，不能只按中文逐词翻译。"
+      ],
+      "examples": [
+        { "ro": "Dacă termin devreme, te sun ca să stabilim unde ne întâlnim.", "zh": "如果我早结束，就给你打电话，以便确定在哪里见面；包含条件、目的和地点从句。" }
+      ]
+    },
+    "grammar-078": {
+      "overview": "直接引语保留原话，间接引语把内容嵌入叙述句，因此人称、指示词、时间地点表达和标点可能需要转换。",
+      "keyPoints": [
+        "直接引语使用引号或破折号，并保留说话人的原始视角。",
+        "间接引语常由 că、să、dacă 或疑问词引导。",
+        "转换时重点检查 eu/tu、aici/acolo、azi/în ziua aceea 等视角词。"
+      ],
+      "examples": [
+        { "ro": "Ana a spus: «Vin mâine.» → Ana a spus că vine a doua zi.", "zh": "Ana 说：“我明天来。”→ Ana 说她第二天来。" }
+      ]
+    },
+    "grammar-079": {
+      "overview": "无人称句不指向普通施事主语，存在句则引入某人或某物的存在。不要把形式上的 este 都分析成系词。",
+      "keyPoints": [
+        "天气动词 plouă、ninge 等通常无人称。",
+        "trebuie 可接名词或 să 从句，形式通常不按逻辑执行者变化。",
+        "este/sunt、există 和 se 结构都可引入存在或一般行为。"
+      ],
+      "examples": [
+        { "ro": "Este o farmacie aici și se lucrează până târziu.", "zh": "这里有一家药店，而且营业到很晚。" }
+      ]
+    },
+    "grammar-080": {
+      "overview": "信息结构决定一句话把什么当作已知话题、把什么当作新信息焦点；篇章衔接则利用代词、省略和连接语让多句话连成整体。",
+      "keyPoints": [
+        "中性表达通常先话题、后焦点；前置和重音可改变焦点。",
+        "重复名词可用代词或省略替代，但指代必须清楚。",
+        "连接词要真实反映补充、对比、原因、结果或总结关系。"
+      ],
+      "examples": [
+        { "ro": "Am cumpărat o carte nouă. Am început-o ieri, însă n-am terminat-o.", "zh": "我买了一本新书，昨天开始读了，不过还没读完；两个 -o 都回指 carte。" }
+      ]
+    },
+    "grammar-081": {
+      "overview": "连字符把语音上紧密结合的助动词、非重读代词、反身代词和某些介词冠词结构连接起来。它是语法结构的一部分，不是可选装饰。",
+      "keyPoints": [
+        "复合时态常见 m-am、s-a、ți-am、l-am。",
+        "代词组合和命令式常见 ți-l、dă-mi、spune-i。",
+        "介词冠词结合常见 într-un、dintr-o、printr-un。"
+      ],
+      "examples": [
+        { "ro": "Mi-a spus că s-a întâlnit cu el într-un parc.", "zh": "他/她告诉我，自己在一个公园里见到了他；包含三种高频连字符结构。" }
+      ]
+    },
+    "grammar-082": {
+      "overview": "标点反映句法边界和信息组织。先分析成分关系，再决定是否使用逗号、冒号、分号、破折号或引号。",
+      "keyPoints": [
+        "主语和谓语之间通常不能仅因停顿感而加逗号。",
+        "呼语、插入语和解释性同位语通常用逗号隔开。",
+        "直接引语、列举和复杂并列分别有较稳定的标点模式。"
+      ],
+      "examples": [
+        { "ro": "Maria, vino aici! / Maria vine aici.", "zh": "前句 Maria 是呼语，需要逗号；后句 Maria 是主语，不加逗号。" }
+      ]
+    },
+    "grammar-083": {
+      "overview": "大小写、缩写、日期和数字的规范写法受专名范围、机构名称结构和计量规则影响。",
+      "keyPoints": [
+        "语言、民族形容词和月份名称在普通用法中通常小写。",
+        "机构全名、地名和人名中的专名成分按规范大写。",
+        "缩写是否带点、数字与单位是否留空格，应按固定规范处理。"
+      ],
+      "examples": [
+        { "ro": "Vorbesc română și locuiesc în România din 15 iulie 2025.", "zh": "română 小写，România 大写，月份名称 iulie 小写。" }
+      ]
+    },
+    "grammar-084": {
+      "overview": "正式和非正式语体在称呼、代词、请求方式、缩略和句子完整度上不同。正确不只意味着语法无误，也意味着符合场合。",
+      "keyPoints": [
+        "正式交流常用 dumneavoastră、完整称呼和条件式礼貌表达。",
+        "朋友之间更常用 tu、口语缩略和语气小词。",
+        "把口语拼写直接用于邮件、申请或报告可能显得不专业。"
+      ],
+      "examples": [
+        { "ro": "Îmi puteți trimite documentul? / Poți să-mi trimiți documentul?", "zh": "前句适合正式场合，后句适合熟人。" }
+      ]
+    },
+    "grammar-085": {
+      "overview": "话语连接词帮助读者识别补充、转折、解释、结论和说话人态度。选择错误会让句子各自正确却逻辑混乱。",
+      "keyPoints": [
+        "în plus 补充信息，totuși 表转折，așadar 表结论。",
+        "de fapt 用于纠正或澄清，oricum 表“无论如何”。",
+        "连接词前后的标点取决于它连接的是句内成分还是完整分句。"
+      ],
+      "examples": [
+        { "ro": "Planul este dificil; totuși, îl putem realiza. În plus, avem timp.", "zh": "计划很困难，不过我们能完成；此外，我们还有时间。" }
+      ]
+    },
+    "grammar-086": {
+      "overview": "规范错误往往来自口语类推、相近词混用或一致关系遗漏。判断时要看完整结构，而不是只替换单个词。",
+      "keyPoints": [
+        "在肯定结构中表示“只有”通常用 numai；decât 主要用于比较或否定限制结构。",
+        "特指人的关系直接宾语规范写作 pe care，并通常需要代词复现。",
+        "规范形式是 voiam，不是常见但受批评的 vroiam；一致错误则要回到中心词检查性数格。"
+      ],
+      "examples": [
+        { "ro": "Am numai zece lei. / Nu am decât zece lei.", "zh": "两句都是“我只有十列伊”，但肯定句用 numai，否定结构用 decât。" },
+        { "ro": "Fata pe care am văzut-o...", "zh": "我见到的那个女孩……；pe care 与 -o 都不能随意省略。" }
+      ]
+    }
+  }
+}

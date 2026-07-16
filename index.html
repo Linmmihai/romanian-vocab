@@ -75,9 +75,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .account-menu .btn-sm:hover{background:var(--bg2)}
 .btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
 .btn-sm:hover{background:var(--bg2)}
-.topbar-guide-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;color:var(--blue-text);border-color:#bfdbfe;background:var(--blue-bg);font-weight:750;white-space:nowrap}
+.topbar-guide-btn{display:inline-flex;align-items:center;justify-content:center;color:var(--blue-text);border-color:#bfdbfe;background:var(--blue-bg);font-weight:750;white-space:nowrap}
 .topbar-guide-btn:hover{background:#dbeafe}
-.topbar-guide-icon{font-size:14px;font-weight:900;line-height:1}
 .nav-tabs{display:flex;gap:4px;padding:12px 1rem 0;overflow:visible;scrollbar-width:none;position:relative;flex-wrap:nowrap}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tab{white-space:nowrap;padding:8px 16px;border:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:transparent;font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;position:relative}
@@ -276,6 +275,85 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .rank-meta{font-size:12px;color:var(--text2);margin-top:2px}
 .rank-score{text-align:right;font-size:13px;color:var(--text2)}
 .rank-score strong{display:block;font-size:20px;color:var(--text);line-height:1.1}
+/* GRAMMAR COURSES */
+.grammar-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#eef4ff 0%,#fff 58%,#fff7df 100%);border:1px solid #bfdbfe;border-radius:16px;padding:22px;margin-bottom:14px;box-shadow:var(--shadow)}
+.grammar-hero::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,#002b7f 0 33.33%,#fcd116 33.33% 66.66%,#ce1126 66.66% 100%)}
+.grammar-kicker{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--blue-text);margin-bottom:7px}
+.grammar-title{font-size:24px;font-weight:900;letter-spacing:-.02em;line-height:1.2}
+.grammar-subtitle{font-size:13px;color:var(--text2);line-height:1.65;margin-top:8px;max-width:520px}
+.grammar-hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.grammar-meta-chip{font-size:11px;font-weight:750;color:var(--text2);background:rgba(255,255,255,.78);border:1px solid var(--border);border-radius:99px;padding:5px 9px}
+.grammar-resource-note{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);background:white;color:var(--text2);font-size:12px;line-height:1.55}
+.grammar-resource-copy{flex:1;min-width:0}
+.grammar-guide-link{flex:none;min-height:34px;padding:7px 10px;border:1px solid var(--blue);border-radius:var(--radius-sm);background:var(--blue-bg);color:var(--blue-text);font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap}
+.grammar-guide-link:hover{background:#dbeafe}
+.grammar-guide-link:focus-visible{outline:3px solid rgba(37,99,235,.2);outline-offset:2px}
+.grammar-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:18px 0 10px}
+.grammar-section-title{font-size:16px;font-weight:900}
+.grammar-section-count{font-size:12px;color:var(--text2)}
+.grammar-search-panel{margin-bottom:12px}
+.grammar-search-field{display:flex;align-items:center;gap:8px;background:white;border:1px solid var(--border2);border-radius:12px;padding:0 10px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
+.grammar-search-field:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.grammar-search-icon{flex:0 0 auto;color:var(--text3);font-size:17px}
+.grammar-search-input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:14px;padding:12px 0}
+.grammar-search-input::placeholder{color:var(--text3)}
+.grammar-search-clear{flex:0 0 auto;border:0;background:var(--bg2);color:var(--text2);border-radius:99px;padding:5px 9px;font-size:11px;font-weight:750;cursor:pointer}
+.grammar-search-clear[hidden]{display:none}
+.grammar-search-hint{font-size:11px;color:var(--text3);line-height:1.5;margin:6px 3px 0}
+.grammar-module-list{display:grid;gap:10px;margin-top:10px}
+.grammar-module{background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.grammar-module>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;cursor:pointer}
+.grammar-module>summary::-webkit-details-marker{display:none}
+.grammar-module>summary::after{content:"⌄";font-size:17px;color:var(--text3);transition:transform .15s}
+.grammar-module[open]>summary::after{transform:rotate(180deg)}
+.grammar-module-head{min-width:0;flex:1}
+.grammar-module-title{font-size:15px;font-weight:900;color:var(--text)}
+.grammar-module-meta{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.45}
+.grammar-module-body{padding:0 12px 12px}
+.grammar-course-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.grammar-course{min-width:0;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.grammar-course[open]{grid-column:1/-1;border-color:#bfdbfe}
+.grammar-course>summary{list-style:none;display:block;padding:15px;cursor:pointer;position:relative}
+.grammar-course>summary::-webkit-details-marker{display:none}
+.grammar-course>summary::after{content:"＋";position:absolute;right:14px;bottom:14px;color:var(--blue-text);font-size:15px;font-weight:800}
+.grammar-course[open]>summary::after{content:"−"}
+.grammar-course-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.grammar-course-number{font-size:12px;font-weight:900;color:var(--blue-text);letter-spacing:.06em}
+.grammar-course-tags{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.grammar-course-tag{font-size:10px;font-weight:750;color:var(--text2);background:var(--bg2);border-radius:99px;padding:3px 7px}
+.grammar-course-title{font-size:16px;font-weight:900;line-height:1.35;padding-right:28px}
+.grammar-content-meta{display:block;font-size:10px;color:var(--text3);font-weight:700;margin-top:7px}
+.grammar-open-hint{display:inline-block;font-size:11px;color:var(--blue-text);font-weight:750;margin-top:9px}
+.grammar-course-detail{padding:14px 15px 15px;border-top:1px solid var(--border);background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)}
+.grammar-detail-block+.grammar-detail-block{margin-top:13px}
+.grammar-detail-label{font-size:11px;font-weight:900;color:var(--blue-text);letter-spacing:.04em;margin-bottom:5px}
+.grammar-course-summary{font-size:13px;color:var(--text2);line-height:1.75}
+.grammar-key-points{display:grid;gap:7px;padding-left:19px;color:var(--text2);font-size:13px;line-height:1.65}
+.grammar-key-points li::marker{color:var(--blue);font-weight:800}
+.grammar-example-list{display:grid;gap:8px}
+.grammar-example{padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:white}
+.grammar-example-ro{font-size:13px;font-weight:800;line-height:1.55;color:var(--text)}
+.grammar-example-zh{font-size:12px;line-height:1.6;color:var(--text2);margin-top:3px}
+.grammar-paradigm-note{font-size:11px;line-height:1.55;color:var(--text3);margin-bottom:8px}
+.grammar-paradigm-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:white;scrollbar-width:thin}
+.grammar-paradigm-scroll:focus-visible{outline:3px solid rgba(37,99,235,.2);outline-offset:2px}
+.grammar-paradigm-table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;line-height:1.45}
+.grammar-paradigm-table th,.grammar-paradigm-table td{padding:9px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+.grammar-paradigm-table thead th{background:var(--bg2);color:var(--text2);font-size:10px;font-weight:900;letter-spacing:.03em;white-space:nowrap}
+.grammar-paradigm-table tbody th{color:var(--text);font-weight:850;white-space:nowrap}
+.grammar-paradigm-table tbody td:nth-child(2){color:var(--blue-text);font-weight:750}
+.grammar-paradigm-table tbody tr:last-child th,.grammar-paradigm-table tbody tr:last-child td{border-bottom:0}
+.grammar-course-footer{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.grammar-video-list{display:grid;gap:8px}
+.grammar-watch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:48px;padding:9px 11px;border:1px solid #f8b4c8;border-radius:10px;background:#fff7f9;color:var(--text);text-decoration:none}
+.grammar-watch:hover{background:#ffeaf0;border-color:#fb7299}
+.grammar-watch:focus-visible{outline:3px solid rgba(251,114,153,.25);outline-offset:2px}
+.grammar-watch-copy{display:grid;gap:3px;min-width:0}
+.grammar-watch-title{font-size:12px;font-weight:850;line-height:1.45;overflow-wrap:anywhere}
+.grammar-watch-platform{font-size:10px;font-weight:800;color:#d64b75}
+.grammar-duration{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.grammar-empty{padding:2rem;text-align:center;color:var(--text2);background:white;border:1px dashed var(--border2);border-radius:var(--radius)}
+.grammar-load-state{padding:2rem;text-align:center;color:var(--text2)}
 /* GUIDE */
 .guide-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow)}
 .guide-hero{background:linear-gradient(135deg,#eff6ff 0%,#fff 62%,#f0fdf4 100%);border-color:#bfdbfe}
@@ -287,6 +365,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .guide-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:18px 0 9px}
 .guide-section-title{font-size:14px;font-weight:850;color:var(--text)}
 .guide-section-hint{font-size:11px;color:var(--text3);text-align:right}
+.guide-video-list{display:grid;gap:8px;margin-bottom:14px}
+.guide-video-link{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:11px;min-height:54px;padding:9px 11px;border:1px solid #f8b4c8;border-radius:10px;background:#fff7f9;color:var(--text);text-decoration:none}
+.guide-video-link:hover{background:#ffeaf0;border-color:#fb7299}
+.guide-video-link:focus-visible{outline:3px solid rgba(251,114,153,.25);outline-offset:2px}
+.guide-video-number{display:flex;width:30px;height:30px;align-items:center;justify-content:center;border-radius:50%;background:#ffe1ea;color:#c83f6a;font-size:10px;font-weight:900;font-variant-numeric:tabular-nums}
+.guide-video-copy{display:grid;gap:2px;min-width:0}
+.guide-video-title{font-size:12px;font-weight:850;line-height:1.4;overflow-wrap:anywhere}
+.guide-video-summary{font-size:10px;color:var(--text2);line-height:1.45}
+.guide-video-meta{font-size:10px;color:#d64b75;font-weight:800;white-space:nowrap}
 .alphabet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,1fr));gap:7px;margin-bottom:14px}
 .alphabet-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 5px;text-align:center;color:var(--text);min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s,border-color .12s,background .12s,box-shadow .12s}
 .alphabet-item:hover,.alphabet-item:focus-visible,.ph-item:hover,.ph-item:focus-visible{border-color:var(--blue);background:var(--blue-bg);outline:none}
@@ -307,7 +394,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
 .manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
-@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.topbar-guide-icon{display:none}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.flash-controls-body{padding:0 10px 10px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}}
+@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.guide-video-link{grid-template-columns:auto minmax(0,1fr)}.guide-video-meta{grid-column:2}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}.grammar-hero{padding:19px 16px}.grammar-title{font-size:21px}.grammar-resource-note{align-items:flex-start;flex-wrap:wrap}.grammar-resource-copy{min-width:220px}.grammar-guide-link{width:100%}.grammar-course-grid{grid-template-columns:1fr}.grammar-course>summary{padding:14px}.grammar-course-detail{padding:13px 14px 14px}.grammar-module>summary{padding:13px}}
+@media(max-width:560px){.flash-controls-body{padding:0 10px 10px}}
 @media(max-width:380px){.topbar-badge{display:none}}
 @media(max-width:560px){.nav-tab,.qsize-btn,.opt,.queue-btn,.know-yes,.know-fuzzy,.know-no,.spk,.report-btn,.btn-primary,.btn-cancel,.btn-save,.restart-btn,.next-btn,.list-filter-row select{min-height:44px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
@@ -484,7 +572,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="topbar-right">
       <span class="user-chip" id="user-chip"></span>
       <span class="sync-badge" id="sync-badge" role="status" aria-live="polite"></span>
-      <button class="btn-sm topbar-guide-btn" type="button" onclick="openGuideFromAccount()" aria-label="打开学习指南"><span class="topbar-guide-icon" aria-hidden="true">？</span><span class="topbar-guide-label">指南</span></button>
+      <button class="btn-sm topbar-guide-btn" type="button" onclick="openGuideFromAccount()" aria-label="打开学习指南"><span class="topbar-guide-label">指南</span></button>
       <div class="account-menu-wrap" id="account-menu-wrap">
         <button class="btn-sm" onclick="toggleAccountMenu(event)">账号</button>
         <div class="account-menu">
@@ -501,7 +589,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-quiz" data-page="quiz" onclick="switchPage('quiz')">测验</button>
     <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-list" data-page="list" onclick="switchPage('list')">词汇</button>
     <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-stats" data-page="stats" onclick="switchPage('stats')">统计</button>
-    <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-wrongbook" data-page="wrongbook" onclick="switchPage('wrongbook')">需加强 <span id="wb-tab-badge" style="display:none;font-size:11px;background:var(--red);color:white;padding:1px 6px;border-radius:99px;font-weight:700;margin-left:2px"></span></button>
+    <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-grammar" data-page="grammar" onclick="switchPage('grammar')">语法</button>
   </div>
 
   <!-- 卡片记忆 -->
@@ -605,6 +693,41 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </details>
   </div>
 
+  <!-- 语法课程目录 -->
+  <div class="page" id="page-grammar">
+    <div class="grammar-hero">
+      <div class="grammar-kicker">GRAMATICĂ</div>
+      <h2 class="grammar-title" id="grammar-title">罗马尼亚语语法知识库</h2>
+      <p class="grammar-subtitle" id="grammar-subtitle">按照罗马尼亚语自身的语法体系，从词法、句法到书写与语用逐层整理。</p>
+      <div class="grammar-hero-meta">
+        <span class="grammar-meta-chip" id="grammar-course-total">0 个专题</span>
+        <span class="grammar-meta-chip" id="grammar-module-total">0 个模块</span>
+        <span class="grammar-meta-chip" id="grammar-scope-label">按词法与句法编排</span>
+      </div>
+    </div>
+    <div class="grammar-resource-note">
+      <span aria-hidden="true">说明</span>
+      <span class="grammar-resource-copy">点击专题可以查看结论、核心规则和例句；涉及动词形式时还会显示词缀与构成表。只有配置配套课程的专题才会显示 Bilibili 入口。</span>
+      <button class="grammar-guide-link" type="button" onclick="openPronunciationGuide()">先学字母与拼读 →</button>
+    </div>
+    <div id="grammar-loading" class="grammar-load-state">正在加载课程目录...</div>
+    <div id="grammar-content" style="display:none">
+      <div class="grammar-section-head">
+        <div class="grammar-section-title">语法目录</div>
+        <div class="grammar-section-count" id="grammar-visible-count" aria-live="polite"></div>
+      </div>
+      <div class="grammar-search-panel">
+        <div class="grammar-search-field">
+          <span class="grammar-search-icon" aria-hidden="true">⌕</span>
+          <input class="grammar-search-input" id="grammar-search-input" type="search" autocomplete="off" aria-label="搜索语法专题" placeholder="搜索语法，例如：定冠词、虚拟式、关系从句">
+          <button class="grammar-search-clear" id="grammar-search-clear" type="button" hidden>清除</button>
+        </div>
+        <div class="grammar-search-hint">支持中文和罗马尼亚语关键词，搜索专题名称、分类和文字摘要。</div>
+      </div>
+      <div class="grammar-module-list" id="grammar-course-list"></div>
+    </div>
+  </div>
+
   <!-- 复习 -->
   <!-- 需加强 -->
   <div class="page" id="page-wrongbook">
@@ -698,7 +821,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               <button class="study-mode-btn active" data-scope="smart" onclick="setPracticeScope('smart')">智能</button>
               <button class="study-mode-btn" data-scope="today" onclick="setPracticeScope('today')">今日</button>
               <button class="study-mode-btn" data-scope="weak" onclick="setPracticeScope('weak')">学习中</button>
-              <button class="study-mode-btn" data-scope="wrong" onclick="setPracticeScope('wrong')">需加强</button>
               <button class="study-mode-btn" data-scope="due" onclick="setPracticeScope('due')">到期</button>
               <button class="study-mode-btn" data-scope="new" onclick="setPracticeScope('new')">未学</button>
               <button class="study-mode-btn" data-scope="all" onclick="setPracticeScope('all')">全部</button>
@@ -789,11 +911,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   <!-- 指南 -->
   <div class="page" id="page-guide">
-    <div class="guide-card guide-hero">
+    <div class="guide-card guide-hero" id="guide-pronunciation">
       <div class="guide-kicker">Pronunție · 发音入门</div>
       <div class="guide-title">先听音值，再记字母名称</div>
       <div class="guide-subtitle">罗马尼亚语字母表有 31 个字母。字母名称用于拼读，真正读单词时要看字母在词中的音值。点击卡片会朗读字母名称和一个罗马尼亚语示例词。</div>
       <div class="guide-note"><strong>请注意</strong><span>中文提示只帮助定位发音，不是完全等音。优先模仿示例词；播放时应选择罗马尼亚语语音，若设备没有该语音，页面会明确提醒。</span></div>
+      <div class="guide-section-head">
+        <div class="guide-section-title" id="guide-video-title">配套发音课程</div>
+        <div class="guide-section-hint">建议按 01 → 03 顺序观看</div>
+      </div>
+      <div class="guide-video-list" aria-labelledby="guide-video-title">
+        <a class="guide-video-link" href="https://www.bilibili.com/video/BV1tx4y1d77H/" target="_blank" rel="noopener noreferrer">
+          <span class="guide-video-number">01</span>
+          <span class="guide-video-copy"><span class="guide-video-title">【上外罗马尼亚语教学】第一课 字母表</span><span class="guide-video-summary">先认识 31 个字母及其名称</span></span>
+          <span class="guide-video-meta">04:07 · Bilibili ↗</span>
+        </a>
+        <a class="guide-video-link" href="https://www.bilibili.com/video/BV1yk4y1U7mN/" target="_blank" rel="noopener noreferrer">
+          <span class="guide-video-number">02</span>
+          <span class="guide-video-copy"><span class="guide-video-title">字母在词中拼读教程 a–h</span><span class="guide-video-summary">练习 a 到 h 在单词中的常见音值</span></span>
+          <span class="guide-video-meta">08:09 · Bilibili ↗</span>
+        </a>
+        <a class="guide-video-link" href="https://www.bilibili.com/video/BV1yk4y1U7Xm/" target="_blank" rel="noopener noreferrer">
+          <span class="guide-video-number">03</span>
+          <span class="guide-video-copy"><span class="guide-video-title">【基础篇】拼读教程 i–z</span><span class="guide-video-summary">继续练习 i 到 z 与常见字母组合</span></span>
+          <span class="guide-video-meta">07:39 · Bilibili ↗</span>
+        </a>
+      </div>
       <div class="guide-section-head">
         <div class="guide-section-title">31 个字母及名称</div>
         <div class="guide-section-hint">蓝色一行是常见音值，不是字母名称</div>
@@ -871,8 +1014,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="manual-text">答错的新词会进入较短的学习间隔；已经学会的词答错后会重新学习。不要为了完成数字而把模糊词标成“认识”。</div>
         </div>
         <div class="manual-item">
-          <div class="manual-title">测验与需加强</div>
-          <div class="manual-text">测验用于主动回忆翻译、复数、变位和重音。曾经掌握但后来不稳定的词会进入“需加强”，连续答对后移出。</div>
+          <div class="manual-title">测验与复习</div>
+          <div class="manual-text">测验用于主动回忆翻译、复数、变位和重音。系统会优先抽取到期或近期答错的词，帮助你继续巩固。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">查词与加词</div>
@@ -1196,7 +1339,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260714-progress-queue-fix';</script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260716-grammar-content';</script>
 <script src="scheduler.js?v=20260714-progress-queue-fix"></script>
 <script src="progress-model.js?v=20260714-progress-queue-fix"></script>
 <script src="daily-plan.js?v=20260714-progress-queue-fix"></script>
@@ -1204,7 +1347,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <script src="api.js?v=20260714-progress-queue-fix"></script>
 <script src="telemetry.js?v=20260714-progress-queue-fix"></script>
 <script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260714-progress-queue-fix"></script>
+<script src="app.js?v=20260716-grammar-content"></script>
 <script src="pwa.js?v=20260714-progress-queue-fix"></script>
 </body>
 </html>

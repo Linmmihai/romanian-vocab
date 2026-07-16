@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ro-vocab-pwa-v23';
+const CACHE_NAME = 'ro-vocab-pwa-v29';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
@@ -11,6 +11,8 @@ const APP_SHELL_PATHS = [
   './auth.js',
   './app.js',
   './pwa.js',
+  './data/grammar-courses.json',
+  './data/grammar-content.json',
   './manifest.webmanifest',
   './manifest/icon-192.png',
   './manifest/icon-512.png',
@@ -18,7 +20,9 @@ const APP_SHELL_PATHS = [
 ];
 const DATA_PATHS = new Set([
   '/data/vocab.json',
-  '/data/examples.json'
+  '/data/examples.json',
+  '/data/grammar-courses.json',
+  '/data/grammar-content.json'
 ]);
 
 self.addEventListener('install', event => {

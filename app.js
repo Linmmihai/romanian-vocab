@@ -25,6 +25,12 @@ let dailyQueueLoaded = false;
 let exampleBank = {};
 let exampleBankLoaded = false;
 let exampleBankLoadPromise = null;
+let grammarCourseMeta = {};
+let grammarCourses = [];
+let grammarTopicContent = {};
+let grammarCoursesLoaded = false;
+let grammarCoursesLoadPromise = null;
+let grammarSearchQuery = '';
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
 let qExerciseMode = 'translation'; // translation | nounPlural | verbConj | stress | listening
@@ -1890,13 +1896,11 @@ function getDailyTaskType(w) {
 function getAuxiliaryLabels(w) {
   if (!w) return [];
   const labels = [];
-  const scheduler = normalizeScheduler(getProgress(w.ro) || {});
   const queuePhase = getStudyQueuePhase(w);
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) labels.push('今日任务');
   if (!hasWordProgress(getProgress(w.ro)) && !setHasRo(todaySeenWords, w.ro)) labels.push('新词');
   if (queuePhase === 'learning-due') labels.push('学习步骤到点');
   if (queuePhase === 'review-due' || queuePhase === 'relearning-due') labels.push('到期复习');
-  if ((scheduler.needsReinforcement || scheduler.cardState === 'reinforcing' || isWrongWord(w.ro)) && !labels.includes('需加强')) labels.push('需加强');
   return labels;
 }
 
@@ -1909,7 +1913,7 @@ function getContinueAfterGoalText() {
   if (dailyGoal < DAILY_GOAL_MAX) {
     return '想继续学习，可以点下方 +30、+50，或自定义扩展今天的任务量。';
   }
-  return '今日任务已到上限，可以继续做测验或打开需加强列表巩固。';
+  return '今日任务已到上限，可以继续做智能测验巩固。';
 }
 
 function getGoalInputValue() {
@@ -2329,7 +2333,7 @@ function getUnseenWords(words = W) {
 async function addWordToTodayQueue(wordRo) {
   const w = getWordByRo(wordRo);
   if (!w) { showToast('找不到该词条'); return; }
-  if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习或需加强列表巩固'); return; }
+  if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习继续巩固'); return; }
   const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
   if (!remainingSlots) {
@@ -3181,6 +3185,278 @@ async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
 
 // ── 导航 ─────────────────────────────────────────────────
 
+function isSupportedBilibiliUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    const host = url.hostname.toLocaleLowerCase('en');
+    return url.protocol === 'https:' && (host === 'b23.tv' || host === 'bilibili.com' || host.endsWith('.bilibili.com'));
+  } catch {
+    return false;
+  }
+}
+
+function getGrammarCourseVideos(course) {
+  const configuredVideos = Array.isArray(course?.bilibiliVideos)
+    ? course.bilibiliVideos
+    : course?.bilibiliUrl
+      ? [{ title: course.title, url: course.bilibiliUrl, duration: course.duration }]
+      : [];
+  return configuredVideos
+    .map(video => ({
+      title: String(video?.title || course?.title || '配套课程').trim(),
+      url: String(video?.url || '').trim(),
+      duration: String(video?.duration || '').trim()
+    }))
+    .filter(video => video.title && isSupportedBilibiliUrl(video.url));
+}
+
+function normalizeGrammarSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[şŞ]/g, match => match === 'Ş' ? 'S' : 's')
+    .replace(/[ţŢ]/g, match => match === 'Ţ' ? 'T' : 't')
+    .toLocaleLowerCase('ro')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function getVisibleGrammarCourses() {
+  const normalizedQuery = normalizeGrammarSearch(grammarSearchQuery);
+  if (!normalizedQuery) return grammarCourses;
+  const tokens = normalizedQuery.split(' ').filter(Boolean);
+  const modules = new Map((Array.isArray(grammarCourseMeta.modules) ? grammarCourseMeta.modules : [])
+    .map(module => [String(module?.id || ''), module]));
+  return grammarCourses.filter(course => {
+    const module = modules.get(String(course.module || '')) || {};
+    const content = grammarTopicContent[String(course.id || '')] || {};
+    const courseVideos = getGrammarCourseVideos(course);
+    const paradigmRows = Array.isArray(content.paradigm?.rows) ? content.paradigm.rows : [];
+    const examples = Array.isArray(content.examples) ? content.examples : [];
+    const searchableText = normalizeGrammarSearch([
+      course.title,
+      course.summary,
+      course.category,
+      ...courseVideos.flatMap(video => [video.title, video.duration]),
+      module.title,
+      module.summary,
+      content.overview,
+      ...(Array.isArray(content.keyPoints) ? content.keyPoints : []),
+      ...examples.flatMap(example => [example?.ro, example?.zh]),
+      content.paradigm?.title,
+      content.paradigm?.note,
+      ...paradigmRows.flatMap(row => [row?.label, row?.form, row?.example])
+    ].filter(Boolean).join(' '));
+    return tokens.every(token => searchableText.includes(token));
+  });
+}
+
+function renderGrammarSearchState() {
+  const input = document.getElementById('grammar-search-input');
+  const clear = document.getElementById('grammar-search-clear');
+  if (input && input.value !== grammarSearchQuery) input.value = grammarSearchQuery;
+  if (clear) clear.hidden = !grammarSearchQuery.trim();
+}
+
+function renderGrammarCourses() {
+  const list = document.getElementById('grammar-course-list');
+  if (!list) return;
+  renderGrammarSearchState();
+  const visible = getVisibleGrammarCourses();
+  const visibleCount = document.getElementById('grammar-visible-count');
+  const hasQuery = Boolean(grammarSearchQuery.trim());
+  if (visibleCount) visibleCount.textContent = hasQuery
+    ? `找到 ${visible.length} / ${grammarCourses.length} 个专题`
+    : `共 ${grammarCourses.length} 个专题`;
+  if (!visible.length) {
+    list.innerHTML = `<div class="grammar-empty">没有找到与“${escapeHtml(grammarSearchQuery.trim())}”相关的语法专题。<br><button class="btn-sm" type="button" style="margin-top:10px" data-clear-grammar-search>清除搜索</button></div>`;
+    return;
+  }
+  const configuredModules = (Array.isArray(grammarCourseMeta.modules) ? grammarCourseMeta.modules : [])
+    .filter(module => module && typeof module === 'object')
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  const moduleMap = new Map(configuredModules.map(module => [String(module.id || ''), module]));
+  visible.forEach(course => {
+    const moduleId = String(course.module || 'other');
+    if (!moduleMap.has(moduleId)) moduleMap.set(moduleId, { id: moduleId, title: '其他语法', summary: '', order: 999 });
+  });
+  const visibleModules = [...moduleMap.values()]
+    .map(module => ({ ...module, courses: visible.filter(course => String(course.module || 'other') === String(module.id || '')) }))
+    .filter(module => module.courses.length)
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  const renderCourse = (course, module) => {
+    const order = String(Number(course.order || 0)).padStart(2, '0');
+    const title = String(course.title || '未命名专题');
+    const content = grammarTopicContent[String(course.id || '')] || {};
+    const overview = String(content.overview || course.summary || '这个专题的文字内容正在整理。');
+    const keyPoints = (Array.isArray(content.keyPoints) ? content.keyPoints : []).filter(Boolean);
+    const examples = (Array.isArray(content.examples) ? content.examples : []).filter(example => example?.ro || example?.zh);
+    const paradigm = content.paradigm && typeof content.paradigm === 'object' ? content.paradigm : null;
+    const paradigmRows = (Array.isArray(paradigm?.rows) ? paradigm.rows : []).filter(row => row?.label || row?.form || row?.example);
+    const courseVideos = getGrammarCourseVideos(course);
+    const contentMeta = [
+      keyPoints.length ? `${keyPoints.length} 条规则` : '',
+      examples.length ? `${examples.length} 个例句` : '',
+      paradigmRows.length ? '含构成表' : '',
+      courseVideos.length ? `${courseVideos.length} 节课程` : ''
+    ].filter(Boolean).join(' · ');
+    const watchActions = courseVideos.map(video => `
+      <a class="grammar-watch" href="${escapeHtml(video.url)}" target="_blank" rel="noopener noreferrer" aria-label="在 Bilibili 观看${escapeHtml(video.title)}">
+        <span class="grammar-watch-copy">
+          <span class="grammar-watch-title">${escapeHtml(video.title)}</span>
+          <span class="grammar-watch-platform">Bilibili 课程 ↗</span>
+        </span>
+        ${video.duration ? `<span class="grammar-duration">${escapeHtml(video.duration)}</span>` : ''}
+      </a>`).join('');
+    const footer = watchActions
+      ? `<div class="grammar-course-footer"><div class="grammar-detail-label">配套课程</div><div class="grammar-video-list">${watchActions}</div></div>`
+      : '';
+    return `
+        <details class="grammar-course" data-grammar-topic="${escapeHtml(course.id || '')}">
+          <summary aria-label="查看${escapeHtml(title)}的文字摘要">
+            <span class="grammar-course-top">
+              <span class="grammar-course-number">TOPIC ${escapeHtml(order)}</span>
+              <span class="grammar-course-tags">
+                ${course.category ? `<span class="grammar-course-tag">${escapeHtml(course.category)}</span>` : ''}
+              </span>
+            </span>
+            <h3 class="grammar-course-title">${escapeHtml(title)}</h3>
+            ${contentMeta ? `<span class="grammar-content-meta">${escapeHtml(contentMeta)}</span>` : ''}
+            <span class="grammar-open-hint">查看规则与例句</span>
+          </summary>
+          <div class="grammar-course-detail">
+            <div class="grammar-detail-block">
+              <div class="grammar-detail-label">先看结论</div>
+              <p class="grammar-course-summary">${escapeHtml(overview)}</p>
+            </div>
+            ${keyPoints.length ? `
+              <div class="grammar-detail-block">
+                <div class="grammar-detail-label">核心规则</div>
+                <ul class="grammar-key-points">${keyPoints.map(point => `<li>${escapeHtml(point)}</li>`).join('')}</ul>
+              </div>` : ''}
+            ${paradigmRows.length ? `
+              <div class="grammar-detail-block grammar-paradigm-block">
+                <div class="grammar-detail-label">${escapeHtml(paradigm.title || '词缀与构成')}</div>
+                ${paradigm.note ? `<p class="grammar-paradigm-note">${escapeHtml(paradigm.note)}</p>` : ''}
+                <div class="grammar-paradigm-scroll" tabindex="0" aria-label="${escapeHtml(title)}的变位或构成表">
+                  <table class="grammar-paradigm-table">
+                    <thead><tr><th scope="col">人称 / 类型</th><th scope="col">词缀 / 构成</th><th scope="col">示例</th></tr></thead>
+                    <tbody>${paradigmRows.map(row => `<tr><th scope="row">${escapeHtml(row.label || '')}</th><td>${escapeHtml(row.form || '')}</td><td lang="ro">${escapeHtml(row.example || '')}</td></tr>`).join('')}</tbody>
+                  </table>
+                </div>
+              </div>` : ''}
+            ${examples.length ? `
+              <div class="grammar-detail-block">
+                <div class="grammar-detail-label">放进句子里</div>
+                <div class="grammar-example-list">${examples.map(example => `
+                  <div class="grammar-example">
+                    ${example.ro ? `<div class="grammar-example-ro" lang="ro">${escapeHtml(example.ro)}</div>` : ''}
+                    ${example.zh ? `<div class="grammar-example-zh">${escapeHtml(example.zh)}</div>` : ''}
+                  </div>`).join('')}</div>
+              </div>` : ''}
+            ${footer}
+          </div>
+        </details>`;
+  };
+  list.innerHTML = visibleModules.map((module, index) => `
+    <details class="grammar-module"${hasQuery || index === 0 ? ' open' : ''}>
+      <summary>
+        <span class="grammar-module-head">
+          <span class="grammar-module-title">${escapeHtml(module.title || '语法模块')}</span>
+          <span class="grammar-module-meta">${escapeHtml(module.summary || '')}</span>
+        </span>
+        <span class="grammar-course-tag">${module.courses.length} 个专题</span>
+      </summary>
+      <div class="grammar-module-body">
+        <div class="grammar-course-grid">${module.courses.map(course => renderCourse(course, module)).join('')}</div>
+      </div>
+    </details>
+  `).join('');
+}
+
+function setGrammarSearchQuery(value) {
+  grammarSearchQuery = String(value || '');
+  renderGrammarCourses();
+}
+
+document.addEventListener('input', (event) => {
+  if (event.target?.id !== 'grammar-search-input') return;
+  setGrammarSearchQuery(event.target.value);
+});
+
+document.addEventListener('click', (event) => {
+  if (!event.target.closest?.('#grammar-search-clear, [data-clear-grammar-search]')) return;
+  setGrammarSearchQuery('');
+  document.getElementById('grammar-search-input')?.focus();
+});
+
+async function loadGrammarCourses() {
+  if (grammarCoursesLoaded) {
+    renderGrammarCourses();
+    return grammarCourses;
+  }
+  if (grammarCoursesLoadPromise) return grammarCoursesLoadPromise;
+  const loading = document.getElementById('grammar-loading');
+  const content = document.getElementById('grammar-content');
+  if (loading) {
+    loading.style.display = 'block';
+    loading.textContent = '正在加载课程目录...';
+  }
+  if (content) content.style.display = 'none';
+  grammarCoursesLoadPromise = (async () => {
+    try {
+      const [courseResponse, contentResponse] = await Promise.all([
+        fetch('./data/grammar-courses.json?v=20260716-grammar-content', { cache: 'reload' }),
+        fetch('./data/grammar-content.json?v=20260716-grammar-content', { cache: 'reload' })
+      ]);
+      if (!courseResponse.ok) throw new Error(`Course catalog HTTP ${courseResponse.status}`);
+      if (!contentResponse.ok) throw new Error(`Grammar content HTTP ${contentResponse.status}`);
+      const [payload, contentPayload] = await Promise.all([courseResponse.json(), contentResponse.json()]);
+      grammarCourseMeta = payload && typeof payload === 'object' ? payload : {};
+      grammarTopicContent = contentPayload?.topics && typeof contentPayload.topics === 'object' ? contentPayload.topics : {};
+      grammarCourses = (Array.isArray(payload?.courses) ? payload.courses : [])
+        .filter(course => course && typeof course === 'object')
+        .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+      grammarCoursesLoaded = true;
+      const title = document.getElementById('grammar-title');
+      const subtitle = document.getElementById('grammar-subtitle');
+      const total = document.getElementById('grammar-course-total');
+      const moduleTotal = document.getElementById('grammar-module-total');
+      const scopeLabel = document.getElementById('grammar-scope-label');
+      const modules = Array.isArray(grammarCourseMeta.modules) ? grammarCourseMeta.modules : [];
+      if (title) title.textContent = grammarCourseMeta.title || '罗马尼亚语语法知识库';
+      if (subtitle) subtitle.textContent = grammarCourseMeta.subtitle || '按照罗马尼亚语自身的语法体系，从词法、句法到书写与语用逐层整理。';
+      if (total) total.textContent = `${grammarCourses.length} 个专题`;
+      if (moduleTotal) moduleTotal.textContent = `${modules.length} 个模块`;
+      if (scopeLabel) scopeLabel.textContent = grammarCourseMeta.scopeLabel || '按词法与句法编排';
+      renderGrammarCourses();
+      if (loading) loading.style.display = 'none';
+      if (content) content.style.display = 'block';
+      return grammarCourses;
+    } catch (error) {
+      console.warn('Grammar courses load failed', error);
+      if (loading) loading.innerHTML = '<div>课程目录加载失败，请稍后重试。</div><button class="btn-sm" type="button" style="margin-top:10px" onclick="retryGrammarCourses()">重新加载</button>';
+      return [];
+    } finally {
+      grammarCoursesLoadPromise = null;
+    }
+  })();
+  return grammarCoursesLoadPromise;
+}
+
+function retryGrammarCourses() {
+  grammarCoursesLoaded = false;
+  grammarCoursesLoadPromise = null;
+  return loadGrammarCourses();
+}
+
+function openPronunciationGuide() {
+  switchPage('guide');
+  requestAnimationFrame(() => {
+    document.getElementById('guide-pronunciation')?.scrollIntoView({ block: 'start' });
+  });
+}
+
 function switchPage(p) {
   if (p !== 'quiz' && isQuizInProgress()) {
     const answered = qRoundTotal;
@@ -3191,11 +3467,12 @@ function switchPage(p) {
     clearTimeout(wbAutoAdvanceTimer);
     wbAutoAdvanceTimer = null;
   }
-  const pages = ['flash', 'list', 'wrongbook', 'quiz', 'stats', 'guide', 'admin'];
+  const pages = ['flash', 'grammar', 'list', 'wrongbook', 'quiz', 'stats', 'guide', 'admin'];
+  const activeNavPage = p;
   pages.forEach((s) => {
     document.querySelectorAll(`.nav-tab[data-page="${s}"]`).forEach(tab => {
-      tab.classList.toggle('active', s === p);
-      tab.setAttribute('aria-selected', s === p ? 'true' : 'false');
+      tab.classList.toggle('active', s === activeNavPage);
+      tab.setAttribute('aria-selected', s === activeNavPage ? 'true' : 'false');
     });
     const page = document.getElementById('page-' + s);
     if (page) page.classList.toggle('active', s === p);
@@ -3206,6 +3483,7 @@ function switchPage(p) {
   if (p === 'stats') renderStatsPage();
   if (p === 'list') renderList();
   if (p === 'wrongbook') initWrongbook();
+  if (p === 'grammar') loadGrammarCourses();
   if (p === 'admin') { restoreAdminSections(); loadAdminStats(); loadAdminPendingWords(); loadAdminReports(); loadAdminUsers(); loadAdminWeeklySummary(); }
 }
 
@@ -3352,7 +3630,7 @@ function handleNavigationShortcut(event) {
     '2': 'quiz',
     '3': 'list',
     '4': 'stats',
-    '5': 'wrongbook'
+    '5': 'grammar'
   };
   const page = map[key];
   if (!page) return false;
@@ -4557,8 +4835,11 @@ function renderWrongbookStats() {
   const total = getWrongWords().length;
   document.getElementById('wb-total').textContent = total;
   document.getElementById('wb-graduated').textContent = wbGraduated;
-  document.getElementById('wb-tab-badge').textContent = total;
-  document.getElementById('wb-tab-badge').style.display = total > 0 ? 'inline' : 'none';
+  const tabBadge = document.getElementById('wb-tab-badge');
+  if (tabBadge) {
+    tabBadge.textContent = total;
+    tabBadge.style.display = total > 0 ? 'inline' : 'none';
+  }
 }
 
 function getWrongbookReason(progress = {}) {
@@ -4989,7 +5270,7 @@ function getMistakeTip(w, context = {}) {
   if (context.type === 'verbConj') return '动词题先识别不定式结尾，再记是否带 -ez 或 -esc。';
   if (context.type === 'stress') return '重音题看下划线音节；不确定时先慢速朗读，再回到词卡。';
   if (isWordUnverified(w)) return '这个词仍有未核对信息，建议打开详情或报错让管理员检查。';
-  return '把这个词加入需加强列表后，系统会在智能练习里提高它的优先级。';
+  return '系统已经记录这次错误，并会在智能练习里提高这个词的优先级。';
 }
 
 function buildExercisePool() {
@@ -5060,7 +5341,7 @@ function showQuizSetup() {
   const isDefaultSmart = qPracticeScope === 'smart' && qExerciseMode === 'translation' && qMode === 'zh';
   const primaryTitle = isDefaultSmart ? '开始智能练习' : `开始${modeName}`;
   const primarySub = isDefaultSmart
-    ? '系统会优先抽到期、需加强和学习中的词，适合每天完成任务后检查记忆。'
+    ? '系统会优先抽到期、近期答错和学习中的词，适合每天完成任务后检查记忆。'
     : `${getPracticeScopeLabel()} · ${modeName}${qExerciseMode === 'translation' ? ` · ${qMode === 'zh' ? '中文到罗语' : '罗语到中文'}` : ''}`;
   document.getElementById('quiz-area').innerHTML = `
     <div class="quiz-section quiz-start-panel">
@@ -5262,7 +5543,6 @@ function showResult(options = {}) {
   const endedEarly = !!options.endedEarly;
   qStarted = false;
   const pct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
-  const wrongCount = getWrongWords().length;
   const dueCount = getRemainingDueReviewWords(W).length;
   const nextTitle = endedEarly
     ? `本轮已完成 ${qRoundTotal}/${qList.length} 题`
@@ -5270,12 +5550,12 @@ function showResult(options = {}) {
     ? `本轮错了 ${qRoundWrong} 题`
     : (dueCount > 0 ? `还有 ${dueCount} 个到期词` : '本轮状态稳定');
   const nextText = qRoundWrong > 0
-    ? '建议马上练需加强列表，趁错误记忆还新鲜，把薄弱词修掉。'
+    ? '建议马上再做一轮智能练习，系统会优先安排近期答错的词。'
     : (dueCount > 0
       ? '先完成到期复习，再继续新词或专项练习。'
       : '可以再做一轮智能练习，或回到今日任务继续扩大词量。');
-  const primaryAction = qRoundWrong > 0 && wrongCount > 0
-    ? `<button class="restart-btn" style="border-color:var(--red);color:var(--red-text)" onclick="switchPage('wrongbook')">练需加强</button>`
+  const primaryAction = qRoundWrong > 0
+    ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="startDefaultSmartQuiz()">继续智能练习</button>`
     : (dueCount > 0
       ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="setPracticeScope('due');switchPage('quiz')">复习到期词</button>`
       : `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="startDefaultSmartQuiz()">再做智能练习</button>`);
@@ -5287,10 +5567,9 @@ function showResult(options = {}) {
         <div class="result-next-title">${escapeHtml(nextTitle)}</div>
         <div class="result-next-text">${escapeHtml(nextText)}</div>
       </div>
-      ${wrongCount > 0 ? `<div style="font-size:13px;color:var(--red-text);margin-bottom:16px">需加强列表有 ${wrongCount} 个词待练习</div>` : ''}
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         ${primaryAction}
-        <button class="restart-btn" onclick="startQuiz()">再来一轮</button>
+        <button class="restart-btn" onclick="switchPage('flash')">返回学习</button>
       </div>
     </div>`;
 }
@@ -5396,18 +5675,16 @@ function renderStudyCoach(summary, logs = []) {
   const el = document.getElementById('study-coach');
   if (!el) return;
   const dueCount = getRemainingDueReviewWords(W).length;
-  const wrongCount = getWrongWords().length;
   const weakCount = getWeakLearningWords(W).length;
   const weakCat = getWeakestCategory();
   const todayOpen = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro)).length;
   const items = [];
   if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, meta: '这是今天最该优先完成的任务', kind: 'due' });
-  if (wrongCount) items.push({ title: `再练 ${wrongCount} 个需加强词`, meta: '把最近答错的词单独修掉', kind: 'wrong' });
   if (weakCount) items.push({ title: `继续练 ${weakCount} 个学习中词`, meta: '还没稳定掌握，适合短轮测验', kind: 'weak' });
   if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, meta: `${todayNewWords}/${dailyGoal} 已完成`, kind: 'today' });
   if (weakCat) items.push({ title: `掌握较少：${getCategoryLabel(weakCat.cat)}`, meta: `当前掌握率 ${weakCat.pct}%，可以按分类练习`, kind: 'cat', arg: weakCat.cat });
   if (!items.length) items.push({ title: `做一轮智能测验`, meta: `当前正确率 ${summary.accuracy}%，用测验检查是否真的记住`, kind: 'quiz' });
-  const actionLabels = { due: '开始复习', wrong: '开始加强', weak: '开始练习', today: '继续任务', cat: '分类练习', quiz: '开始测验' };
+  const actionLabels = { due: '开始复习', weak: '开始练习', today: '继续任务', cat: '分类练习', quiz: '开始测验' };
   el.innerHTML = items.slice(0, 4).map(item => `
     <div class="hard-row">
       <div class="hard-main">
@@ -5420,7 +5697,6 @@ function renderStudyCoach(summary, logs = []) {
 
 function startCoachAction(kind, arg = '') {
   if (kind === 'due') { setPracticeScope('due'); switchPage('quiz'); return; }
-  if (kind === 'wrong') { switchPage('wrongbook'); return; }
   if (kind === 'weak') { setPracticeScope('weak'); switchPage('quiz'); return; }
   if (kind === 'today') { setFlashMode('today'); switchPage('flash'); return; }
   if (kind === 'cat') { setCat(arg); switchPage('flash'); return; }
@@ -5452,7 +5728,7 @@ function renderAchievements(summary, logs = []) {
     { name: '入门 100', done: summary.mastered >= 100, meta: `${summary.mastered}/100 已掌握` },
     { name: '稳定 7 天', done: calcStreak(logs) >= 7, meta: `${calcStreak(logs)} 天连续` },
     { name: '今日清空', done: dueCount === 0, meta: `${dueCount} 个到期` },
-    { name: '加强清零', done: wrongCount === 0, meta: `${wrongCount} 个需加强` },
+    { name: '记忆稳定', done: wrongCount === 0, meta: `${wrongCount} 个近期错词` },
     { name: '近月 300', done: tasks30 >= 300, meta: `${tasks30}/300 近30天任务` }
   ];
   el.innerHTML = `<div class="manual-grid">${badges.map(b => `
@@ -5654,7 +5930,7 @@ function renderHardestWords() {
       </div>
       <div class="hard-score">错误率 ${rate}%</div>
     </div>`;
-  }).join('') : '<div class="empty-state">还没有需加强记录</div>';
+  }).join('') : '<div class="empty-state">暂时没有薄弱词记录</div>';
 }
 
 async function renderLeaderboard() {

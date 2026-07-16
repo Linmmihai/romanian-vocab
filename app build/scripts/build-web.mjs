@@ -49,6 +49,14 @@ const examplesPath = path.join(dataRoot, 'data', 'examples.json');
 if (existsSync(examplesPath)) {
   await copyFile(examplesPath, path.join(out, 'data', 'examples.json'));
 }
+const grammarCoursesPath = path.join(dataRoot, 'data', 'grammar-courses.json');
+if (existsSync(grammarCoursesPath)) {
+  await copyFile(grammarCoursesPath, path.join(out, 'data', 'grammar-courses.json'));
+}
+const grammarContentPath = path.join(dataRoot, 'data', 'grammar-content.json');
+if (existsSync(grammarContentPath)) {
+  await copyFile(grammarContentPath, path.join(out, 'data', 'grammar-content.json'));
+}
 
 if (existsSync(path.join(webRoot, 'stress_grammar_patch.js'))) {
   await copyFile(path.join(webRoot, 'stress_grammar_patch.js'), path.join(out, 'stress_grammar_patch.js'));
@@ -78,6 +86,8 @@ const requiredFiles = [
   'manifest.webmanifest',
   'data/vocab.json',
   'data/examples.json',
+  'data/grammar-courses.json',
+  'data/grammar-content.json',
   'vendor/supabase.js'
 ];
 
