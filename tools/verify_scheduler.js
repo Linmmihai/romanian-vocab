@@ -14,8 +14,8 @@ assert(schedulerMigration.includes('validate constraint progress_card_state_chec
 assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
 assert(index.includes('scheduler.js?v=20260714-progress-queue-fix'), 'scheduler cache buster must move with the progress fix');
 assert(index.includes('api.js?v=20260714-progress-queue-fix'), 'API cache buster must match the progress fix');
-assert(index.includes('app.js?v=20260714-progress-queue-fix'), 'app cache buster must match the progress fix');
-assert(serviceWorker.includes('ro-vocab-pwa-v23'), 'service worker cache must move with the progress fix');
+assert(index.includes('app.js?v=20260716-grammar-content'), 'app cache buster must include structured grammar content');
+assert(serviceWorker.includes('ro-vocab-pwa-v29'), 'service worker cache must move with structured grammar content');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;

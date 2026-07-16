@@ -1,0 +1,1058 @@
+{
+  "title": "罗马尼亚语语法知识库",
+  "subtitle": "按照罗马尼亚语自身的语法体系，从词法、句法到书写与语用逐层整理。配有课程的专题会显示 Bilibili 入口。",
+  "scopeLabel": "按词法与句法编排",
+  "sourceSpaceUrl": "https://space.bilibili.com/674194261/upload/video",
+  "modules": [
+    {
+      "id": "foundation",
+      "order": 1,
+      "title": "基础结构",
+      "summary": "先建立词类、句子骨架、语序和一致关系的整体概念。",
+      "readingGuide": "先辨认句子里有哪些成分，再观察它们之间的顺序、支配和一致关系。基础结构是理解后续词形变化与复杂句法的共同入口。"
+    },
+    {
+      "id": "noun-article",
+      "order": 2,
+      "title": "名词、冠词与格",
+      "summary": "掌握名词的性、数、格、定指方式以及冠词附着规则。",
+      "readingGuide": "阅读时重点观察名词的性、数和格如何同时影响冠词、词尾以及周围修饰语。罗马尼亚语的后置定冠词是这一模块最重要的结构特征之一。"
+    },
+    {
+      "id": "adjective-numeral",
+      "order": 3,
+      "title": "形容词与数词",
+      "summary": "理解修饰语与名词的一致关系、比较等级和各种数量表达。",
+      "readingGuide": "把形容词或数词放回名词短语中观察，重点留意性数一致、词序变化以及数量表达对名词形式的影响。"
+    },
+    {
+      "id": "pronoun-determiner",
+      "order": 4,
+      "title": "代词与限定词",
+      "summary": "覆盖重读与非重读代词、所有关系、指示关系和关系代词。",
+      "readingGuide": "代词不仅替代名词，还会改变句中宾语的标记和位置。学习时应同时关注格、重读与非重读形式、代词复现及连字符。"
+    },
+    {
+      "id": "verb-system",
+      "order": 5,
+      "title": "动词系统",
+      "summary": "系统整理变位类别、语气、时态、语态和非限定形式。",
+      "readingGuide": "先确定动词的人称和变位，再判断语气、时态与事件关系。不要只背词尾，还要把每种形式放进真实句子中理解其时间和语气功能。"
+    },
+    {
+      "id": "invariable-words",
+      "order": 6,
+      "title": "不变词类",
+      "summary": "学习副词、介词、连词和感叹词的类型、搭配与句法作用。",
+      "readingGuide": "这些词本身通常不发生词形变化，但会决定短语之间的逻辑关系、格支配和语气。建议结合固定搭配与完整句子记忆。"
+    },
+    {
+      "id": "syntax",
+      "order": 7,
+      "title": "句法与复句",
+      "summary": "从句子成分进入并列、从属、关系从句和信息结构。",
+      "readingGuide": "先划分主句与从句，再识别连接词、谓语和各成分的句法功能。复杂句的关键是看清从属边界以及从句在主句中承担的角色。"
+    },
+    {
+      "id": "writing-usage",
+      "order": 8,
+      "title": "书写规范与语用",
+      "summary": "补充连字符、标点、正式与非正式语体以及常见规范问题。",
+      "readingGuide": "这一模块关注语法在真实书写和交流中的落地方式。除了形式是否正确，还要判断表达是否符合场合、语体和现代规范。"
+    }
+  ],
+  "courses": [
+    {
+      "id": "grammar-001",
+      "order": 1,
+      "module": "foundation",
+      "title": "罗马尼亚语的词类与词形变化",
+      "summary": "认识可变词类和不变词类，以及性、数、格、人称、时态等语法范畴。",
+      "level": "A1",
+      "category": "总览",
+      "bilibiliVideos": [
+        {
+          "title": "语法概述（1）",
+          "url": "https://www.bilibili.com/video/BV1ZK4y1q7Ly/",
+          "duration": "07:41"
+        },
+        {
+          "title": "语法概述（2）",
+          "url": "https://www.bilibili.com/video/BV1SQ4y1w7R3/",
+          "duration": "07:21"
+        }
+      ]
+    },
+    {
+      "id": "grammar-002",
+      "order": 2,
+      "module": "foundation",
+      "title": "基本句子结构与 SVO 语序",
+      "summary": "理解主语、谓语和宾语的基本组合，以及罗语语序的可调整性。",
+      "level": "A1",
+      "category": "句型"
+    },
+    {
+      "id": "grammar-003",
+      "order": 3,
+      "module": "foundation",
+      "title": "主语省略",
+      "summary": "根据动词词尾识别人称，并理解何时可以省略或必须说出主语。",
+      "level": "A1",
+      "category": "句型"
+    },
+    {
+      "id": "grammar-004",
+      "order": 4,
+      "module": "foundation",
+      "title": "否定句",
+      "summary": "使用 nu、nici 和双重否定构成不同范围和强度的否定表达。",
+      "level": "A1",
+      "category": "句型"
+    },
+    {
+      "id": "grammar-005",
+      "order": 5,
+      "module": "foundation",
+      "title": "一般疑问句与特殊疑问句",
+      "summary": "掌握语调提问、疑问词位置以及 cine、ce、care、unde、când、cum、de ce。",
+      "level": "A1",
+      "category": "句型"
+    },
+    {
+      "id": "grammar-006",
+      "order": 6,
+      "module": "foundation",
+      "title": "一致关系总览",
+      "summary": "理解主谓一致，以及冠词、名词、形容词和代词之间的性数格一致。",
+      "level": "A2",
+      "category": "一致"
+    },
+    {
+      "id": "grammar-007",
+      "order": 7,
+      "module": "foundation",
+      "title": "语序、焦点与强调",
+      "summary": "比较中性语序和强调语序，理解成分前置、后置和重读代词的作用。",
+      "level": "B1",
+      "category": "语序"
+    },
+    {
+      "id": "grammar-008",
+      "order": 8,
+      "module": "noun-article",
+      "title": "名词的阳性、阴性和中性",
+      "summary": "通过词尾、冠词和复数形式判断三种语法性，并理解中性名词的混合一致。",
+      "level": "A1",
+      "category": "名词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】名词的阴阳性",
+          "url": "https://www.bilibili.com/video/BV1HK4y1i7pc/",
+          "duration": "06:31"
+        }
+      ]
+    },
+    {
+      "id": "grammar-009",
+      "order": 9,
+      "module": "noun-article",
+      "title": "名词单数与复数",
+      "summary": "整理常见复数词尾、词干变化、不规则复数和只用单数或复数的名词。",
+      "level": "A1",
+      "category": "名词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】名词的单复数和不定冠词",
+          "url": "https://www.bilibili.com/video/BV1dC4y1r7cE/",
+          "duration": "08:50"
+        }
+      ]
+    },
+    {
+      "id": "grammar-010",
+      "order": 10,
+      "module": "noun-article",
+      "title": "不定冠词 un、o、niște",
+      "summary": "根据名词的性和数选择不定冠词，并理解泛指和首次引入信息。",
+      "level": "A1",
+      "category": "冠词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】名词的单复数和不定冠词",
+          "url": "https://www.bilibili.com/video/BV1dC4y1r7cE/",
+          "duration": "08:50"
+        }
+      ]
+    },
+    {
+      "id": "grammar-011",
+      "order": 11,
+      "module": "noun-article",
+      "title": "后置定冠词",
+      "summary": "掌握定冠词附着在名词末尾时的形式变化和基本使用场景。",
+      "level": "A1",
+      "category": "冠词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】定冠词",
+          "url": "https://www.bilibili.com/video/BV1tK4y1i7HC/",
+          "duration": "07:03"
+        }
+      ]
+    },
+    {
+      "id": "grammar-012",
+      "order": 12,
+      "module": "noun-article",
+      "title": "主格与宾格",
+      "summary": "理解主格和宾格在主语、直接宾语及介词结构中的主要功能。",
+      "level": "A2",
+      "category": "格",
+      "bilibiliVideos": [
+        {
+          "title": "格：主格、宾格",
+          "url": "https://www.bilibili.com/video/BV1se411n7Jt/",
+          "duration": "10:19"
+        }
+      ]
+    },
+    {
+      "id": "grammar-013",
+      "order": 13,
+      "module": "noun-article",
+      "title": "属格与与格",
+      "summary": "掌握所有关系、间接宾语和属格与格冠词 al、a、ai、ale 的使用。",
+      "level": "A2",
+      "category": "格",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】格：与格、属格",
+          "url": "https://www.bilibili.com/video/BV1Qg4y1Y7jG/",
+          "duration": "07:34"
+        },
+        {
+          "title": "【语法篇】属格、予格、宾格的区分",
+          "url": "https://www.bilibili.com/video/BV1MC411r7XG/",
+          "duration": "05:01"
+        }
+      ]
+    },
+    {
+      "id": "grammar-014",
+      "order": 14,
+      "module": "noun-article",
+      "title": "呼格",
+      "summary": "认识呼格词尾、称呼语中的标点，以及现代口语中的常见替代形式。",
+      "level": "B1",
+      "category": "格"
+    },
+    {
+      "id": "grammar-015",
+      "order": 15,
+      "module": "noun-article",
+      "title": "专有名词、人名与地名的变格",
+      "summary": "理解 lui、定冠词形式以及人名、国家名和城市名在格变化中的特点。",
+      "level": "B1",
+      "category": "名词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】人名在不同格的形式",
+          "url": "https://www.bilibili.com/video/BV1ja4y1876B/",
+          "duration": "04:13"
+        }
+      ]
+    },
+    {
+      "id": "grammar-016",
+      "order": 16,
+      "module": "noun-article",
+      "title": "冠词的使用与省略",
+      "summary": "区分定指、非定指、泛指和零冠词，并处理介词后和固定表达中的冠词。",
+      "level": "B2",
+      "category": "冠词"
+    },
+    {
+      "id": "grammar-017",
+      "order": 17,
+      "module": "adjective-numeral",
+      "title": "形容词的性数一致",
+      "summary": "根据名词的性和数选择形容词形式，掌握常见两形式和四形式形容词。",
+      "level": "A1",
+      "category": "形容词",
+      "bilibiliVideos": [
+        {
+          "title": "【上外罗马尼亚语教学】第十六课-形容词",
+          "url": "https://www.bilibili.com/video/BV1bh4y1T7nF/",
+          "duration": "10:43"
+        }
+      ]
+    },
+    {
+      "id": "grammar-018",
+      "order": 18,
+      "module": "adjective-numeral",
+      "title": "形容词的位置",
+      "summary": "比较形容词置于名词前后时的中性、强调、固定搭配和意义差异。",
+      "level": "A2",
+      "category": "形容词"
+    },
+    {
+      "id": "grammar-019",
+      "order": 19,
+      "module": "adjective-numeral",
+      "title": "形容词比较级与最高级",
+      "summary": "使用 mai、cel mai、tot atât de 和 decât、ca 构成比较关系。",
+      "level": "A2",
+      "category": "形容词"
+    },
+    {
+      "id": "grammar-020",
+      "order": 20,
+      "module": "adjective-numeral",
+      "title": "不规则及不变形容词",
+      "summary": "认识 bun、rău、mare、mic 等高频特殊形式和外来不变形容词。",
+      "level": "B1",
+      "category": "形容词"
+    },
+    {
+      "id": "grammar-021",
+      "order": 21,
+      "module": "adjective-numeral",
+      "title": "基数词与数量结构",
+      "summary": "掌握 0 以上基数词、de 的插入、名词搭配以及 unu、doi 的性别变化。",
+      "level": "A1",
+      "category": "数词",
+      "bilibiliVideos": [
+        {
+          "title": "【上外罗马尼语教学】第二课 基数词",
+          "url": "https://www.bilibili.com/video/BV1Pp4y157kT/",
+          "duration": "06:57"
+        }
+      ]
+    },
+    {
+      "id": "grammar-022",
+      "order": 22,
+      "module": "adjective-numeral",
+      "title": "序数词",
+      "summary": "使用 al、a 与序数词表达顺序，并处理性别、定指和缩写形式。",
+      "level": "A2",
+      "category": "数词"
+    },
+    {
+      "id": "grammar-023",
+      "order": 23,
+      "module": "adjective-numeral",
+      "title": "分数、倍数、集合数与分配数",
+      "summary": "整理 jumătate、o treime、dublu、amândoi、câte doi 等数量表达。",
+      "level": "B1",
+      "category": "数词"
+    },
+    {
+      "id": "grammar-024",
+      "order": 24,
+      "module": "adjective-numeral",
+      "title": "日期、时间、年龄与度量",
+      "summary": "把数词应用到钟点、年月日、年龄、价格和单位表达中。",
+      "level": "A2",
+      "category": "数词",
+      "bilibiliVideos": [
+        {
+          "title": "【基础篇】星期&时刻",
+          "url": "https://www.bilibili.com/video/BV1xb4y1A7EW/",
+          "duration": "02:17"
+        },
+        {
+          "title": "【基础篇】月份&季节",
+          "url": "https://www.bilibili.com/video/BV1hT4y1b7Mz/",
+          "duration": "02:22"
+        }
+      ]
+    },
+    {
+      "id": "grammar-025",
+      "order": 25,
+      "module": "pronoun-determiner",
+      "title": "重读人称代词",
+      "summary": "掌握 eu、tu、el、ea、noi、voi、ei、ele 及其强调和介词后形式。",
+      "level": "A1",
+      "category": "人称代词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】人称代词和系动词 a fi的变位",
+          "url": "https://www.bilibili.com/video/BV1Mc411v76L/",
+          "duration": "08:02"
+        }
+      ]
+    },
+    {
+      "id": "grammar-026",
+      "order": 26,
+      "module": "pronoun-determiner",
+      "title": "宾格非重读代词",
+      "summary": "理解 mă、te、îl、o、ne、vă、îi、le 的位置、缩合和直接宾语替代。",
+      "level": "A2",
+      "category": "人称代词"
+    },
+    {
+      "id": "grammar-027",
+      "order": 27,
+      "module": "pronoun-determiner",
+      "title": "与格非重读代词",
+      "summary": "使用 îmi、îți、îi、ne、vă、le 表达接受者、受益者和所属关系。",
+      "level": "A2",
+      "category": "人称代词"
+    },
+    {
+      "id": "grammar-028",
+      "order": 28,
+      "module": "pronoun-determiner",
+      "title": "双代词组合与位置",
+      "summary": "掌握 mi-l、ți-o、i le 等与格加宾格组合，以及复合时态和命令式中的位置。",
+      "level": "B2",
+      "category": "代词组合"
+    },
+    {
+      "id": "grammar-029",
+      "order": 29,
+      "module": "pronoun-determiner",
+      "title": "pe 与宾语复现",
+      "summary": "理解人或特指直接宾语前的 pe，以及非重读代词重复宾语的规则。",
+      "level": "B1",
+      "category": "宾语"
+    },
+    {
+      "id": "grammar-030",
+      "order": 30,
+      "module": "pronoun-determiner",
+      "title": "反身代词",
+      "summary": "区分真正反身、相互、被动、无人称和词汇化反身结构。",
+      "level": "A2",
+      "category": "反身代词",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】反身语态：宾格反身",
+          "url": "https://www.bilibili.com/video/BV1uD421E7cA/",
+          "duration": "06:51"
+        },
+        {
+          "title": "【语法篇】反身语态：与格反身",
+          "url": "https://www.bilibili.com/video/BV11x4y1Q7nQ/",
+          "duration": "04:17"
+        }
+      ]
+    },
+    {
+      "id": "grammar-031",
+      "order": 31,
+      "module": "pronoun-determiner",
+      "title": "所有代词与所有形容词",
+      "summary": "使用 meu、tău、său、nostru、vostru 以及 al meu、a mea 等形式。",
+      "level": "A2",
+      "category": "所有关系"
+    },
+    {
+      "id": "grammar-032",
+      "order": 32,
+      "module": "pronoun-determiner",
+      "title": "指示代词与指示形容词",
+      "summary": "比较 acesta、acela 及口语 ăsta、ăla，并掌握名词前后的形式差异。",
+      "level": "A2",
+      "category": "指示词"
+    },
+    {
+      "id": "grammar-033",
+      "order": 33,
+      "module": "pronoun-determiner",
+      "title": "疑问代词与关系代词",
+      "summary": "掌握 cine、ce、care、cât 的格变化，以及其在疑问句和关系从句中的作用。",
+      "level": "B1",
+      "category": "关系词"
+    },
+    {
+      "id": "grammar-034",
+      "order": 34,
+      "module": "pronoun-determiner",
+      "title": "不定代词与不定限定词",
+      "summary": "整理 cineva、ceva、oricine、fiecare、unii、alt、același 等不定表达。",
+      "level": "B1",
+      "category": "不定代词"
+    },
+    {
+      "id": "grammar-035",
+      "order": 35,
+      "module": "pronoun-determiner",
+      "title": "否定代词与双重否定",
+      "summary": "使用 nimeni、nimic、niciun 与 nu 构成规范的否定一致。",
+      "level": "B1",
+      "category": "否定代词"
+    },
+    {
+      "id": "grammar-036",
+      "order": 36,
+      "module": "pronoun-determiner",
+      "title": "强调代词 însuși",
+      "summary": "掌握 însumi、însuți、însuși 等复杂一致形式及正式语体中的用法。",
+      "level": "C1",
+      "category": "强调代词"
+    },
+    {
+      "id": "grammar-037",
+      "order": 37,
+      "module": "verb-system",
+      "title": "不定式与动词变位类别",
+      "summary": "从词典形式识别四类传统变位和常见词尾，并理解变位类别与实际词形的关系。",
+      "level": "A1",
+      "category": "动词基础",
+      "bilibiliVideos": [
+        {
+          "title": "【上外罗马尼亚语教学】第十一课-动词第一变位法",
+          "url": "https://www.bilibili.com/video/BV1t44y1c7SY/",
+          "duration": "13:12"
+        },
+        {
+          "title": "【上外罗马尼亚语教学】第十二课-动词第二变位法",
+          "url": "https://www.bilibili.com/video/BV1B14y1v76s/",
+          "duration": "06:16"
+        },
+        {
+          "title": "【上外罗马尼亚语教学】第十三课-动词第三变位法",
+          "url": "https://www.bilibili.com/video/BV1Y841197RA/",
+          "duration": "07:09"
+        },
+        {
+          "title": "【上外罗马尼亚语教学】第十四课-动词第四变位法",
+          "url": "https://www.bilibili.com/video/BV1Wu4y1i7oW/",
+          "duration": "08:29"
+        }
+      ]
+    },
+    {
+      "id": "grammar-038",
+      "order": 38,
+      "module": "verb-system",
+      "title": "直陈式现在时",
+      "summary": "掌握规则动词六个人称变化，以及 -ez、-esc 等扩展形式。",
+      "level": "A1",
+      "category": "现在时",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】时的概念&现在时",
+          "url": "https://www.bilibili.com/video/BV1xr421s76S/",
+          "duration": "02:49"
+        },
+        {
+          "title": "【语法篇】时：现在时",
+          "url": "https://www.bilibili.com/video/BV1Vx4y1k7kM/",
+          "duration": "03:40"
+        }
+      ]
+    },
+    {
+      "id": "grammar-039",
+      "order": 39,
+      "module": "verb-system",
+      "title": "高频不规则动词现在时",
+      "summary": "集中整理 a fi、a avea、a vrea、a putea、a ști、a veni、a lua、a da 等动词。",
+      "level": "A1",
+      "category": "现在时",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】人称代词和系动词 a fi的变位",
+          "url": "https://www.bilibili.com/video/BV1Mc411v76L/",
+          "duration": "08:02"
+        }
+      ]
+    },
+    {
+      "id": "grammar-040",
+      "order": 40,
+      "module": "verb-system",
+      "title": "复合过去时 perfectul compus",
+      "summary": "使用助动词 a avea 与过去分词表达已完成事件，并处理代词位置。",
+      "level": "A2",
+      "category": "过去时",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】过去时",
+          "url": "https://www.bilibili.com/video/BV1sx421y75x/",
+          "duration": "03:31"
+        }
+      ]
+    },
+    {
+      "id": "grammar-041",
+      "order": 41,
+      "module": "verb-system",
+      "title": "未完成过去时 imperfectul",
+      "summary": "表达过去背景、持续状态、习惯和同时发生的动作，并与复合过去时对比。",
+      "level": "A2",
+      "category": "过去时"
+    },
+    {
+      "id": "grammar-042",
+      "order": 42,
+      "module": "verb-system",
+      "title": "过去完成时 mai-mult-ca-perfectul",
+      "summary": "表达另一个过去事件之前已经完成的动作，并掌握其综合式词尾。",
+      "level": "B1",
+      "category": "过去时"
+    },
+    {
+      "id": "grammar-043",
+      "order": 43,
+      "module": "verb-system",
+      "title": "简单过去时 perfectul simplu",
+      "summary": "认识文学叙事和部分地区口语中的简单过去时，理解即可与主动使用范围。",
+      "level": "B2",
+      "category": "过去时"
+    },
+    {
+      "id": "grammar-044",
+      "order": 44,
+      "module": "verb-system",
+      "title": "将来时的多种形式",
+      "summary": "比较 voi、o să、am să 和口语省略形式的构成、语体和语义差异。",
+      "level": "A2",
+      "category": "将来时"
+    },
+    {
+      "id": "grammar-045",
+      "order": 45,
+      "module": "verb-system",
+      "title": "虚拟式现在时 conjunctivul prezent",
+      "summary": "使用 să 加动词表达愿望、需要、可能、目的和补语从句。",
+      "level": "A2",
+      "category": "虚拟式",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】连接式（1）",
+          "url": "https://www.bilibili.com/video/BV1rU421d7pP/",
+          "duration": "03:34"
+        },
+        {
+          "title": "【语法篇】连接式（二）",
+          "url": "https://www.bilibili.com/video/BV1jy421h71L/",
+          "duration": "07:06"
+        }
+      ]
+    },
+    {
+      "id": "grammar-046",
+      "order": 46,
+      "module": "verb-system",
+      "title": "虚拟式完成时 conjunctivul perfect",
+      "summary": "使用 să fi 加过去分词表达先行、遗憾、评价和未实现事件。",
+      "level": "B2",
+      "category": "虚拟式"
+    },
+    {
+      "id": "grammar-047",
+      "order": 47,
+      "module": "verb-system",
+      "title": "条件式现在时",
+      "summary": "使用 aș、ai、ar、am、ați、ar 表达假设、愿望、礼貌和传闻。",
+      "level": "B1",
+      "category": "条件式"
+    },
+    {
+      "id": "grammar-048",
+      "order": 48,
+      "module": "verb-system",
+      "title": "条件式完成时",
+      "summary": "使用 aș fi 加过去分词表达过去反事实、未实现愿望和推测。",
+      "level": "B2",
+      "category": "条件式"
+    },
+    {
+      "id": "grammar-049",
+      "order": 49,
+      "module": "verb-system",
+      "title": "命令式",
+      "summary": "掌握肯定与否定命令、第二人称形式以及代词后置和连字符。",
+      "level": "A2",
+      "category": "命令式",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】命令式",
+          "url": "https://www.bilibili.com/video/BV1MJ4m1x7xR/",
+          "duration": "11:03"
+        }
+      ]
+    },
+    {
+      "id": "grammar-050",
+      "order": 50,
+      "module": "verb-system",
+      "title": "推测式 prezumtivul",
+      "summary": "理解表示推测、传闻和不确定判断的现在与完成形式。",
+      "level": "C1",
+      "category": "推测式"
+    },
+    {
+      "id": "grammar-051",
+      "order": 51,
+      "module": "verb-system",
+      "title": "被动语态",
+      "summary": "使用 a fi 加过去分词构成被动句，处理过去分词一致和施事表达。",
+      "level": "B1",
+      "category": "语态",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】态：态的概念&主动被动语态",
+          "url": "https://www.bilibili.com/video/BV15r421W72D/",
+          "duration": "03:30"
+        }
+      ]
+    },
+    {
+      "id": "grammar-052",
+      "order": 52,
+      "module": "verb-system",
+      "title": "反身动词与代词式动词",
+      "summary": "区分反身意义、相互意义、词汇化代词式和无人称结构。",
+      "level": "A2",
+      "category": "语态",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】反身语态：宾格反身",
+          "url": "https://www.bilibili.com/video/BV1uD421E7cA/",
+          "duration": "06:51"
+        },
+        {
+          "title": "【语法篇】反身语态：与格反身",
+          "url": "https://www.bilibili.com/video/BV11x4y1Q7nQ/",
+          "duration": "04:17"
+        }
+      ]
+    },
+    {
+      "id": "grammar-053",
+      "order": 53,
+      "module": "verb-system",
+      "title": "不定式与 supin",
+      "summary": "比较 a 加不定式与 de 加 supin 在名词化、目的和必要表达中的使用。",
+      "level": "B2",
+      "category": "非限定形式",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】不定式",
+          "url": "https://www.bilibili.com/video/BV1oF4m177D6/",
+          "duration": "04:24"
+        }
+      ]
+    },
+    {
+      "id": "grammar-054",
+      "order": 54,
+      "module": "verb-system",
+      "title": "过去分词与副动词 gerunziu",
+      "summary": "掌握过去分词的构成与一致，以及副动词表达同时、方式和附带动作。",
+      "level": "B1",
+      "category": "非限定形式",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】分词式",
+          "url": "https://www.bilibili.com/video/BV1KA4m137gd/",
+          "duration": "05:24"
+        }
+      ]
+    },
+    {
+      "id": "grammar-055",
+      "order": 55,
+      "module": "verb-system",
+      "title": "时态选择与叙事关系",
+      "summary": "综合比较过去时、将来时和完成关系，理解背景、前景、先行与结果。",
+      "level": "C1",
+      "category": "时态系统",
+      "bilibiliVideos": [
+        {
+          "title": "【语法篇】式的概念&直陈式",
+          "url": "https://www.bilibili.com/video/BV1PC411z7h7/",
+          "duration": "05:42"
+        }
+      ]
+    },
+    {
+      "id": "grammar-056",
+      "order": 56,
+      "module": "invariable-words",
+      "title": "副词的类型与构成",
+      "summary": "整理方式、时间、地点、程度、肯定、否定和疑问副词。",
+      "level": "A2",
+      "category": "副词"
+    },
+    {
+      "id": "grammar-057",
+      "order": 57,
+      "module": "invariable-words",
+      "title": "副词比较级与最高级",
+      "summary": "使用 mai、cel mai 等结构比较动作方式和程度，并区分形容词与副词。",
+      "level": "B1",
+      "category": "副词"
+    },
+    {
+      "id": "grammar-058",
+      "order": 58,
+      "module": "invariable-words",
+      "title": "支配宾格的介词",
+      "summary": "掌握 cu、de、din、la、pe、pentru、fără、până 等高频介词和冠词搭配。",
+      "level": "A1",
+      "category": "介词"
+    },
+    {
+      "id": "grammar-059",
+      "order": 59,
+      "module": "invariable-words",
+      "title": "支配属格或与格的介词",
+      "summary": "整理 datorită、mulțumită、grație、asupra、contra、înaintea 等结构。",
+      "level": "B2",
+      "category": "介词"
+    },
+    {
+      "id": "grammar-060",
+      "order": 60,
+      "module": "invariable-words",
+      "title": "介词短语与固定搭配",
+      "summary": "理解 față de、în loc de、în legătură cu、din cauza 等多词介词。",
+      "level": "B1",
+      "category": "介词"
+    },
+    {
+      "id": "grammar-061",
+      "order": 61,
+      "module": "invariable-words",
+      "title": "并列连词",
+      "summary": "使用 și、dar、iar、sau、ori、deci、ci 连接词语和分句。",
+      "level": "A2",
+      "category": "连词"
+    },
+    {
+      "id": "grammar-062",
+      "order": 62,
+      "module": "invariable-words",
+      "title": "从属连词与连接表达",
+      "summary": "整理 că、să、dacă、deși、fiindcă、deoarece、ca să、încât 等从属标记。",
+      "level": "B1",
+      "category": "连词"
+    },
+    {
+      "id": "grammar-063",
+      "order": 63,
+      "module": "invariable-words",
+      "title": "感叹词与语气小词",
+      "summary": "认识 hai、uite、iată、vai、măi 等形式的句法位置、语气和语体限制。",
+      "level": "B2",
+      "category": "感叹词"
+    },
+    {
+      "id": "grammar-064",
+      "order": 64,
+      "module": "syntax",
+      "title": "短语、分句与句子的层级",
+      "summary": "区分词组、简单句、主句、从句和复句，理解句法中心与依存关系。",
+      "level": "B1",
+      "category": "句法总览"
+    },
+    {
+      "id": "grammar-065",
+      "order": 65,
+      "module": "syntax",
+      "title": "主语及其类型",
+      "summary": "识别明示、隐含、复合、不定和无人称结构中的主语。",
+      "level": "A2",
+      "category": "句子成分"
+    },
+    {
+      "id": "grammar-066",
+      "order": 66,
+      "module": "syntax",
+      "title": "谓语及系表结构",
+      "summary": "区分动词谓语与名词性谓语，并掌握 a fi 等系词和表语。",
+      "level": "A2",
+      "category": "句子成分"
+    },
+    {
+      "id": "grammar-067",
+      "order": 67,
+      "module": "syntax",
+      "title": "主谓一致的特殊情况",
+      "summary": "处理集合名词、数量结构、并列主语、礼貌代词和意义一致。",
+      "level": "B2",
+      "category": "一致"
+    },
+    {
+      "id": "grammar-068",
+      "order": 68,
+      "module": "syntax",
+      "title": "定语与同位语",
+      "summary": "识别形容词、属格、介词短语和同位结构构成的名词修饰语。",
+      "level": "B1",
+      "category": "句子成分"
+    },
+    {
+      "id": "grammar-069",
+      "order": 69,
+      "module": "syntax",
+      "title": "直接宾语、间接宾语与介词宾语",
+      "summary": "根据动词配价、格形式、pe 和代词复现区分三类补语。",
+      "level": "B1",
+      "category": "句子成分"
+    },
+    {
+      "id": "grammar-070",
+      "order": 70,
+      "module": "syntax",
+      "title": "时间、地点与方式状语",
+      "summary": "使用副词、名词和介词短语表达事件的时间、空间和进行方式。",
+      "level": "A2",
+      "category": "状语"
+    },
+    {
+      "id": "grammar-071",
+      "order": 71,
+      "module": "syntax",
+      "title": "原因、目的、条件、让步与结果",
+      "summary": "比较不同逻辑关系的短语和从句表达，以及相应连接词。",
+      "level": "B1",
+      "category": "状语"
+    },
+    {
+      "id": "grammar-072",
+      "order": 72,
+      "module": "syntax",
+      "title": "并列关系与省略",
+      "summary": "分析联合、转折、选择和因果并列，并理解并列结构中的共享与省略。",
+      "level": "B2",
+      "category": "复句"
+    },
+    {
+      "id": "grammar-073",
+      "order": 73,
+      "module": "syntax",
+      "title": "从属关系与从句边界",
+      "summary": "识别支配词、从属标记、从句边界以及语气和时态选择。",
+      "level": "B1",
+      "category": "复句"
+    },
+    {
+      "id": "grammar-074",
+      "order": 74,
+      "module": "syntax",
+      "title": "主语从句与表语从句",
+      "summary": "分析整个从句充当主语或表语时的形式、位置和一致关系。",
+      "level": "B2",
+      "category": "从句"
+    },
+    {
+      "id": "grammar-075",
+      "order": 75,
+      "module": "syntax",
+      "title": "宾语从句",
+      "summary": "掌握由 că、să、dacă 和疑问词引导的直接、间接和介词宾语从句。",
+      "level": "B1",
+      "category": "从句"
+    },
+    {
+      "id": "grammar-076",
+      "order": 76,
+      "module": "syntax",
+      "title": "关系从句",
+      "summary": "使用 care、cine、ce、cât、unde 等连接先行词，并处理格、介词和代词复现。",
+      "level": "B2",
+      "category": "从句"
+    },
+    {
+      "id": "grammar-077",
+      "order": 77,
+      "module": "syntax",
+      "title": "状语从句体系",
+      "summary": "系统比较时间、地点、方式、原因、目的、条件、让步、结果和比较从句。",
+      "level": "C1",
+      "category": "从句"
+    },
+    {
+      "id": "grammar-078",
+      "order": 78,
+      "module": "syntax",
+      "title": "直接引语与间接引语",
+      "summary": "转换人称、时间地点指示、连接词和标点，并处理叙述中的时态关系。",
+      "level": "B2",
+      "category": "引语"
+    },
+    {
+      "id": "grammar-079",
+      "order": 79,
+      "module": "syntax",
+      "title": "无人称句与存在句",
+      "summary": "理解 trebuie、se、plouă、este、există 等无人称或存在结构。",
+      "level": "B1",
+      "category": "特殊句型"
+    },
+    {
+      "id": "grammar-080",
+      "order": 80,
+      "module": "syntax",
+      "title": "信息结构与篇章衔接",
+      "summary": "利用主题、焦点、指代、省略和连接语组织跨句信息。",
+      "level": "C1",
+      "category": "篇章句法"
+    },
+    {
+      "id": "grammar-081",
+      "order": 81,
+      "module": "writing-usage",
+      "title": "连字符与代词缩合",
+      "summary": "掌握 m-am、ți-l、dă-mi、s-a、într-un 等高频连字符结构。",
+      "level": "A2",
+      "category": "正字法"
+    },
+    {
+      "id": "grammar-082",
+      "order": 82,
+      "module": "writing-usage",
+      "title": "标点与分句边界",
+      "summary": "理解逗号、冒号、分号、破折号、引号和括号在句法结构中的作用。",
+      "level": "B1",
+      "category": "标点"
+    },
+    {
+      "id": "grammar-083",
+      "order": 83,
+      "module": "writing-usage",
+      "title": "大小写、缩写与数字书写",
+      "summary": "整理专名、节日、机构、称谓、缩写、日期和数字的规范形式。",
+      "level": "B1",
+      "category": "正字法"
+    },
+    {
+      "id": "grammar-084",
+      "order": 84,
+      "module": "writing-usage",
+      "title": "正式与非正式语体",
+      "summary": "比较礼貌代词、称呼、请求方式、口语缩略和书面表达。",
+      "level": "B2",
+      "category": "语体"
+    },
+    {
+      "id": "grammar-085",
+      "order": 85,
+      "module": "writing-usage",
+      "title": "话语连接词与语用标记",
+      "summary": "使用 totuși、așadar、de fapt、în plus、oricum 等词组织论述和态度。",
+      "level": "C1",
+      "category": "语用"
+    },
+    {
+      "id": "grammar-086",
+      "order": 86,
+      "module": "writing-usage",
+      "title": "常见语法错误与规范变体",
+      "summary": "集中辨析 acord、decât/numai、care/pe care、vroiam/voiam 等常见问题。",
+      "level": "C1",
+      "category": "规范"
+    }
+  ]
+}
