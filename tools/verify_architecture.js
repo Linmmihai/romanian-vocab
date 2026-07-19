@@ -16,15 +16,15 @@ const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260714-progress-queue-fix',
-  'progress-model.js?v=20260714-progress-queue-fix',
-  'daily-plan.js?v=20260714-progress-queue-fix',
-  'romanian-text.js?v=20260714-progress-queue-fix',
-  'api.js?v=20260714-progress-queue-fix',
-  'telemetry.js?v=20260714-progress-queue-fix',
-  'auth.js?v=20260619-direct-front-reset',
-  'app.js?v=20260716-grammar-content',
-  'pwa.js?v=20260714-progress-queue-fix'
+  'scheduler.js?v=20260719-sync-status',
+  'progress-model.js?v=20260719-sync-status',
+  'daily-plan.js?v=20260719-sync-status',
+  'romanian-text.js?v=20260719-sync-status',
+  'api.js?v=20260719-sync-status',
+  'telemetry.js?v=20260719-sync-status',
+  'auth.js?v=20260719-sync-status',
+  'app.js?v=20260719-sync-status',
+  'pwa.js?v=20260719-sync-status'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -40,7 +40,7 @@ assert(serviceWorker.includes("'./daily-plan.js'"), 'PWA app shell must include 
 assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v29"), 'PWA cache must advance with grammar content');
+assert(serviceWorker.includes("ro-vocab-pwa-v30"), 'PWA cache must advance with the sync-status release');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');

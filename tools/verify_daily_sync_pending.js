@@ -9,6 +9,8 @@ assert(api.includes('function dailyStatePendingKey'), 'daily state must have a d
 assert(api.includes('function queueDailyStateForSync'), 'daily state writes must enter a pending queue');
 assert(api.includes('function clearPendingDailyStatePart'), 'daily state pending entries must be cleared only after cloud success');
 assert(api.includes('function apiRetryPendingDailyState'), 'daily state pending entries must have an explicit retry worker');
+assert(api.includes('function apiGetPendingSyncSummary'), 'UI must derive pending counts from durable local queues');
+assert(api.includes('function apiVerifyTodayState'), 'manual sync must verify today state with a cloud read-back');
 assert(api.includes('queueDailyStateForSync(userId, today, { queue: payload })'), 'daily queue saves must be queued before cloud sync');
 assert(api.includes('queueDailyStateForSync(userId, today, { log: localPayload })'), 'daily log saves must be queued before cloud sync');
 assert(api.includes('function createDailySyncToken'), 'daily pending writes must have per-write sync tokens');
@@ -25,8 +27,10 @@ assert(api.includes('log_date: date'), 'daily log retry must use the pending ent
 assert(api.includes('readPendingDailyState(userId)?.[today]?.queue'), 'daily queue reads must overlay pending queue state');
 assert(api.includes('readPendingDailyState(userId)?.[today]?.log'), 'today log reads must overlay pending log state');
 assert(api.includes('pendingLogs'), 'recent logs must include pending local logs');
+assert(api.includes('Object.keys(readPendingProgress(userId)).length'), 'progress retry remaining count must include writes created during an in-flight retry');
 
 assert(app.includes('function hasPendingSync'), 'UI sync state must include daily pending state');
+assert(app.includes('function reconcileProgressPendingFlags'), 'UI flags must be reconciled from the durable pending queue after retry');
 assert(app.includes('apiRetryPendingDailyState(currentUser.id)'), 'app must retry daily pending state');
 assert(app.includes("window.addEventListener('online'"), 'app must retry when the network comes back');
 assert(app.includes('if (!hasPendingSync()) setSyncBadge'), 'sync badge must not clear while any pending state remains');
@@ -35,5 +39,6 @@ assert(app.includes('|| hasPendingSync()'), 'progress refresh success must not m
 assert(app.includes('&& !hasDailyPending'), 'daily pending startup retry must not be blocked by progress cooldown');
 assert(app.includes("triggerCloudProgressBackup('启动同步'"), 'startup retry must use the shared in-flight sync path');
 assert(app.includes('if (!hasPendingSync() && !options.force) return null'), 'clean idle sync should skip no-op cloud writes');
+assert(!app.includes('Object.keys(progressMap).forEach((wordRo)'), 'sync success must not blindly clear flags for writes created during the request');
 
 console.log('daily sync pending verification passed');

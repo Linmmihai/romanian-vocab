@@ -130,3 +130,108 @@ test('grammar tab supports grammar-system browsing, summaries, and search', asyn
   await expect(page.locator('#page-flash')).toHaveClass(/active/);
   await expect(page.locator('.nav-tab[data-page="flash"]')).toHaveClass(/active/);
 });
+
+test('offline account panel explains that today is saved only on this device', async ({ page }) => {
+  await enterOfflineApp(page);
+  await page.locator('#account-menu-wrap > button').click();
+  await page.getByRole('button', { name: '账号与提醒' }).click();
+
+  await expect(page.locator('#account-sync-status')).toHaveText('仅保存在本机');
+  await expect(page.locator('#account-sync-summary')).toContainText('今日已处理 0/200');
+  await expect(page.locator('#manual-sync-btn')).toBeDisabled();
+  await expect(page.locator('#manual-sync-btn')).toHaveText('离线模式');
+  await expect(page.locator('#sync-badge-text')).toHaveText('本机保存');
+});
+
+test('manual sync is serialized and only succeeds after cloud verification', async ({ page }) => {
+  await enterOfflineApp(page);
+  const result = await page.evaluate(async () => {
+    localStorage.removeItem('offline-mode');
+    currentUser = { id: 'sync-test-user', email: 'sync@example.com' };
+    userRole = 'user';
+    progressMap = {};
+    fastProgressQueue.clear();
+    todayQueue = [];
+    todayQueueCompleted = new Set();
+    todayNewWords = 7;
+    dailyGoal = 200;
+    defaultDailyGoal = 200;
+    window.__manualSyncCalls = 0;
+    window.apiGetPendingSyncSummary = () => ({ progressCount: 0, dailyCount: 0, totalCount: 0, lastError: '' });
+    window.triggerCloudProgressBackup = async () => {
+      window.__manualSyncCalls += 1;
+      await new Promise(resolve => setTimeout(resolve, 60));
+      return { attempted: 1, saved: 1, failed: 0, remaining: 0, dailyRemaining: 0 };
+    };
+    window.apiVerifyTodayState = async () => ({
+      ok: true,
+      logOk: true,
+      queueOk: true,
+      verifiedAt: new Date().toISOString()
+    });
+    const first = manualSyncToday();
+    const second = manualSyncToday();
+    const samePromise = first === second;
+    const values = await Promise.all([first, second]);
+    return { calls: window.__manualSyncCalls, samePromise, ok: values.every(value => value.ok) };
+  });
+
+  expect(result).toEqual({ calls: 1, samePromise: true, ok: true });
+  await page.waitForTimeout(2_200);
+  await expect(page.locator('#sync-badge-text')).toContainText('已同步');
+  await page.locator('#sync-badge').click();
+  await expect(page.locator('#account-sync-status')).toHaveText('已同步到云端');
+  await expect(page.locator('#account-sync-summary')).toContainText('今日已处理 7/200');
+  await expect(page.locator('#manual-sync-btn')).toBeEnabled();
+});
+
+test('manual sync never reports success while a newer local write remains pending', async ({ page }) => {
+  await enterOfflineApp(page);
+  const calls = await page.evaluate(async () => {
+    localStorage.removeItem('offline-mode');
+    currentUser = { id: 'sync-race-user', email: 'race@example.com' };
+    userRole = 'user';
+    progressMap = {};
+    fastProgressQueue.clear();
+    todayQueue = [];
+    todayQueueCompleted = new Set();
+    window.__raceSyncCalls = 0;
+    window.apiGetPendingSyncSummary = () => ({ progressCount: 1, dailyCount: 0, totalCount: 1, lastError: '' });
+    window.triggerCloudProgressBackup = async () => {
+      window.__raceSyncCalls += 1;
+      return { attempted: 1, saved: 1, failed: 0, remaining: 1, dailyRemaining: 0 };
+    };
+    window.apiVerifyTodayState = async () => ({ ok: true, logOk: true, queueOk: true });
+    const result = await manualSyncToday();
+    return { calls: window.__raceSyncCalls, ok: result.ok };
+  });
+
+  expect(calls).toEqual({ calls: 2, ok: false });
+  await page.locator('#sync-badge').click();
+  await expect(page.locator('#account-sync-status')).toHaveText('有 1 项待同步');
+  await expect(page.locator('#manual-sync-btn')).toHaveText('重新同步');
+  await expect(page.locator('#account-sync-status')).not.toHaveText('已同步到云端');
+});
+
+test('manual sync stays unconfirmed when cloud read-back does not match today state', async ({ page }) => {
+  await enterOfflineApp(page);
+  const ok = await page.evaluate(async () => {
+    localStorage.removeItem('offline-mode');
+    currentUser = { id: 'sync-verify-user', email: 'verify@example.com' };
+    userRole = 'user';
+    progressMap = {};
+    fastProgressQueue.clear();
+    todayQueue = [];
+    todayQueueCompleted = new Set();
+    window.apiGetPendingSyncSummary = () => ({ progressCount: 0, dailyCount: 0, totalCount: 0, lastError: '' });
+    window.triggerCloudProgressBackup = async () => ({ attempted: 1, saved: 1, failed: 0, remaining: 0, dailyRemaining: 0 });
+    window.apiVerifyTodayState = async () => ({ ok: false, logOk: true, queueOk: false });
+    return (await manualSyncToday()).ok;
+  });
+
+  expect(ok).toBe(false);
+  await page.locator('#sync-badge').click();
+  await expect(page.locator('#account-sync-status')).toHaveText('云端同步尚未确认');
+  await expect(page.locator('#account-sync-detail')).toContainText('每日队列尚未通过云端回读确认');
+  await expect(page.locator('#manual-sync-btn')).toHaveText('重新同步');
+});

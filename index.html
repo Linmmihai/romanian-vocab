@@ -68,11 +68,26 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .bear-muzzle::before{content:"";position:absolute;left:4px;top:1px;width:3px;height:2px;border-radius:50%;background:#5b341b}
 .bear-muzzle::after{content:"";position:absolute;left:2px;top:-5px;width:2px;height:2px;border-radius:50%;background:#1f2937;box-shadow:4px 0 0 #1f2937}
 .account-help{font-size:12px;line-height:1.55;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;margin-bottom:1rem}
-.account-menu-wrap{position:relative}
+.account-menu-wrap{position:relative;flex:0 0 auto}
+.account-menu-wrap>.btn-sm{white-space:nowrap}
 .account-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:1001;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 10px 28px rgba(23,32,51,0.14);padding:6px;display:none;min-width:150px}
 .account-menu-wrap.open .account-menu{display:grid;gap:4px}
 .account-menu .btn-sm{width:100%;text-align:left;border:none;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .account-menu .btn-sm:hover{background:var(--bg2)}
+.account-sync-panel{border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:1rem;background:white}
+.account-sync-head{display:flex;align-items:flex-start;gap:9px;margin-bottom:8px}
+.account-sync-dot{width:9px;height:9px;border-radius:50%;margin-top:5px;background:var(--text3);flex:0 0 auto}
+.account-sync-copy{min-width:0;flex:1}
+.account-sync-title{font-size:14px;font-weight:800;color:var(--text);line-height:1.35}
+.account-sync-detail{font-size:12px;color:var(--text2);line-height:1.55;margin-top:3px;overflow-wrap:anywhere}
+.account-sync-summary{font-size:12px;color:var(--text2);background:var(--bg2);border-radius:var(--radius-sm);padding:8px 10px;margin:8px 0 10px}
+.account-sync-actions{display:flex;justify-content:flex-end}
+.account-sync-actions button:disabled{opacity:.58;cursor:not-allowed}
+.account-sync-panel[data-state="saved"] .account-sync-dot{background:var(--green)}
+.account-sync-panel[data-state="pending"] .account-sync-dot{background:var(--yellow)}
+.account-sync-panel[data-state="error"] .account-sync-dot{background:var(--red)}
+.account-sync-panel[data-state="syncing"] .account-sync-dot{background:var(--blue);animation:syncPulse 1s ease-in-out infinite}
+.account-sync-panel[data-state="local"] .account-sync-dot,.account-sync-panel[data-state="ready"] .account-sync-dot,.account-sync-panel[data-state="checking"] .account-sync-dot{background:var(--text3)}
 .btn-sm{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:13px;cursor:pointer;color:var(--text2)}
 .btn-sm:hover{background:var(--bg2)}
 .topbar-guide-btn{display:inline-flex;align-items:center;justify-content:center;color:var(--blue-text);border-color:#bfdbfe;background:var(--blue-bg);font-weight:750;white-space:nowrap}
@@ -396,6 +411,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
 @media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.guide-video-link{grid-template-columns:auto minmax(0,1fr)}.guide-video-meta{grid-column:2}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}.grammar-hero{padding:19px 16px}.grammar-title{font-size:21px}.grammar-resource-note{align-items:flex-start;flex-wrap:wrap}.grammar-resource-copy{min-width:220px}.grammar-guide-link{width:100%}.grammar-course-grid{grid-template-columns:1fr}.grammar-course>summary{padding:14px}.grammar-course-detail{padding:13px 14px 14px}.grammar-module>summary{padding:13px}}
 @media(max-width:560px){.flash-controls-body{padding:0 10px 10px}}
+@media(max-width:560px){.sync-badge{display:inline-flex;max-width:100px;padding:4px 7px}.sync-badge #sync-badge-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:380px){.topbar-badge{display:none}}
 @media(max-width:560px){.nav-tab,.qsize-btn,.opt,.queue-btn,.know-yes,.know-fuzzy,.know-no,.spk,.report-btn,.btn-primary,.btn-cancel,.btn-save,.restart-btn,.next-btn,.list-filter-row select{min-height:44px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
@@ -507,8 +523,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:14px;color:var(--text2)}
-.sync-badge{font-size:11px;color:var(--text3)}
-.sync-badge.saved{color:var(--green-text)}
+.sync-badge{appearance:none;border:1px solid var(--border);border-radius:99px;background:var(--bg2);padding:4px 8px;font:inherit;font-size:11px;font-weight:700;color:var(--text3);display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;max-width:130px}
+.sync-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.sync-badge:hover{border-color:var(--border2);filter:brightness(.98)}
+.sync-badge.saved{color:var(--green-text);background:var(--green-bg);border-color:#a7f3d0}
+.sync-badge.pending{color:var(--yellow-text);background:var(--yellow-bg);border-color:var(--yellow-border)}
+.sync-badge.error{color:var(--red-text);background:var(--red-bg);border-color:#fecaca}
+.sync-badge.syncing{color:var(--blue-text);background:var(--blue-bg);border-color:#bfdbfe}
+.sync-badge.syncing::before{animation:syncPulse 1s ease-in-out infinite}
+.sync-badge.local,.sync-badge.ready,.sync-badge.checking{color:var(--text2)}
+@keyframes syncPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
 .empty-state{text-align:center;padding:2rem;color:var(--text3);font-size:14px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:10px 20px;border-radius:99px;font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
@@ -571,7 +595,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
     <div class="topbar-right">
       <span class="user-chip" id="user-chip"></span>
-      <span class="sync-badge" id="sync-badge" role="status" aria-live="polite"></span>
+      <button class="sync-badge ready" id="sync-badge" type="button" onclick="openAccountModal()" aria-label="查看同步详情" title="查看同步详情"><span id="sync-badge-text" role="status" aria-live="polite">同步待确认</span></button>
       <button class="btn-sm topbar-guide-btn" type="button" onclick="openGuideFromAccount()" aria-label="打开学习指南"><span class="topbar-guide-label">指南</span></button>
       <div class="account-menu-wrap" id="account-menu-wrap">
         <button class="btn-sm" onclick="toggleAccountMenu(event)">账号</button>
@@ -1188,6 +1212,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div id="account-email-line"></div>
       <div id="account-role-line"></div>
     </div>
+    <section class="account-sync-panel" id="account-sync-panel" data-state="ready" aria-labelledby="account-sync-heading">
+      <div class="account-sync-head">
+        <span class="account-sync-dot" aria-hidden="true"></span>
+        <div class="account-sync-copy">
+          <div class="account-sync-title" id="account-sync-heading">今日同步</div>
+          <div class="account-sync-title" id="account-sync-status">尚未确认今日同步</div>
+          <div class="account-sync-detail" id="account-sync-detail">点击“立即同步”可主动确认今日记录已保存到云端。</div>
+        </div>
+      </div>
+      <div class="account-sync-summary" id="account-sync-summary">今日已处理 0/200 · 未打卡</div>
+      <div class="account-sync-actions">
+        <button class="btn-save" id="manual-sync-btn" type="button" onclick="manualSyncToday()">立即同步</button>
+      </div>
+    </section>
     <div class="form-group">
       <label class="reminder-toggle"><input type="checkbox" id="reminder-enabled" onchange="saveDailyReminderSettings()"> 每日目标未完成时提醒</label>
     </div>
@@ -1339,15 +1377,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260716-grammar-content';</script>
-<script src="scheduler.js?v=20260714-progress-queue-fix"></script>
-<script src="progress-model.js?v=20260714-progress-queue-fix"></script>
-<script src="daily-plan.js?v=20260714-progress-queue-fix"></script>
-<script src="romanian-text.js?v=20260714-progress-queue-fix"></script>
-<script src="api.js?v=20260714-progress-queue-fix"></script>
-<script src="telemetry.js?v=20260714-progress-queue-fix"></script>
-<script src="auth.js?v=20260619-direct-front-reset"></script>
-<script src="app.js?v=20260716-grammar-content"></script>
-<script src="pwa.js?v=20260714-progress-queue-fix"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260719-sync-status';</script>
+<script src="scheduler.js?v=20260719-sync-status"></script>
+<script src="progress-model.js?v=20260719-sync-status"></script>
+<script src="daily-plan.js?v=20260719-sync-status"></script>
+<script src="romanian-text.js?v=20260719-sync-status"></script>
+<script src="api.js?v=20260719-sync-status"></script>
+<script src="telemetry.js?v=20260719-sync-status"></script>
+<script src="auth.js?v=20260719-sync-status"></script>
+<script src="app.js?v=20260719-sync-status"></script>
+<script src="pwa.js?v=20260719-sync-status"></script>
 </body>
 </html>
