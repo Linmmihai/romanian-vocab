@@ -21,13 +21,13 @@ assert(queueMessage.includes('暂未同步到其他设备'), 'local queue messag
 const saveWarning = functionBlock(app, 'handleProgressSaveStatus');
 assert(!/数据库缺少|数据库字段/.test(saveWarning), 'progress warning should use user-facing language');
 
-assert(html.includes('.sync-badge{display:inline-block;max-width:72px'), 'mobile sync status should remain visible');
+assert(html.includes('.sync-badge{display:inline-flex;max-width:100px'), 'mobile sync status should remain visible and actionable');
 const baseToastRule = html.indexOf('.toast{position:fixed;bottom:24px');
 const mobileToastRule = html.indexOf('.toast{bottom:calc(64px + env(safe-area-inset-bottom))', baseToastRule);
 assert(baseToastRule !== -1 && mobileToastRule > baseToastRule, 'mobile toast override should follow the base rule and clear the bottom navigation');
 assert(html.includes('id="toast" role="status" aria-live="polite"'), 'toast should announce status updates accessibly');
-assert(html.includes('id="sync-badge" role="status" aria-live="polite"'), 'sync status should announce changes accessibly');
-assert(html.includes('app.js?v=20260716-grammar-content'), 'app cache buster should include structured grammar content');
-assert(serviceWorker.includes('ro-vocab-pwa-v29'), 'service worker cache should include structured grammar content');
+assert(html.includes('id="sync-badge-text" role="status" aria-live="polite"'), 'sync status should announce changes accessibly');
+assert(html.includes('app.js?v=20260719-sync-status'), 'app cache buster should include the sync-status release');
+assert(serviceWorker.includes('ro-vocab-pwa-v30'), 'service worker cache should include the sync-status release');
 
 console.log('user feedback UI verification passed');

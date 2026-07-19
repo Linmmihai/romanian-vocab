@@ -239,6 +239,32 @@ function hasPendingDailyState(userId) {
   return Object.values(readPendingDailyState(userId) || {}).some(entry => entry?.queue || entry?.log);
 }
 
+function apiGetPendingSyncSummary(userId) {
+  const pendingProgress = readPendingProgress(userId);
+  const pendingDaily = readPendingDailyState(userId);
+  const dailyEntries = Object.values(pendingDaily || {}).filter(entry => entry?.queue || entry?.log);
+  const dailyCount = dailyEntries.reduce((count, entry) => {
+    return count + (entry?.queue ? 1 : 0) + (entry?.log ? 1 : 0);
+  }, 0);
+  const timestamps = [
+    ...Object.values(pendingProgress || {}).map(entry => entry?.pendingSyncAt),
+    ...dailyEntries.map(entry => entry?.pendingSyncAt)
+  ].filter(Boolean).sort();
+  const errors = dailyEntries
+    .map(entry => entry?.lastError)
+    .filter(Boolean);
+  const lastError = errors.length ? errors[errors.length - 1] : '';
+  const progressCount = Object.keys(pendingProgress || {}).length;
+  return {
+    progressCount,
+    dailyCount,
+    dailyDateCount: dailyEntries.length,
+    totalCount: progressCount + dailyCount,
+    oldestPendingAt: timestamps[0] || null,
+    lastError
+  };
+}
+
 function createDailySyncToken(part, date) {
   return `${part}:${date}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 }
@@ -1225,7 +1251,9 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
     clearPendingProgressBatch(userId, savedKeys);
   }
   const failed = batch.length - saved - unresolved;
-  const remaining = Math.max(0, entries.length - saved);
+  // Re-read the durable queue so a newer write created during this retry is
+  // never hidden by the result of the older batch.
+  const remaining = Object.keys(readPendingProgress(userId)).length;
   return { attempted: batch.length, saved, failed, unresolved, remaining, totalPending: entries.length };
 }
 
@@ -1957,6 +1985,79 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
   return localWriteError
     ? { saved: 'database', syncError: localWriteError.message }
     : { saved: 'database' };
+}
+
+async function apiVerifyTodayState(userId, snapshot = {}) {
+  if (isOfflineMode()) {
+    return { ok: false, logOk: false, queueOk: false, error: '离线模式无法确认云端记录' };
+  }
+  const date = snapshot.date || getLocalDateKey();
+  const [logResult, queueResult] = await Promise.all([
+    withTimeout(
+      sb.from('daily_log')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('log_date', date)
+        .maybeSingle(),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '今日记录云端确认超时'
+    ),
+    withTimeout(
+      sb.from('daily_queue')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('queue_date', date)
+        .maybeSingle(),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '每日队列云端确认超时'
+    )
+  ]);
+  if (logResult.error) throw new Error(logResult.error.message || '今日记录云端确认失败');
+  if (queueResult.error) throw new Error(queueResult.error.message || '每日队列云端确认失败');
+
+  const cloudLog = logResult.data;
+  const cloudQueue = queueResult.data;
+  const expectedLog = snapshot.log || {};
+  const expectedQueue = snapshot.queue || {};
+  const expectedProcessed = Number(expectedLog.new_words || 0);
+  const expectedGoal = Math.max(1, Number(expectedLog.goal || 1));
+  const logOk = !!cloudLog &&
+    Number(cloudLog.new_words || 0) >= expectedProcessed &&
+    Number(cloudLog.goal || 0) >= expectedGoal &&
+    (!expectedLog.completed || cloudLog.completed === true);
+
+  const expectedOpenRos = normalizeRoArray(expectedQueue.word_ro || []);
+  const expectedCompletedRos = normalizeRoArray(expectedQueue.completed_word_ro || []);
+  const cloudOpenRos = normalizeRoArray(cloudQueue?.word_ro || []);
+  const cloudCompletedRos = normalizeRoArray(cloudQueue?.completed_word_ro || []);
+  const cloudAllRoKeys = new Set([...cloudOpenRos, ...cloudCompletedRos].map(normalizeProgressWordRoKey));
+  const cloudCompletedRoKeys = new Set(cloudCompletedRos.map(normalizeProgressWordRoKey));
+  const rosOk = expectedOpenRos.every(ro => cloudAllRoKeys.has(normalizeProgressWordRoKey(ro))) &&
+    expectedCompletedRos.every(ro => cloudCompletedRoKeys.has(normalizeProgressWordRoKey(ro)));
+
+  const expectedOpenIds = normalizeIdArray(expectedQueue.word_id || []);
+  const expectedCompletedIds = normalizeIdArray(expectedQueue.completed_word_id || []);
+  const cloudOpenIds = normalizeIdArray(cloudQueue?.word_id || []);
+  const cloudCompletedIds = normalizeIdArray(cloudQueue?.completed_word_id || []);
+  const cloudAllIdKeys = new Set([...cloudOpenIds, ...cloudCompletedIds].map(String));
+  const cloudCompletedIdKeys = new Set(cloudCompletedIds.map(String));
+  const idsOk = expectedOpenIds.every(id => cloudAllIdKeys.has(String(id))) &&
+    expectedCompletedIds.every(id => cloudCompletedIdKeys.has(String(id)));
+  const referenceOk = expectedOpenRos.length || expectedCompletedRos.length ? rosOk : idsOk;
+  const queueOk = !!cloudQueue && referenceOk &&
+    (!expectedQueue.completed || cloudQueue.completed === true);
+
+  return {
+    ok: logOk && queueOk,
+    logOk,
+    queueOk,
+    verifiedAt: new Date().toISOString(),
+    cloud: {
+      processed: Number(cloudLog?.new_words || 0),
+      goal: Number(cloudLog?.goal || 0),
+      completed: cloudLog?.completed === true
+    }
+  };
 }
 
 /**

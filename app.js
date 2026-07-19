@@ -64,6 +64,8 @@ let wrongbookCardRenderTimer = null;
 let fastProgressFlushTimer = null;
 let progressSnapshotWriteTimer = null;
 let todayStateFlushTimer = null;
+let manualSyncInFlight = null;
+let syncUiState = { phase: 'checking', message: '', lastError: '' };
 let pendingTodayGoalPrompt = false;
 let pendingTodayAccuracyStats = { correct: 0, total: 0 };
 const fastProgressQueue = new Map();
@@ -1246,9 +1248,38 @@ function hasPendingProgress(map = progressMap) {
   return Object.values(map || {}).some(progress => progress?.pendingSync);
 }
 
+function getPendingSyncSummary() {
+  if (!currentUser?.id || typeof apiGetPendingSyncSummary !== 'function') {
+    return { progressCount: 0, dailyCount: 0, totalCount: 0, lastError: '' };
+  }
+  return apiGetPendingSyncSummary(currentUser.id);
+}
+
 function hasPendingSync() {
-  return hasPendingProgress() ||
-    (typeof hasPendingDailyState === 'function' && currentUser?.id && hasPendingDailyState(currentUser.id));
+  const summary = getPendingSyncSummary();
+  return summary.totalCount > 0 || hasPendingProgress();
+}
+
+function reconcileProgressPendingFlags() {
+  if (!currentUser?.id || typeof readPendingProgress !== 'function') return getPendingSyncSummary();
+  const pending = readPendingProgress(currentUser.id);
+  let changed = false;
+  Object.keys(progressMap).forEach((key) => {
+    const shouldBePending = !!pending[key];
+    const isMarkedPending = !!progressMap[key]?.pendingSync;
+    if (shouldBePending === isMarkedPending) return;
+    progressMap[key] = { ...progressMap[key] };
+    if (shouldBePending) progressMap[key].pendingSync = true;
+    else delete progressMap[key].pendingSync;
+    changed = true;
+  });
+  if (changed) {
+    progressVersion++;
+    if (typeof writeLocalProgressSnapshot === 'function') {
+      writeLocalProgressSnapshot(currentUser.id, progressMap);
+    }
+  }
+  return getPendingSyncSummary();
 }
 
 async function refreshCloudProgressAfterLocalLoad() {
@@ -1368,21 +1399,17 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
         result.dailyAttempted = Number(dailyResult.value?.retry?.attempted || 0);
         result.dailyRemaining = Number(dailyResult.value?.retry?.remaining || 0);
       }
+      const pendingSummary = reconcileProgressPendingFlags();
+      result.pendingSummary = pendingSummary;
+      const stillPending = result.failed || result.remaining || result.dailyRemaining ||
+        pendingSummary.totalCount > 0 || hasPendingProgress();
       if (!result.attempted && !result.dailyAttempted) {
-        setSyncBadge(result.failed ? '本机待同步' : '已同步', result.failed ? '' : 'saved');
+        setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
         return result;
       }
-      if (result.failed || result.remaining || result.dailyRemaining) {
+      if (stillPending) {
         setSyncBadge('本机待同步', '');
       } else {
-        Object.keys(progressMap).forEach((wordRo) => {
-          if (progressMap[wordRo]?.pendingSync) {
-            progressMap[wordRo] = { ...progressMap[wordRo] };
-            delete progressMap[wordRo].pendingSync;
-          }
-        });
-        if (typeof writeLocalProgressSnapshot === 'function') writeLocalProgressSnapshot(currentUser.id, progressMap);
-        progressVersion++;
         setSyncBadge('已同步', 'saved');
       }
       return result;
@@ -1392,6 +1419,7 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
       return { failed: true, error };
     } finally {
       progressCloudSyncInFlight = null;
+      renderSyncStatus();
       setTimeout(() => {
         if (!hasPendingSync()) setSyncBadge('', '');
       }, 2000);
@@ -1574,6 +1602,7 @@ async function loadDailyQueue() {
   }
   dailyQueueLoaded = true;
   dailyQueueVersion++;
+  renderSyncStatus();
   applyFilters();
   renderCard();
   renderDailyGoal();
@@ -2824,11 +2853,241 @@ function setText(id, value) {
 
 // ── 进度同步 ──────────────────────────────────────────────
 
-function setSyncBadge(txt, cls) {
-  const el = document.getElementById('sync-badge');
-  el.textContent = txt;
-  el.className = 'sync-badge ' + (cls || '');
+function syncStatusStorageKey() {
+  return `cloud_sync_last_success:${currentUser?.id || 'anonymous'}`;
 }
+
+function readLastCloudSyncAt() {
+  try { return localStorage.getItem(syncStatusStorageKey()) || ''; }
+  catch { return ''; }
+}
+
+function markCloudSyncSuccess(at = new Date()) {
+  const iso = at instanceof Date ? at.toISOString() : String(at || new Date().toISOString());
+  try { localStorage.setItem(syncStatusStorageKey(), iso); } catch {}
+  syncUiState = { phase: 'saved', message: '', lastError: '' };
+  renderSyncStatus();
+}
+
+function formatCloudSyncTime(value, includeDate = false) {
+  const date = new Date(value || '');
+  if (Number.isNaN(date.getTime())) return '';
+  const today = getLocalDateKey();
+  const dateKey = getDateKeyFor(date);
+  const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (!includeDate || dateKey === today) return time;
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
+}
+
+function setSyncBadge(txt = '', cls = '') {
+  const message = String(txt || '').trim();
+  if (message === '已同步') {
+    markCloudSyncSuccess();
+    return;
+  }
+  if (/同步中|备份中|保存中/.test(message)) {
+    syncUiState = { ...syncUiState, phase: 'syncing', message };
+  } else if (/失败|未能|错误/.test(message)) {
+    syncUiState = { phase: 'error', message, lastError: message };
+  } else if (/待同步|暂存本机/.test(message)) {
+    syncUiState = { ...syncUiState, phase: 'pending', message };
+  } else if (/本机保存|已存本机|本机进度|本机备份/.test(message)) {
+    syncUiState = { ...syncUiState, phase: isOfflineMode() ? 'local' : (hasPendingSync() ? 'pending' : 'ready'), message };
+  } else if (!message) {
+    if (syncUiState.phase !== 'error') syncUiState = { ...syncUiState, phase: 'idle', message: '' };
+  } else {
+    syncUiState = { ...syncUiState, phase: cls === 'saved' ? 'ready' : 'idle', message };
+  }
+  renderSyncStatus();
+}
+
+function getSyncViewModel() {
+  const summary = getPendingSyncSummary();
+  const flaggedPending = hasPendingProgress();
+  const pendingCount = summary.totalCount + (flaggedPending && !summary.progressCount ? 1 : 0);
+  const lastSuccessAt = readLastCloudSyncAt();
+  if (isOfflineMode()) {
+    return {
+      kind: 'local', short: '本机保存', title: '仅保存在本机',
+      detail: '当前是离线模式，不会上传到云端。', pendingCount, lastSuccessAt
+    };
+  }
+  if (!progressLoaded || !dailyQueueLoaded || !todayLog) {
+    return {
+      kind: 'checking', short: '检查中…', title: '正在加载今日同步状态',
+      detail: '今日记录加载完成后即可主动同步。', pendingCount, lastSuccessAt
+    };
+  }
+  if (manualSyncInFlight || progressCloudSyncInFlight || syncUiState.phase === 'syncing') {
+    return {
+      kind: 'syncing', short: '同步中…', title: '正在同步今日记录',
+      detail: '正在提交今日队列、打卡状态和学习进度，请稍候。', pendingCount, lastSuccessAt
+    };
+  }
+  if (pendingCount > 0) {
+    const count = pendingCount;
+    return {
+      kind: 'pending', short: `待同步 ${count > 99 ? '99+' : count}`, title: `有 ${count} 项待同步`,
+      detail: summary.lastError || syncUiState.lastError || '数据已安全保存在本机，网络恢复后会自动重试。',
+      pendingCount: count, lastSuccessAt
+    };
+  }
+  if (syncUiState.phase === 'error' || syncUiState.phase === 'pending') {
+    return {
+      kind: 'error', short: '同步未确认', title: '云端同步尚未确认',
+      detail: syncUiState.lastError || syncUiState.message || '请点击重新同步。', pendingCount: 0, lastSuccessAt
+    };
+  }
+  if (lastSuccessAt) {
+    const time = formatCloudSyncTime(lastSuccessAt);
+    return {
+      kind: 'saved', short: `已同步 ${time}`, title: '已同步到云端',
+      detail: `最近成功同步：${formatCloudSyncTime(lastSuccessAt, true)}`, pendingCount: 0, lastSuccessAt
+    };
+  }
+  return {
+    kind: 'ready', short: '同步待确认', title: '尚未确认今日同步',
+    detail: '点击“立即同步”可主动确认今日记录已保存到云端。', pendingCount: 0, lastSuccessAt: ''
+  };
+}
+
+function renderCloudSyncPanel() {
+  const vm = getSyncViewModel();
+  const title = document.getElementById('account-sync-status');
+  const detail = document.getElementById('account-sync-detail');
+  const summary = document.getElementById('account-sync-summary');
+  const panel = document.getElementById('account-sync-panel');
+  const button = document.getElementById('manual-sync-btn');
+  if (title) title.textContent = vm.title;
+  if (detail) detail.textContent = vm.detail;
+  if (summary) {
+    const checkinLabel = isDailyCheckinDone() ? '已打卡' : '未打卡';
+    summary.textContent = `今日已处理 ${Number(todayNewWords || 0)}/${Number(dailyGoal || defaultDailyGoal || 0)} · ${checkinLabel}`;
+  }
+  if (panel) panel.dataset.state = vm.kind;
+  if (button) {
+    button.disabled = vm.kind === 'syncing' || vm.kind === 'local' || vm.kind === 'checking';
+    button.setAttribute('aria-busy', vm.kind === 'syncing' ? 'true' : 'false');
+    button.textContent = vm.kind === 'syncing'
+      ? '同步中…'
+      : (vm.kind === 'local'
+        ? '离线模式'
+        : (vm.kind === 'checking' ? '加载中…' : (['pending', 'error'].includes(vm.kind) ? '重新同步' : '立即同步')));
+  }
+}
+
+function renderSyncStatus() {
+  const vm = getSyncViewModel();
+  const badge = document.getElementById('sync-badge');
+  const text = document.getElementById('sync-badge-text');
+  if (badge) {
+    badge.className = `sync-badge ${vm.kind}`;
+    badge.dataset.state = vm.kind;
+    badge.title = `${vm.title}。点击查看详情`;
+    badge.setAttribute('aria-label', `${vm.title}，点击查看同步详情`);
+  }
+  if (text) text.textContent = vm.short;
+  renderCloudSyncPanel();
+}
+
+function buildTodaySyncSnapshot() {
+  return {
+    date: getLocalDateKey(),
+    log: {
+      new_words: Number(todayNewWords || 0),
+      goal: Number(dailyGoal || defaultDailyGoal || DEFAULT_DAILY_GOAL),
+      completed: isDailyCheckinDone()
+    },
+    queue: {
+      goal: Number(dailyGoal || defaultDailyGoal || DEFAULT_DAILY_GOAL),
+      word_id: queueIdsToWordIds(todayQueue),
+      word_ro: queueIdsToWordRos(todayQueue),
+      completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
+      completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
+      completed: isCurrentTodayGoalDone()
+    }
+  };
+}
+
+function manualSyncToday() {
+  if (manualSyncInFlight) return manualSyncInFlight;
+  if (isOfflineMode() || !currentUser?.id) {
+    syncUiState = { phase: 'local', message: '本机保存', lastError: '' };
+    renderSyncStatus();
+    showToast('当前是离线模式，记录已保存在本机');
+    return Promise.resolve({ ok: false, offline: true });
+  }
+  if (!progressLoaded || !dailyQueueLoaded || !todayLog) {
+    renderSyncStatus();
+    showToast('今日记录仍在加载，请稍后再同步');
+    return Promise.resolve({ ok: false, loading: true });
+  }
+
+  manualSyncInFlight = (async () => {
+    syncUiState = { ...syncUiState, phase: 'syncing', message: '同步今日记录中…', lastError: '' };
+    renderSyncStatus();
+    try {
+      flushFastProgressQueue();
+      if (todayStateFlushTimer) {
+        clearTimeout(todayStateFlushTimer);
+        todayStateFlushTimer = null;
+      }
+      flushTodayAccuracyStats();
+      writeTodaySeenWords();
+      const snapshot = buildTodaySyncSnapshot();
+
+      let result = null;
+      let pending = getPendingSyncSummary();
+      for (let attempt = 0; attempt < 2; attempt++) {
+        result = await triggerCloudProgressBackup('同步今日记录', { force: true, limit: 1000 });
+        pending = reconcileProgressPendingFlags();
+        if (!pending.totalCount && !hasPendingProgress()) break;
+      }
+
+      if (pending.totalCount || hasPendingProgress()) {
+        throw new Error(result?.dailyError?.message || result?.dailyError || result?.error?.message || '仍有学习数据等待同步');
+      }
+      const verification = await apiVerifyTodayState(currentUser.id, snapshot);
+      pending = reconcileProgressPendingFlags();
+      if (!verification?.ok) {
+        const missing = [!verification?.logOk ? '今日记录' : '', !verification?.queueOk ? '每日队列' : ''].filter(Boolean).join('和');
+        throw new Error(`${missing || '今日数据'}尚未通过云端回读确认`);
+      }
+      if (pending.totalCount || hasPendingProgress()) {
+        throw new Error('同步过程中产生了新的学习记录，请再次同步');
+      }
+
+      markCloudSyncSuccess(verification.verifiedAt || new Date());
+      showToast('今日记录已同步到云端');
+      return { ok: true, verification };
+    } catch (error) {
+      const pending = reconcileProgressPendingFlags();
+      const message = error?.message || String(error || '同步失败');
+      syncUiState = {
+        phase: pending.totalCount || hasPendingProgress() ? 'pending' : 'error',
+        message,
+        lastError: message
+      };
+      window.reportClientIssue?.('manual_sync_unconfirmed', error, {
+        operation: 'manual_sync_today',
+        pending_count: pending.totalCount
+      });
+      renderSyncStatus();
+      showToast(pending.totalCount || hasPendingProgress()
+        ? `数据已保存在本机，仍有 ${Math.max(1, pending.totalCount)} 项待同步`
+        : `同步未确认：${message}`);
+      return { ok: false, error, pending };
+    } finally {
+      manualSyncInFlight = null;
+      renderSyncStatus();
+    }
+  })();
+  renderSyncStatus();
+  return manualSyncInFlight;
+}
+
+window.renderCloudSyncPanel = renderCloudSyncPanel;
+window.manualSyncToday = manualSyncToday;
 
 function showProgressSaveWarning(message) {
   const now = Date.now();
@@ -3797,7 +4056,9 @@ function completeDailyCheckin() {
   renderDailyGoal();
   renderCalendar();
   renderReviewPanel();
-  showToast('今日已打卡，可以临时加量继续学习');
+  showToast(isOfflineMode()
+    ? '今日已打卡，记录已保存在本机'
+    : '今日已打卡，记录正在同步到云端');
   triggerCloudProgressBackup('打卡同步', { force: true, limit: 250 });
   return true;
 }

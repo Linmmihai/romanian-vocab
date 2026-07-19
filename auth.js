@@ -110,6 +110,7 @@ function openAccountModal() {
     : (userRole === 'admin' ? '管理员' : '普通用户');
   document.getElementById('account-role-line').textContent = `${isFounderAccount() ? '创始人 · ' : ''}${roleLabel}`;
   modal.style.display = 'flex';
+  window.renderCloudSyncPanel?.();
   window.renderDailyReminderSettings?.();
 }
 
