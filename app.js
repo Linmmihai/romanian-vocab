@@ -159,6 +159,25 @@ function normalizeDailyNewLimitValue(value, fallback = DEFAULT_DAILY_NEW_LIMIT) 
   return Math.max(0, Math.min(DAILY_NEW_LIMIT_MAX, Math.round(parsed)));
 }
 
+function getEffectiveDailyNewLimit() {
+  const fixedLimit = normalizeDailyNewLimitValue(dailyNewLimit, DEFAULT_DAILY_NEW_LIMIT);
+  if (!fixedLimit) return 0;
+  const temporaryGoalIncrease = Math.max(
+    0,
+    Number(dailyGoal || 0) - Number(defaultDailyGoal || 0)
+  );
+  return Math.min(DAILY_NEW_LIMIT_MAX, fixedLimit + temporaryGoalIncrease);
+}
+
+function getTodayNewLimitProgressText() {
+  const effectiveLimit = getEffectiveDailyNewLimit();
+  const progress = `${todayIntroducedWords.size}/${effectiveLimit}`;
+  const temporaryIncrease = Math.max(0, effectiveLimit - Number(dailyNewLimit || 0));
+  return temporaryIncrease
+    ? `${progress}（固定 ${dailyNewLimit}，今日临时 +${temporaryIncrease}）`
+    : progress;
+}
+
 async function migrateLegacyDailyGoal(userId, profileGoal) {
   const rawGoal = Number(profileGoal || 0);
   const migrationKey = `daily_goal_200_migrated:${userId || 'local'}`;
@@ -621,6 +640,8 @@ function collectDailyQueueDebugMetrics(stage = 'snapshot', extra = {}) {
     retryCount: retryWords.length,
     deferredCount: deferredWords.length,
     newWordCount: unseenWords.length,
+    fixedDailyNewLimit: dailyNewLimit,
+    effectiveDailyNewLimit: getEffectiveDailyNewLimit(),
     dailyLearnedCount: todayNewWords,
     dailyGoal,
     remainingQuota: Math.max(0, Number(dailyGoal || 0) - Number(todayNewWords || 0)),
@@ -1692,7 +1713,7 @@ function getReinforcementWordsDueToday(words = W) {
 function getRemainingDailyNewSlots(reservedUnseenCount = 0) {
   return Math.max(
     0,
-    Number(dailyNewLimit || 0) -
+    Number(getEffectiveDailyNewLimit() || 0) -
       Number(todayIntroducedWords.size || 0) -
       Math.max(0, Number(reservedUnseenCount || 0))
   );
@@ -1833,7 +1854,8 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     deferredOpenCount: deferredOpenWords.length,
     candidateCount: plan.replacements.length,
     introducedToday: todayIntroducedWords.size,
-    dailyNewLimit,
+    fixedDailyNewLimit: dailyNewLimit,
+    effectiveDailyNewLimit: getEffectiveDailyNewLimit(),
     activeResultCount: plan.active.length,
     resultSize: result.length
   });
@@ -2435,7 +2457,8 @@ async function addWordToTodayQueue(wordRo) {
     return;
   }
   if (!getRemainingDailyNewSlots(queuedUnseenCount)) {
-    showToast(`今日新词上限为 ${dailyNewLimit} 个；提高新词上限后可以继续添加`);
+    const effectiveLimit = getEffectiveDailyNewLimit();
+    showToast(`今日可引入新词额度为 ${effectiveLimit} 个；提高固定上限或临时增加今日任务后可以继续添加`);
     return;
   }
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
@@ -2857,9 +2880,11 @@ function renderReviewPanel() {
     unseenRemaining
   } = getReviewPanelMetrics(scoped);
   const current = filtered[idx];
+  const effectiveNewLimit = getEffectiveDailyNewLimit();
+  const todayNewLimitProgress = getTodayNewLimitProgressText();
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
-  setText('review-new-remaining', `${todayIntroducedWords.size}/${dailyNewLimit}`);
+  setText('review-new-remaining', `${todayIntroducedWords.size}/${effectiveNewLimit}`);
   const nextLearningBatch = Math.min(20, Math.max(0, dueLearning));
   const nextReviewBatch = Math.min(20, Math.max(0, dueReview));
   const currentGoalDone = isCurrentTodayGoalDone();
@@ -2880,8 +2905,8 @@ function renderReviewPanel() {
         : (dueReview > 0
           ? `再完成 ${nextReviewBatch} 个到期复习，之后才进入新词。${taskType ? `当前卡片：${taskType}。` : ''}`
           : (newOpenQueueCount > 0
-            ? `现在可以学习新词；今日已引入 ${todayIntroducedWords.size}/${dailyNewLimit} 个，等待步骤到点后会优先出现。${taskType ? `当前卡片：${taskType}。` : ''}`
-            : `今日新词上限为 ${dailyNewLimit} 个；没有到期内容时会等待下一学习步骤。${taskType ? `当前卡片：${taskType}。` : ''}`))));
+            ? `现在可以学习新词；今日已引入 ${todayNewLimitProgress} 个，等待步骤到点后会优先出现。${taskType ? `当前卡片：${taskType}。` : ''}`
+            : `今日已引入新词 ${todayNewLimitProgress} 个；没有到期内容时会等待下一学习步骤。${taskType ? `当前卡片：${taskType}。` : ''}`))));
   setText('review-note', lastLearningHint || baseNote);
   renderTodayFocus({
     due,
@@ -2909,15 +2934,16 @@ function renderTodayFocus(metrics = null) {
   const waitingLearningCount = Number(m.waitingLearningCount || 0);
   const newOpenQueueCount = Number(m.newOpenQueueCount || 0);
   const attempts = getTodayAttemptStats();
+  const todayNewLimitProgress = getTodayNewLimitProgressText();
   const title = `今日通过 ${todayNewWords}/${dailyGoal}`;
   const action = learningDueCount > 0
     ? `学习步骤 ${learningDueCount}`
     : (reviewDueCount > 0 ? `到期复习 ${reviewDueCount}` : (currentDone ? '已完成' : `新词 ${newOpenQueueCount}`));
   const meta = currentDone
-    ? `今天已通过目标；共作答 ${attempts.total} 次，已引入新词 ${todayIntroducedWords.size}/${dailyNewLimit}。`
+    ? `今天已通过目标；共作答 ${attempts.total} 次，已引入新词 ${todayNewLimitProgress}。`
     : (waitingLearningCount > 0 && !learningDueCount && !reviewDueCount
-      ? `${waitingLearningCount} 个学习步骤正在等待；已作答 ${attempts.total} 次，新词 ${todayIntroducedWords.size}/${dailyNewLimit}。`
-      : `严格先做已到点内容；共作答 ${attempts.total} 次，新词 ${todayIntroducedWords.size}/${dailyNewLimit}。`);
+      ? `${waitingLearningCount} 个学习步骤正在等待；已作答 ${attempts.total} 次，新词 ${todayNewLimitProgress}。`
+      : `严格先做已到点内容；共作答 ${attempts.total} 次，新词 ${todayNewLimitProgress}。`);
   setText('today-focus-title', title);
   setText('today-focus-action', action);
   setText('today-focus-meta', meta);
@@ -3074,7 +3100,7 @@ function renderCloudSyncPanel() {
   if (detail) detail.textContent = vm.detail;
   if (summary) {
     const checkinLabel = isDailyCheckinDone() ? '已打卡' : '未打卡';
-    summary.textContent = `今日已通过 ${Number(todayNewWords || 0)}/${Number(dailyGoal || defaultDailyGoal || 0)} · 新词 ${todayIntroducedWords.size}/${dailyNewLimit} · ${checkinLabel}`;
+    summary.textContent = `今日已通过 ${Number(todayNewWords || 0)}/${Number(dailyGoal || defaultDailyGoal || 0)} · 新词 ${todayIntroducedWords.size}/${getEffectiveDailyNewLimit()} · ${checkinLabel}`;
   }
   if (panel) panel.dataset.state = vm.kind;
   if (button) {
@@ -4226,6 +4252,7 @@ function renderDailyGoal() {
   const canExtend = currentDone && checkinDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
   const attempts = getTodayAttemptStats();
+  const todayNewLimitProgress = getTodayNewLimitProgressText();
   const title = currentDone ? '今日通过目标已完成' : (baseDone ? '今日固定通过目标已完成' : '今日通过进度');
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -4234,7 +4261,7 @@ function renderDailyGoal() {
       </span>
       <span style="font-size:13px;color:var(--text2)">${todayNewWords} / ${dailyGoal} 个</span>
     </div>
-    <div style="font-size:12px;color:var(--text2);margin-top:6px">共作答 ${attempts.total} 次 · 今日新词 ${todayIntroducedWords.size}/${dailyNewLimit}</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:6px">共作答 ${attempts.total} 次 · 今日新词 ${todayNewLimitProgress}</div>
     <div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${baseDone ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
     </div>

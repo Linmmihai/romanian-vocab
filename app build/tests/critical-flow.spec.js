@@ -255,6 +255,81 @@ test('daily completion goal and new-card cap remain separate', async ({ page }) 
   expect(state).toEqual({ totalGoal: 200, newLimit: 30, queuedNew: 30 });
 });
 
+test('temporary goal extension fills open slots while learning steps wait', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(() => {
+    const waitingWords = W.slice(0, 8);
+    const introducedWords = W.slice(0, 33);
+    progressMap = {};
+    progressVersion++;
+    todayQueueCompleted = new Set();
+    todaySeenWords = new Set(introducedWords.map(word => word.ro));
+    todayIntroducedWords = new Set(introducedWords.map(word => word.ro));
+    todayNewWords = 77;
+    todayLog = {
+      log_date: getDateKeyFor(new Date()),
+      new_words: 77,
+      goal: 90,
+      completed: true
+    };
+    defaultDailyGoal = 30;
+    dailyGoal = 90;
+    dailyNewLimit = 30;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    flashMode = 'today';
+    curCat = '全部';
+
+    waitingWords.forEach((word, index) => {
+      setProgress(word.ro, {
+        seen: true,
+        known: false,
+        qt: 1,
+        qr: 0,
+        level: 'learning',
+        cardState: 'learning',
+        reps: 1,
+        dueAt: new Date(Date.now() + (index + 1) * 60_000).toISOString(),
+        nextReviewAt: new Date(Date.now() + (index + 1) * 60_000).toISOString()
+      }, { replace: true, source: 'e2e-temporary-goal-waiting' });
+    });
+
+    todayQueue = waitingWords.map(word => dailyWordKey(word.ro));
+    todayQueue = buildOpenTodayQueue(dailyGoal);
+    const cards = getDailyWordList(W, {
+      skipRepair: true,
+      allowBeforeQueueLoaded: true,
+      limit: dailyGoal
+    });
+    applyFilters();
+    renderReviewPanel();
+    renderCard();
+
+    return {
+      effectiveNewLimit: getEffectiveDailyNewLimit(),
+      cardCount: cards.length,
+      phases: cards.map(getStudyQueuePhase),
+      waitingCount: todayQueue
+        .map(ref => getWordByRo(ref))
+        .filter(Boolean)
+        .filter(isRetryDeferred)
+        .length,
+      queueSize: todayQueue.length,
+      visibleNewProgress: document.getElementById('review-new-remaining')?.textContent || '',
+      visibleCard: document.getElementById('fc-zh')?.textContent || ''
+    };
+  });
+
+  expect(state.effectiveNewLimit).toBe(90);
+  expect(state.cardCount).toBe(13);
+  expect(state.phases.every(phase => phase === 'new')).toBe(true);
+  expect(state.waitingCount).toBe(8);
+  expect(state.queueSize).toBe(21);
+  expect(state.visibleNewProgress).toBe('33/90');
+  expect(state.visibleCard).not.toBe('今日队列等待复习');
+});
+
 test('due work strictly blocks new cards in today mode', async ({ page }) => {
   await enterOfflineApp(page);
   const state = await page.evaluate(() => {
