@@ -17,16 +17,16 @@ const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260726-phrase-curation',
-  'progress-model.js?v=20260726-phrase-curation',
-  'daily-plan.js?v=20260726-phrase-curation',
-  'taxonomy.js?v=20260726-phrase-curation',
-  'romanian-text.js?v=20260726-phrase-curation',
-  'api.js?v=20260726-phrase-curation',
-  'telemetry.js?v=20260726-phrase-curation',
-  'auth.js?v=20260726-phrase-curation',
-  'app.js?v=20260726-phrase-curation',
-  'pwa.js?v=20260726-phrase-curation'
+  'scheduler.js?v=20260726-queue-slot-fix',
+  'progress-model.js?v=20260726-queue-slot-fix',
+  'daily-plan.js?v=20260726-queue-slot-fix',
+  'taxonomy.js?v=20260726-queue-slot-fix',
+  'romanian-text.js?v=20260726-queue-slot-fix',
+  'api.js?v=20260726-queue-slot-fix',
+  'telemetry.js?v=20260726-queue-slot-fix',
+  'auth.js?v=20260726-queue-slot-fix',
+  'app.js?v=20260726-queue-slot-fix',
+  'pwa.js?v=20260726-queue-slot-fix'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -44,7 +44,7 @@ assert(serviceWorker.includes("'./taxonomy.js'"), 'PWA app shell must include th
 assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v35"), 'PWA cache must advance with the phrase-curation release');
+assert(serviceWorker.includes("ro-vocab-pwa-v36"), 'PWA cache must advance with the queue-slot fix');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');

@@ -126,6 +126,9 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("if (isUnseenWord(w)) return getUnseenContentPriority(w);"), 'expected unseen cards to use content-quality priority behind learning and review cards');
   assert(app.includes("if (phraseQuality === 'core') return 3;"), 'expected reviewed core phrases to lead the unseen-card tier');
   assert(app.includes("if (phraseQuality === 'needs_review') return 5;"), 'expected unreviewed phrase content to trail ordinary unseen cards');
+  assert(app.includes('function getEffectiveDailyNewLimit()'), 'expected temporary goal extensions to expose an effective same-day new-card limit');
+  assert(app.includes('fixedLimit + temporaryGoalIncrease'), 'expected explicit same-day goal increases to add usable new-card capacity');
+  assert(app.includes('Number(getEffectiveDailyNewLimit() || 0)'), 'expected queue repair to use the effective same-day new-card limit');
   assert(app.includes("queuePhase === 'learning-due'"), 'expected learning steps to have a distinct visible state');
   assert(app.includes("queuePhase === 'review-due' || queuePhase === 'relearning-due'"), 'expected due review and relearning cards to render as review');
   assert(index.includes('id="today-focus-meta"'), 'expected one concise daily-plan explanation instead of repeated stage cards');
