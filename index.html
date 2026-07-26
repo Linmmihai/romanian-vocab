@@ -201,9 +201,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .card-wrap>#main-card.history-view.flipped{border-bottom-left-radius:14px;border-bottom-right-radius:14px}
 .card-wrap>#main-card.history-view.flipped+.card-answer-row{display:none}
 .card.history-view .card-history-note{display:block}
-.know-yes{flex:1;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer}
-.know-fuzzy{flex:1;padding:11px;border:1px solid var(--yellow);border-radius:var(--radius-sm);background:white;color:var(--yellow-text);font-size:14px;font-weight:600;cursor:pointer}
-.know-no{flex:1;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer}
+.know-yes{flex:1;min-width:0;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.know-fuzzy{flex:1;min-width:0;padding:11px;border:1px solid var(--yellow);border-radius:var(--radius-sm);background:white;color:var(--yellow-text);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.know-no{flex:1;min-width:0;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
 .know-yes:disabled,.know-fuzzy:disabled,.know-no:disabled{opacity:.55;cursor:wait}
 .know-yes:hover{background:var(--green-bg)}.know-fuzzy:hover{background:#fffbeb}.know-no:hover{background:var(--red-bg)}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;max-width:420px}
@@ -417,7 +417,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
 .manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
-@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.guide-video-link{grid-template-columns:auto minmax(0,1fr)}.guide-video-meta{grid-column:2}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.card-stress-word.long-word{font-size:23px}.card-stress-word.very-long-word{font-size:20px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}.grammar-hero{padding:19px 16px}.grammar-title{font-size:21px}.grammar-resource-note{align-items:flex-start;flex-wrap:wrap}.grammar-resource-copy{min-width:220px}.grammar-guide-link{width:100%}.grammar-course-grid{grid-template-columns:1fr}.grammar-course>summary{padding:14px}.grammar-course-detail{padding:13px 14px 14px}.grammar-module>summary{padding:13px}}
+@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.guide-video-link{grid-template-columns:auto minmax(0,1fr)}.guide-video-meta{grid-column:2}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.card-stress-word.long-word{font-size:23px}.card-stress-word.very-long-word{font-size:20px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:6px;padding:12px 10px 16px}.card-answer-row>button{padding:9px 4px;font-size:12px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}.grammar-hero{padding:19px 16px}.grammar-title{font-size:21px}.grammar-resource-note{align-items:flex-start;flex-wrap:wrap}.grammar-resource-copy{min-width:220px}.grammar-guide-link{width:100%}.grammar-course-grid{grid-template-columns:1fr}.grammar-course>summary{padding:14px}.grammar-course-detail{padding:13px 14px 14px}.grammar-module>summary{padding:13px}}
 @media(max-width:560px){.flash-controls-body{padding:0 10px 10px}}
 @media(max-width:560px){.sync-badge{display:inline-flex;max-width:100px;padding:4px 7px}.sync-badge #sync-badge-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:380px){.topbar-badge{display:none}}
@@ -676,9 +676,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           </div>
         </div>
         <div class="card-answer-row" aria-hidden="true">
-          <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识 · 10分钟</button>
-          <button type="button" class="know-fuzzy" id="mark-fuzzy-btn" style="flex:1;padding:9px">≈ 模糊 · 继续学习</button>
-          <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 准确回忆 · 完成</button>
+          <button type="button" class="know-no" id="mark-unknown-btn">✕ 不认识</button>
+          <button type="button" class="know-fuzzy" id="mark-fuzzy-btn">≈ 模糊</button>
+          <button type="button" class="know-yes" id="mark-known-btn">✓ 准确回忆</button>
         </div>
       </div>
       <div class="card-nav">
@@ -1399,16 +1399,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260725-card-taxonomy';</script>
-<script src="scheduler.js?v=20260725-card-taxonomy"></script>
-<script src="progress-model.js?v=20260725-card-taxonomy"></script>
-<script src="daily-plan.js?v=20260725-card-taxonomy"></script>
-<script src="taxonomy.js?v=20260725-card-taxonomy"></script>
-<script src="romanian-text.js?v=20260725-card-taxonomy"></script>
-<script src="api.js?v=20260725-card-taxonomy"></script>
-<script src="telemetry.js?v=20260725-card-taxonomy"></script>
-<script src="auth.js?v=20260725-card-taxonomy"></script>
-<script src="app.js?v=20260725-card-taxonomy"></script>
-<script src="pwa.js?v=20260725-card-taxonomy"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260726-phrase-curation';</script>
+<script src="scheduler.js?v=20260726-phrase-curation"></script>
+<script src="progress-model.js?v=20260726-phrase-curation"></script>
+<script src="daily-plan.js?v=20260726-phrase-curation"></script>
+<script src="taxonomy.js?v=20260726-phrase-curation"></script>
+<script src="romanian-text.js?v=20260726-phrase-curation"></script>
+<script src="api.js?v=20260726-phrase-curation"></script>
+<script src="telemetry.js?v=20260726-phrase-curation"></script>
+<script src="auth.js?v=20260726-phrase-curation"></script>
+<script src="app.js?v=20260726-phrase-curation"></script>
+<script src="pwa.js?v=20260726-phrase-curation"></script>
 </body>
 </html>

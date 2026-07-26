@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-07-25T15:04:42.026Z",
+  "generatedAt": "2026-07-26T07:23:14.786Z",
   "source": "cloud vocabulary primary examples plus complete reviewed alternatives",
-  "wordCount": 4815,
-  "fetchedCloudExampleRows": 4815,
-  "matchedWordCount": 4815,
+  "wordCount": 4867,
+  "fetchedCloudExampleRows": 4867,
+  "matchedWordCount": 4867,
   "examples": {
     "fenomen": [
       {
@@ -14074,10 +14074,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a returna bani": [
+    "a da banii înapoi": [
       {
-        "ro": "Mi-a returnat banii după ce a primit salariul.",
-        "zh": "他发工资后把钱还给了我。",
+        "ro": "Îți dau banii înapoi mâine.",
+        "zh": "我明天把钱还给你。",
         "source": "云端词库例句"
       }
     ],
@@ -15336,12 +15336,22 @@
     ],
     "la stânga": [
       {
+        "ro": "Farmacia este la stânga, lângă bancă.",
+        "zh": "药店在左边，银行旁边。",
+        "source": "云端词库例句"
+      },
+      {
         "ro": "La semafor, faci la stânga.",
         "zh": "到红绿灯处左转。",
         "source": "云端词库例句"
       }
     ],
     "la dreapta": [
+      {
+        "ro": "La intersecție, mergeți la dreapta.",
+        "zh": "到路口向右走。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "După pod, ia-o la dreapta.",
         "zh": "过桥后右转。",
@@ -15537,10 +15547,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a face ore": [
+    "a avea ore": [
       {
-        "ro": "Copiii fac ore dimineața și activități după-amiaza.",
-        "zh": "孩子们上午上课，下午参加活动。",
+        "ro": "Astăzi am ore până la trei.",
+        "zh": "我今天上课到三点。",
         "source": "云端词库例句"
       }
     ],
@@ -15559,6 +15569,11 @@
       }
     ],
     "a termina școala": [
+      {
+        "ro": "A terminat școala anul trecut și acum lucrează.",
+        "zh": "他去年毕业，现在已经工作了。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "După ce termină școala, merge direct la bunici.",
         "zh": "放学后，他直接去祖父母家。",
@@ -16358,6 +16373,11 @@
     ],
     "bună ziua": [
       {
+        "ro": "Bună ziua! Cu ce vă pot ajuta?",
+        "zh": "您好！有什么可以帮您？",
+        "source": "云端词库例句"
+      },
+      {
         "ro": "Bună ziua, aveți o masă liberă pentru două persoane?",
         "zh": "下午好，请问有两个人的空桌吗？",
         "source": "云端词库例句"
@@ -16461,17 +16481,17 @@
         "source": "云端词库例句"
       }
     ],
-    "puteți repeta": [
+    "puteți repeta, vă rog?": [
       {
         "ro": "Puteți repeta adresa, vă rog?",
-        "zh": "能再说一遍地址吗？",
+        "zh": "请您把地址再说一遍好吗？",
         "source": "云端词库例句"
       }
     ],
-    "vorbiți mai încet": [
+    "vorbiți mai încet, vă rog.": [
       {
-        "ro": "Vorbiți mai încet, vă rog, încă învăț româna.",
-        "zh": "请说慢点，我还在学罗马尼亚语。",
+        "ro": "Vorbiți mai încet, vă rog. Încă învăț româna.",
+        "zh": "请说慢一点，我还在学罗马尼亚语。",
         "source": "云端词库例句"
       }
     ],
@@ -16496,10 +16516,10 @@
         "source": "云端词库例句"
       }
     ],
-    "vorbiți engleza": [
+    "vorbiți engleză?": [
       {
-        "ro": "Vorbiți engleza sau franceza?",
-        "zh": "你会说英语或法语吗？",
+        "ro": "Scuzați-mă, vorbiți engleză?",
+        "zh": "不好意思，您会说英语吗？",
         "source": "云端词库例句"
       }
     ],
@@ -16538,17 +16558,17 @@
         "source": "云端词库例句"
       }
     ],
-    "am … ani": [
+    "am ... ani.": [
       {
         "ro": "Am douăzeci și opt de ani.",
-        "zh": "我今年二十八岁。",
+        "zh": "我二十八岁。",
         "source": "云端词库例句"
       }
     ],
-    "încântat de cunoștință": [
+    "încântat(ă) de cunoștință.": [
       {
-        "ro": "Încântat de cunoștință, am auzit multe despre dumneavoastră.",
-        "zh": "很高兴认识你，我听说过很多关于您的事。",
+        "ro": "Încântată de cunoștință, eu sunt Ana.",
+        "zh": "很高兴认识您，我叫Ana。",
         "source": "云端词库例句"
       }
     ],
@@ -17460,10 +17480,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a pune ghips": [
+    "a pune în ghips": [
       {
-        "ro": "Ortopedul a pus ghips pe brațul fracturat.",
-        "zh": "骨科医生给骨折的手臂打了石膏。",
+        "ro": "Medicul i-a pus brațul în ghips.",
+        "zh": "医生给他的手臂打了石膏。",
         "source": "云端词库例句"
       }
     ],
@@ -17516,10 +17536,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a satisface stagiul militar": [
+    "a-și satisface stagiul militar": [
       {
-        "ro": "Tatăl meu a satisfăcut stagiul militar într-o unitate de munte.",
-        "zh": "我父亲在一个山地部队服过兵役。",
+        "ro": "Și-a satisfăcut stagiul militar înainte de facultate.",
+        "zh": "他上大学前服完了兵役。",
         "source": "云端词库例句"
       }
     ],
@@ -17537,10 +17557,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a saluta militar": [
+    "a da onorul": [
       {
-        "ro": "Recrutul a salutat militar când a trecut comandantul.",
-        "zh": "指挥官经过时，新兵敬礼。",
+        "ro": "Soldatul a dat onorul în fața drapelului.",
+        "zh": "士兵在国旗前敬礼。",
         "source": "云端词库例句"
       }
     ],
@@ -17628,17 +17648,17 @@
         "source": "云端词库例句"
       }
     ],
-    "a face o ședință": [
+    "a avea o ședință": [
       {
-        "ro": "Mâine facem o ședință scurtă despre buget.",
-        "zh": "明天我们开一个关于预算的短会。",
+        "ro": "Avem o ședință scurtă despre buget.",
+        "zh": "我们要开一个关于预算的短会。",
         "source": "云端词库例句"
       }
     ],
-    "a face un raport": [
+    "a întocmi un raport": [
       {
-        "ro": "Trebuie să fac un raport despre rezultatele lunii.",
-        "zh": "我必须做一份月度结果报告。",
+        "ro": "Am întocmit un raport pe baza datelor din trimestrul trecut.",
+        "zh": "我根据上季度的数据编写了一份报告。",
         "source": "云端词库例句"
       }
     ],
@@ -17845,10 +17865,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a rezerva la restaurant": [
+    "a face o rezervare la restaurant": [
       {
-        "ro": "Am rezervat la restaurant pentru ora șapte.",
-        "zh": "我预订了餐厅七点的位置。",
+        "ro": "Am făcut o rezervare la restaurant pentru ora șapte.",
+        "zh": "我预订了餐厅七点的座位。",
         "source": "云端词库例句"
       }
     ],
@@ -19229,10 +19249,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a face conversație": [
+    "a schimba câteva vorbe": [
       {
-        "ro": "La recepție, a făcut conversație cu ceilalți invitați.",
-        "zh": "在招待会上，他和其他客人寒暄。",
+        "ro": "Am schimbat câteva vorbe cu vecinii înainte să plec.",
+        "zh": "出门前我和邻居寒暄了几句。",
         "source": "云端词库例句"
       }
     ],
@@ -19805,6 +19825,11 @@
     ],
     "a susține o prezentare": [
       {
+        "ro": "Mâine susțin o prezentare despre rezultatele proiectului.",
+        "zh": "明天我要做一个关于项目成果的演示。",
+        "source": "云端词库例句"
+      },
+      {
         "ro": "Mâine va susține o prezentare în fața clasei.",
         "zh": "明天他将在全班面前演讲。",
         "source": "云端词库例句"
@@ -20300,10 +20325,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a face vaccin": [
+    "a face un vaccin": [
       {
-        "ro": "Copilul a făcut vaccinul înainte de începerea școlii.",
-        "zh": "孩子在开学前打了疫苗。",
+        "ro": "Copilul a făcut un vaccin înainte de începerea școlii.",
+        "zh": "孩子在开学前打了一针疫苗。",
         "source": "云端词库例句"
       }
     ],
@@ -20356,10 +20381,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a fi sănătos": [
+    "a se menține sănătos": [
       {
-        "ro": "Ca să fii sănătos, ai nevoie de mișcare și odihnă.",
-        "zh": "要保持健康，需要运动和休息。",
+        "ro": "Face mișcare regulat ca să se mențină sănătos.",
+        "zh": "他经常运动以保持健康。",
         "source": "云端词库例句"
       }
     ],
@@ -20762,17 +20787,17 @@
         "source": "云端词库例句"
       }
     ],
-    "a se muta înăuntru": [
+    "a se muta în noua locuință": [
       {
-        "ro": "Se mută înăuntru sâmbătă, după ce vine mobila.",
-        "zh": "家具到后，他星期六搬进去。",
+        "ro": "Ne mutăm în noua locuință sâmbătă.",
+        "zh": "我们星期六搬进新居。",
         "source": "云端词库例句"
       }
     ],
-    "a se muta afară": [
+    "a se muta din locuință": [
       {
-        "ro": "Se mută afară la sfârșitul lunii.",
-        "zh": "他月底搬出去。",
+        "ro": "S-a mutat din locuință la sfârșitul lunii.",
+        "zh": "他在月底从住处搬走了。",
         "source": "云端词库例句"
       }
     ],
@@ -20811,10 +20836,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a pune covor": [
+    "a pune un covor": [
       {
-        "ro": "Au pus covor nou în camera copilului.",
-        "zh": "他们在孩子房间铺了新地毯。",
+        "ro": "Am pus un covor moale în sufragerie.",
+        "zh": "我们在客厅铺了一张柔软的地毯。",
         "source": "云端词库例句"
       }
     ],
@@ -21950,17 +21975,17 @@
         "source": "云端词库例句"
       }
     ],
-    "a rezolva acte": [
+    "a rezolva niște acte": [
       {
-        "ro": "Merg la primărie să rezolv acte.",
-        "zh": "我去市政厅办理手续。",
+        "ro": "Merg la primărie să rezolv niște acte.",
+        "zh": "我去市政厅办理一些手续。",
         "source": "云端词库例句"
       }
     ],
-    "a ura la mulți ani": [
+    "a ura cuiva „la mulți ani!”": [
       {
-        "ro": "Îi urăm la mulți ani bunicii.",
-        "zh": "我们祝奶奶生日快乐。",
+        "ro": "I-am urat „La mulți ani!” imediat după miezul nopții.",
+        "zh": "刚过午夜我就祝他生日快乐。",
         "source": "云端词库例句"
       }
     ],
@@ -22034,10 +22059,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a suna la sonerie": [
+    "a suna la ușă": [
       {
-        "ro": "Sună la sonerie când ajungi.",
-        "zh": "你到的时候按门铃。",
+        "ro": "Curierul a sunat la ușă.",
+        "zh": "快递员按了门铃。",
         "source": "云端词库例句"
       }
     ],
@@ -22133,6 +22158,11 @@
       }
     ],
     "a primi rambursarea": [
+      {
+        "ro": "Am primit rambursarea în trei zile.",
+        "zh": "我三天内收到了退款。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "Primești rambursarea în cont.",
         "zh": "退款会打到你的账户里。",
@@ -22293,10 +22323,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a conduce oaspeții": [
+    "a conduce oaspeții până la ușă": [
       {
-        "ro": "Conduc oaspeții până la poartă.",
-        "zh": "我把客人送到门口。",
+        "ro": "I-am condus pe oaspeți până la ușă.",
+        "zh": "我把客人送到了门口。",
         "source": "云端词库例句"
       }
     ],
@@ -22490,6 +22520,11 @@
       }
     ],
     "la masă": [
+      {
+        "ro": "Suntem la masă; te sun mai târziu.",
+        "zh": "我们正在吃饭，晚点给你打电话。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "Mâncăm la masă sau luăm la pachet?",
         "zh": "我们堂食还是打包？",
@@ -22925,6 +22960,11 @@
     ],
     "a servi ceai": [
       {
+        "ro": "Gazda le-a servit ceai musafirilor.",
+        "zh": "主人给客人上了茶。",
+        "source": "云端词库例句"
+      },
+      {
         "ro": "Servim ceai după desert.",
         "zh": "甜点后我们上茶。",
         "source": "云端词库例句"
@@ -22986,10 +23026,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a cere fără sare": [
+    "aș vrea fără sare, vă rog.": [
       {
-        "ro": "Cer cartofii fără sare.",
-        "zh": "我要不加盐的土豆。",
+        "ro": "Aș vrea supa fără sare, vă rog.",
+        "zh": "汤请不要加盐。",
         "source": "云端词库例句"
       }
     ],
@@ -23155,6 +23195,11 @@
       }
     ],
     "a mai cere o băutură": [
+      {
+        "ro": "Am mai cerut o băutură pentru prietenul meu.",
+        "zh": "我又给朋友点了一杯饮料。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "Mai cer o băutură înainte să plecăm.",
         "zh": "走之前我再要一杯饮料。",
@@ -23595,10 +23640,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a plăti cash": [
+    "a plăti în numerar": [
       {
-        "ro": "Prefer să plătesc cash la piață.",
-        "zh": "我在市场更喜欢付现金。",
+        "ro": "Prefer să plătesc în numerar.",
+        "zh": "我更喜欢用现金支付。",
         "source": "云端词库例句"
       }
     ],
@@ -23735,10 +23780,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a spăla rufe": [
+    "a spăla rufele": [
       {
-        "ro": "Spăl rufe seara, după serviciu.",
-        "zh": "我晚上下班后洗衣服。",
+        "ro": "Spăl rufele în fiecare sâmbătă.",
+        "zh": "我每周六洗衣服。",
         "source": "云端词库例句"
       }
     ],
@@ -24106,10 +24151,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a lua copilul": [
+    "a lua copilul de la școală": [
       {
-        "ro": "Iau copilul de la grădiniță la cinci.",
-        "zh": "我五点从幼儿园接孩子。",
+        "ro": "Îl iau pe copil de la școală la ora patru.",
+        "zh": "我四点去学校接孩子。",
         "source": "云端词库例句"
       }
     ],
@@ -24190,10 +24235,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a scrie adresa": [
+    "a scrie adresa pe colet": [
       {
-        "ro": "Scrie adresa clar pe plic.",
-        "zh": "把地址清楚地写在信封上。",
+        "ro": "Scrie adresa clar pe colet.",
+        "zh": "请把地址清楚地写在包裹上。",
         "source": "云端词库例句"
       }
     ],
@@ -24225,24 +24270,24 @@
         "source": "云端词库例句"
       }
     ],
-    "a cere mai puțin picant": [
+    "aș vrea să fie mai puțin picant.": [
       {
-        "ro": "Cer sosul mai puțin picant.",
-        "zh": "我要酱少辣。",
+        "ro": "Aș vrea sosul să fie mai puțin picant.",
+        "zh": "我希望酱汁少辣一点。",
         "source": "云端词库例句"
       }
     ],
-    "a aștepta verdele": [
+    "a aștepta să se facă verde": [
       {
-        "ro": "Așteptăm verdele înainte să traversăm.",
-        "zh": "过马路前我们等绿灯。",
+        "ro": "Așteptăm să se facă verde înainte să traversăm.",
+        "zh": "过马路前我们等绿灯亮。",
         "source": "云端词库例句"
       }
     ],
-    "a testa produsul": [
+    "a încerca produsul": [
       {
-        "ro": "Testez produsul înainte de cumpărare.",
-        "zh": "购买前我试用商品。",
+        "ro": "Aș vrea să încerc produsul înainte să-l cumpăr.",
+        "zh": "购买前我想先试用一下这个产品。",
         "source": "云端词库例句"
       }
     ],
@@ -24596,10 +24641,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a scoate hainele la soare": [
+    "a pune hainele la uscat": [
       {
-        "ro": "Scot hainele la soare după ploaie.",
-        "zh": "雨后我把衣服拿出去晒。",
+        "ro": "Am pus hainele la uscat pe balcon.",
+        "zh": "我把衣服晾在了阳台上。",
         "source": "云端词库例句"
       }
     ],
@@ -27620,9 +27665,9 @@
         "source": "云端词库例句"
       }
     ],
-    "a pune îngrășământ plantelor": [
+    "a fertiliza plantele": [
       {
-        "ro": "Pun îngrășământ plantelor o dată pe lună.",
+        "ro": "Fertilizez plantele o dată pe lună.",
         "zh": "我每月给植物施肥一次。",
         "source": "云端词库例句"
       }
@@ -27795,10 +27840,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a muta la umbră": [
+    "a muta planta la umbră": [
       {
-        "ro": "Mut planta la umbră vara.",
-        "zh": "夏天我把植物移到阴处。",
+        "ro": "Mut planta la umbră când soarele este prea puternic.",
+        "zh": "阳光太强时我把植物移到阴处。",
         "source": "云端词库例句"
       }
     ],
@@ -28355,10 +28400,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a prinde copilul în scaun": [
+    "a fixa copilul în scaunul auto": [
       {
-        "ro": "Prind copilul în scaun înainte să pornim.",
-        "zh": "出发前我把孩子固定在座椅里。",
+        "ro": "Fixez copilul în scaunul auto înainte să pornim.",
+        "zh": "出发前我把孩子固定在安全座椅上。",
         "source": "云端词库例句"
       }
     ],
@@ -28397,10 +28442,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a refuza notificările": [
+    "a refuza permisiunea pentru notificări": [
       {
-        "ro": "Refuz notificările de marketing.",
-        "zh": "我拒绝营销通知。",
+        "ro": "Am refuzat permisiunea pentru notificări.",
+        "zh": "我拒绝了通知权限。",
         "source": "云端词库例句"
       }
     ],
@@ -28474,10 +28519,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a face programare la frizer": [
+    "a face o programare la frizer": [
       {
-        "ro": "Fac programare la frizer pentru sâmbătă.",
-        "zh": "我预约周六理发。",
+        "ro": "Mi-am făcut o programare la frizer pentru vineri.",
+        "zh": "我预约了周五去理发。",
         "source": "云端词库例句"
       }
     ],
@@ -28551,10 +28596,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a face puzzle": [
+    "a face un puzzle": [
       {
-        "ro": "Facem puzzle în weekendul ploios.",
-        "zh": "下雨的周末我们拼拼图。",
+        "ro": "Facem un puzzle împreună în seara asta.",
+        "zh": "今晚我们一起拼拼图。",
         "source": "云端词库例句"
       }
     ],
@@ -29139,10 +29184,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a verifica gustul": [
+    "a gusta mâncarea": [
       {
-        "ro": "Verific gustul înainte să servesc.",
-        "zh": "上菜前我尝一下味道。",
+        "ro": "Gust mâncarea înainte să mai adaug sare.",
+        "zh": "再加盐之前我先尝一下味道。",
         "source": "云端词库例句"
       }
     ],
@@ -29181,9 +29226,9 @@
         "source": "云端词库例句"
       }
     ],
-    "a verifica termenul": [
+    "a verifica termenul de valabilitate": [
       {
-        "ro": "Verific termenul înainte să cumpăr iaurt.",
+        "ro": "Verific termenul de valabilitate înainte să cumpăr iaurt.",
         "zh": "买酸奶前我检查保质期。",
         "source": "云端词库例句"
       }
@@ -29195,10 +29240,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a completa proviziile": [
+    "a reface proviziile": [
       {
-        "ro": "Completez proviziile înainte de weekend.",
-        "zh": "周末前我补充食品储备。",
+        "ro": "Refacem proviziile înainte de weekend.",
+        "zh": "周末前我们把日用品补齐。",
         "source": "云端词库例句"
       }
     ],
@@ -29216,10 +29261,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a căuta raftul": [
+    "a căuta produsul pe raft": [
       {
-        "ro": "Caut raftul cu produse de curățenie.",
-        "zh": "我找清洁用品货架。",
+        "ro": "Am căutat produsul pe raft, dar nu l-am găsit.",
+        "zh": "我在货架上找了这个商品，但没找到。",
         "source": "云端词库例句"
       }
     ],
@@ -29321,10 +29366,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a fixa scaunul de copil": [
+    "a fixa scaunul auto pentru copil": [
       {
-        "ro": "Fixez scaunul de copil pe banchetă.",
-        "zh": "我把儿童座椅固定在后座上。",
+        "ro": "Am fixat scaunul auto pentru copil pe bancheta din spate.",
+        "zh": "我把儿童安全座椅固定在了后排。",
         "source": "云端词库例句"
       }
     ],
@@ -29461,10 +29506,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a accepta termenii": [
+    "a accepta termenii și condițiile": [
       {
-        "ro": "Accept termenii înainte de înregistrare.",
-        "zh": "注册前我同意条款。",
+        "ro": "Trebuie să accepți termenii și condițiile înainte să continui.",
+        "zh": "继续之前需要同意条款和条件。",
         "source": "云端词库例句"
       }
     ],
@@ -29902,10 +29947,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a face card de fidelitate": [
+    "a solicita un card de fidelitate": [
       {
-        "ro": "Fac card de fidelitate la casă.",
-        "zh": "我在收银台办理会员卡。",
+        "ro": "Am solicitat un card de fidelitate la casă.",
+        "zh": "我在收银台申请了一张会员卡。",
         "source": "云端词库例句"
       }
     ],
@@ -29986,10 +30031,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a lipi codul de preț": [
+    "a lipi eticheta cu prețul": [
       {
-        "ro": "Lipește codul de preț pe pungă.",
-        "zh": "把价格码贴在袋子上。",
+        "ro": "Angajatul a lipit eticheta cu prețul pe cutie.",
+        "zh": "员工把价格标签贴在了盒子上。",
         "source": "云端词库例句"
       }
     ],
@@ -31414,10 +31459,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a declara obiectul pierdut": [
+    "a declara pierderea unui obiect": [
       {
-        "ro": "Declar obiectul pierdut la birou.",
-        "zh": "我在办公室报失物品。",
+        "ro": "Am declarat pierderea telefonului la biroul de informații.",
+        "zh": "我在服务台申报了手机遗失。",
         "source": "云端词库例句"
       }
     ],
@@ -31436,6 +31481,11 @@
       }
     ],
     "a lua sirop": [
+      {
+        "ro": "Iau siropul după masă.",
+        "zh": "我饭后服用糖浆。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "Iau sirop de tuse înainte de somn.",
         "zh": "睡前我喝止咳糖浆。",
@@ -31652,10 +31702,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a trimite mulțumiri": [
+    "a trimite un mesaj de mulțumire": [
       {
-        "ro": "Trimit mulțumiri după nuntă.",
-        "zh": "婚礼后我发送感谢信息。",
+        "ro": "Le-am trimis un mesaj de mulțumire după petrecere.",
+        "zh": "聚会后我给他们发了一条感谢信息。",
         "source": "云端词库例句"
       }
     ],
@@ -31820,10 +31870,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a cere decont": [
+    "a cere decontarea cheltuielilor": [
       {
-        "ro": "Cer decont pentru transport.",
-        "zh": "我申请交通报销。",
+        "ro": "Am cerut decontarea cheltuielilor de transport.",
+        "zh": "我申请报销交通费。",
         "source": "云端词库例句"
       }
     ],
@@ -31835,6 +31885,11 @@
       }
     ],
     "a curăța ochelarii": [
+      {
+        "ro": "Îmi curăț ochelarii cu o lavetă moale.",
+        "zh": "我用柔软的眼镜布擦眼镜。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "Curăț ochelarii cu lavetă.",
         "zh": "我用擦镜布清洁眼镜。",
@@ -31913,6 +31968,11 @@
     ],
     "pe moment": [
       {
+        "ro": "Pe moment, nu avem alte informații.",
+        "zh": "眼下我们没有其他信息。",
+        "source": "云端词库例句"
+      },
+      {
         "ro": "Am găsit o soluție pe moment.",
         "zh": "我临时找到一个解决办法。",
         "source": "云端词库例句"
@@ -31953,10 +32013,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a programa vizita la ghișeu": [
+    "a face o programare la ghișeu": [
       {
-        "ro": "Programez vizita la ghișeu pentru luni.",
-        "zh": "我预约周一去窗口。",
+        "ro": "Am făcut o programare la ghișeu pentru luni.",
+        "zh": "我预约了周一去柜台办理业务。",
         "source": "云端词库例句"
       }
     ],
@@ -32324,10 +32384,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a cere garanție": [
+    "a solicita reparația în garanție": [
       {
-        "ro": "Cer garanție pentru aparatul defect.",
-        "zh": "我为故障设备申请保修。",
+        "ro": "Am solicitat reparația telefonului în garanție.",
+        "zh": "我申请在保修期内维修手机。",
         "source": "云端词库例句"
       }
     ],
@@ -32660,7 +32720,7 @@
         "source": "云端词库例句"
       }
     ],
-    "a umple sticla": [
+    "a umple sticla cu apă": [
       {
         "ro": "Umplu sticla cu apă înainte de drum.",
         "zh": "出门前我把水瓶装满水。",
@@ -32765,10 +32825,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a trece de securitate": [
+    "a trece de controlul de securitate": [
       {
-        "ro": "Trecem de securitate în zece minute.",
-        "zh": "我们十分钟内通过安检。",
+        "ro": "Am trecut de controlul de securitate în zece minute.",
+        "zh": "我们十分钟内通过了安检。",
         "source": "云端词库例句"
       }
     ],
@@ -32786,10 +32846,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a rezerva locul": [
+    "a rezerva un loc": [
       {
-        "ro": "Rezerv locul la geam.",
-        "zh": "我预订靠窗座位。",
+        "ro": "Am rezervat un loc lângă fereastră.",
+        "zh": "我预订了一个靠窗的座位。",
         "source": "云端词库例句"
       }
     ],
@@ -32968,10 +33028,10 @@
         "source": "云端词库例句"
       }
     ],
-    "a trimite concediul medical": [
+    "a trimite certificatul medical": [
       {
-        "ro": "Trimit concediul medical la resurse umane.",
-        "zh": "我把病假条发给人力资源。",
+        "ro": "Am trimis certificatul medical la resurse umane.",
+        "zh": "我把病假证明发给了人力资源部门。",
         "source": "云端词库例句"
       }
     ],
@@ -33201,6 +33261,11 @@
     ],
     "la mijloc": [
       {
+        "ro": "Masa este la mijlocul camerei.",
+        "zh": "桌子在房间中间。",
+        "source": "云端词库例句"
+      },
+      {
         "ro": "Masa stă la mijlocul camerei.",
         "zh": "桌子在房间中央。",
         "source": "云端词库例句"
@@ -33228,6 +33293,11 @@
       }
     ],
     "în fața casei": [
+      {
+        "ro": "Mașina este parcată în fața casei.",
+        "zh": "车停在房子前面。",
+        "source": "云端词库例句"
+      },
       {
         "ro": "Ne vedem în fața casei.",
         "zh": "我们在家门口见。",
@@ -33742,6 +33812,370 @@
       {
         "ro": "După pierderea familiei sale, omul s-a zvârcolit în agonie luni întregi.",
         "zh": "在失去家人之后，这个人数月以来都陷入痛苦挣扎之中。",
+        "source": "云端词库例句"
+      }
+    ],
+    "aș dori...": [
+      {
+        "ro": "Aș dori o cafea, vă rog.",
+        "zh": "我想要一杯咖啡。",
+        "source": "云端词库例句"
+      }
+    ],
+    "aș vrea...": [
+      {
+        "ro": "Aș vrea să rezerv o masă pentru două persoane.",
+        "zh": "我想订一张两人桌。",
+        "source": "云端词库例句"
+      }
+    ],
+    "mi-ar plăcea să...": [
+      {
+        "ro": "Mi-ar plăcea să vorbesc mai bine românește.",
+        "zh": "我很想把罗马尼亚语说得更好。",
+        "source": "云端词库例句"
+      }
+    ],
+    "puteți să mă ajutați?": [
+      {
+        "ro": "Puteți să mă ajutați cu formularul acesta?",
+        "zh": "您能帮我填一下这张表吗？",
+        "source": "云端词库例句"
+      }
+    ],
+    "nu-i nicio problemă.": [
+      {
+        "ro": "Nu-i nicio problemă, putem încerca din nou.",
+        "zh": "没关系，我们可以再试一次。",
+        "source": "云端词库例句"
+      }
+    ],
+    "nu-ți face griji.": [
+      {
+        "ro": "Nu-ți face griji, mă ocup eu.",
+        "zh": "别担心，我来处理。",
+        "source": "云端词库例句"
+      }
+    ],
+    "nu am înțeles.": [
+      {
+        "ro": "Nu am înțeles ultima parte.",
+        "zh": "最后一部分我没听懂。",
+        "source": "云端词库例句"
+      }
+    ],
+    "repetați, vă rog.": [
+      {
+        "ro": "Repetați numărul, vă rog.",
+        "zh": "请把号码再说一遍。",
+        "source": "云端词库例句"
+      }
+    ],
+    "ce înseamnă...?": [
+      {
+        "ro": "Ce înseamnă cuvântul acesta?",
+        "zh": "这个词是什么意思？",
+        "source": "云端词库例句"
+      }
+    ],
+    "cum se pronunță...?": [
+      {
+        "ro": "Cum se pronunță numele dumneavoastră?",
+        "zh": "您的名字怎么发音？",
+        "source": "云端词库例句"
+      }
+    ],
+    "mi se pare că...": [
+      {
+        "ro": "Mi se pare că soluția aceasta este mai simplă.",
+        "zh": "我觉得这个办法更简单。",
+        "source": "云端词库例句"
+      }
+    ],
+    "din punctul meu de vedere,...": [
+      {
+        "ro": "Din punctul meu de vedere, avem nevoie de mai mult timp.",
+        "zh": "从我的角度看，我们需要更多时间。",
+        "source": "云端词库例句"
+      }
+    ],
+    "ce părere ai despre...?": [
+      {
+        "ro": "Ce părere ai despre propunerea lor?",
+        "zh": "你怎么看他们的提议？",
+        "source": "云端词库例句"
+      }
+    ],
+    "sunt de acord cu...": [
+      {
+        "ro": "Sunt de acord cu ideea ta.",
+        "zh": "我同意你的想法。",
+        "source": "云端词库例句"
+      }
+    ],
+    "nu sunt de acord cu...": [
+      {
+        "ro": "Nu sunt de acord cu această concluzie.",
+        "zh": "我不同意这个结论。",
+        "source": "云端词库例句"
+      }
+    ],
+    "depinde de...": [
+      {
+        "ro": "Depinde de cât timp avem.",
+        "zh": "这取决于我们有多少时间。",
+        "source": "云端词库例句"
+      }
+    ],
+    "de fapt,...": [
+      {
+        "ro": "De fapt, întâlnirea este mâine, nu astăzi.",
+        "zh": "其实会议是明天，不是今天。",
+        "source": "云端词库例句"
+      }
+    ],
+    "până la urmă,...": [
+      {
+        "ro": "Până la urmă, am găsit o soluție.",
+        "zh": "到头来，我们还是找到了解决办法。",
+        "source": "云端词库例句"
+      }
+    ],
+    "în orice caz,...": [
+      {
+        "ro": "În orice caz, trebuie să răspundem astăzi.",
+        "zh": "无论如何，我们今天必须回复。",
+        "source": "云端词库例句"
+      }
+    ],
+    "apropo de...": [
+      {
+        "ro": "Apropo de vacanță, ai rezervat biletele?",
+        "zh": "说到假期，你订票了吗？",
+        "source": "云端词库例句"
+      }
+    ],
+    "ca să fiu sincer(ă),...": [
+      {
+        "ro": "Ca să fiu sincer, nu mi se pare o idee bună.",
+        "zh": "老实说，我觉得这不是个好主意。",
+        "source": "云端词库例句"
+      }
+    ],
+    "dacă am înțeles bine,...": [
+      {
+        "ro": "Dacă am înțeles bine, termenul este vineri.",
+        "zh": "如果我理解得没错，截止日期是周五。",
+        "source": "云端词库例句"
+      }
+    ],
+    "cu alte cuvinte,...": [
+      {
+        "ro": "Cu alte cuvinte, trebuie să începem de la zero.",
+        "zh": "换句话说，我们得从头开始。",
+        "source": "云端词库例句"
+      }
+    ],
+    "are sens.": [
+      {
+        "ro": "Da, explicația ta are sens.",
+        "zh": "对，你的解释有道理。",
+        "source": "云端词库例句"
+      }
+    ],
+    "nu are sens.": [
+      {
+        "ro": "Nu are sens să așteptăm fără să întrebăm.",
+        "zh": "我们什么都不问只是干等着，这没道理。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a ține cont de...": [
+      {
+        "ro": "Trebuie să ținem cont de buget.",
+        "zh": "我们必须考虑预算。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a lua legătura cu...": [
+      {
+        "ro": "Voi lua legătura cu serviciul clienți.",
+        "zh": "我会联系客户服务。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a avea de-a face cu...": [
+      {
+        "ro": "Problema are de-a face cu ultima actualizare.",
+        "zh": "这个问题与上次更新有关。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a se ocupa de...": [
+      {
+        "ro": "Mă ocup eu de rezervare.",
+        "zh": "预订的事我来处理。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a face față...": [
+      {
+        "ro": "Echipa a făcut față situației foarte bine.",
+        "zh": "团队很好地应对了这种局面。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a-și da seama că...": [
+      {
+        "ro": "Mi-am dat seama că am uitat documentele.",
+        "zh": "我意识到自己忘带文件了。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a avea nevoie de...": [
+      {
+        "ro": "Avem nevoie de mai multe informații.",
+        "zh": "我们需要更多信息。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a avea dreptate": [
+      {
+        "ro": "Ai dreptate, am calculat greșit.",
+        "zh": "你说得对，是我算错了。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a fi vorba despre...": [
+      {
+        "ro": "Este vorba despre o schimbare importantă.",
+        "zh": "这里说的是一项重要变化。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a pune la punct...": [
+      {
+        "ro": "Trebuie să punem la punct toate detaliile.",
+        "zh": "我们得把所有细节安排妥当。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a ajunge la o concluzie": [
+      {
+        "ro": "Am ajuns la aceeași concluzie.",
+        "zh": "我们得出了相同的结论。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a lua o decizie": [
+      {
+        "ro": "Trebuie să luăm o decizie până mâine.",
+        "zh": "我们必须在明天之前作出决定。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a pune în practică...": [
+      {
+        "ro": "Este timpul să punem planul în practică.",
+        "zh": "该把计划付诸实践了。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a găsi o soluție": [
+      {
+        "ro": "Încercăm să găsim o soluție simplă.",
+        "zh": "我们在努力寻找一个简单的解决办法。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a lua în considerare...": [
+      {
+        "ro": "Vom lua în considerare toate opțiunile.",
+        "zh": "我们会考虑所有选项。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a aduce vorba despre...": [
+      {
+        "ro": "Nu știam cum să aduc vorba despre bani.",
+        "zh": "我不知道该怎么提起钱的话题。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a rămâne în legătură": [
+      {
+        "ro": "Să rămânem în legătură după curs.",
+        "zh": "课程结束后我们保持联系吧。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a nu avea rost": [
+      {
+        "ro": "Nu are rost să ne certăm acum.",
+        "zh": "现在争吵没有意义。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a merita să...": [
+      {
+        "ro": "Merită să încerci încă o dată.",
+        "zh": "值得再试一次。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a stabili o prioritate": [
+      {
+        "ro": "Trebuie să stabilim o prioritate clară.",
+        "zh": "我们需要设定一个明确的优先事项。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a respecta un termen-limită": [
+      {
+        "ro": "Echipa a respectat termenul-limită.",
+        "zh": "团队按时完成了任务。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a reveni cu un răspuns": [
+      {
+        "ro": "Revin cu un răspuns până la sfârșitul zilei.",
+        "zh": "我会在今天结束前给您答复。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a clarifica o cerință": [
+      {
+        "ro": "Aș vrea să clarific o cerință înainte să încep.",
+        "zh": "开始之前我想澄清一个要求。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a urmări progresul": [
+      {
+        "ro": "Urmărim progresul în fiecare săptămână.",
+        "zh": "我们每周跟进进展。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a lua cuvântul": [
+      {
+        "ro": "Directorul a luat cuvântul la finalul ședinței.",
+        "zh": "经理在会议最后发了言。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a ajunge la un acord": [
+      {
+        "ro": "Am ajuns la un acord după două ore de discuții.",
+        "zh": "讨论两小时后我们达成了一致。",
+        "source": "云端词库例句"
+      }
+    ],
+    "a pune o întrebare": [
+      {
+        "ro": "Pot să pun o întrebare?",
+        "zh": "我可以问一个问题吗？",
         "source": "云端词库例句"
       }
     ]

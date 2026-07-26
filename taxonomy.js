@@ -474,10 +474,11 @@
 
   function getClassificationSummary(word, options = {}) {
     const normalized = normalizeWord(word || {});
-    const parts = [
-      getTopicLabel(normalized.topic),
-      getPartOfSpeechLabel(normalized.part_of_speech)
-    ];
+    const unitReplacesPartOfSpeech = options.includeUnit &&
+      normalized.part_of_speech === 'verb' &&
+      normalized.unit_type === 'verb_phrase';
+    const parts = [getTopicLabel(normalized.topic)];
+    if (!unitReplacesPartOfSpeech) parts.push(getPartOfSpeechLabel(normalized.part_of_speech));
     if (options.includeUnit && normalized.unit_type !== 'word') parts.push(getUnitTypeLabel(normalized.unit_type));
     if (options.includeCefr && normalized.cefr) parts.push(normalized.cefr);
     return parts.filter(Boolean).join(' · ');

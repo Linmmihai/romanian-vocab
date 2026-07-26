@@ -10,7 +10,7 @@ const examplePayload = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'da
 const words = Array.isArray(vocabPayload) ? vocabPayload : (vocabPayload.words || []);
 const examples = examplePayload.examples || examplePayload;
 
-assert.equal(words.length, 4815, 'offline bundle must match the cleaned cloud vocabulary count');
+assert.equal(words.length, 4867, 'offline bundle must match the curated cloud vocabulary count');
 assert.equal(Object.keys(examples).length, words.length, 'every bundled word needs one complete example group');
 
 const topicValues = new Set(taxonomy.TOPICS.map(item => item.value));
@@ -54,5 +54,26 @@ assert.equal(industrial[0].id, 6270, 'progress-bearing industrial revolution row
 const reflexive = words.find(word => word.id === 8703);
 assert.match(taxonomy.formatGrammarInfo(reflexive), /反身/);
 assert.match(taxonomy.formatGrammarInfo(reflexive), /第 IV 变位/);
+
+const collocation = words.find(word => taxonomy.normalizedWordKey(word.ro) === 'a lipi eticheta');
+const collocationSummary = taxonomy.getClassificationSummary(collocation, { includeUnit: true });
+assert.match(collocationSummary, /动词 · 搭配/, 'ordinary compositional actions must be labeled as collocations');
+
+const verbPhrase = words.find(word => taxonomy.normalizedWordKey(word.ro) === 'a da banii înapoi');
+const verbPhraseSummary = taxonomy.getClassificationSummary(verbPhrase, { includeUnit: true });
+assert.match(verbPhraseSummary, /动词短语/, 'verb phrases must retain their specific learner-facing unit label');
+assert.doesNotMatch(verbPhraseSummary, /动词 · 动词短语/, 'verb phrases must not repeat the generic verb label');
+
+const curatedRows = words.filter(word => word.grammar_data?.curation_batch === 'phrase_curation_20260726');
+assert.equal(curatedRows.length, 856, 'all existing phrase rows and new core chunks must carry the curation batch');
+assert.equal(curatedRows.filter(word => word.grammar_data?.phrase_quality === 'core').length, 141, 'core phrase inventory count must remain stable');
+assert.equal(curatedRows.filter(word => !word.cefr || !word.register).length, 0, 'curated phrases need CEFR and register metadata');
+
+const sentencePattern = words.find(word => taxonomy.normalizedWordKey(word.ro) === taxonomy.normalizedWordKey('Mi se pare că...'));
+assert.equal(sentencePattern?.unit_type, 'sentence_pattern');
+assert.equal(sentencePattern?.grammar_data?.phrase_quality, 'core');
+
+const thanks = words.find(word => taxonomy.normalizedWordKey(word.ro) === 'mulțumesc');
+assert.equal(thanks?.unit_type, 'word', 'single-token mulțumesc must not be labeled as a verb phrase');
 
 console.log(`Word taxonomy verification passed: ${words.length} words, ${normalizedKeys.size} unique normalized keys.`);

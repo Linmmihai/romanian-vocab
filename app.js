@@ -1167,7 +1167,7 @@ async function loadExampleBank() {
   if (exampleBankLoadPromise) return exampleBankLoadPromise;
   exampleBankLoadPromise = (async () => {
   try {
-    const response = await fetch('./data/examples.json?v=20260725-card-taxonomy', { cache: 'reload' });
+    const response = await fetch('./data/examples.json?v=20260726-phrase-curation', { cache: 'reload' });
     if (!response.ok) {
       exampleBank = {};
       return exampleBank;
@@ -1738,14 +1738,21 @@ function isDailyQueueCandidate(w) {
   return isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w) || isPendingLearningRetryWord(w) || isUnseenWord(w);
 }
 
+function getUnseenContentPriority(w) {
+  const phraseQuality = String(w?.grammar_data?.phrase_quality || '');
+  if (phraseQuality === 'core') return 3;
+  if (phraseQuality === 'needs_review') return 5;
+  return 4;
+}
+
 function getDailyPhasePriority(w) {
   if (!w?.ro) return 9;
   if (isDueLearningStepWord(w)) return 0;
   if (isDueGraduatedReviewWord(w)) return 1;
   const scheduler = normalizeScheduler(getProgress(w.ro) || {});
   if (scheduler.needsReinforcement || scheduler.cardState === 'reinforcing') return 2;
-  if (isUnseenWord(w)) return 3;
-  if (isPendingLearningRetryWord(w)) return 4;
+  if (isUnseenWord(w)) return getUnseenContentPriority(w);
+  if (isPendingLearningRetryWord(w)) return 6;
   return 8;
 }
 
@@ -2713,6 +2720,13 @@ function formatReviewDue(iso) {
   const hours = Math.ceil(minutes / 60);
   if (hours < 24) return `${hours}小时后`;
   return `${Math.ceil(hours / 24)}天后`;
+}
+
+function formatCompactReviewDue(iso) {
+  return formatReviewDue(iso)
+    .replace('分钟后', '分')
+    .replace('小时后', '小时')
+    .replace('天后', '天');
 }
 
 function isGrammarUnverified(w) {
@@ -4624,8 +4638,15 @@ function renderAnswerConsequences(w) {
   ];
   configs.forEach(([action, id, label, consequence]) => {
     const next = getSchedulerReview(current, action, { now: new Date() });
-    const due = formatReviewDue(next.dueAt || next.nextReviewAt);
-    setText(id, `${label} · ${due} · ${consequence}`);
+    const dueAt = next.dueAt || next.nextReviewAt;
+    const due = formatReviewDue(dueAt);
+    const button = document.getElementById(id);
+    setText(id, `${label} · ${formatCompactReviewDue(dueAt)}`);
+    if (button) {
+      const fullDescription = `${label}，${due}，${consequence}`;
+      button.title = fullDescription;
+      button.setAttribute('aria-label', fullDescription);
+    }
   });
 }
 

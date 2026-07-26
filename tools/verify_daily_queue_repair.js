@@ -123,7 +123,9 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes('getDailyWordList:using-active-queue-before-load'), 'expected active repaired queues to render before dailyQueueLoaded settles');
   assert(app.includes("if (isDueLearningStepWord(w)) return 0;"), 'expected due learning steps to have first queue priority');
   assert(app.includes("if (isDueGraduatedReviewWord(w)) return 1;"), 'expected graduated reviews to follow learning steps');
-  assert(app.includes("if (isUnseenWord(w)) return 3;"), 'expected unseen cards to remain behind learning and review cards');
+  assert(app.includes("if (isUnseenWord(w)) return getUnseenContentPriority(w);"), 'expected unseen cards to use content-quality priority behind learning and review cards');
+  assert(app.includes("if (phraseQuality === 'core') return 3;"), 'expected reviewed core phrases to lead the unseen-card tier');
+  assert(app.includes("if (phraseQuality === 'needs_review') return 5;"), 'expected unreviewed phrase content to trail ordinary unseen cards');
   assert(app.includes("queuePhase === 'learning-due'"), 'expected learning steps to have a distinct visible state');
   assert(app.includes("queuePhase === 'review-due' || queuePhase === 'relearning-due'"), 'expected due review and relearning cards to render as review');
   assert(index.includes('id="today-focus-meta"'), 'expected one concise daily-plan explanation instead of repeated stage cards');
