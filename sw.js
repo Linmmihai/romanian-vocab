@@ -1,10 +1,11 @@
-const CACHE_NAME = 'ro-vocab-pwa-v30';
+const CACHE_NAME = 'ro-vocab-pwa-v33';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
   './scheduler.js',
   './progress-model.js',
   './daily-plan.js',
+  './taxonomy.js',
   './romanian-text.js',
   './api.js',
   './telemetry.js',

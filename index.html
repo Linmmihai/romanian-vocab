@@ -157,6 +157,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .card.flipped .card-face:not(.card-back){pointer-events:none}
 .card-back{transform:rotateY(180deg);background:var(--bg2);padding:0;overflow:hidden;justify-content:stretch}
 .card-back-top{flex:0 0 auto;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px 16px;min-height:156px}
+.card-stress-label{font-size:11px;color:var(--text3);font-weight:750;margin:2px 0 7px}
 .card-back-grammar{width:100%;background:white;border-top:1px solid var(--border);padding:18px 22px 24px;text-align:left;min-height:220px;flex:1 1 auto}
 .card-back-grammar-label{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px}
 .card-back-grammar .ph-hint{font-size:15px;color:var(--text);font-weight:650;margin:0}
@@ -173,9 +174,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .front-recall-label{font-size:11px;color:var(--text3);font-weight:800;margin-bottom:6px}
 .front-recall-zh{font-size:14px;color:var(--text);line-height:1.55;margin-bottom:8px}
 .front-recall-cloze{font-size:13px;color:var(--blue-text);font-weight:750;line-height:1.45}
+.card-prompt-cue{font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);padding:3px 10px;border-radius:99px}
+.card-history-note{display:none;font-size:12px;font-weight:750;color:var(--yellow-text);background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:99px;padding:4px 10px;margin-top:9px}
 .card-ro{font-size:24px;font-weight:600;margin-bottom:8px}
 .card-back-top .card-ro{display:none}
-.card-stress-word{font-size:34px;font-weight:750;letter-spacing:0;color:var(--text);line-height:1.2}
+.card-stress-word{max-width:100%;font-size:34px;font-weight:750;letter-spacing:0;color:var(--text);line-height:1.2;text-align:center;overflow-wrap:anywhere}
+.card-stress-word.long-word{font-size:26px}
+.card-stress-word.very-long-word{font-size:22px}
 .ph-box{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;margin-bottom:6px;min-width:128px}
 .ph-ipa{font-size:16px;font-weight:650;letter-spacing:0}
 .stress-mark{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
@@ -193,6 +198,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .card-wrap>#main-card+.card-answer-row{display:none;border:1px solid var(--border);border-top:none;border-radius:0 0 14px 14px;box-shadow:var(--shadow);margin-top:-1px}
 .card-wrap>#main-card.flipped{border-bottom-left-radius:0;border-bottom-right-radius:0}
 .card-wrap>#main-card.flipped+.card-answer-row{display:flex}
+.card-wrap>#main-card.history-view.flipped{border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+.card-wrap>#main-card.history-view.flipped+.card-answer-row{display:none}
+.card.history-view .card-history-note{display:block}
 .know-yes{flex:1;padding:11px;border:1px solid var(--green);border-radius:var(--radius-sm);background:white;color:var(--green-text);font-size:14px;font-weight:600;cursor:pointer}
 .know-fuzzy{flex:1;padding:11px;border:1px solid var(--yellow);border-radius:var(--radius-sm);background:white;color:var(--yellow-text);font-size:14px;font-weight:600;cursor:pointer}
 .know-no{flex:1;padding:11px;border:1px solid var(--red);border-radius:var(--radius-sm);background:white;color:var(--red-text);font-size:14px;font-weight:600;cursor:pointer}
@@ -409,7 +417,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .manual-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
 .manual-title{font-size:13px;font-weight:800;margin-bottom:5px;color:var(--text)}
 .manual-text{font-size:12px;color:var(--text2);line-height:1.55}
-@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.guide-video-link{grid-template-columns:auto minmax(0,1fr)}.guide-video-meta{grid-column:2}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}.grammar-hero{padding:19px 16px}.grammar-title{font-size:21px}.grammar-resource-note{align-items:flex-start;flex-wrap:wrap}.grammar-resource-copy{min-width:220px}.grammar-guide-link{width:100%}.grammar-course-grid{grid-template-columns:1fr}.grammar-course>summary{padding:14px}.grammar-course-detail{padding:13px 14px 14px}.grammar-module>summary{padding:13px}}
+@media(max-width:560px){body{padding-bottom:76px}.ph-grid,.manual-grid{grid-template-columns:1fr}.alphabet-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.guide-note{display:block}.guide-note strong{display:block;margin-bottom:3px}.guide-section-head{align-items:flex-start}.guide-video-link{grid-template-columns:auto minmax(0,1fr)}.guide-video-meta{grid-column:2}.topbar{height:auto;min-height:52px;padding:8px 12px;gap:8px}.topbar-left{min-width:0}.topbar-logo{font-size:16px;white-space:nowrap}.topbar-badge{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip{display:none}.sync-badge{display:inline-block;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar-right{gap:6px}.topbar-guide-btn{height:30px;padding:0 9px}.nav-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:120;background:white;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(23,32,51,0.08);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:4px;justify-content:space-between}.nav-tab{flex:1;min-width:0;padding:8px 4px;border-radius:var(--radius-sm);border-bottom:none;font-size:12px;text-align:center}.nav-tab.active{background:var(--blue-bg);color:var(--blue-text);border-bottom:none}.page{padding:10px}.flash-controls{margin-top:10px}.flash-controls summary{padding:11px 12px}.stats-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}.stat{padding:7px 4px}.stat-n{font-size:16px}.stat-l{font-size:10px}.review-panel{margin:0 0 10px;padding:10px}.review-grid{grid-template-columns:repeat(3,1fr);gap:5px}.review-metric{padding:7px}.review-n{font-size:15px}.study-mode-bar{margin-bottom:8px}.cat-panel{margin-bottom:10px}.cat-bar{margin-bottom:0}.daily-goal-panel{margin-bottom:0;padding:10px}.goal-setting-row{gap:6px}.flash-study{order:0}.card-wrap{margin-bottom:10px}.card{min-height:460px}.card-face{padding:1rem}.card-back-top{min-height:108px;padding:18px 16px 10px}.card-back-grammar{min-height:166px;padding:14px 18px 16px}.card-example{margin-top:12px;padding-top:10px}.card-stress-word{font-size:30px}.card-stress-word.long-word{font-size:23px}.card-stress-word.very-long-word{font-size:20px}.spk-row{margin:10px 0 8px;gap:6px}.spk,.report-btn{font-size:12px;padding:5px 10px}.card-answer-row{gap:10px;padding:12px 18px 16px}.admin-stat-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}.opts{grid-template-columns:1fr}.grammar-hero{padding:19px 16px}.grammar-title{font-size:21px}.grammar-resource-note{align-items:flex-start;flex-wrap:wrap}.grammar-resource-copy{min-width:220px}.grammar-guide-link{width:100%}.grammar-course-grid{grid-template-columns:1fr}.grammar-course>summary{padding:14px}.grammar-course-detail{padding:13px 14px 14px}.grammar-module>summary{padding:13px}}
 @media(max-width:560px){.flash-controls-body{padding:0 10px 10px}}
 @media(max-width:560px){.sync-badge{display:inline-flex;max-width:100px;padding:4px 7px}.sync-badge #sync-badge-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:380px){.topbar-badge{display:none}}
@@ -554,7 +562,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="auth-logo">
       <div class="flag">🇷🇴</div>
       <h1>罗马尼亚语词汇</h1>
-      <p>A1-B2</p>
+      <p>结构化罗语词库</p>
     </div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="showAuthTab('login')">登录</button>
@@ -627,7 +635,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <div class="today-focus-title" id="today-focus-title">今日路径</div>
         <div class="today-focus-action" id="today-focus-action">继续学习</div>
       </div>
-      <div class="today-focus-meta" id="today-focus-meta">复习优先，不足目标的名额自动补入新词。</div>
+      <div class="today-focus-meta" id="today-focus-meta">严格先做已到点内容，再按新词上限引入新卡。</div>
     </div>
     <div id="flash-content" class="flash-study" style="display:none">
       <div class="card-wrap">
@@ -635,6 +643,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="card-face" aria-hidden="false">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
               <div class="card-cat" id="fc-cat" style="margin-bottom:0"></div>
+              <span id="fc-pos" class="card-prompt-cue"></span>
               <span id="fc-level" style="font-size:11px;padding:3px 10px;border-radius:99px"></span>
               <span id="fc-verify" class="unverified-badge" style="display:none"></span>
             </div>
@@ -646,7 +655,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             <div class="card-back-top">
               <div class="card-cat" id="fc-cat2"></div>
               <div class="card-ro" id="fc-ro"></div>
+              <div class="card-stress-label">重音标记</div>
               <div class="card-stress-word" id="fc-ipa"></div>
+              <div class="card-history-note" id="fc-history-note">历史回看 · 不会重复计分</div>
             </div>
             <div class="card-back-grammar">
               <div class="card-back-grammar-label">语法信息</div>
@@ -665,13 +676,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           </div>
         </div>
         <div class="card-answer-row" aria-hidden="true">
-          <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识</button>
-          <button type="button" class="know-fuzzy" id="mark-fuzzy-btn" style="flex:1;padding:9px">≈ 模糊</button>
-          <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 认识</button>
+          <button type="button" class="know-no" id="mark-unknown-btn" style="flex:1;padding:9px">✕ 不认识 · 10分钟</button>
+          <button type="button" class="know-fuzzy" id="mark-fuzzy-btn" style="flex:1;padding:9px">≈ 模糊 · 继续学习</button>
+          <button type="button" class="know-yes" id="mark-known-btn" style="flex:1;padding:9px">✓ 准确回忆 · 完成</button>
         </div>
       </div>
       <div class="card-nav">
-        <button class="nav-btn" onclick="prevCard()">◀ 上一个</button>
+        <button class="nav-btn" id="history-nav-btn" onclick="prevCard()">◀ 回看上一张</button>
+        <button class="nav-btn" id="undo-last-answer-btn" onclick="undoLastCardAnswer()" disabled>↶ 撤销上次作答</button>
       </div>
     </div>
     <details class="flash-controls">
@@ -693,13 +705,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           </div>
           <div class="review-grid">
             <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">学习/复习到期</div></div>
-            <div class="review-metric"><div class="review-n" id="review-new-count">0/200</div><div class="review-l">已处理</div></div>
-            <div class="review-metric"><div class="review-n" id="review-new-remaining">0</div><div class="review-l">待学新词</div></div>
+            <div class="review-metric"><div class="review-n" id="review-new-count">0/200</div><div class="review-l">已通过</div></div>
+            <div class="review-metric"><div class="review-n" id="review-new-remaining">0/30</div><div class="review-l">已引入新词</div></div>
           </div>
           <div class="review-note" id="review-note">按学习步骤、到期复习、新词的顺序出卡。</div>
         </div>
         <div class="cat-panel">
-          <div class="cat-panel-title">分类筛选</div>
+          <div class="cat-panel-title">主题筛选</div>
           <div class="cat-bar" id="cat-bar"></div>
         </div>
 
@@ -707,10 +719,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <div class="daily-goal-panel">
           <div id="daily-goal-bar"></div>
           <div class="goal-setting-row">
-            <label for="goal-input" style="font-size:13px;color:var(--text2)">每日处理目标：</label>
+            <label for="goal-input" style="font-size:13px;color:var(--text2)">每日通过目标：</label>
             <input type="number" id="goal-input" min="1" max="5000" style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="200">
-            <span style="font-size:13px;color:var(--text2)">个词（复习优先，不足补新词）</span>
-            <button class="btn-sm" onclick="saveGoalSetting()">保存</button>
+            <span style="font-size:13px;color:var(--text2)">个词</span>
+            <label for="new-limit-input" style="font-size:13px;color:var(--text2)">每日新词上限：</label>
+            <input type="number" id="new-limit-input" min="0" max="500" style="width:72px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="30">
+            <span style="font-size:13px;color:var(--text2)">个（到期内容严格优先）</span>
+            <button class="btn-sm" onclick="saveGoalSetting()">保存设置</button>
           </div>
         </div>
       </div>
@@ -899,7 +914,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
     <div class="stats-pane" id="personal-stats-pane-words">
     <div class="panel">
-      <div class="panel-title"><span>分类掌握率</span><span style="font-size:12px;color:var(--text2)">按已掌握词汇计算</span></div>
+      <div class="panel-title"><span>主题掌握率</span><span style="font-size:12px;color:var(--text2)">按已掌握词汇计算</span></div>
       <div id="cat-mastery"></div>
     </div>
     <div class="panel">
@@ -1023,7 +1038,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="guide-card">
       <div class="guide-kicker">Cum înveți · 如何使用</div>
       <div class="guide-title">按队列顺序学习，不必自己挑词</div>
-      <div class="guide-subtitle">默认每天处理 200 个词：先放学习步骤和到期复习，不足 200 的名额再补新词。答“不认识/模糊”的词会留在当天固定队列中等待重试，不会偷偷补入第 201 个。</div>
+      <div class="guide-subtitle">默认每天通过 200 个词，但每天最多只引入 30 个新词。已到点的学习步骤和复习会严格排在新词前；答“不认识/模糊”只会继续学习，不会被算作通过。</div>
       <div class="manual-grid">
         <div class="manual-item">
           <div class="manual-title">① 今日顺序</div>
@@ -1031,7 +1046,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         </div>
         <div class="manual-item">
           <div class="manual-title">② 翻卡与作答</div>
-          <div class="manual-text">先回忆，再点卡片或上下滑动翻面。按真实记忆选择“不认识 / 模糊 / 认识”；左右滑动只切换当前队列中的卡片。</div>
+          <div class="manual-text">先回忆，再点卡片或上下滑动翻面。按钮会显示下次出现时间和是否通过今日任务；“回看上一张”只读，“撤销上次作答”才会恢复状态。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">③ 间隔复习</div>
@@ -1043,7 +1058,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         </div>
         <div class="manual-item">
           <div class="manual-title">查词与加词</div>
-          <div class="manual-text">在“词汇”中搜索中文、罗语或分类，也可把指定词加入今日队列。管理员可从账号菜单进入后台维护词库。</div>
+          <div class="manual-text">在“词汇”中搜索中文、罗语、主题或词性，也可把指定词加入今日队列。管理员可从账号菜单进入后台维护词库。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">统计与备份</div>
@@ -1065,7 +1080,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <div class="page" id="page-list">
     <div class="list-tools">
       <div class="search-bar">
-        <input id="search-input" aria-label="搜索词汇" placeholder="搜索中文、罗语或分类..." oninput="scheduleRenderList()">
+        <input id="search-input" aria-label="搜索词汇" placeholder="搜索中文、罗语、主题或词性..." oninput="scheduleRenderList()">
         <button class="btn-sm" type="button" onclick="resetListFilters()">清空</button>
       </div>
       <div class="list-filter-row">
@@ -1077,7 +1092,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <option value="review">待复习</option>
           <option value="mastered">已掌握</option>
         </select>
-        <select id="list-category-filter" aria-label="按分类筛选" onchange="resetListPageAndRender()"><option value="all">全部分类</option></select>
+        <select id="list-topic-filter" aria-label="按主题筛选" onchange="resetListPageAndRender()"><option value="all">全部主题</option></select>
+        <select id="list-pos-filter" aria-label="按词性筛选" onchange="resetListPageAndRender()"><option value="all">全部词性</option></select>
         <span class="list-summary" id="list-summary">正在整理词汇…</span>
       </div>
     </div>
@@ -1116,8 +1132,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       </div>
       <div class="admin-section-body">
         <div style="padding:12px 14px;font-size:13px;color:var(--text2)">
-          没有人工音标的词会进入待校对列表。优先补全音标，再用于正式背诵。
+          质量门会同时检查模板内容、主题、词性、重复、语法矛盾、重音和例句配对，不再只检查空音标。
         </div>
+        <div id="quality-audit-container"><div class="empty-state">正在检查词库质量…</div></div>
         <div id="missing-ipa-container"><div class="empty-state">加载中...</div></div>
       </div>
     </div>
@@ -1221,7 +1238,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="account-sync-detail" id="account-sync-detail">点击“立即同步”可主动确认今日记录已保存到云端。</div>
         </div>
       </div>
-      <div class="account-sync-summary" id="account-sync-summary">今日已处理 0/200 · 未打卡</div>
+      <div class="account-sync-summary" id="account-sync-summary">今日已通过 0/200 · 新词 0/30 · 未打卡</div>
       <div class="account-sync-actions">
         <button class="btn-save" id="manual-sync-btn" type="button" onclick="manualSyncToday()">立即同步</button>
       </div>
@@ -1245,10 +1262,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <div class="modal" role="dialog" aria-modal="true" aria-label="今日打卡" tabindex="-1">
     <div class="modal-title">今日打卡 <button class="modal-close" onclick="closeDailyCheckinModal()">✕</button></div>
     <div style="display:grid;gap:12px">
-      <div style="font-size:18px;font-weight:800;color:var(--text)">固定处理目标已完成</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">固定通过目标已完成</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <div class="review-metric"><div class="review-n" id="checkin-fixed-goal">0</div><div class="review-l">处理目标</div></div>
-        <div class="review-metric"><div class="review-n" id="checkin-today-count">0</div><div class="review-l">今日已处理</div></div>
+        <div class="review-metric"><div class="review-n" id="checkin-fixed-goal">0</div><div class="review-l">通过目标</div></div>
+        <div class="review-metric"><div class="review-n" id="checkin-today-count">0</div><div class="review-l">今日已通过</div></div>
         <div class="review-metric"><div class="review-n" id="checkin-accuracy">0%</div><div class="review-l">今日正确率</div></div>
       </div>
       <div style="font-size:13px;color:var(--text2);line-height:1.6">今天的目标已完成。可以到此为止，也可以明确选择继续；系统不会自动加量。</div>
@@ -1290,7 +1307,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <option value="wrong_ro">罗马尼亚语拼写有误</option>
         <option value="wrong_ipa">音标有误</option>
         <option value="wrong_hint">发音提示有误</option>
-        <option value="wrong_cat">分类有误</option>
+        <option value="wrong_cat">主题或词性有误</option>
         <option value="other">其他问题</option>
       </select>
     </div>
@@ -1312,8 +1329,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="form-group"><label>中文</label><input type="text" id="em-zh"></div>
     <div class="form-group"><label>罗马尼亚语</label><input type="text" id="em-ro"></div>
     <div class="form-group"><label>重音标记（大写或 ˈ 标重读）</label><input type="text" id="em-ipa"></div>
-    <div class="form-group"><label>语法信息（词性 / 复数 / 变位）</label><input type="text" id="em-hint" placeholder="例：名词 · 复数: mere / 动词 · -esc"></div>
-    <div class="form-group"><label>分类</label><input type="text" id="em-cat" list="edit-cat-list" placeholder="Daily Life / Philosophy / Economics ..."><datalist id="edit-cat-list"></datalist></div>
+    <div class="form-group"><label>原始语法信息（复数 / 变位 / 形式）</label><input type="text" id="em-hint" placeholder="例：s.n.: mere / verb: conj. IV (-esc)"></div>
+    <div class="form-group"><label>主题</label><select id="em-topic"></select></div>
+    <div class="form-group"><label>词性</label><select id="em-pos"></select></div>
+    <div class="form-group"><label>词汇单位</label><select id="em-unit"></select></div>
+    <div class="form-group"><label>CEFR（只填已核实的精确等级）</label><select id="em-cefr"><option value="">未核实，不显示</option></select></div>
+    <div class="form-group"><label>语域（可选）</label><select id="em-register"><option value="">未标注，不显示</option></select></div>
     <div class="form-group"><label>罗语例句</label><textarea id="em-example-ro" placeholder="例：Am cumpărat mere proaspete din piață." style="min-height:70px"></textarea></div>
     <div class="form-group"><label>中文例句</label><textarea id="em-example-zh" placeholder="例：我从市场买了新鲜苹果。" style="min-height:70px"></textarea></div>
     <div id="em-example-source" style="font-size:12px;color:var(--text3);margin-top:-6px;margin-bottom:8px"></div>
@@ -1340,12 +1361,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div id="aw-single">
       <div class="form-group"><label>中文（新词必填；只补例句可留空）</label><input type="text" id="aw-zh" placeholder="例：苹果"></div>
       <div class="form-group"><label>罗马尼亚语 <span style="color:var(--red)">*</span></label><input type="text" id="aw-ro" placeholder="例：măr"></div>
-      <div class="form-group"><label>重音标记（大写或 ˈ 标重读，可选）</label><input type="text" id="aw-ipa" placeholder="例：mĂr 或 /ˈmər/"></div>
-      <div class="form-group"><label>语法信息（词性 / 复数 / 变位，可选）</label><input type="text" id="aw-hint" placeholder="例：名词 · 复数: mere"></div>
-      <div class="form-group"><label>分类</label>
-        <input type="text" id="aw-cat" placeholder="例：Daily Life" list="cat-list">
-        <datalist id="cat-list"></datalist>
-      </div>
+      <div class="form-group"><label>重音标记（新词必填；大写或 ˈ 标重读）</label><input type="text" id="aw-ipa" placeholder="例：mĂr 或 /ˈmər/"></div>
+      <div class="form-group"><label>原始语法信息（新词必填；复数 / 变位 / 形式）</label><input type="text" id="aw-hint" placeholder="例：s.n.: mere"></div>
+      <div class="form-group"><label>主题</label><select id="aw-topic"></select></div>
+      <div class="form-group"><label>词性</label><select id="aw-pos"></select></div>
+      <div class="form-group"><label>词汇单位</label><select id="aw-unit"></select></div>
+      <div class="form-group"><label>CEFR（只填已核实的精确等级）</label><select id="aw-cefr"><option value="">未核实，不显示</option></select></div>
+      <div class="form-group"><label>语域（可选）</label><select id="aw-register"><option value="">未标注，不显示</option></select></div>
       <div class="form-group"><label>罗语例句（可选；已有词可只填罗语和例句）</label><textarea id="aw-example-ro" placeholder="例：Am cumpărat mere proaspete din piață." style="min-height:70px"></textarea></div>
       <div class="form-group"><label>中文例句（可选）</label><textarea id="aw-example-zh" placeholder="例：我从市场买了新鲜苹果。" style="min-height:70px"></textarea></div>
     </div>
@@ -1353,18 +1375,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <!-- 批量粘贴 -->
     <div id="aw-bulk" style="display:none">
       <div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--blue-text)">
-        每行一个词，字段顺序与“逐条添加”一致，用 <strong>|</strong> 分隔：<br>
-        <code style="font-size:12px">中文|罗马尼亚语|重音标记|语法信息|分类|罗语例句|中文例句</code><br>
-        <span style="opacity:0.8">只给已有词补例句时，可写：<code>criză|||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。</code></span>
+        每行一个词，用 <strong>|</strong> 分隔。主题、词性和词汇单位是三个独立字段：<br>
+        <code style="font-size:12px">中文|罗马尼亚语|重音|语法原文|主题|词性|词汇单位|罗语例句|中文例句</code><br>
+        <span style="opacity:0.8">只给已有词补例句时，可写：<code>criză|||||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。</code></span>
       </div>
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
-        现象|fenomen|fenomen|s.n.: fenomene|Philosophy|Fenomenul a fost observat de cercetători.|研究人员观察到了这一现象。<br>
-        绝对|absolut|absolut|adj.: absolută / absoluți / absolute|Philosophy||<br>
-        criză|||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。
+        现象|fenomen|fenomen|s.n.: fenomene|philosophy_abstract|noun|word|Fenomenul a fost observat de cercetători.|研究人员观察到了这一现象。<br>
+        绝对|absolut|absolut|adj.: absolută / absoluți / absolute|philosophy_abstract|adjective|word||<br>
+        criză|||||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。
       </div>
       <div class="form-group">
         <label>粘贴词汇（每行一个）</label>
-        <textarea id="aw-bulk-text" placeholder="现象|fenomen|fenomen|s.n.: fenomene|Philosophy|Fenomenul a fost observat de cercetători.|研究人员观察到了这一现象。&#10;绝对|absolut|absolut|adj.: absolută / absoluți / absolute|Philosophy||&#10;criză|||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。" style="min-height:180px;font-family:monospace;font-size:13px"></textarea>
+        <textarea id="aw-bulk-text" placeholder="现象|fenomen|fenomen|s.n.: fenomene|philosophy_abstract|noun|word|Fenomenul a fost observat de cercetători.|研究人员观察到了这一现象。&#10;绝对|absolut|absolut|adj.: absolută / absoluți / absolute|philosophy_abstract|adjective|word||&#10;criză|||||||Acum trei zile aproape că a murit de la o criză.|三天前他差点死于一场危机。" style="min-height:180px;font-family:monospace;font-size:13px"></textarea>
       </div>
     </div>
 
@@ -1377,15 +1399,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260719-sync-status';</script>
-<script src="scheduler.js?v=20260719-sync-status"></script>
-<script src="progress-model.js?v=20260719-sync-status"></script>
-<script src="daily-plan.js?v=20260719-sync-status"></script>
-<script src="romanian-text.js?v=20260719-sync-status"></script>
-<script src="api.js?v=20260719-sync-status"></script>
-<script src="telemetry.js?v=20260719-sync-status"></script>
-<script src="auth.js?v=20260719-sync-status"></script>
-<script src="app.js?v=20260719-sync-status"></script>
-<script src="pwa.js?v=20260719-sync-status"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260725-card-taxonomy';</script>
+<script src="scheduler.js?v=20260725-card-taxonomy"></script>
+<script src="progress-model.js?v=20260725-card-taxonomy"></script>
+<script src="daily-plan.js?v=20260725-card-taxonomy"></script>
+<script src="taxonomy.js?v=20260725-card-taxonomy"></script>
+<script src="romanian-text.js?v=20260725-card-taxonomy"></script>
+<script src="api.js?v=20260725-card-taxonomy"></script>
+<script src="telemetry.js?v=20260725-card-taxonomy"></script>
+<script src="auth.js?v=20260725-card-taxonomy"></script>
+<script src="app.js?v=20260725-card-taxonomy"></script>
+<script src="pwa.js?v=20260725-card-taxonomy"></script>
 </body>
 </html>

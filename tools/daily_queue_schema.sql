@@ -7,6 +7,7 @@ create table if not exists public.daily_queue (
   goal integer not null default 20 check (goal > 0 and goal <= 5000),
   word_ro text[] not null default '{}',
   completed_word_ro text[] not null default '{}',
+  introduced_word_ro text[] not null default '{}',
   completed boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -14,6 +15,10 @@ create table if not exists public.daily_queue (
 );
 
 alter table public.daily_queue enable row level security;
+
+alter table public.daily_queue
+  add column if not exists introduced_word_id integer[] not null default '{}',
+  add column if not exists introduced_word_ro text[] not null default '{}';
 
 grant select, insert, update on public.daily_queue to authenticated;
 grant select, insert, update on public.daily_log to authenticated;

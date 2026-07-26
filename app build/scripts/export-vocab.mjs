@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SUPA_URL = 'https://wuiblzpyhcjxevotwcqz.supabase.co';
 const SUPA_KEY = 'sb_publishable_R_1KpyBLGgn_BW1McVso7w_maR5OzDJ';
 
 const sb = createClient(SUPA_URL, SUPA_KEY);
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const appBuildRoot = path.resolve(scriptDir, '..');
+const repositoryRoot = path.resolve(appBuildRoot, '..');
 let all = [];
 let from = 0;
 
@@ -22,10 +26,24 @@ while (true) {
   from += 1000;
 }
 
-await mkdir(path.join(process.cwd(), 'data'), { recursive: true });
-await writeFile(
-  path.join(process.cwd(), 'data', 'vocab.json'),
-  JSON.stringify({ exportedAt: new Date().toISOString(), words: all }, null, 2) + '\n'
+const invalid = all.filter(word =>
+  !String(word.zh || '').trim() ||
+  !String(word.ro || '').trim() ||
+  /[\u3400-\u9fff]/u.test(String(word.ro || '')) ||
+  !word.topic ||
+  !word.part_of_speech ||
+  !word.unit_type ||
+  !word.grammar_data
 );
+if (invalid.length) {
+  throw new Error(`Refusing to export ${invalid.length} invalid vocabulary rows; first id: ${invalid[0]?.id}`);
+}
 
-console.log(`Exported ${all.length} words to data/vocab.json`);
+const payload = JSON.stringify({ exportedAt: new Date().toISOString(), words: all }, null, 2) + '\n';
+for (const targetRoot of [repositoryRoot, appBuildRoot]) {
+  const dataDir = path.join(targetRoot, 'data');
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(path.join(dataDir, 'vocab.json'), payload);
+}
+
+console.log(`Exported ${all.length} words to root and app-build data/vocab.json`);

@@ -62,11 +62,53 @@ const WORDS_LOAD_TIMEOUT_MS = 3500;
 const BUNDLED_WORDS_LOAD_TIMEOUT_MS = 6000;
 // v3 invalidates caches created before online users became cloud-first. Those
 // caches can contain deleted word IDs that violate progress.word_id's FK.
-const WORDS_CACHE_KEY = 'words_cache:v3';
+const VOCAB_DATA_VERSION = '20260725-card-taxonomy-v2';
+const WORDS_CACHE_KEY = `words_cache:${VOCAB_DATA_VERSION}`;
 const WORDS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
 const PENDING_DAILY_STATE_RETRY_LIMIT = 10;
+
+function apiNormalizedRoKey(value) {
+  return String(value || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ro');
+}
+
+function apiNormalizeVocabularyWord(word = {}) {
+  const base = {
+    ...word,
+    zh: String(word.zh || '').normalize('NFC').trim(),
+    ro: String(word.ro || '').normalize('NFC').trim().replace(/\s+/g, ' '),
+    ipa: String(word.ipa || '').normalize('NFC').trim(),
+    hint: String(word.hint || '').normalize('NFC').trim(),
+    example_ro: String(word.example_ro || word.exampleRo || '').normalize('NFC').trim(),
+    example_zh: String(word.example_zh || word.exampleZh || '').normalize('NFC').trim()
+  };
+  const taxonomy = window.RomanianVocabTaxonomy;
+  const normalized = taxonomy?.normalizeWord ? taxonomy.normalizeWord(base) : base;
+  return {
+    ...normalized,
+    cat: normalized.topic || base.topic || base.cat || 'unclassified',
+    grammar_data: normalized.grammar_data || base.grammar_data || {},
+    verification_status: normalized.verification_status || base.verification_status || 'needs_review',
+    source: normalized.source || base.source || 'admin_submission'
+  };
+}
+
+function apiValidateVocabularyWord(word, options = {}) {
+  const taxonomy = window.RomanianVocabTaxonomy;
+  const problems = [];
+  const exampleOnly = options.allowExampleOnly && !word.zh && !!word.example_ro;
+  if (!word.ro) problems.push('缺少罗马尼亚语');
+  if (!exampleOnly && !word.zh) problems.push('缺少中文');
+  if (/[\u3400-\u9fff]/u.test(word.ro)) problems.push('罗语字段包含中文');
+  if (taxonomy?.looksLikeTemplateWord?.(word)) problems.push('检测到表头或模板内容');
+  if (!exampleOnly && word.topic === 'unclassified') problems.push('缺少明确主题');
+  if (!exampleOnly && word.part_of_speech === 'other') problems.push('缺少明确词性');
+  if (!exampleOnly && !word.unit_type) problems.push('缺少词汇单位');
+  if (word.example_ro && !word.example_zh) problems.push('罗语例句缺少中文翻译');
+  if (word.example_zh && !word.example_ro) problems.push('中文例句缺少罗语原句');
+  return problems;
+}
 
 function isOfflineMode() {
   return currentUser?.id === OFFLINE_USER_ID || localStorage.getItem('offline-mode') === '1';
@@ -301,7 +343,13 @@ function readLocalProgressFallback(userId) {
     const wordId = getProgressEntryWordId(key, progress);
     const wordRo = getProgressEntryWordRo(progress, key);
     const nextKey = progressEntryKey(wordId, wordRo) || key;
-    map[nextKey] = mergeStoredProgress(map[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    if (progress?.pendingDelete) {
+      delete map[nextKey];
+    } else if (progress?.pendingCorrection) {
+      map[nextKey] = mergeStoredProgress(null, { ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    } else {
+      map[nextKey] = mergeStoredProgress(map[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    }
   });
   return map;
 }
@@ -338,7 +386,9 @@ function writePendingProgress(userId, wordId, wordRo, progress = {}) {
     word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
     pendingSync: true,
     pendingSyncAt: new Date().toISOString(),
-    pendingSyncToken: createProgressSyncToken(key)
+    pendingSyncToken: createProgressSyncToken(key),
+    pendingCorrection: false,
+    pendingDelete: false
   };
   try {
     writeJson(progressPendingKey(userId), pending);
@@ -374,6 +424,53 @@ function queueProgressForSync(userId, wordId, wordRo, progress = {}, memory = {}
   };
 }
 
+function queueProgressCorrectionForSync(userId, wordId, wordRo, progress = null, memory = {}) {
+  const key = progressEntryKey(wordId, wordRo);
+  if (!userId || !key) return { ok: false, error: new Error('Missing progress identity') };
+  const localProgress = readJson(localKey(userId, 'progress'), {});
+  const pendingProgress = readPendingProgress(userId);
+  const resolvedWordId = getProgressEntryWordId(key, progress || { word_id: wordId });
+  const resolvedWordRo = wordRo || progress?.word_ro || progress?.wordRo || '';
+  const now = new Date().toISOString();
+  if (progress) {
+    localProgress[key] = {
+      ...progress,
+      word_id: resolvedWordId,
+      word_ro: resolvedWordRo,
+      wordId: resolvedWordId,
+      wordRo: resolvedWordRo
+    };
+    delete localProgress[key].pendingSync;
+    pendingProgress[key] = {
+      ...localProgress[key],
+      pendingSync: true,
+      pendingSyncAt: now,
+      pendingSyncToken: createProgressSyncToken(key),
+      pendingCorrection: true,
+      pendingDelete: false
+    };
+  } else {
+    delete localProgress[key];
+    pendingProgress[key] = {
+      word_id: resolvedWordId,
+      word_ro: resolvedWordRo,
+      pendingSync: true,
+      pendingSyncAt: now,
+      pendingSyncToken: createProgressSyncToken(key),
+      pendingCorrection: true,
+      pendingDelete: true
+    };
+  }
+  try {
+    writeJson(localKey(userId, 'progress'), localProgress);
+    writeJson(progressPendingKey(userId), pendingProgress);
+    const memoryBackup = writeProgressMemoryBackup(userId, resolvedWordId, resolvedWordRo, progress ? memory : {});
+    return { ok: memoryBackup.ok !== false, memoryBackup };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
 function queueProgressBatchForSync(userId, entries = []) {
   const validEntries = (entries || []).filter(entry => progressEntryKey(entry?.wordId ?? entry?.word_id, entry?.wordRo ?? entry?.word_ro));
   if (!userId || !validEntries.length) return { ok: true, skipped: true };
@@ -394,7 +491,9 @@ function queueProgressBatchForSync(userId, entries = []) {
         word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
         pendingSync: true,
         pendingSyncAt: progress?.pendingSyncAt || backedUpAt,
-        pendingSyncToken: createProgressSyncToken(key)
+        pendingSyncToken: createProgressSyncToken(key),
+        pendingCorrection: false,
+        pendingDelete: false
       };
 
       const wrongCount = Number(memory.wrongCount || 0);
@@ -439,7 +538,9 @@ function writePendingProgressBatch(userId, entries = []) {
       word_ro: wordRo || progress?.word_ro || progress?.wordRo || '',
       pendingSync: true,
       pendingSyncAt: progress?.pendingSyncAt || now,
-      pendingSyncToken: createProgressSyncToken(key)
+      pendingSyncToken: createProgressSyncToken(key),
+      pendingCorrection: false,
+      pendingDelete: false
     };
   });
   try {
@@ -532,10 +633,10 @@ function clearPendingDailyStatePart(userId, date, part, syncedToken = '', synced
 }
 
 async function upsertDailyQueuePayload(payload) {
-  const { sync_token, syncToken, local, syncError, pendingSync, ...cloudPayload } = payload;
+  const { sync_token, syncToken, force_replace, forceReplace, local, syncError, pendingSync, ...cloudPayload } = payload;
   let { error } = await sb.from('daily_queue').upsert(cloudPayload, { onConflict: 'user_id,queue_date' });
-  if (error && /word_id|completed_word_id|schema cache|Could not find/i.test(error.message || '')) {
-    const { word_id, completed_word_id, ...legacyPayload } = cloudPayload;
+  if (error && /word_id|completed_word_id|introduced_word|schema cache|Could not find/i.test(error.message || '')) {
+    const { word_id, completed_word_id, introduced_word_id, introduced_word_ro, ...legacyPayload } = cloudPayload;
     ({ error } = await sb.from('daily_queue').upsert(legacyPayload, { onConflict: 'user_id,queue_date' }));
   }
   if (error) throw new Error(error.message);
@@ -543,7 +644,7 @@ async function upsertDailyQueuePayload(payload) {
 }
 
 async function upsertDailyLogPayload(payload) {
-  const { sync_token, syncToken, local, syncError, pendingSync, ...cloudPayload } = payload;
+  const { sync_token, syncToken, force_replace, forceReplace, local, syncError, pendingSync, ...cloudPayload } = payload;
   let { error } = await withTimeout(
     sb.from('daily_log').upsert(cloudPayload, { onConflict: 'user_id,log_date' }),
     PROGRESS_LOAD_TIMEOUT_MS,
@@ -606,8 +707,8 @@ async function loadBundledWords(options = {}) {
     }
   }
   const response = await fetchWithTimeout(
-    './data/vocab.json',
-    { cache: 'force-cache' },
+    `./data/vocab.json?v=${encodeURIComponent(VOCAB_DATA_VERSION)}`,
+    { cache: 'reload' },
     BUNDLED_WORDS_LOAD_TIMEOUT_MS,
     '本地词库读取超时'
   );
@@ -808,6 +909,10 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     ...(localPayload.completed_word_id || [])
   ]);
   const completedIdKeys = new Set(completed_word_id.map(String));
+  const introduced_word_id = normalizeIdArray([
+    ...(cloudPayload.introduced_word_id || []),
+    ...(localPayload.introduced_word_id || [])
+  ]);
   const word_id = normalizeIdArray([
     ...(cloudPayload.word_id || []),
     ...(localPayload.word_id || [])
@@ -817,6 +922,10 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     ...(localPayload.completed_word_ro || [])
   ]);
   const completedKeys = new Set(completed.map(value => value.toLocaleLowerCase('ro')));
+  const introduced_word_ro = normalizeRoArray([
+    ...(cloudPayload.introduced_word_ro || []),
+    ...(localPayload.introduced_word_ro || [])
+  ]);
   const word_ro = normalizeRoArray([
     ...(cloudPayload.word_ro || []),
     ...(localPayload.word_ro || [])
@@ -830,6 +939,8 @@ function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
     word_ro,
     completed_word_id,
     completed_word_ro: completed,
+    introduced_word_id,
+    introduced_word_ro,
     completed: !!(localPayload.completed || cloudPayload.completed),
     updated_at: localPayload.updated_at || new Date().toISOString()
   };
@@ -913,7 +1024,11 @@ async function apiApplyStressGrammarPatch(rows, onProgress) {
   async function worker(queue) {
     while (queue.length) {
       const row = queue.shift();
-      await apiUpdateWord(row.id, { ipa: row.ipa, hint: row.hint });
+      await apiUpdateWord(row.id, {
+        ipa: row.ipa,
+        hint: row.hint,
+        grammar_data: row.grammar_data || null
+      });
       done++;
       if (onProgress) onProgress(done, rows.length);
     }
@@ -930,31 +1045,21 @@ async function apiApplyStressGrammarPatch(rows, onProgress) {
  */
 async function apiInsertWords(words) {
   if (isOfflineMode()) throw new Error('离线模式下不能添加到共享词库');
-  const normalized = words.map(w => ({
-    ...w,
-    zh: String(w.zh || '').trim(),
-    ro: String(w.ro || '').trim(),
-    example_ro: String(w.example_ro || w.exampleRo || '').trim(),
-    example_zh: String(w.example_zh || w.exampleZh || '').trim()
-  })).filter(w => w.ro);
-  const roList = [...new Set(normalized.map(w => w.ro))];
+  const normalized = words.map(apiNormalizeVocabularyWord).filter(w => w.ro);
+  const firstInvalid = normalized
+    .map(word => ({ word, problems: apiValidateVocabularyWord(word, { allowExampleOnly: true }) }))
+    .find(item => item.problems.length);
+  if (firstInvalid) throw new Error(`${firstInvalid.word.ro || '词条'}：${firstInvalid.problems[0]}`);
   let exampleSchemaMissing = false;
-  let { data: existingRows, error: existingError } = await sb
-    .from('words')
-    .select('id,ro,example_ro,example_zh')
-    .in('ro', roList);
-  if (existingError && isMissingExampleColumnsError(existingError)) {
-    exampleSchemaMissing = true;
-    const retry = await sb
-      .from('words')
-      .select('id,ro')
-      .in('ro', roList);
-    existingRows = retry.data;
-    existingError = retry.error;
-  }
-  if (existingError) throw new Error(existingError.message);
-  const existingByRo = new Map((existingRows || []).map(row => [row.ro, row]));
-  const newWords = normalized.filter(w => !existingByRo.has(w.ro));
+  const existingRows = await apiLoadWords({ preferCloud: true });
+  const existingByRo = new Map((existingRows || []).map(row => [apiNormalizedRoKey(row.ro), row]));
+  const seenKeys = new Set(existingByRo.keys());
+  const newWords = normalized.filter(word => {
+    const key = apiNormalizedRoKey(word.ro);
+    if (!key || seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
   const missingZh = newWords.filter(w => !w.zh);
   if (missingZh.length) {
     throw new Error(`新词缺少中文：${missingZh.map(w => w.ro).join('、')}`);
@@ -963,27 +1068,31 @@ async function apiInsertWords(words) {
     zh: w.zh, ro: w.ro,
     ipa: w.ipa || '',
     hint: w.hint || '',
-    cat: w.cat || '其他',
+    cat: w.topic,
+    topic: w.topic,
+    part_of_speech: w.part_of_speech,
+    unit_type: w.unit_type,
+    grammar_data: w.grammar_data || {},
+    cefr: w.cefr || null,
+    register: w.register || null,
+    verification_status: 'verified',
+    source: w.source || 'admin_approved',
     example_ro: w.example_ro || '',
-    example_zh: w.example_zh || '',
-    level: 'A1-B2',
-    // Kept only for database compatibility; the app no longer uses difficulty.
-    difficulty: w.difficulty || 'beginner'
+    example_zh: w.example_zh || ''
   }));
   let inserted = 0;
   if (payload.length) {
-    const { data, error } = await sb.from('words')
-      .upsert(payload, { onConflict: 'ro', ignoreDuplicates: true })
-      .select();
+    const { data, error } = await sb.from('words').insert(payload).select();
     if (error && isMissingExampleColumnsError(error)) {
       exampleSchemaMissing = true;
       const fallbackPayload = payload.map(({ example_ro, example_zh, ...row }) => row);
-      const retry = await sb.from('words')
-        .upsert(fallbackPayload, { onConflict: 'ro', ignoreDuplicates: true })
-        .select();
+      const retry = await sb.from('words').insert(fallbackPayload).select();
       if (retry.error) throw new Error(retry.error.message);
       inserted = retry.data?.length || 0;
     } else if (error) {
+      if (/words_ro_normalized_unique|duplicate key/i.test(error.message || '')) {
+        throw new Error('罗马尼亚语词条已存在（大小写和首尾空格不区分）');
+      }
       throw new Error(error.message);
     } else {
       inserted = data?.length || 0;
@@ -991,7 +1100,7 @@ async function apiInsertWords(words) {
   }
   let updatedExamples = 0;
   for (const word of normalized) {
-    const existing = existingByRo.get(word.ro);
+    const existing = existingByRo.get(apiNormalizedRoKey(word.ro));
     if (!existing || !word.example_ro) continue;
     if (String(existing.example_ro || '').trim()) continue;
     const updates = { example_ro: word.example_ro };
@@ -1012,15 +1121,26 @@ function isMissingExampleColumnsError(error) {
 }
 
 function normalizePendingWordPayload(words) {
-  return words.map(w => ({
-    zh: String(w.zh || '').trim(),
-    ro: String(w.ro || '').trim(),
-    ipa: String(w.ipa || '').trim(),
-    hint: String(w.hint || '').trim(),
-    cat: w.cat || 'Daily Life',
-    example_ro: String(w.example_ro || w.exampleRo || '').trim(),
-    example_zh: String(w.example_zh || w.exampleZh || '').trim()
-  })).filter(w => w.ro && (w.zh || w.example_ro));
+  return words
+    .map(apiNormalizeVocabularyWord)
+    .filter(w => w.ro && (w.zh || w.example_ro))
+    .map(w => ({
+      zh: w.zh,
+      ro: w.ro,
+      ipa: w.ipa,
+      hint: w.hint,
+      cat: w.topic,
+      topic: w.topic,
+      part_of_speech: w.part_of_speech,
+      unit_type: w.unit_type,
+      grammar_data: w.grammar_data || {},
+      cefr: w.cefr || null,
+      register: w.register || null,
+      verification_status: w.verification_status || 'needs_review',
+      source: w.source || 'admin_submission',
+      example_ro: w.example_ro,
+      example_zh: w.example_zh
+    }));
 }
 
 /**
@@ -1030,6 +1150,10 @@ async function apiSubmitWordsForReview(words, submitter = {}) {
   if (isOfflineMode()) throw new Error('离线模式下不能提交共享词库审核');
   const normalized = normalizePendingWordPayload(words);
   if (!normalized.length) throw new Error('没有可提交审核的词汇');
+  const firstInvalid = normalized
+    .map(word => ({ word, problems: apiValidateVocabularyWord(word, { allowExampleOnly: true }) }))
+    .find(item => item.problems.length);
+  if (firstInvalid) throw new Error(`${firstInvalid.word.ro || '词条'}：${firstInvalid.problems[0]}`);
   const missingZh = normalized.filter(w => !w.zh && !w.example_ro);
   if (missingZh.length) throw new Error(`新词缺少中文：${missingZh.map(w => w.ro).join('、')}`);
 
@@ -1158,7 +1282,13 @@ async function apiLoadProgress(userId) {
     const wordId = getProgressEntryWordId(key, progress);
     const wordRo = getProgressEntryWordRo(progress, key);
     const nextKey = progressEntryKey(wordId, wordRo) || key;
-    map[nextKey] = mergeStoredProgress(map[nextKey], { ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    if (progress?.pendingDelete) {
+      delete map[nextKey];
+    } else if (progress?.pendingCorrection) {
+      map[nextKey] = mergeStoredProgress(null, { ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    } else {
+      map[nextKey] = mergeStoredProgress(map[nextKey], { ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
+    }
   });
   writeLocalProgressSnapshot(userId, map);
   return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
@@ -1195,7 +1325,17 @@ async function apiRetryPendingProgress(userId, limit = PENDING_PROGRESS_RETRY_LI
         return { unresolved: true };
       }
       const wordRo = validWordById.get(String(wordId)).ro || candidate.wordRo;
-      const mergedProgress = mergeCloudProgress(p, wordId ? cloudById.get(String(wordId)) : null);
+      if (p.pendingDelete) {
+        const { error: deleteError } = await sb.from('progress')
+          .delete()
+          .eq('user_id', userId)
+          .eq('word_id', wordId);
+        if (deleteError) throw new Error(deleteError.message);
+        return { unresolved: false };
+      }
+      const mergedProgress = p.pendingCorrection
+        ? { ...p }
+        : mergeCloudProgress(p, wordId ? cloudById.get(String(wordId)) : null);
       await apiSaveProgress(
         userId,
         wordId,
@@ -1276,7 +1416,9 @@ async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RET
           word_id: normalizeIdArray(state.queue.word_id),
           word_ro: state.queue.word_ro || [],
           completed_word_id: normalizeIdArray(state.queue.completed_word_id),
-          completed_word_ro: state.queue.completed_word_ro || []
+          completed_word_ro: state.queue.completed_word_ro || [],
+          introduced_word_id: normalizeIdArray(state.queue.introduced_word_id),
+          introduced_word_ro: state.queue.introduced_word_ro || []
         };
         const { data: cloudQueue, error: readError } = await sb.from('daily_queue')
           .select('*')
@@ -1284,7 +1426,9 @@ async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RET
           .eq('queue_date', date)
           .maybeSingle();
         if (readError) throw new Error(readError.message);
-        const mergedQueue = mergeDailyQueuePayload(queuePayload, cloudQueue);
+        const mergedQueue = queuePayload.force_replace
+          ? queuePayload
+          : mergeDailyQueuePayload(queuePayload, cloudQueue);
         await upsertDailyQueuePayload(mergedQueue);
         clearPendingDailyStatePart(userId, date, 'queue', queuePayload.sync_token || queuePayload.syncToken || '', queuePayload.updated_at || queuePayload.updatedAt || '');
         entrySaved = true;
@@ -1305,7 +1449,9 @@ async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RET
           '今日记录读取超时'
         );
         if (readError) throw new Error(readError.message);
-        const mergedLog = mergeDailyLogPayload(logPayload, cloudLog, logPayload.goal, { completedExplicit: typeof logPayload.completed === 'boolean' });
+        const mergedLog = logPayload.force_replace
+          ? logPayload
+          : mergeDailyLogPayload(logPayload, cloudLog, logPayload.goal, { completedExplicit: typeof logPayload.completed === 'boolean' });
         await upsertDailyLogPayload(mergedLog);
         clearPendingDailyStatePart(userId, date, 'log', logPayload.sync_token || logPayload.syncToken || '', logPayload.updated_at || logPayload.updatedAt || '');
         entrySaved = true;
@@ -1554,6 +1700,8 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
       word_ro: Array.isArray(parsed.word_ro) ? parsed.word_ro : [],
       completed_word_id: normalizeIdArray(parsed.completed_word_id),
       completed_word_ro: Array.isArray(parsed.completed_word_ro) ? parsed.completed_word_ro : [],
+      introduced_word_id: normalizeIdArray(parsed.introduced_word_id),
+      introduced_word_ro: Array.isArray(parsed.introduced_word_ro) ? parsed.introduced_word_ro : [],
       completed: !!parsed.completed,
       local: true
     };
@@ -1569,6 +1717,8 @@ function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
     word_ro: queue.word_ro || [],
     completed_word_id: normalizeIdArray(queue.completed_word_id),
     completed_word_ro: queue.completed_word_ro || [],
+    introduced_word_id: normalizeIdArray(queue.introduced_word_id),
+    introduced_word_ro: queue.introduced_word_ro || [],
     completed: !!queue.completed
   };
   localStorage.setItem(getLocalQueueKey(userId, date), JSON.stringify(payload));
@@ -1580,7 +1730,7 @@ async function apiGetDailyQueue(userId, goal) {
   const localQueue = readLocalQueue(userId, goal, today);
   const pendingQueue = readPendingDailyState(userId)?.[today]?.queue || null;
   const localEffectiveQueue = pendingQueue
-    ? mergeDailyQueuePayload(pendingQueue, localQueue)
+    ? (pendingQueue.force_replace ? pendingQueue : mergeDailyQueuePayload(pendingQueue, localQueue))
     : localQueue;
   if (isOfflineMode()) return localEffectiveQueue;
   try {
@@ -1599,9 +1749,13 @@ async function apiGetDailyQueue(userId, goal) {
         word_id: normalizeIdArray(data.word_id),
         word_ro: data.word_ro || [],
         completed_word_id: normalizeIdArray(data.completed_word_id),
-        completed_word_ro: data.completed_word_ro || []
+        completed_word_ro: data.completed_word_ro || [],
+        introduced_word_id: normalizeIdArray(data.introduced_word_id),
+        introduced_word_ro: data.introduced_word_ro || []
       };
-      return localEffectiveQueue ? mergeDailyQueuePayload(localEffectiveQueue, cloudQueue) : cloudQueue;
+      return localEffectiveQueue
+        ? (localEffectiveQueue.force_replace ? localEffectiveQueue : mergeDailyQueuePayload(localEffectiveQueue, cloudQueue))
+        : cloudQueue;
     }
     if (error && error.code !== 'PGRST116') {
       if (localEffectiveQueue) return { ...localEffectiveQueue, syncError: error.message };
@@ -1613,6 +1767,8 @@ async function apiGetDailyQueue(userId, goal) {
         word_ro: [],
         completed_word_id: [],
         completed_word_ro: [],
+        introduced_word_id: [],
+        introduced_word_ro: [],
         completed: false,
         syncError: error.message
       };
@@ -1623,6 +1779,7 @@ async function apiGetDailyQueue(userId, goal) {
 
 async function apiSaveDailyQueue(userId, queue, options = {}) {
   const today = getQueueDateKey();
+  const requiresForceReplace = !!options.forceLocal || !!readPendingDailyState(userId)?.[today]?.queue?.force_replace;
   const payload = {
     user_id: userId,
     queue_date: today,
@@ -1631,9 +1788,12 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
     word_ro: queue.word_ro || [],
     completed_word_id: normalizeIdArray(queue.completed_word_id),
     completed_word_ro: queue.completed_word_ro || [],
+    introduced_word_id: normalizeIdArray(queue.introduced_word_id),
+    introduced_word_ro: queue.introduced_word_ro || [],
     completed: !!queue.completed,
     updated_at: new Date().toISOString(),
-    sync_token: createDailySyncToken('queue', today)
+    sync_token: createDailySyncToken('queue', today),
+    ...(requiresForceReplace ? { force_replace: true } : {})
   };
   const pendingStatus = queueDailyStateForSync(userId, today, { queue: payload });
   let localWriteError = null;
@@ -1657,7 +1817,7 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
       .eq('queue_date', today)
       .maybeSingle();
     if (readError) return { ...payload, syncError: [readError.message, localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') };
-    const mergedPayload = options.forceLocal ? payload : mergeDailyQueuePayload(payload, cloudQueue);
+    const mergedPayload = requiresForceReplace ? payload : mergeDailyQueuePayload(payload, cloudQueue);
     await upsertDailyQueuePayload(mergedPayload);
     try {
       writeLocalQueue(userId, mergedPayload, today);
@@ -1881,10 +2041,14 @@ async function apiGetTodayLog(userId, goal) {
   }
   if (data) {
     const local = pendingLog
-      ? mergeDailyLogPayload(pendingLog, localLogs[today], goal, { completedExplicit: typeof pendingLog.completed === 'boolean' })
+      ? (pendingLog.force_replace
+        ? pendingLog
+        : mergeDailyLogPayload(pendingLog, localLogs[today], goal, { completedExplicit: typeof pendingLog.completed === 'boolean' }))
       : localLogs[today];
     if (local) {
-      const merged = mergeDailyLogPayload(local, data, goal, { completedExplicit: typeof local.completed === 'boolean' });
+      const merged = local.force_replace
+        ? local
+        : mergeDailyLogPayload(local, data, goal, { completedExplicit: typeof local.completed === 'boolean' });
       delete merged.syncError;
       localLogs[today] = { ...merged, local: true };
       writeJson(localKey(userId, 'daily_log'), localLogs);
@@ -1893,7 +2057,9 @@ async function apiGetTodayLog(userId, goal) {
     return data;
   }
   const localFallback = pendingLog
-    ? mergeDailyLogPayload(pendingLog, localLogs[today], goal, { completedExplicit: typeof pendingLog.completed === 'boolean' })
+    ? (pendingLog.force_replace
+      ? pendingLog
+      : mergeDailyLogPayload(pendingLog, localLogs[today], goal, { completedExplicit: typeof pendingLog.completed === 'boolean' }))
     : localLogs[today];
   if (localFallback) {
     if (error && error.code !== 'PGRST116') return { ...localFallback, syncError: error.message || localFallback.syncError };
@@ -1929,11 +2095,21 @@ async function apiGetTodayLog(userId, goal) {
  */
 async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal, options = {}) {
   const today = getLocalDateKey();
+  const requiresForceReplace = !!options.forceLocal || !!readPendingDailyState(userId)?.[today]?.log?.force_replace;
   const completed = typeof options.completed === 'boolean' ? options.completed : completedTasks >= completionGoal;
   const logs = readJson(localKey(userId, 'daily_log'), {});
   const updatedAt = new Date().toISOString();
   const syncToken = createDailySyncToken('log', today);
-  const localPayload = { user_id: userId, log_date: today, new_words: completedTasks, goal, completed, updated_at: updatedAt, sync_token: syncToken };
+  const localPayload = {
+    user_id: userId,
+    log_date: today,
+    new_words: completedTasks,
+    goal,
+    completed,
+    updated_at: updatedAt,
+    sync_token: syncToken,
+    ...(requiresForceReplace ? { force_replace: true } : {})
+  };
   const pendingStatus = queueDailyStateForSync(userId, today, { log: localPayload });
   logs[today] = { ...localPayload, local: true };
   let localWriteError = null;
@@ -1965,7 +2141,7 @@ async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = 
     readError = error;
   }
   if (readError) return { saved: 'local', syncError: [readError.message || '今日记录读取失败', localWriteError?.message, pendingStatus.ok ? '' : '本机待同步队列写入失败'].filter(Boolean).join('；') };
-  const mergedPayload = options.forceLocal
+  const mergedPayload = requiresForceReplace
     ? localPayload
     : mergeDailyLogPayload(localPayload, cloudLog, completionGoal, { completedExplicit: typeof options.completed === 'boolean' });
   let error = null;
@@ -2022,30 +2198,46 @@ async function apiVerifyTodayState(userId, snapshot = {}) {
   const expectedProcessed = Number(expectedLog.new_words || 0);
   const expectedGoal = Math.max(1, Number(expectedLog.goal || 1));
   const logOk = !!cloudLog &&
-    Number(cloudLog.new_words || 0) >= expectedProcessed &&
-    Number(cloudLog.goal || 0) >= expectedGoal &&
-    (!expectedLog.completed || cloudLog.completed === true);
+    Number(cloudLog.new_words || 0) === expectedProcessed &&
+    Number(cloudLog.goal || 0) === expectedGoal &&
+    cloudLog.completed === !!expectedLog.completed;
+  const sameSet = (left = [], right = [], keyOf = value => String(value)) => {
+    const a = new Set(left.map(keyOf));
+    const b = new Set(right.map(keyOf));
+    return a.size === b.size && [...a].every(key => b.has(key));
+  };
 
   const expectedOpenRos = normalizeRoArray(expectedQueue.word_ro || []);
   const expectedCompletedRos = normalizeRoArray(expectedQueue.completed_word_ro || []);
   const cloudOpenRos = normalizeRoArray(cloudQueue?.word_ro || []);
   const cloudCompletedRos = normalizeRoArray(cloudQueue?.completed_word_ro || []);
-  const cloudAllRoKeys = new Set([...cloudOpenRos, ...cloudCompletedRos].map(normalizeProgressWordRoKey));
-  const cloudCompletedRoKeys = new Set(cloudCompletedRos.map(normalizeProgressWordRoKey));
-  const rosOk = expectedOpenRos.every(ro => cloudAllRoKeys.has(normalizeProgressWordRoKey(ro))) &&
-    expectedCompletedRos.every(ro => cloudCompletedRoKeys.has(normalizeProgressWordRoKey(ro)));
+  const rosOk = sameSet(expectedOpenRos, cloudOpenRos, normalizeProgressWordRoKey) &&
+    sameSet(expectedCompletedRos, cloudCompletedRos, normalizeProgressWordRoKey);
 
   const expectedOpenIds = normalizeIdArray(expectedQueue.word_id || []);
   const expectedCompletedIds = normalizeIdArray(expectedQueue.completed_word_id || []);
   const cloudOpenIds = normalizeIdArray(cloudQueue?.word_id || []);
   const cloudCompletedIds = normalizeIdArray(cloudQueue?.completed_word_id || []);
-  const cloudAllIdKeys = new Set([...cloudOpenIds, ...cloudCompletedIds].map(String));
-  const cloudCompletedIdKeys = new Set(cloudCompletedIds.map(String));
-  const idsOk = expectedOpenIds.every(id => cloudAllIdKeys.has(String(id))) &&
-    expectedCompletedIds.every(id => cloudCompletedIdKeys.has(String(id)));
-  const referenceOk = expectedOpenRos.length || expectedCompletedRos.length ? rosOk : idsOk;
+  const idsOk = sameSet(expectedOpenIds, cloudOpenIds) &&
+    sameSet(expectedCompletedIds, cloudCompletedIds);
+  const canVerifyByIds = Array.isArray(cloudQueue?.word_id) &&
+    expectedOpenIds.length === expectedOpenRos.length &&
+    expectedCompletedIds.length === expectedCompletedRos.length;
+  const referenceOk = canVerifyByIds ? idsOk : rosOk;
+
+  const expectedIntroducedRos = normalizeRoArray(expectedQueue.introduced_word_ro || []);
+  const cloudIntroducedRos = normalizeRoArray(cloudQueue?.introduced_word_ro || []);
+  const expectedIntroducedIds = normalizeIdArray(expectedQueue.introduced_word_id || []);
+  const cloudIntroducedIds = normalizeIdArray(cloudQueue?.introduced_word_id || []);
+  const canVerifyIntroducedByIds = Array.isArray(cloudQueue?.introduced_word_id) &&
+    expectedIntroducedIds.length === expectedIntroducedRos.length;
+  const introducedOk = canVerifyIntroducedByIds
+    ? sameSet(expectedIntroducedIds, cloudIntroducedIds)
+    : sameSet(expectedIntroducedRos, cloudIntroducedRos, normalizeProgressWordRoKey);
   const queueOk = !!cloudQueue && referenceOk &&
-    (!expectedQueue.completed || cloudQueue.completed === true);
+    introducedOk &&
+    Number(cloudQueue.goal || 0) === Number(expectedQueue.goal || 0) &&
+    cloudQueue.completed === !!expectedQueue.completed;
 
   return {
     ok: logOk && queueOk,

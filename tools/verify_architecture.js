@@ -11,20 +11,22 @@ const app = read('app.js');
 const api = read('api.js');
 const progressModel = read('progress-model.js');
 const dailyPlan = read('daily-plan.js');
+const taxonomy = read('taxonomy.js');
 const romanianText = read('romanian-text.js');
 const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260719-sync-status',
-  'progress-model.js?v=20260719-sync-status',
-  'daily-plan.js?v=20260719-sync-status',
-  'romanian-text.js?v=20260719-sync-status',
-  'api.js?v=20260719-sync-status',
-  'telemetry.js?v=20260719-sync-status',
-  'auth.js?v=20260719-sync-status',
-  'app.js?v=20260719-sync-status',
-  'pwa.js?v=20260719-sync-status'
+  'scheduler.js?v=20260725-card-taxonomy',
+  'progress-model.js?v=20260725-card-taxonomy',
+  'daily-plan.js?v=20260725-card-taxonomy',
+  'taxonomy.js?v=20260725-card-taxonomy',
+  'romanian-text.js?v=20260725-card-taxonomy',
+  'api.js?v=20260725-card-taxonomy',
+  'telemetry.js?v=20260725-card-taxonomy',
+  'auth.js?v=20260725-card-taxonomy',
+  'app.js?v=20260725-card-taxonomy',
+  'pwa.js?v=20260725-card-taxonomy'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -32,15 +34,17 @@ assert(scriptOrder.every((position, index) => index === 0 || position > scriptOr
 assert(build.includes("'progress-model.js'"), 'web build must copy the progress model');
 assert(build.includes("'progress-model.js',"), 'web build completeness list must require the progress model');
 assert(build.includes("'daily-plan.js'"), 'web build must copy and require the daily planner');
+assert(build.includes("'taxonomy.js'"), 'web build must copy and require the vocabulary taxonomy');
 assert(build.includes("'romanian-text.js'"), 'web build must copy and require Romanian text helpers');
 assert(build.includes("'telemetry.js'"), 'web build must copy and require telemetry');
 assert(build.includes("'pwa.js'"), 'web build must copy and require the PWA update controller');
 assert(serviceWorker.includes("'./progress-model.js'"), 'PWA app shell must include the progress model');
 assert(serviceWorker.includes("'./daily-plan.js'"), 'PWA app shell must include the daily planner');
+assert(serviceWorker.includes("'./taxonomy.js'"), 'PWA app shell must include the vocabulary taxonomy');
 assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v30"), 'PWA cache must advance with the sync-status release');
+assert(serviceWorker.includes("ro-vocab-pwa-v33"), 'PWA cache must advance with the taxonomy release');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');
@@ -49,6 +53,9 @@ assert(progressModel.includes('function mergeEntries'), 'progress model must own
 assert(progressModel.includes('function selectSchedulerBase'), 'progress model must own scheduler snapshot selection');
 assert(dailyPlan.includes('function composeOpenQueue'), 'daily planner must own fixed-quota queue composition');
 assert(dailyPlan.includes('function buildTieredPlan'), 'daily planner must own tiered plan composition');
+assert(taxonomy.includes('function normalizeTopic'), 'taxonomy module must own topic normalization');
+assert(taxonomy.includes('function normalizePartOfSpeech'), 'taxonomy module must own part-of-speech normalization');
+assert(taxonomy.includes('function normalizeUnitType'), 'taxonomy module must own lexical-unit normalization');
 assert(romanianText.includes('function stressToHtml'), 'Romanian text module must own stress rendering');
 assert(telemetry.includes('function reportClientIssue'), 'telemetry must own client issue reporting');
 assert(pwa.includes('function showUpdatePrompt'), 'PWA controller must own the update prompt');

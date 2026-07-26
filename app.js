@@ -16,6 +16,7 @@ let idx = 0;          // 卡片当前索引
 let flipped = false;
 let flashHistory = [];
 let flashOverrideRo = null;
+let lastCardAnswerSnapshot = null;
 let curCat = '全部';
 let flashMode = 'today'; // today | review
 let todayQueue = [];
@@ -80,6 +81,27 @@ const {
   stressToHtml,
   getGrammarInfo
 } = window.RomanianVocabText;
+const {
+  TOPICS,
+  PARTS_OF_SPEECH,
+  UNIT_TYPES,
+  REGISTERS,
+  CEFR_LEVELS,
+  normalizeTopic,
+  normalizePartOfSpeech,
+  normalizeUnitType,
+  normalizeGrammarData,
+  normalizeCefr,
+  normalizeRegister,
+  normalizeWord: normalizeTaxonomyWord,
+  getTopicLabel,
+  getPartOfSpeechLabel,
+  getUnitTypeLabel,
+  getRegisterLabel,
+  getClassificationSummary,
+  looksLikeTemplateWord,
+  qualityIssues: getTaxonomyQualityIssues
+} = window.RomanianVocabTaxonomy;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -91,6 +113,8 @@ let wbAutoAdvanceTimer = null;
 const WB_GRADUATE = 3;
 const DEFAULT_DAILY_GOAL = 200;
 const DAILY_GOAL_MAX = 5000;
+const DEFAULT_DAILY_NEW_LIMIT = 30;
+const DAILY_NEW_LIMIT_MAX = 500;
 const PENDING_PROGRESS_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 const CLOUD_PROGRESS_REFRESH_COOLDOWN_MS = 60 * 1000;
 const IDLE_PROGRESS_BACKUP_MS = 150 * 1000;
@@ -98,8 +122,10 @@ const IDLE_PROGRESS_BACKUP_MS = 150 * 1000;
 // 每日任务目标状态
 let dailyGoal = DEFAULT_DAILY_GOAL;        // 今天实际处理量，允许临时扩展
 let defaultDailyGoal = DEFAULT_DAILY_GOAL; // 用户主动保存的每日固定处理目标
+let dailyNewLimit = DEFAULT_DAILY_NEW_LIMIT;
 let todayNewWords = 0;      // 今日已完成任务数；字段名兼容 legacy daily_log.new_words
 let todaySeenWords = new Set(); // 今天已经见过的词 id 集合
+let todayIntroducedWords = new Set(); // 今天第一次进入学习流程的新词
 let todayLog = null;
 let activeDailyDateKey = getDateKeyFor(new Date());
 let dailyDateReloadInFlight = null;
@@ -122,6 +148,15 @@ const DEFAULT_REMINDER_SETTINGS = {
 
 function normalizeDailyGoalValue(value, fallback = DEFAULT_DAILY_GOAL) {
   return Math.max(1, Math.min(DAILY_GOAL_MAX, Number(value) || fallback || DEFAULT_DAILY_GOAL));
+}
+
+function normalizeDailyNewLimitValue(value, fallback = DEFAULT_DAILY_NEW_LIMIT) {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return Math.max(0, Math.min(DAILY_NEW_LIMIT_MAX, Number(fallback) || DEFAULT_DAILY_NEW_LIMIT));
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return Math.max(0, Math.min(DAILY_NEW_LIMIT_MAX, Number(fallback) || DEFAULT_DAILY_NEW_LIMIT));
+  return Math.max(0, Math.min(DAILY_NEW_LIMIT_MAX, Math.round(parsed)));
 }
 
 async function migrateLegacyDailyGoal(userId, profileGoal) {
@@ -424,6 +459,14 @@ function todaySeenWordsKey() {
   return `daily_seen_words:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
 }
 
+function todayIntroducedWordsKey() {
+  return `daily_introduced_words:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
+}
+
+function dailyNewLimitKey() {
+  return `daily_new_limit:${currentUser?.id || 'local'}`;
+}
+
 function todayAccuracyKey() {
   return `daily_accuracy:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
 }
@@ -439,6 +482,7 @@ function resetDailyRuntimeState(dateKey = getDateKeyFor(new Date())) {
   todayQueue = [];
   todayQueueCompleted = new Set();
   todaySeenWords = readTodaySeenWords();
+  todayIntroducedWords = readTodayIntroducedWords();
   todayQueueRecord = null;
   dailyGoal = Math.max(defaultDailyGoal, readTodayTemporaryGoal());
   dailyCheckinPromptShown = false;
@@ -814,6 +858,77 @@ function writeTodaySeenWords() {
   } catch {}
 }
 
+function readTodayIntroducedWords() {
+  try {
+    return new Set(normalizeWordRoList(JSON.parse(localStorage.getItem(todayIntroducedWordsKey()) || '[]')));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeTodayIntroducedWords() {
+  try {
+    localStorage.setItem(todayIntroducedWordsKey(), JSON.stringify([...todayIntroducedWords]));
+  } catch {}
+}
+
+function readDailyNewLimit() {
+  try {
+    return normalizeDailyNewLimitValue(localStorage.getItem(dailyNewLimitKey()), DEFAULT_DAILY_NEW_LIMIT);
+  } catch {
+    return DEFAULT_DAILY_NEW_LIMIT;
+  }
+}
+
+function writeDailyNewLimit(value) {
+  dailyNewLimit = normalizeDailyNewLimitValue(value, DEFAULT_DAILY_NEW_LIMIT);
+  try {
+    localStorage.setItem(dailyNewLimitKey(), String(dailyNewLimit));
+  } catch {}
+  const input = document.getElementById('new-limit-input');
+  if (input) input.value = String(dailyNewLimit);
+  return dailyNewLimit;
+}
+
+function markTodayNewIntroduction(wordRo) {
+  const canonicalRo = canonicalWordRo(wordRo);
+  if (!canonicalRo || setHasRo(todayIntroducedWords, canonicalRo)) return false;
+  setAddRo(todayIntroducedWords, canonicalRo);
+  writeTodayIntroducedWords();
+  dailyQueueVersion++;
+  return true;
+}
+
+function mergeTodayIntroductionsFromProgress(wordRefs = []) {
+  const todayKey = getDateKeyFor(new Date());
+  let changed = false;
+  normalizeWordRoList(wordRefs).forEach(ref => {
+    const word = getWordByRo(ref);
+    const progress = word ? getProgress(word.ro) : null;
+    if (!word || !hasWordProgress(progress)) return;
+    const scheduler = normalizeScheduler(progress);
+    const reviewedToday = getProgressDateKey(scheduler.lastReviewedAt || progress.lastReviewedAt) === todayKey;
+    const looksLikeNewLearning = scheduler.cardState === 'learning' &&
+      !scheduler.lapses &&
+      !progress.wasMasteredAt &&
+      !progress.was_mastered_at;
+    if (reviewedToday && looksLikeNewLearning && !setHasRo(todayIntroducedWords, word.ro)) {
+      setAddRo(todayIntroducedWords, word.ro);
+      changed = true;
+    }
+  });
+  if (changed) writeTodayIntroducedWords();
+  return changed;
+}
+
+function getTodayAttemptStats() {
+  const saved = readTodayAccuracyStats();
+  return {
+    correct: saved.correct + pendingTodayAccuracyStats.correct,
+    total: saved.total + pendingTodayAccuracyStats.total
+  };
+}
+
 function readTodayAccuracyStats() {
   try {
     const raw = JSON.parse(localStorage.getItem(todayAccuracyKey()) || '{}');
@@ -877,140 +992,12 @@ function saveWrongbookStreaks() {
   } catch {}
 }
 
-const SUBJECT_CATEGORIES = [
-  'Daily Life',
-  'Philosophy',
-  'Economics',
-  'Law',
-  'Education',
-  'Literature',
-  'History',
-  'Science',
-  'Engineering',
-  'Agriculture',
-  'Medicine',
-  'Military Science',
-  'Management',
-  'Art'
-];
-
-const GRAMMAR_CATEGORIES = [
-  'verb',
-  'adjective',
-  'adverb',
-  'conjunction',
-  'preposition',
-  'pronoun',
-  'numeral',
-  'interjection'
-];
-
-const CATEGORY_ORDER = ['全部', ...SUBJECT_CATEGORIES, ...GRAMMAR_CATEGORIES];
-
-const CATEGORY_LABELS = {
-  '全部': '全部',
-  'Daily Life': '日常生活',
-  Philosophy: '哲学',
-  Economics: '经济',
-  Law: '法律',
-  Education: '教育',
-  Literature: '文学',
-  History: '历史',
-  Science: '科学',
-  Engineering: '工程技术',
-  Agriculture: '农业',
-  Medicine: '医学',
-  'Military Science': '军事',
-  Management: '管理',
-  Art: '艺术',
-  Clasificare: '分类',
-  verb: '动词',
-  adjective: '形容词',
-  adverb: '副词',
-  conjunction: '连词',
-  preposition: '介词',
-  pronoun: '代词',
-  numeral: '数词',
-  interjection: '感叹词'
-};
+const SUBJECT_CATEGORIES = TOPICS.filter(item => item.value !== 'unclassified').map(item => item.value);
+const CATEGORY_ORDER = ['全部', ...SUBJECT_CATEGORIES, 'unclassified'];
 
 function getCategoryLabel(category) {
-  const normalized = normalizeCategory(category);
-  return CATEGORY_LABELS[normalized] || normalized;
+  return category === '全部' ? '全部主题' : getTopicLabel(category);
 }
-
-const CATEGORY_ALIASES = {
-  '日常': 'Daily Life',
-  '日常生活': 'Daily Life',
-  '生活': 'Daily Life',
-  'daily life': 'Daily Life',
-  '城市': 'Daily Life',
-  '地理': 'Daily Life',
-  '方向': 'Daily Life',
-  '环境': 'Science',
-  '季节': 'Science',
-  '家居': 'Daily Life',
-  '饮食': 'Daily Life',
-  '购物': 'Economics',
-  '商业': 'Economics',
-  '金融': 'Economics',
-  '经济': 'Economics',
-  '法律': 'Law',
-  '学习': 'Education',
-  '教育': 'Education',
-  '文学': 'Literature',
-  '历史': 'History',
-  '科技': 'Engineering',
-  '技术': 'Engineering',
-  '科学': 'Science',
-  '农业': 'Agriculture',
-  '健康': 'Medicine',
-  '医疗': 'Medicine',
-  '医学': 'Medicine',
-  '军事': 'Military Science',
-  '军队': 'Military Science',
-  '职场': 'Management',
-  '管理': 'Management',
-  '艺术': 'Art',
-  '运动': 'Daily Life',
-  '人际': 'Daily Life',
-  '社会': 'Philosophy',
-  '自然': 'Science',
-  '情感': 'Philosophy',
-  '时间': 'Daily Life',
-  '时间2': 'Daily Life',
-  '数量': 'numeral',
-  '颜色2': 'adjective',
-  '交通': 'Daily Life',
-  '文化': 'Literature',
-  '旅行': 'Daily Life',
-  '旅游': 'Daily Life',
-  '天气': 'Science',
-  '烹饪': 'Daily Life',
-  '身体': 'Medicine',
-  '游戏': 'Daily Life',
-  '哲学': 'Philosophy',
-  '动词': 'verb',
-  '动词2': 'verb',
-  'verb': 'verb',
-  '形容词': 'adjective',
-  '形容词2': 'adjective',
-  'adjective': 'adjective',
-  '副词': 'adverb',
-  'adverb': 'adverb',
-  '连词': 'conjunction',
-  '连接词': 'conjunction',
-  'conjunction': 'conjunction',
-  '介词': 'preposition',
-  'preposition': 'preposition',
-  '代词': 'pronoun',
-  'pronoun': 'pronoun',
-  '数词': 'numeral',
-  'numeral': 'numeral',
-  '感叹词': 'interjection',
-  'interjection': 'interjection',
-  '其他': 'Daily Life'
-};
 
 const DEXONLINE_VERB_FALLBACK_WORDS = [
   { zh: '去', ro: 'a merge', ipa: 'a merge', hint: '动词 · 零变位 · dexonline', cat: 'verb' },
@@ -1076,11 +1063,15 @@ async function onLogin(user) {
   const nickname = profile?.nickname || user.email.split('@')[0];
   defaultDailyGoal = await migrateLegacyDailyGoal(user.id, profile?.daily_goal);
   dailyGoal = defaultDailyGoal;
+  dailyNewLimit = readDailyNewLimit();
+  todayIntroducedWords = readTodayIntroducedWords();
   progressLoaded = false;
 
   // 先设置目标输入框
   const goalInput = document.getElementById('goal-input');
   if (goalInput) goalInput.value = defaultDailyGoal;
+  const newLimitInput = document.getElementById('new-limit-input');
+  if (newLimitInput) newLimitInput.value = dailyNewLimit;
 
   showAppScreen(nickname, userRole === 'admin');
 
@@ -1104,14 +1095,15 @@ async function loadWords(options = {}) {
   showVocabLoading();
 
   try {
-    W = (await apiLoadWords()).map(normalizeWordCategory);
+    W = (await apiLoadWords())
+      .map(normalizeWordCategory)
+      .filter(word => !looksLikeTemplateWord(word));
     if (!W.length) throw new Error('词库为空');
     rebuildWordRoIndex();
     const exampleBankPromise = loadExampleBank();
     if (shouldRender) applyFilters();
 
-    document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    updateVocabCountLabels();
 
     populateCategoryDatalist();
     buildCats();
@@ -1126,6 +1118,13 @@ async function loadWords(options = {}) {
     console.error('Words load failed', error);
     showVocabLoadError(error);
   }
+}
+
+function updateVocabCountLabels() {
+  const total = document.getElementById('s-total');
+  const badge = document.getElementById('topbar-badge');
+  if (total) total.textContent = W.length;
+  if (badge) badge.textContent = W.length + '词';
 }
 
 function showFlashContent() {
@@ -1168,7 +1167,7 @@ async function loadExampleBank() {
   if (exampleBankLoadPromise) return exampleBankLoadPromise;
   exampleBankLoadPromise = (async () => {
   try {
-    const response = await fetch('./data/examples.json?v=20260620-cloud-examples', { cache: 'reload' });
+    const response = await fetch('./data/examples.json?v=20260725-card-taxonomy', { cache: 'reload' });
     if (!response.ok) {
       exampleBank = {};
       return exampleBank;
@@ -1438,6 +1437,8 @@ async function syncDailyStateToCloud() {
     word_ro: queueIdsToWordRos(todayQueue),
     completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
     completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
+    introduced_word_id: queueIdsToWordIds([...todayIntroducedWords]),
+    introduced_word_ro: queueIdsToWordRos([...todayIntroducedWords]),
     completed: isCurrentTodayGoalDone()
   };
   const results = await Promise.allSettled([
@@ -1483,6 +1484,7 @@ function saveTodayLogBackground(promise, label = '今日记录待同步') {
 
 async function loadTodayLog() {
   activeDailyDateKey = getDateKeyFor(new Date());
+  todayIntroducedWords = readTodayIntroducedWords();
   try {
     todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
   } catch (error) {
@@ -1510,6 +1512,7 @@ async function loadTodayLog() {
 
 async function loadDailyQueue() {
   activeDailyDateKey = getDateKeyFor(new Date());
+  todayIntroducedWords = readTodayIntroducedWords();
   dailyQueueLoaded = false;
   const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
@@ -1523,6 +1526,7 @@ async function loadDailyQueue() {
   }
   const savedWordRefs = saved?.word_id?.length ? saved.word_id : (saved?.word_ro || []);
   const savedCompletedRefs = saved?.completed_word_id?.length ? saved.completed_word_id : (saved?.completed_word_ro || []);
+  const savedIntroducedRefs = saved?.introduced_word_id?.length ? saved.introduced_word_id : (saved?.introduced_word_ro || []);
   const hasSavedQueueState = !!(savedWordRefs.length || savedCompletedRefs.length);
   if (hasSavedQueueState) {
     todayQueueRecord = saved;
@@ -1548,6 +1552,11 @@ async function loadDailyQueue() {
     const uniqueSavedQueue = normalizeWordRoList(savedWordRefs);
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
     todayQueue = uniqueSavedQueue.filter(ro => getWordByRo(ro) && !setHasRo(todayQueueCompleted, ro));
+    todayIntroducedWords = new Set([
+      ...readTodayIntroducedWords(),
+      ...normalizeWordRoList(savedIntroducedRefs).filter(ref => getWordByRo(ref))
+    ]);
+    writeTodayIntroducedWords();
     queueChanged = queueChanged || todayQueue.length !== originalQueueLength || todayQueueCompleted.size !== savedCompleted.size;
   } else {
     dailyGoal = resolveLoadedDailyGoal({
@@ -1565,6 +1574,8 @@ async function loadDailyQueue() {
       word_ro: queueIdsToWordRos(todayQueue),
       completed_word_id: [],
       completed_word_ro: [],
+      introduced_word_id: [],
+      introduced_word_ro: [],
       completed: false
     });
   }
@@ -1572,6 +1583,7 @@ async function loadDailyQueue() {
   todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
   writeTodaySeenWords();
   repairStartedProgressForCompletedTodayWords();
+  mergeTodayIntroductionsFromProgress([...todayQueue, ...todayQueueCompleted]);
   todayNewWords = Math.max(
     todayQueueCompleted.size,
     Number(todayLog?.new_words || 0),
@@ -1581,9 +1593,11 @@ async function loadDailyQueue() {
   if (normalizedQueue.join('|') !== todayQueue.join('|')) {
     todayQueue = normalizedQueue;
     queueChanged = true;
+    forceQueueLocal = true;
   }
   if (ensureTodayQueueHasActiveCards('loadDailyQueue:after-build', { skipSave: true })) {
     queueChanged = true;
+    forceQueueLocal = true;
   }
   if (queueChanged) await saveTodayQueue({ forceLocal: forceQueueLocal });
   debugDailyQueue('loadDailyQueue:after-normalize', { queueChanged, forceQueueLocal });
@@ -1675,6 +1689,28 @@ function getReinforcementWordsDueToday(words = W) {
   });
 }
 
+function getRemainingDailyNewSlots(reservedUnseenCount = 0) {
+  return Math.max(
+    0,
+    Number(dailyNewLimit || 0) -
+      Number(todayIntroducedWords.size || 0) -
+      Math.max(0, Number(reservedUnseenCount || 0))
+  );
+}
+
+function splitCandidatesByNewLimit(words = [], reservedUnseenCount = 0) {
+  const continuing = [];
+  const unseen = [];
+  uniqueWordsByRo(words).forEach(word => {
+    if (isUnseenWord(word)) unseen.push(word);
+    else continuing.push(word);
+  });
+  return [
+    ...continuing,
+    ...unseen.slice(0, getRemainingDailyNewSlots(reservedUnseenCount))
+  ];
+}
+
 function isPendingLearningRetryWord(w) {
   const p = getProgress(w?.ro);
   if (!hasWordProgress(p) || isReviewDue(p)) return false;
@@ -1732,7 +1768,9 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
   const dueSet = new Set([...overdueSet, ...due.map(w => roKey(w.ro))]);
   const weak = getReinforcementWordsDueToday(usable).filter(w => !dueSet.has(roKey(w.ro)));
   const weakSet = new Set([...dueSet, ...weak.map(w => roKey(w.ro))]);
-  const unseen = getUnseenWords(usable).filter(w => !weakSet.has(roKey(w.ro)));
+  const unseen = getUnseenWords(usable)
+    .filter(w => !weakSet.has(roKey(w.ro)))
+    .slice(0, getRemainingDailyNewSlots());
   return window.RomanianVocabDailyPlan.buildTieredPlan(
     [overdueLearning, due, weak, unseen],
     { limit: cap, keyOf: w => roKey(w?.ro) }
@@ -1749,16 +1787,22 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     return !hasWordProgress(p) || isReviewDue(p) || isPendingLearningRetryWord(word) || normalizeScheduler(p || {}).needsReinforcement;
   });
   const deferredOpenWords = openWords.filter(isRetryDeferred);
-  const activeOpenWords = openWords.filter(w => !isRetryDeferred(w));
+  const rawActiveOpenWords = openWords.filter(w => !isRetryDeferred(w));
+  const openUnseenWords = rawActiveOpenWords.filter(isUnseenWord);
+  const allowedOpenUnseenWords = openUnseenWords.slice(0, getRemainingDailyNewSlots());
+  const allowedOpenUnseenKeys = new Set(allowedOpenUnseenWords.map(w => roKey(w.ro)));
+  const activeOpenWords = rawActiveOpenWords.filter(w => !isUnseenWord(w) || allowedOpenUnseenKeys.has(roKey(w.ro)));
   const openSlots = Math.max(0, cap - Number(todayNewWords || 0));
+  const reservedUnseenCount = allowedOpenUnseenWords.length;
+  const rawCandidates = W
+    .filter(w => w?.ro && !completedKeys.has(roKey(w.ro)))
+    .filter(w => !setHasRo(todaySeenWords, w.ro))
+    .filter(isDailyQueueCandidate)
+    .filter(w => !isRetryDeferred(w));
   const plan = window.RomanianVocabDailyPlan.composeOpenQueue({
     active: activeOpenWords,
     deferred: deferredOpenWords,
-    candidates: W
-      .filter(w => w?.ro && !completedKeys.has(roKey(w.ro)))
-      .filter(w => !setHasRo(todaySeenWords, w.ro))
-      .filter(isDailyQueueCandidate)
-      .filter(w => !isRetryDeferred(w)),
+    candidates: splitCandidatesByNewLimit(rawCandidates, reservedUnseenCount),
     goal: cap,
     completedCount: Number(todayNewWords || 0),
     keyOf: w => roKey(w?.ro),
@@ -1781,6 +1825,8 @@ function buildOpenTodayQueue(goal = dailyGoal) {
     activeOpenCount: activeOpenWords.length,
     deferredOpenCount: deferredOpenWords.length,
     candidateCount: plan.replacements.length,
+    introducedToday: todayIntroducedWords.size,
+    dailyNewLimit,
     activeResultCount: plan.active.length,
     resultSize: result.length
   });
@@ -1791,12 +1837,18 @@ function appendExplicitTodayQueueCards(targetGoal = dailyGoal) {
   const completedCount = todayQueueCompleted.size;
   const targetOpen = Math.max(0, Number(targetGoal || dailyGoal || DEFAULT_DAILY_GOAL) - completedCount);
   const missing = Math.max(0, targetOpen - todayQueue.length);
-  if (!missing) return 0;
+  const queuedUnseenCount = todayQueue
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(isUnseenWord)
+    .length;
+  const remainingNewSlots = getRemainingDailyNewSlots(queuedUnseenCount);
+  if (!missing || !remainingNewSlots) return 0;
   const queuedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const additions = getUnseenWords(W)
     .filter(w => !queuedKeys.has(roKey(w.ro)))
     .filter(w => !setHasRo(todaySeenWords, w.ro))
-    .slice(0, missing);
+    .slice(0, Math.min(missing, remainingNewSlots));
   if (!additions.length) return 0;
   todayQueue = normalizeWordRoList([...todayQueue, ...additions.map(w => w.ro)]);
   dailyQueueVersion++;
@@ -1804,6 +1856,7 @@ function appendExplicitTodayQueueCards(targetGoal = dailyGoal) {
   debugDailyQueue('appendExplicitTodayQueueCards', {
     targetGoal,
     missing,
+    remainingNewSlots,
     appended: additions.length,
     resultSize: todayQueue.length
   });
@@ -1871,22 +1924,15 @@ function getDailyWordList(words = W, options = {}) {
   const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
   const allDueWords = uniqueWordsByRo([...globalDueWords, ...dueOpenWords]);
   if (allDueWords.length) {
-    const dueKeys = new Set(allDueWords.map(w => roKey(w.ro)));
-    const nonDueOpenWords = sortDailyPhaseWords(openWords.filter(w => !dueKeys.has(roKey(w.ro))));
-    const result = window.RomanianVocabDailyPlan.interleavePriority(
-      sortDailyPhaseWords(allDueWords),
-      nonDueOpenWords,
-      { limit, primaryBatch: 3, keyOf: w => roKey(w?.ro) }
-    );
+    const result = sortDailyPhaseWords(allDueWords).slice(0, limit);
     resultSize = result.length;
-    path = nonDueOpenWords.length ? 'due-interleaved' : 'due-only';
-    debugDailyQueue('getDailyWordList:due-interleaved', {
+    path = 'due-only';
+    debugDailyQueue('getDailyWordList:due-only', {
       options,
       scopedCount: scoped.length,
       openWordCount: openWords.length,
       globalDueCount: globalDueWords.length,
       dueOpenCount: allDueWords.length,
-      nonDueOpenCount: nonDueOpenWords.length,
       resultSize: result.length
     });
     finishDailyQueuePerf(perf, {
@@ -1933,11 +1979,6 @@ function getAuxiliaryLabels(w) {
   return labels;
 }
 
-function getAuxiliaryLabelText(w) {
-  const labels = getAuxiliaryLabels(w);
-  return labels.length ? labels.join(' · ') : '无';
-}
-
 function getContinueAfterGoalText() {
   if (dailyGoal < DAILY_GOAL_MAX) {
     return '想继续学习，可以点下方 +30、+50，或自定义扩展今天的任务量。';
@@ -1955,7 +1996,17 @@ function setGoalInputValue(value) {
   if (input) input.value = value;
 }
 
-async function setDailyGoalAndRebuild(goal, message = '每日处理目标已更新') {
+function getNewLimitInputValue() {
+  const input = document.getElementById('new-limit-input');
+  return Number(input?.value);
+}
+
+function setNewLimitInputValue(value) {
+  const input = document.getElementById('new-limit-input');
+  if (input) input.value = value;
+}
+
+async function setDailyGoalAndRebuild(goal, message = '每日通过目标已更新') {
   const nextGoal = normalizeDailyGoalValue(goal, defaultDailyGoal);
   defaultDailyGoal = nextGoal;
   dailyGoal = nextGoal;
@@ -1984,7 +2035,7 @@ async function extendTodayGoal(amount) {
   const base = Math.max(dailyGoal, todayNewWords);
   const nextGoal = Math.min(DAILY_GOAL_MAX, base + extra);
   if (nextGoal <= dailyGoal && dailyGoal >= DAILY_GOAL_MAX) {
-    showToast(`每日处理目标最高为 ${DAILY_GOAL_MAX}`);
+    showToast(`每日通过目标最高为 ${DAILY_GOAL_MAX}`);
     return;
   }
   dailyGoal = nextGoal;
@@ -2026,6 +2077,8 @@ async function saveTodayQueue(options = {}) {
     word_ro: queueIdsToWordRos(todayQueue),
     completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
     completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
+    introduced_word_id: queueIdsToWordIds([...todayIntroducedWords]),
+    introduced_word_ro: queueIdsToWordRos([...todayIntroducedWords]),
     completed: isCurrentTodayGoalDone()
   };
   const savePromise = apiSaveDailyQueue(currentUser.id, payload, { forceLocal: !!options.forceLocal });
@@ -2365,8 +2418,17 @@ async function addWordToTodayQueue(wordRo) {
   if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习继续巩固'); return; }
   const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
+  const queuedUnseenCount = todayQueue
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .filter(isUnseenWord)
+    .length;
   if (!remainingSlots) {
-    showToast('今日固定处理队列已满；提高每日处理目标后可以继续添加新词');
+    showToast('今日队列或新词上限已满；调整学习设置后可以继续添加');
+    return;
+  }
+  if (!getRemainingDailyNewSlots(queuedUnseenCount)) {
+    showToast(`今日新词上限为 ${dailyNewLimit} 个；提高新词上限后可以继续添加`);
     return;
   }
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
@@ -2395,15 +2457,24 @@ async function addWordToTodayQueue(wordRo) {
 }
 
 function normalizeCategory(cat) {
-  const raw = String(cat || '').trim();
-  if (!raw) return 'Daily Life';
-  const key = raw.toLocaleLowerCase('en');
-  const direct = [...SUBJECT_CATEGORIES, ...GRAMMAR_CATEGORIES].find(c => c.toLocaleLowerCase('en') === key);
-  return direct || CATEGORY_ALIASES[raw] || CATEGORY_ALIASES[key] || raw;
+  return normalizeTopic(cat);
 }
 
+const WORD_TEXT_CORRECTIONS = Object.freeze({
+  'poștas': { ro: 'poștaș', ipa: 'poștAș' }
+});
+
 function normalizeWordCategory(word) {
-  return { ...word, ro: normalizeWordText(word.ro), rawCat: word.rawCat ?? word.cat, cat: normalizeCategory(word.cat) };
+  const normalizedRo = normalizeWordText(word.ro);
+  const correction = WORD_TEXT_CORRECTIONS[normalizedRo] || {};
+  const corrected = {
+    ...word,
+    ...correction,
+    ro: correction.ro || normalizedRo,
+    rawCat: word.rawCat ?? word.cat
+  };
+  const normalized = normalizeTaxonomyWord(corrected);
+  return { ...normalized, cat: normalized.topic };
 }
 
 function categoryRank(cat) {
@@ -2412,10 +2483,26 @@ function categoryRank(cat) {
 }
 
 function populateCategoryDatalist() {
-  const options = [...SUBJECT_CATEGORIES, ...GRAMMAR_CATEGORIES]
-    .map(c => `<option value="${escapeHtml(c)}"></option>`)
-    .join('');
-  document.querySelectorAll('#cat-list, #edit-cat-list').forEach(el => { el.innerHTML = options; });
+  const setOptions = (selector, items, blankLabel = '') => {
+    document.querySelectorAll(selector).forEach(select => {
+      const previous = select.value;
+      select.innerHTML = [
+        ...(blankLabel ? [`<option value="">${escapeHtml(blankLabel)}</option>`] : []),
+        ...items.map(item => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`)
+      ].join('');
+      if ([...select.options].some(option => option.value === previous)) select.value = previous;
+    });
+  };
+  setOptions('#em-topic, #aw-topic', TOPICS.filter(item => item.value !== 'unclassified'));
+  setOptions('#em-pos, #aw-pos', PARTS_OF_SPEECH.filter(item => item.value !== 'other'));
+  setOptions('#em-unit, #aw-unit', UNIT_TYPES);
+  setOptions('#em-register, #aw-register', REGISTERS, '未标注，不显示');
+  document.querySelectorAll('#em-cefr, #aw-cefr').forEach(select => {
+    const previous = select.value;
+    select.innerHTML = '<option value="">未核实，不显示</option>' +
+      CEFR_LEVELS.map(level => `<option value="${level}">${level}</option>`).join('');
+    if (CEFR_LEVELS.includes(previous)) select.value = previous;
+  });
 }
 
 function isReviewDue(progress) {
@@ -2637,7 +2724,7 @@ function isStressUnverified(w) {
 }
 
 function isWordUnverified(w) {
-  return isGrammarUnverified(w) || isStressUnverified(w);
+  return w?.verification_status === 'needs_review' || isGrammarUnverified(w) || isStressUnverified(w);
 }
 
 function unverifiedBadgeHtml(w) {
@@ -2648,6 +2735,9 @@ function setStressHtml(id, w) {
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = stressToHtml(getStressDisplay(w).text);
+  const length = [...String(w?.ro || '')].length;
+  el.classList.toggle('long-word', length > 28 && length <= 40);
+  el.classList.toggle('very-long-word', length > 40);
 }
 
 function setGrammarText(id, w, stress = null) {
@@ -2672,7 +2762,9 @@ function getReviewPanelMetrics(scoped) {
     dailyGoal,
     todayNewWords,
     defaultDailyGoal,
+    dailyNewLimit,
     todaySeenWords.size,
+    todayIntroducedWords.size,
     todayQueueCompleted.size,
     todayQueue.join('|'),
     progressVersion,
@@ -2706,7 +2798,10 @@ function getReviewPanelMetrics(scoped) {
     .length;
   const remainingSlots = Math.max(0, dailyGoal - todayNewWords);
   const remainingDueReviews = getRemainingTodayReviewWords().length;
-  const availableNewSlots = Math.max(0, remainingSlots - activeOpenQueueCount);
+  const availableNewSlots = Math.min(
+    Math.max(0, remainingSlots - activeOpenQueueCount),
+    getRemainingDailyNewSlots(newOpenQueueCount)
+  );
   const unseenRemaining = Math.min(rawUnseenRemaining, availableNewSlots);
   const metrics = {
     due,
@@ -2750,7 +2845,7 @@ function renderReviewPanel() {
   const current = filtered[idx];
   setText('review-due-count', due);
   setText('review-new-count', `${todayNewWords}/${dailyGoal}`);
-  setText('review-new-remaining', newOpenQueueCount);
+  setText('review-new-remaining', `${todayIntroducedWords.size}/${dailyNewLimit}`);
   const nextLearningBatch = Math.min(20, Math.max(0, dueLearning));
   const nextReviewBatch = Math.min(20, Math.max(0, dueReview));
   const currentGoalDone = isCurrentTodayGoalDone();
@@ -2759,18 +2854,20 @@ function renderReviewPanel() {
     ? `已完成 ${todayNewWords}/${dailyGoal}`
     : (dueLearning > 0
       ? `先做 ${nextLearningBatch} 个学习步骤`
-      : (dueReview > 0 ? `再复习 ${nextReviewBatch} 个` : `学习 ${newOpenQueueCount} 个新词`));
+      : (dueReview > 0 ? `再复习 ${nextReviewBatch} 个` : (newOpenQueueCount > 0 ? `学习 ${newOpenQueueCount} 个新词` : '等待学习步骤')));
   setText('flash-control-summary', summaryText);
   const taskType = current ? getDailyTaskType(current) : '';
   const baseNote = currentGoalDone
-    ? `今日任务已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
+    ? `今日通过目标已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
     : (baseGoalDone
       ? `今日固定目标已完成：${todayNewWords}/${defaultDailyGoal} 个；临时加量进度 ${todayNewWords}/${dailyGoal}。`
       : (dueLearning > 0
         ? `先完成 ${nextLearningBatch} 个已到点的学习步骤，再处理正式复习。${taskType ? `当前卡片：${taskType}。` : ''}`
         : (dueReview > 0
           ? `再完成 ${nextReviewBatch} 个到期复习，之后才进入新词。${taskType ? `当前卡片：${taskType}。` : ''}`
-          : `现在可以学习新词；等待中的学习步骤会到点后优先出现。${taskType ? `当前卡片：${taskType}。` : ''}`)));
+          : (newOpenQueueCount > 0
+            ? `现在可以学习新词；今日已引入 ${todayIntroducedWords.size}/${dailyNewLimit} 个，等待步骤到点后会优先出现。${taskType ? `当前卡片：${taskType}。` : ''}`
+            : `今日新词上限为 ${dailyNewLimit} 个；没有到期内容时会等待下一学习步骤。${taskType ? `当前卡片：${taskType}。` : ''}`))));
   setText('review-note', lastLearningHint || baseNote);
   renderTodayFocus({
     due,
@@ -2797,15 +2894,16 @@ function renderTodayFocus(metrics = null) {
   const reviewDueCount = Number(m.dueReview || 0);
   const waitingLearningCount = Number(m.waitingLearningCount || 0);
   const newOpenQueueCount = Number(m.newOpenQueueCount || 0);
-  const title = `今日处理 ${todayNewWords}/${dailyGoal}`;
+  const attempts = getTodayAttemptStats();
+  const title = `今日通过 ${todayNewWords}/${dailyGoal}`;
   const action = learningDueCount > 0
     ? `学习步骤 ${learningDueCount}`
     : (reviewDueCount > 0 ? `到期复习 ${reviewDueCount}` : (currentDone ? '已完成' : `新词 ${newOpenQueueCount}`));
   const meta = currentDone
-    ? '今天的固定处理目标已经完成，可以打卡或明确选择继续加量。'
+    ? `今天已通过目标；共作答 ${attempts.total} 次，已引入新词 ${todayIntroducedWords.size}/${dailyNewLimit}。`
     : (waitingLearningCount > 0 && !learningDueCount && !reviewDueCount
-      ? `${waitingLearningCount} 个学习步骤正在等待；当前先处理队列中的新词。`
-      : `复习优先，不足 ${dailyGoal} 个的名额由新词补满。`);
+      ? `${waitingLearningCount} 个学习步骤正在等待；已作答 ${attempts.total} 次，新词 ${todayIntroducedWords.size}/${dailyNewLimit}。`
+      : `严格先做已到点内容；共作答 ${attempts.total} 次，新词 ${todayIntroducedWords.size}/${dailyNewLimit}。`);
   setText('today-focus-title', title);
   setText('today-focus-action', action);
   setText('today-focus-meta', meta);
@@ -2962,7 +3060,7 @@ function renderCloudSyncPanel() {
   if (detail) detail.textContent = vm.detail;
   if (summary) {
     const checkinLabel = isDailyCheckinDone() ? '已打卡' : '未打卡';
-    summary.textContent = `今日已处理 ${Number(todayNewWords || 0)}/${Number(dailyGoal || defaultDailyGoal || 0)} · ${checkinLabel}`;
+    summary.textContent = `今日已通过 ${Number(todayNewWords || 0)}/${Number(dailyGoal || defaultDailyGoal || 0)} · 新词 ${todayIntroducedWords.size}/${dailyNewLimit} · ${checkinLabel}`;
   }
   if (panel) panel.dataset.state = vm.kind;
   if (button) {
@@ -3004,6 +3102,8 @@ function buildTodaySyncSnapshot() {
       word_ro: queueIdsToWordRos(todayQueue),
       completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
       completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
+      introduced_word_id: queueIdsToWordIds([...todayIntroducedWords]),
+      introduced_word_ro: queueIdsToWordRos([...todayIntroducedWords]),
       completed: isCurrentTodayGoalDone()
     }
   };
@@ -4111,7 +4211,8 @@ function renderDailyGoal() {
   const checkinDone = isDailyCheckinDone();
   const canExtend = currentDone && checkinDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
-  const title = currentDone ? '今日处理目标已完成' : (baseDone ? '今日固定处理目标已完成' : '今日处理进度');
+  const attempts = getTodayAttemptStats();
+  const title = currentDone ? '今日通过目标已完成' : (baseDone ? '今日固定通过目标已完成' : '今日通过进度');
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:13px;font-weight:600;color:var(--text)">
@@ -4119,6 +4220,7 @@ function renderDailyGoal() {
       </span>
       <span style="font-size:13px;color:var(--text2)">${todayNewWords} / ${dailyGoal} 个</span>
     </div>
+    <div style="font-size:12px;color:var(--text2);margin-top:6px">共作答 ${attempts.total} 次 · 今日新词 ${todayIntroducedWords.size}/${dailyNewLimit}</div>
     <div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden">
       <div style="height:100%;width:${pct}%;background:${baseDone ? 'var(--green)' : 'var(--blue)'};border-radius:99px;transition:width .4s"></div>
     </div>
@@ -4141,11 +4243,18 @@ function renderDailyGoal() {
 
 async function saveGoalSetting() {
   const val = getGoalInputValue();
+  const newLimit = getNewLimitInputValue();
   if (!val || val < 1 || val > DAILY_GOAL_MAX) {
     showToast(`请输入1-${DAILY_GOAL_MAX}之间的数字`);
     return;
   }
-  await setDailyGoalAndRebuild(val);
+  if (!Number.isFinite(newLimit) || newLimit < 0 || newLimit > DAILY_NEW_LIMIT_MAX) {
+    showToast(`每日新词上限请输入0-${DAILY_NEW_LIMIT_MAX}之间的数字`);
+    return;
+  }
+  writeDailyNewLimit(newLimit);
+  setNewLimitInputValue(dailyNewLimit);
+  await setDailyGoalAndRebuild(val, `每日通过目标已设为 ${val}，新词上限为 ${dailyNewLimit}`);
 }
 
 function reminderSettingsKey() {
@@ -4304,11 +4413,10 @@ async function renderCalendar(force = false) {
 
 function buildCats() {
   const present = new Set(W.map(w => normalizeCategory(w.cat)).filter(Boolean));
-  if (DEXONLINE_VERB_FALLBACK_WORDS.length) present.add('verb');
   const cats = CATEGORY_ORDER
     .filter(c => c === '全部' || present.has(c))
     .concat([...present].filter(c => !CATEGORY_ORDER.includes(c)).sort((a, b) => a.localeCompare(b, 'en')));
-  const preferred = ['全部', 'Daily Life', 'verb', 'adjective', 'Medicine', 'Law', 'Education', 'Science'];
+  const preferred = ['全部', 'daily_life', 'people_society', 'education_language', 'work_management', 'health_medicine', 'science_technology', 'history_culture_arts'];
   let primary = preferred.filter(c => cats.includes(c));
   if (curCat && !primary.includes(curCat) && cats.includes(curCat)) primary.push(curCat);
   primary = primary.slice(0, 9);
@@ -4318,7 +4426,7 @@ function buildCats() {
   document.getElementById('cat-bar').innerHTML = [
     ...primary.map(buttonHtml),
     secondary.length ? `<details class="cat-more">
-      <summary>全部分类</summary>
+      <summary>全部主题</summary>
       <div class="cat-more-list">${secondary.map(buttonHtml).join('')}</div>
     </details>` : ''
   ].join('');
@@ -4383,9 +4491,9 @@ function renderCard() {
           ? '今日任务已完成'
           : (deferredQueueCount
             ? '今日队列等待复习'
-            : (curCat !== '全部' && (hasDueReview || hasNewWords || hasOpenQueue) ? '当前分类没有今日任务' : '今日没有可安排任务'))),
+            : (curCat !== '全部' && (hasDueReview || hasNewWords || hasOpenQueue) ? '当前主题没有今日任务' : '今日没有可安排任务'))),
       review: '当前没有到期复习词',
-    }[flashMode] || '当前分类暂无可学词';
+    }[flashMode] || '当前主题暂无可学词';
     const actionText = {
       today: pausedForCheckin || pausedForGoal
         ? '今天的目标已完成，请选择是否继续。'
@@ -4395,7 +4503,7 @@ function renderCard() {
           ? (eligibleNewCount > 0
             ? `${deferredQueueCount} 个词正在等待短间隔复习；系统正在安排可学新词。`
             : `${deferredQueueCount} 个词正在等待短间隔复习；当前没有可加入的新词，到复习时间后会继续。`)
-          : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换分类、提高今日任务目标或去测验'))),
+          : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换主题、提高今日任务目标或去测验'))),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
@@ -4428,6 +4536,7 @@ function renderCard() {
   }
   renderCardFront(w);
   renderCardBack(w);
+  updateCardHistoryControls();
   renderReviewPanel();
   finishDailyQueuePerf(perf, {
     path: 'card',
@@ -4435,6 +4544,19 @@ function renderCard() {
     vocabScanned: 0,
     resultSize: filtered.length
   });
+}
+
+function updateCardHistoryControls() {
+  const card = document.getElementById('main-card');
+  const historyButton = document.getElementById('history-nav-btn');
+  const undoButton = document.getElementById('undo-last-answer-btn');
+  const reviewingHistory = !!flashOverrideRo;
+  card?.classList.toggle('history-view', reviewingHistory);
+  if (historyButton) {
+    historyButton.textContent = reviewingHistory ? '返回当前卡片' : '◀ 回看上一张';
+    historyButton.disabled = !reviewingHistory && !flashHistory.length;
+  }
+  if (undoButton) undoButton.disabled = !lastCardAnswerSnapshot || flashcardAnswerInFlight;
 }
 
 function getCardRenderWord() {
@@ -4448,8 +4570,8 @@ function getCardRenderWord() {
 function renderCardFront(w) {
   const frontHint = document.getElementById('fc-front-hint');
   if (frontHint) frontHint.textContent = '先在心里说出罗语，再点卡片看答案';
-  const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
-  document.getElementById('fc-cat').textContent = `${getCategoryLabel(w.cat)}${taskType}`;
+  document.getElementById('fc-cat').textContent = getTopicLabel(w.topic || w.cat);
+  setText('fc-pos', getCardPromptCue(w));
   document.getElementById('fc-zh').textContent = w.zh;
   const verifyEl = document.getElementById('fc-verify');
   if (verifyEl) {
@@ -4465,7 +4587,7 @@ function renderCardFront(w) {
 
 function renderCardBack(w) {
   const taskType = flashMode === 'today' ? ` · ${getDailyTaskType(w)}` : '';
-  document.getElementById('fc-cat2').textContent = `${getCategoryLabel(w.cat)}${taskType}`;
+  document.getElementById('fc-cat2').textContent = `${getClassificationSummary(w, { includeUnit: true })}${taskType}`;
   document.getElementById('fc-ro').textContent = w.ro;
   const stress = getStressDisplay(w);
   setStressHtml('fc-ipa', w);
@@ -4476,6 +4598,35 @@ function renderCardBack(w) {
     const requestedRo = w.ro;
     hydrateCorpusExample('fc-example', w, () => roKey(getCardRenderWord()?.ro) === roKey(requestedRo));
   }
+  renderAnswerConsequences(w);
+}
+
+function getCardPromptCue(w) {
+  const explicitPos = normalizePartOfSpeech(w?.part_of_speech, w);
+  const grammar = getGrammarInfo(w).toLocaleLowerCase('ro');
+  if (/^s\.f\.|阴性名词|名词.*阴/.test(grammar)) return '阴性名词';
+  if (/^s\.m\.|阳性名词|名词.*阳/.test(grammar)) return '阳性名词';
+  if (/^s\.n\.|中性名词|名词.*中/.test(grammar)) return '中性名词';
+  if (/^vb\.|^verb|动词/.test(grammar) || /^a\s+/i.test(String(w?.ro || ''))) return '动词';
+  if (/^adj|形容词/.test(grammar)) return '形容词';
+  if (/^adv|副词/.test(grammar)) return '副词';
+  if (/pron|代词/.test(grammar)) return '代词';
+  if (/prep|介词/.test(grammar)) return '介词';
+  return getPartOfSpeechLabel(explicitPos) || '词义回忆';
+}
+
+function renderAnswerConsequences(w) {
+  const current = getProgress(w?.ro) || {};
+  const configs = [
+    ['unknown', 'mark-unknown-btn', '✕ 不认识', '继续学习'],
+    ['fuzzy', 'mark-fuzzy-btn', '≈ 模糊', '继续学习'],
+    ['known', 'mark-known-btn', '✓ 准确回忆', '通过今日任务']
+  ];
+  configs.forEach(([action, id, label, consequence]) => {
+    const next = getSchedulerReview(current, action, { now: new Date() });
+    const due = formatReviewDue(next.dueAt || next.nextReviewAt);
+    setText(id, `${label} · ${due} · ${consequence}`);
+  });
 }
 
 // 点卡片：来回翻转
@@ -4535,6 +4686,11 @@ function renderNextFlashCardInstantFront() {
 }
 
 function nextCard() {
+  if (flashOverrideRo) {
+    flashOverrideRo = null;
+    renderFlashCardAfterFrontReset();
+    return;
+  }
   const current = getCurrentFlashWord();
   if (flashMode === 'today' && (!filtered.length || filtered.length <= 1)) {
     const fallback = getNextDailyFallbackWord(current?.ro);
@@ -4685,6 +4841,11 @@ function markCard(answer) {
     finishDailyQueuePerf(perf, { path: 'no-word', action, vocabScanned: 0 });
     return;
   }
+  if (flashOverrideRo) {
+    showToast('历史卡片仅供回看，不会重复计分');
+    finishDailyQueuePerf(perf, { path: 'blocked-history', action, vocabScanned: 0 });
+    return;
+  }
   const isKnownAction = action === 'known';
   const isUnknownAction = action === 'unknown';
   const isFuzzyAction = action === 'fuzzy';
@@ -4697,10 +4858,10 @@ function markCard(answer) {
   setFlashcardAnswerButtonsDisabled(true);
   let path = 'answer';
   try {
-    const wasReviewingHistory = !!flashOverrideRo;
     const p = getProgress(w.ro);
     const schedulerBefore = normalizeScheduler(p || {});
     const queuePhaseBefore = getStudyQueuePhase(w);
+    const answerSnapshot = captureCardAnswerSnapshot(w, p, queuePhaseBefore);
     const isReviewTask = queuePhaseBefore === 'review-due' ||
       queuePhaseBefore === 'relearning-due' ||
       schedulerBefore.cardState === 'mastered' ||
@@ -4711,6 +4872,7 @@ function markCard(answer) {
     if (flashMode === 'today') queueTodayAccuracyAttempt(isKnownAction);
     const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
     setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() }, { source: 'markCard' });
+    if (flashMode === 'today' && queuePhaseBefore === 'new') markTodayNewIntroduction(w.ro);
     let dailyStateResult = null;
     const isOpenTodayWord = flashMode === 'today'
       && roListIncludes(todayQueue, w.ro)
@@ -4736,7 +4898,7 @@ function markCard(answer) {
     const shouldStopForGoal = flashMode === 'today' && !!dailyStateResult?.reachedGoal;
     const shouldStopForCheckin = flashMode === 'today' && (shouldPauseTodayStudyForCheckin() || shouldStopForGoal);
     // 跳下一张，重置为中文面
-    if (!wasReviewingHistory && !shouldStopForCheckin) flashHistory.push(w.ro);
+    if (!shouldStopForCheckin) flashHistory.push(w.ro);
     if (shouldStopForCheckin) {
       filtered = [];
       flashOverrideRo = null;
@@ -4748,6 +4910,7 @@ function markCard(answer) {
     }
     renderNextFlashCardInstantFront();
     persistFastCardAnswer(progressResult);
+    lastCardAnswerSnapshot = answerSnapshot;
     if (flashMode === 'today') {
       scheduleTodayStatePersistence(!!dailyStateResult?.reachedGoal);
       if (shouldStopForCheckin && dailyStateResult?.reachedGoal) {
@@ -4763,6 +4926,7 @@ function markCard(answer) {
     showToast('保存失败，请稍后重试');
   } finally {
     flashcardAnswerInFlight = false;
+    updateCardHistoryControls();
     finishDailyQueuePerf(perf, {
       path,
       action,
@@ -4772,23 +4936,128 @@ function markCard(answer) {
   }
 }
 
-// 「上一个」— 回到上一张的罗语面
-function prevCard() {
-  const previousRo = flashHistory.pop();
-  if (previousRo) {
-    const previousIdx = filtered.findIndex(item => item.ro === previousRo);
-    if (previousIdx >= 0) idx = previousIdx;
-    flashOverrideRo = previousRo;
-    flipped = true;
-    document.getElementById('main-card').classList.add('flipped');
-    renderCard();
+function cloneCardState(value) {
+  if (value === null || value === undefined) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function captureCardAnswerSnapshot(w, progress, queuePhaseBefore) {
+  return {
+    wordRo: w.ro,
+    wordId: w.id ?? null,
+    queuePhaseBefore,
+    hadProgress: !!progress,
+    progress: cloneCardState(progress),
+    fastProgressEntry: cloneCardState(fastProgressQueue.get(w.ro) || null),
+    todayQueue: [...todayQueue],
+    todayQueueCompleted: [...todayQueueCompleted],
+    todaySeenWords: [...todaySeenWords],
+    todayIntroducedWords: [...todayIntroducedWords],
+    todayNewWords,
+    todayLog: cloneCardState(todayLog),
+    accuracySaved: readTodayAccuracyStats(),
+    accuracyPending: { ...pendingTodayAccuracyStats },
+    flashHistory: [...flashHistory],
+    flashMode,
+    curCat,
+    lastLearningHint
+  };
+}
+
+async function undoLastCardAnswer() {
+  const snapshot = lastCardAnswerSnapshot;
+  if (!snapshot || flashcardAnswerInFlight) {
+    showToast('没有可撤销的作答');
     return;
   }
-  if (!filtered.length) return;
-  flashOverrideRo = null;
-  idx = (idx - 1 + filtered.length) % filtered.length;
+  flashcardAnswerInFlight = true;
+  updateCardHistoryControls();
+  try {
+    if (todayStateFlushTimer) {
+      clearTimeout(todayStateFlushTimer);
+      todayStateFlushTimer = null;
+    }
+    fastProgressQueue.delete(snapshot.wordRo);
+    if (snapshot.fastProgressEntry) fastProgressQueue.set(snapshot.wordRo, snapshot.fastProgressEntry);
+    if (snapshot.hadProgress) {
+      setProgress(snapshot.wordRo, snapshot.progress, { replace: true, source: 'undoLastCardAnswer' });
+    } else {
+      deleteProgress(snapshot.wordRo);
+    }
+    const correctionStatus = queueProgressCorrectionForSync(
+      currentUser.id,
+      snapshot.wordId,
+      snapshot.wordRo,
+      snapshot.hadProgress ? snapshot.progress : null,
+      snapshot.progress || {}
+    );
+    if (!correctionStatus.ok) throw correctionStatus.error || new Error('撤销进度写入失败');
+
+    todayQueue = [...snapshot.todayQueue];
+    todayQueueCompleted = new Set(snapshot.todayQueueCompleted);
+    todaySeenWords = new Set(snapshot.todaySeenWords);
+    todayIntroducedWords = new Set(snapshot.todayIntroducedWords);
+    todayNewWords = snapshot.todayNewWords;
+    todayLog = cloneCardState(snapshot.todayLog);
+    pendingTodayAccuracyStats = { ...snapshot.accuracyPending };
+    writeTodayAccuracyStats(snapshot.accuracySaved);
+    writeTodaySeenWords();
+    writeTodayIntroducedWords();
+    dailyQueueVersion++;
+    invalidateCalendarCache();
+    invalidateQuizPracticePool();
+
+    const checkinDone = isDailyCheckinDone();
+    await Promise.all([
+      saveTodayQueue({ forceLocal: true }),
+      apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
+        completed: checkinDone,
+        forceLocal: true
+      })
+    ]);
+
+    flashMode = snapshot.flashMode;
+    curCat = snapshot.curCat;
+    flashHistory = [...snapshot.flashHistory];
+    flashOverrideRo = null;
+    flipped = false;
+    lastLearningHint = snapshot.lastLearningHint;
+    lastCardAnswerSnapshot = null;
+    applyFilters();
+    const restoredIndex = filtered.findIndex(word => roKey(word.ro) === roKey(snapshot.wordRo));
+    if (restoredIndex >= 0) idx = restoredIndex;
+    buildCats();
+    renderCard();
+    renderDailyGoal();
+    updateTodayCalendarCell();
+    upStats();
+    updateReviewBadge();
+    setSyncBadge(isOfflineMode() ? '已撤销并存本机' : '撤销待同步', isOfflineMode() ? 'saved' : '');
+    showToast(`已撤销「${getWordByRo(snapshot.wordRo)?.zh || snapshot.wordRo}」的上次作答`);
+  } catch (error) {
+    console.warn('Undo card answer failed', error);
+    showToast('撤销失败，请稍后重试');
+  } finally {
+    flashcardAnswerInFlight = false;
+    updateCardHistoryControls();
+  }
+}
+
+// 「回看上一张」只读展示，不改变学习状态
+function prevCard() {
+  if (flashOverrideRo) {
+    flashOverrideRo = null;
+    renderFlashCardAfterFrontReset();
+    return;
+  }
+  const previousRo = flashHistory[flashHistory.length - 1];
+  if (!previousRo) {
+    showToast('还没有可回看的上一张卡片');
+    return;
+  }
+  flashOverrideRo = previousRo;
   flipped = true;
-  document.getElementById('main-card').classList.add('flipped');
+  document.getElementById('main-card')?.classList.add('flipped', 'history-view');
   renderCard();
 }
 
@@ -4872,19 +5141,29 @@ function setCardFlipAccessibility(cardId, isFlipped) {
   faces[1]?.setAttribute('aria-hidden', isFlipped ? 'false' : 'true');
   if (cardId === 'main-card') {
     const answerRow = card.nextElementSibling;
-    if (answerRow?.classList.contains('card-answer-row')) answerRow.setAttribute('aria-hidden', isFlipped ? 'false' : 'true');
+    if (answerRow?.classList.contains('card-answer-row')) {
+      answerRow.setAttribute('aria-hidden', isFlipped && !card.classList.contains('history-view') ? 'false' : 'true');
+    }
   }
 }
 
-function speak(rate) {
+async function speak(rate) {
   const w = getCurrentFlashWord();
   if (!w || !String(w.ro || '').trim()) return;
-  if (!('speechSynthesis' in window)) return;
+  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') {
+    showToast('当前浏览器不支持发音播放');
+    return;
+  }
+  const voices = await waitForSpeechVoices();
+  const rv = voices.find(v => String(v.lang || '').toLocaleLowerCase('en').startsWith('ro'));
+  if (!rv) {
+    showToast('当前设备没有罗马尼亚语语音，请先在系统中安装');
+    return;
+  }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(w.ro);
   u.lang = 'ro-RO'; u.rate = rate;
-  const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
-  if (rv) u.voice = rv;
+  u.voice = rv;
   speechSynthesis.speak(u);
 }
 
@@ -5139,8 +5418,8 @@ function renderWrongbookCard() {
   const streak = wbStreaks[w.ro] || 0;
   const remainingToGraduate = Math.max(0, WB_GRADUATE - streak);
 
-  document.getElementById('wb-cat').textContent = getCategoryLabel(w.cat);
-  document.getElementById('wb-cat2').textContent = getCategoryLabel(w.cat);
+  document.getElementById('wb-cat').textContent = getTopicLabel(w.topic || w.cat);
+  document.getElementById('wb-cat2').textContent = getClassificationSummary(w, { includeUnit: true });
   document.getElementById('wb-zh').textContent = w.zh;
   document.getElementById('wb-ro').textContent = w.ro;
   setStressHtml('wb-ipa', w);
@@ -5606,7 +5885,7 @@ function showQuizSetup() {
     : `${getPracticeScopeLabel()} · ${modeName}${qExerciseMode === 'translation' ? ` · ${qMode === 'zh' ? '中文到罗语' : '罗语到中文'}` : ''}`;
   document.getElementById('quiz-area').innerHTML = `
     <div class="quiz-section quiz-start-panel">
-      <div class="quiz-start-meta">${curCat !== '全部' ? getCategoryLabel(curCat) : '全部分类'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
+      <div class="quiz-start-meta">${curCat !== '全部' ? getCategoryLabel(curCat) : '全部主题'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
       <div class="quiz-start-title">${escapeHtml(primaryTitle)}</div>
       <div class="quiz-start-sub">${escapeHtml(primarySub)}</div>
       <div style="font-size:13px;font-weight:750;margin-bottom:.8rem;color:var(--text2)">本轮题目数</div>
@@ -5927,7 +6206,7 @@ async function renderStatsPage() {
     renderAchievements(summary, logs);
   } catch (e) {
     dailyEl.innerHTML = '<div class="empty-state">学习记录暂时无法读取</div>';
-    catEl.innerHTML = '<div class="empty-state">分类统计暂时无法读取</div>';
+    catEl.innerHTML = '<div class="empty-state">主题统计暂时无法读取</div>';
     if (hardEl) hardEl.innerHTML = '<div class="empty-state">错词统计暂时无法读取</div>';
   }
 }
@@ -5943,9 +6222,9 @@ function renderStudyCoach(summary, logs = []) {
   if (dueCount) items.push({ title: `先复习 ${dueCount} 个到期词`, meta: '这是今天最该优先完成的任务', kind: 'due' });
   if (weakCount) items.push({ title: `继续练 ${weakCount} 个学习中词`, meta: '还没稳定掌握，适合短轮测验', kind: 'weak' });
   if (todayOpen) items.push({ title: `完成今日剩余 ${todayOpen} 个任务`, meta: `${todayNewWords}/${dailyGoal} 已完成`, kind: 'today' });
-  if (weakCat) items.push({ title: `掌握较少：${getCategoryLabel(weakCat.cat)}`, meta: `当前掌握率 ${weakCat.pct}%，可以按分类练习`, kind: 'cat', arg: weakCat.cat });
+  if (weakCat) items.push({ title: `掌握较少：${getCategoryLabel(weakCat.cat)}`, meta: `当前掌握率 ${weakCat.pct}%，可以按主题练习`, kind: 'cat', arg: weakCat.cat });
   if (!items.length) items.push({ title: `做一轮智能测验`, meta: `当前正确率 ${summary.accuracy}%，用测验检查是否真的记住`, kind: 'quiz' });
-  const actionLabels = { due: '开始复习', weak: '开始练习', today: '继续任务', cat: '分类练习', quiz: '开始测验' };
+  const actionLabels = { due: '开始复习', weak: '开始练习', today: '继续任务', cat: '主题练习', quiz: '开始测验' };
   el.innerHTML = items.slice(0, 4).map(item => `
     <div class="hard-row">
       <div class="hard-main">
@@ -6007,12 +6286,15 @@ function exportProgressBackup() {
     user: { id: currentUser?.id || null, email: currentUser?.email || null },
     dailyGoal: defaultDailyGoal,
     todayGoal: dailyGoal,
+    dailyNewLimit,
     progress: progressMap,
     dailyQueue: {
       word_id: queueIdsToWordIds(todayQueue),
       word_ro: queueIdsToWordRos(todayQueue),
       completed_word_id: queueIdsToWordIds([...todayQueueCompleted]),
       completed_word_ro: queueIdsToWordRos([...todayQueueCompleted]),
+      introduced_word_id: queueIdsToWordIds([...todayIntroducedWords]),
+      introduced_word_ro: queueIdsToWordRos([...todayIntroducedWords]),
       new_words: todayNewWords
     }
   };
@@ -6045,11 +6327,17 @@ async function restoreDailyQueueFromBackup(dailyQueuePayload = null) {
     ...(dailyQueuePayload.completed_word_id || []),
     ...(dailyQueuePayload.completed_word_ro || [])
   ]);
+  const restoredIntroduced = resolveQueueRefsToRos([
+    ...(dailyQueuePayload.introduced_word_id || []),
+    ...(dailyQueuePayload.introduced_word_ro || [])
+  ]);
   if (!restoredQueue.length && !restoredCompleted.length) return { restored: false };
   todayQueueCompleted = new Set(restoredCompleted);
   todayQueue = restoredQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
   todaySeenWords = new Set([...readTodaySeenWords(), ...todayQueueCompleted]);
+  todayIntroducedWords = new Set(restoredIntroduced);
   writeTodaySeenWords();
+  writeTodayIntroducedWords();
   todayNewWords = todayQueueCompleted.size;
   dailyQueueVersion++;
   await saveTodayQueue();
@@ -6121,6 +6409,10 @@ async function importProgressBackup(file) {
       if (input) input.value = defaultDailyGoal;
       await apiSetDailyGoal(currentUser.id, defaultDailyGoal);
     }
+    if (payload.dailyNewLimit !== undefined) {
+      writeDailyNewLimit(payload.dailyNewLimit);
+      setNewLimitInputValue(dailyNewLimit);
+    }
     const queueRestore = await restoreDailyQueueFromBackup(payload.dailyQueue);
     applyFilters();
     upStats();
@@ -6173,7 +6465,7 @@ function renderCategoryMastery() {
       <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(getCategoryLabel(r.cat))}</div>
       <div class="cat-meter"><div class="cat-fill" style="width:${r.pct}%"></div></div>
       <div style="text-align:right;color:var(--text2)">${r.pct}%</div>
-    </div>`).join('') : '<div class="empty-state">还没有分类数据</div>';
+    </div>`).join('') : '<div class="empty-state">还没有主题数据</div>';
 }
 
 function renderHardestWords() {
@@ -6187,7 +6479,7 @@ function renderHardestWords() {
     return `<div class="hard-row">
       <div class="hard-main">
         <div class="hard-word">${escapeHtml(w.zh || '')} · ${escapeHtml(w.ro || '')}</div>
-        <div class="hard-meta">${escapeHtml(getCategoryLabel(w.cat))} · 累计答错 ${s.wrong} 次 · 连续答错 ${s.streak}</div>
+        <div class="hard-meta">${escapeHtml(getClassificationSummary(w, { includeUnit: true }))} · 累计答错 ${s.wrong} 次 · 连续答错 ${s.streak}</div>
       </div>
       <div class="hard-score">错误率 ${rate}%</div>
     </div>`;
@@ -6300,23 +6592,37 @@ function renderWordDetail(w) {
   const p = getProgress(w.ro) || {};
   const s = getDifficultScore(w);
   const stress = getStressDisplay(w);
-  const nextReview = p.nextReviewAt ? formatReviewDue(p.nextReviewAt) : '未安排';
   const example = getSyncExampleSentence(w);
   const canQueue = isUnseenWord(w) && !(roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
+  const hasProgress = hasWordProgress(p);
+  const grammar = getGrammarInfo(w);
+  const auxiliaryLabels = getAuxiliaryLabels(w);
+  const detailCells = [
+    ['主题', getTopicLabel(w.topic || w.cat)],
+    ['词性', getPartOfSpeechLabel(normalizePartOfSpeech(w.part_of_speech, w))],
+    ['词汇单位', getUnitTypeLabel(normalizeUnitType(w.unit_type, w, w.part_of_speech))],
+    ['语法', `${grammar}${stress.auto ? ' · 自动重音待校对' : ''}`],
+    ...(w.cefr ? [['CEFR', w.cefr]] : []),
+    ...(w.register ? [['语域', getRegisterLabel(w.register)]] : []),
+    ...(hasProgress
+      ? [
+          ['学习状态', getLevelLabel(w.ro)],
+          ...(p.nextReviewAt ? [['下次复习', formatReviewDue(p.nextReviewAt)]] : []),
+          ...((p.qt || 0) > 0 ? [['练习记录', `正确 ${p.qr || 0}/${p.qt || 0}${s.wrong ? ` · 答错 ${s.wrong}` : ''}${s.streak ? ` · 连错 ${s.streak}` : ''}`]] : [])
+        ]
+      : [['学习状态', '尚未开始学习']]),
+    ...(auxiliaryLabels.length ? [['当前任务', auxiliaryLabels.join(' · ')]] : [])
+  ];
   document.getElementById('word-detail-body').innerHTML = `
     <div class="detail-head">
       <div class="detail-zh">${escapeHtml(w.zh || '')}</div>
       <div class="detail-ro">${escapeHtml(w.ro || '')}</div>
+      <div class="detail-label" style="margin-top:6px">重音标记</div>
       <div class="card-stress-word" style="font-size:24px">${stressToHtml(stress.text)}</div>
       ${isWordUnverified(w) ? '<span class="unverified-badge" style="width:max-content">未核对</span>' : ''}
     </div>
     <div class="detail-grid">
-      <div class="detail-chip"><div class="detail-label">分类</div><div class="detail-value">${escapeHtml(getCategoryLabel(w.cat))}</div></div>
-      <div class="detail-chip"><div class="detail-label">熟练度</div><div class="detail-value">${escapeHtml(getLevelLabel(w.ro))}</div></div>
-      <div class="detail-chip"><div class="detail-label">语法</div><div class="detail-value">${escapeHtml(getGrammarInfo(w))}${stress.auto ? ' · 自动重音待校对' : ''}</div></div>
-      <div class="detail-chip"><div class="detail-label">复习</div><div class="detail-value">下次：${escapeHtml(nextReview)} · 阶段 ${window.RomanianVocabScheduler.getReviewStage(p)}</div></div>
-      <div class="detail-chip"><div class="detail-label">练习记录</div><div class="detail-value">正确 ${p.qr || 0}/${p.qt || 0} · 答错 ${s.wrong} · 连错 ${s.streak}</div></div>
-      <div class="detail-chip"><div class="detail-label">辅助标签</div><div class="detail-value">${escapeHtml(getAuxiliaryLabelText(w))}</div></div>
+      ${detailCells.map(([label, value]) => `<div class="detail-chip"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value">${escapeHtml(value)}</div></div>`).join('')}
     </div>
     <div class="detail-chip" style="${example ? '' : 'display:none'}">
       <div class="detail-label">例句</div>
@@ -6340,11 +6646,11 @@ function buildExampleSentence(w) {
 }
 
 function getSyncExampleSentence(w) {
-  return buildExampleSentence(w) || getLocalExample(w) || getDirectCorpusExample(w?.ro);
+  return getPrimaryExampleSentence(w);
 }
 
 function getPrimaryExampleSentence(w) {
-  return buildExampleSentence(w) || getPrimaryLocalExample(w) || getDirectCorpusExample(w?.ro);
+  return getPrimaryLocalExample(w) || buildExampleSentence(w) || getDirectCorpusExample(w?.ro);
 }
 
 function renderFrontExampleRecall(id, w, example) {
@@ -6355,12 +6661,29 @@ function renderFrontExampleRecall(id, w, example) {
     el.innerHTML = '';
     return;
   }
-  const zh = String(w.zh || '').trim();
+  const cloze = buildChineseCloze(example.zh, w.zh);
+  if (!cloze) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
   el.style.display = '';
   el.innerHTML = `
-    <div class="front-recall-label">例句回忆</div>
-    <div class="front-recall-zh">${escapeHtml(example.zh)}</div>
-    <div class="front-recall-cloze">空格处先回忆罗语：____${zh ? `（${escapeHtml(zh)}）` : ''}</div>`;
+    <div class="front-recall-label">语境提示</div>
+    <div class="front-recall-zh">${escapeHtml(cloze)}</div>
+    <div class="front-recall-cloze">请用罗语补全空格</div>`;
+}
+
+function buildChineseCloze(sentence, gloss) {
+  const text = String(sentence || '').trim();
+  const candidates = String(gloss || '')
+    .split(/[；;、/，,（）()]+/)
+    .map(value => value.trim())
+    .filter(value => value.length >= 1)
+    .sort((a, b) => b.length - a.length);
+  const match = candidates.find(candidate => text.includes(candidate));
+  if (!text || !match) return '';
+  return text.replace(match, '____');
 }
 
 function hashText(value) {
@@ -6544,19 +6867,28 @@ function listQueueAction(w) {
   return `<button class="queue-btn" onclick="addWordToTodayQueue(decodeURIComponent('${encodedArg(w.ro)}'))">加入学习</button>`;
 }
 
-function ensureListCategoryFilter() {
-  const select = document.getElementById('list-category-filter');
-  if (!select) return;
-  const categories = [...new Set(W.map(w => normalizeCategory(w.cat)).filter(Boolean))]
+function ensureListTaxonomyFilters() {
+  const topicSelect = document.getElementById('list-topic-filter');
+  const posSelect = document.getElementById('list-pos-filter');
+  if (!topicSelect || !posSelect) return;
+  const topics = [...new Set(W.map(w => normalizeTopic(w.topic || w.cat)).filter(Boolean))]
     .sort((a, b) => categoryRank(a) - categoryRank(b) || String(a).localeCompare(String(b), 'zh'));
-  const signature = categories.join('|');
-  if (select.dataset.signature === signature) return;
-  const selected = select.value || 'all';
-  select.innerHTML = '<option value="all">全部分类</option>' + categories.map(category =>
-    `<option value="${escapeHtml(category)}">${escapeHtml(getCategoryLabel(category))}</option>`
+  const partsOfSpeech = [...new Set(W.map(w => normalizePartOfSpeech(w.part_of_speech, w)).filter(Boolean))]
+    .sort((a, b) => PARTS_OF_SPEECH.findIndex(item => item.value === a) - PARTS_OF_SPEECH.findIndex(item => item.value === b));
+  const signature = `${topics.join('|')}::${partsOfSpeech.join('|')}`;
+  if (topicSelect.dataset.signature === signature && posSelect.dataset.signature === signature) return;
+  const selectedTopic = topicSelect.value || 'all';
+  const selectedPos = posSelect.value || 'all';
+  topicSelect.innerHTML = '<option value="all">全部主题</option>' + topics.map(topic =>
+    `<option value="${escapeHtml(topic)}">${escapeHtml(getTopicLabel(topic))}</option>`
   ).join('');
-  select.value = categories.includes(selected) ? selected : 'all';
-  select.dataset.signature = signature;
+  posSelect.innerHTML = '<option value="all">全部词性</option>' + partsOfSpeech.map(pos =>
+    `<option value="${escapeHtml(pos)}">${escapeHtml(getPartOfSpeechLabel(pos))}</option>`
+  ).join('');
+  topicSelect.value = topics.includes(selectedTopic) ? selectedTopic : 'all';
+  posSelect.value = partsOfSpeech.includes(selectedPos) ? selectedPos : 'all';
+  topicSelect.dataset.signature = signature;
+  posSelect.dataset.signature = signature;
 }
 
 function scheduleRenderList() {
@@ -6576,10 +6908,12 @@ function resetListPageAndRender() {
 function resetListFilters() {
   const search = document.getElementById('search-input');
   const status = document.getElementById('list-status-filter');
-  const category = document.getElementById('list-category-filter');
+  const topic = document.getElementById('list-topic-filter');
+  const pos = document.getElementById('list-pos-filter');
   if (search) search.value = '';
   if (status) status.value = 'all';
-  if (category) category.value = 'all';
+  if (topic) topic.value = 'all';
+  if (pos) pos.value = 'all';
   resetListPageAndRender();
   search?.focus();
 }
@@ -6596,22 +6930,30 @@ function renderList() {
     list.innerHTML = '<div class="empty-state">词库正在加载，请稍候…</div>';
     return;
   }
-  ensureListCategoryFilter();
+  ensureListTaxonomyFilters();
   const q = String(document.getElementById('search-input')?.value || '').trim().toLocaleLowerCase('ro');
   const status = document.getElementById('list-status-filter')?.value || 'all';
-  const category = document.getElementById('list-category-filter')?.value || 'all';
+  const topic = document.getElementById('list-topic-filter')?.value || 'all';
+  const pos = document.getElementById('list-pos-filter')?.value || 'all';
   const f = W.filter(w => {
-    const normalizedCategory = normalizeCategory(w.cat);
-    const categoryLabel = getCategoryLabel(normalizedCategory).toLocaleLowerCase('zh');
+    const normalizedTopic = normalizeTopic(w.topic || w.cat);
+    const normalizedPos = normalizePartOfSpeech(w.part_of_speech, w);
+    const topicLabel = getTopicLabel(normalizedTopic).toLocaleLowerCase('zh');
+    const posLabel = getPartOfSpeechLabel(normalizedPos).toLocaleLowerCase('zh');
+    const unitLabel = getUnitTypeLabel(normalizeUnitType(w.unit_type, w, normalizedPos)).toLocaleLowerCase('zh');
     const matchesText = !q ||
       String(w.zh || '').toLocaleLowerCase('zh').includes(q) ||
       String(w.ro || '').toLocaleLowerCase('ro').includes(q) ||
-      normalizedCategory.toLocaleLowerCase('en').includes(q) ||
-      categoryLabel.includes(q);
+      normalizedTopic.toLocaleLowerCase('en').includes(q) ||
+      normalizedPos.toLocaleLowerCase('en').includes(q) ||
+      topicLabel.includes(q) ||
+      posLabel.includes(q) ||
+      unitLabel.includes(q);
     const level = getProgressLevel(w.ro);
     const matchesStatus = status === 'all' || level === status || (status === 'learning' && level === 'reinforcing');
-    const matchesCategory = category === 'all' || normalizedCategory === category;
-    return matchesText && matchesStatus && matchesCategory;
+    const matchesTopic = topic === 'all' || normalizedTopic === topic;
+    const matchesPos = pos === 'all' || normalizedPos === pos;
+    return matchesText && matchesStatus && matchesTopic && matchesPos;
   });
   const editBtns = (w) => userRole === 'admin'
     ? `<details class="word-actions">
@@ -6634,7 +6976,8 @@ function renderList() {
         <div class="word-ipa${isWordUnverified(w) ? ' unverified-text' : ''}">${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${stress.auto ? ' · 自动重音' : ''} ${unverifiedBadgeHtml(w)}</div>
       </div>
       <div class="word-meta">
-        <div class="word-cat">${escapeHtml(getCategoryLabel(w.cat))}</div>
+        <div class="word-cat">${escapeHtml(getTopicLabel(w.topic || w.cat))}</div>
+        <div class="word-cat">${escapeHtml(getPartOfSpeechLabel(normalizePartOfSpeech(w.part_of_speech, w)))}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:99px;background:${LEVEL_BG[lv]};color:${LEVEL_TC[lv]};white-space:nowrap">${getLevelLabel(w.ro)}</span>
         <button class="queue-btn" onclick="openWordDetail(decodeURIComponent('${encodedArg(w.ro)}'))">详情</button>
         ${listQueueAction(w)}
@@ -6662,6 +7005,73 @@ function getMissingIpaWords() {
       const sb = getDifficultScore(b);
       return sb.wrong - sa.wrong || sb.streak - sa.streak || String(a.ro).localeCompare(String(b.ro), 'ro');
     });
+}
+
+function getVocabularyQualityAudit() {
+  const rowsById = new Map();
+  const duplicateKeys = new Map();
+  W.forEach(word => {
+    const key = roKey(word.ro);
+    if (!duplicateKeys.has(key)) duplicateKeys.set(key, []);
+    duplicateKeys.get(key).push(word);
+    const issues = getTaxonomyQualityIssues(word);
+    if (issues.length) rowsById.set(String(word.id), { word, issues: [...issues] });
+  });
+  duplicateKeys.forEach(words => {
+    if (words.length < 2) return;
+    words.forEach(word => {
+      const entry = rowsById.get(String(word.id)) || { word, issues: [] };
+      if (!entry.issues.includes('normalized_duplicate')) entry.issues.push('normalized_duplicate');
+      rowsById.set(String(word.id), entry);
+    });
+  });
+  const rows = [...rowsById.values()];
+  const counts = {};
+  rows.forEach(row => row.issues.forEach(issue => { counts[issue] = (counts[issue] || 0) + 1; }));
+  return { rows, counts, clean: W.length - rows.length };
+}
+
+const QUALITY_ISSUE_LABELS = Object.freeze({
+  missing_ro: '缺少罗语',
+  missing_zh: '缺少中文',
+  missing_stress: '缺少重音',
+  missing_grammar: '缺少语法',
+  missing_example_ro: '缺少罗语例句',
+  missing_example_zh: '缺少中文例句',
+  template_row: '模板内容',
+  unclassified_topic: '主题待归类',
+  unclassified_pos: '词性待核对',
+  plural_contradiction: '单复数矛盾',
+  needs_review: '待人工核对',
+  normalized_duplicate: '规范化重复'
+});
+
+function renderVocabularyQualityPanel() {
+  const el = document.getElementById('quality-audit-container');
+  if (!el) return;
+  const audit = getVocabularyQualityAudit();
+  if (!audit.rows.length) {
+    el.innerHTML = `<div class="admin-chart">
+      <div class="admin-chart-title">词库质量门</div>
+      <div class="empty-state" style="color:var(--green-text)">已通过：${W.length} 个词条均无模板、主题、词性、重复、格式或例句完整性问题</div>
+    </div>`;
+    return;
+  }
+  const summary = Object.entries(audit.counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([issue, count]) => `${QUALITY_ISSUE_LABELS[issue] || issue} ${count}`)
+    .join(' · ');
+  el.innerHTML = `<div class="admin-chart">
+    <div class="admin-chart-title">词库质量门 <span style="font-weight:400;color:var(--red-text)">${audit.rows.length} 个词条待处理</span></div>
+    <div style="padding:0 0 10px;font-size:12px;color:var(--text2)">${escapeHtml(summary)}</div>
+    ${audit.rows.slice(0, 30).map(({ word, issues }) => `<div class="admin-word-row">
+      <div>
+        <div class="admin-word-name">${escapeHtml(word.zh || word.ro)}</div>
+        <div class="admin-word-meta">${escapeHtml(word.ro)} · ${escapeHtml(issues.map(issue => QUALITY_ISSUE_LABELS[issue] || issue).join('、'))}</div>
+      </div>
+      <button class="admin-btn edit" onclick="openEditById(${Number(word.id)})">修复</button>
+    </div>`).join('')}
+  </div>`;
 }
 
 function getPendingGrammarWords() {
@@ -6720,7 +7130,11 @@ function openEditModal(word, reportId = null) {
   document.getElementById('em-ipa').value = word.ipa || '';
   document.getElementById('em-hint').value = word.hint || '';
   populateCategoryDatalist();
-  document.getElementById('em-cat').value = normalizeCategory(word.cat);
+  document.getElementById('em-topic').value = normalizeTopic(word.topic || word.cat);
+  document.getElementById('em-pos').value = normalizePartOfSpeech(word.part_of_speech, word);
+  document.getElementById('em-unit').value = normalizeUnitType(word.unit_type, word, word.part_of_speech);
+  document.getElementById('em-cefr').value = normalizeCefr(word.cefr);
+  document.getElementById('em-register').value = normalizeRegister(word.register);
   const example = getPrimaryExampleSentence(word);
   const roEl = document.getElementById('em-example-ro');
   const zhEl = document.getElementById('em-example-zh');
@@ -6779,6 +7193,12 @@ function validateEditUpdates(updates, wordId) {
   if (updates.ro && hasCjkText(updates.ro)) {
     problems.push('罗马尼亚语字段不能包含中文');
   }
+  if (looksLikeTemplateWord(updates)) {
+    problems.push('检测到表头或示例模板，请填写真实词条');
+  }
+  if (updates.topic === 'unclassified') problems.push('请选择明确的语义主题');
+  if (updates.part_of_speech === 'other') problems.push('请选择明确的词性');
+  if (!updates.unit_type) problems.push('请选择词汇单位');
   if (updates.zh && updates.ro && roKey(updates.zh) === roKey(updates.ro)) {
     problems.push('中文和罗马尼亚语不能相同');
   }
@@ -6786,6 +7206,9 @@ function validateEditUpdates(updates, wordId) {
   if (duplicate) problems.push(`罗马尼亚语已存在：${duplicate.zh || duplicate.ro}`);
   if (updates.example_zh && !updates.example_ro) {
     problems.push('填写中文例句时也要填写罗语例句');
+  }
+  if (updates.example_ro && !updates.example_zh) {
+    problems.push('填写罗语例句时也要填写中文例句');
   }
   if (updates.example_ro && hasCjkText(updates.example_ro)) {
     problems.push('罗语例句不能包含中文');
@@ -6802,14 +7225,28 @@ function validateEditUpdates(updates, wordId) {
 async function saveEdit() {
   const btn = document.getElementById('em-submit');
   btn.disabled = true; btn.textContent = '保存中...';
-  const updates = {
+  const base = {
     zh: document.getElementById('em-zh').value.trim(),
     ro: document.getElementById('em-ro').value.trim(),
     ipa: document.getElementById('em-ipa').value.trim(),
     hint: document.getElementById('em-hint').value.trim(),
-    cat: normalizeCategory(document.getElementById('em-cat').value),
     example_ro: document.getElementById('em-example-ro').value.trim(),
     example_zh: document.getElementById('em-example-zh').value.trim(),
+  };
+  const topic = normalizeTopic(document.getElementById('em-topic').value);
+  const partOfSpeech = normalizePartOfSpeech(document.getElementById('em-pos').value, base);
+  const unitType = normalizeUnitType(document.getElementById('em-unit').value, base, partOfSpeech);
+  const updates = {
+    ...base,
+    cat: topic,
+    topic,
+    part_of_speech: partOfSpeech,
+    unit_type: unitType,
+    grammar_data: normalizeGrammarData(null, base, partOfSpeech),
+    cefr: normalizeCefr(document.getElementById('em-cefr').value) || null,
+    register: normalizeRegister(document.getElementById('em-register').value) || null,
+    verification_status: 'verified',
+    source: 'admin_edit'
   };
   const validationProblems = validateEditUpdates(updates, editingWordId);
   if (validationProblems.length) {
@@ -6856,7 +7293,12 @@ function openAddWordModal() {
   document.getElementById('aw-ro').value = '';
   document.getElementById('aw-ipa').value = '';
   document.getElementById('aw-hint').value = '';
-  document.getElementById('aw-cat').value = '';
+  populateCategoryDatalist();
+  document.getElementById('aw-topic').value = 'daily_life';
+  document.getElementById('aw-pos').value = 'noun';
+  document.getElementById('aw-unit').value = 'word';
+  document.getElementById('aw-cefr').value = '';
+  document.getElementById('aw-register').value = '';
   document.getElementById('aw-example-ro').value = '';
   document.getElementById('aw-example-zh').value = '';
   document.getElementById('aw-bulk-text').value = '';
@@ -6899,33 +7341,86 @@ async function submitAddWord() {
       const exampleRo = document.getElementById('aw-example-ro').value.trim();
       const exampleZh = document.getElementById('aw-example-zh').value.trim();
       if (!ro || (!zh && !exampleRo)) { showToast('请填写罗语；新词需要中文，已有词补例句需要罗语例句'); btn.disabled = false; btn.textContent = editingPending ? '保存修改' : '提交审核'; return; }
-      words = [{
+      const base = {
         zh, ro,
         ipa: document.getElementById('aw-ipa').value.trim(),
         hint: document.getElementById('aw-hint').value.trim(),
-        cat: normalizeCategory(document.getElementById('aw-cat').value),
         example_ro: exampleRo,
         example_zh: exampleZh
+      };
+      const topic = normalizeTopic(document.getElementById('aw-topic').value);
+      const partOfSpeech = normalizePartOfSpeech(document.getElementById('aw-pos').value, base);
+      const unitType = normalizeUnitType(document.getElementById('aw-unit').value, base, partOfSpeech);
+      words = [{
+        ...base,
+        cat: topic,
+        topic,
+        part_of_speech: partOfSpeech,
+        unit_type: unitType,
+        grammar_data: normalizeGrammarData(null, base, partOfSpeech),
+        cefr: normalizeCefr(document.getElementById('aw-cefr').value) || null,
+        register: normalizeRegister(document.getElementById('aw-register').value) || null,
+        verification_status: 'needs_review',
+        source: 'admin_submission'
       }];
     } else {
-      // 批量模式：每行 中文|罗马尼亚语|重音标记|语法信息|分类|罗语例句|中文例句
+      // 新格式：中文|罗马尼亚语|重音|语法原文|主题|词性|词汇单位|罗语例句|中文例句
+      // 仍兼容旧 7 列格式，但会把旧分类仅映射到主题，词性和单位由内容推导。
       const lines = document.getElementById('aw-bulk-text').value.trim().split('\n')
         .map(l => l.trim())
         .filter(l => l && !l.startsWith('#'));
       words = lines.map(line => {
         const parts = line.split('|').map(s => s.trim());
-        const existingExampleOnly = parts[0] && !parts[1] && !parts[2] && !parts[3] && !parts[4] && parts[5];
-        return {
+        const modern = parts.length >= 9;
+        const exampleIndex = modern ? 7 : 5;
+        const existingExampleOnly = parts[0] && !parts[1] && !parts[2] && !parts[3] && !parts[4] && parts[exampleIndex];
+        const base = {
           zh: existingExampleOnly ? '' : (parts[0] || ''),
           ro: existingExampleOnly ? parts[0] : (parts[1] || ''),
           ipa: parts[2] || '',
           hint: parts[3] || '',
-          cat: normalizeCategory(parts[4]),
-          example_ro: parts[5] || '',
-          example_zh: parts[6] || ''
+          example_ro: parts[exampleIndex] || '',
+          example_zh: parts[exampleIndex + 1] || ''
+        };
+        const topic = normalizeTopic(parts[4], base);
+        const partOfSpeech = normalizePartOfSpeech(modern ? parts[5] : '', { ...base, rawCat: modern ? '' : parts[4] });
+        const unitType = normalizeUnitType(modern ? parts[6] : '', base, partOfSpeech);
+        return {
+          ...base,
+          cat: topic,
+          topic,
+          part_of_speech: partOfSpeech,
+          unit_type: unitType,
+          grammar_data: normalizeGrammarData(null, base, partOfSpeech),
+          cefr: null,
+          register: null,
+          verification_status: 'needs_review',
+          source: 'admin_bulk_submission'
         };
       }).filter(w => w.ro && (w.zh || w.example_ro));
       if (!words.length) { showToast('没有解析到有效词汇，请检查格式'); btn.disabled = false; btn.textContent = editingPending ? '保存修改' : '提交审核'; return; }
+    }
+
+    const invalid = words.flatMap((word, index) => {
+      const exampleOnly = !word.zh && !!word.example_ro;
+      const problems = [];
+      if (looksLikeTemplateWord(word)) problems.push('检测到表头或模板内容');
+      if (!exampleOnly && word.topic === 'unclassified') problems.push('缺少明确主题');
+      if (!exampleOnly && word.part_of_speech === 'other') problems.push('缺少明确词性');
+      if (!exampleOnly && !word.ipa) problems.push('缺少重音标记');
+      if (!exampleOnly && !word.hint) problems.push('缺少语法信息');
+      if (word.example_ro && !word.example_zh) problems.push('罗语例句缺少中文翻译');
+      if (word.example_zh && !word.example_ro) problems.push('中文例句缺少罗语原句');
+      if (word.ro && hasCjkText(word.ro)) problems.push('罗语字段包含中文');
+      return problems.map(problem => `第 ${index + 1} 条：${problem}`);
+    });
+    if (invalid.length) {
+      showToast(invalid[0]);
+      document.getElementById('aw-result').textContent = `❌ ${invalid.slice(0, 3).join('；')}`;
+      document.getElementById('aw-result').style.color = 'var(--red-text)';
+      btn.disabled = false;
+      btn.textContent = editingPending ? '保存修改' : '提交审核';
+      return;
     }
 
     if (editingPending) {
@@ -6975,8 +7470,7 @@ async function deleteWord(wordId, wordZh) {
     W = W.filter(w => w.id !== wordId);
     rebuildWordRoIndex();
     applyFilters();
-    document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    updateVocabCountLabels();
     buildCats(); renderCard(); renderList(); loadAdminStats();
     showToast(`✅ 已删除「${wordZh}」`);
   } catch (e) {
@@ -7006,6 +7500,7 @@ async function loadAdminStats() {
     const reportStats = getAdminReportStats(reports);
     const wrongStats = getAdminWrongStats(allProgress);
     const missingIpaWords = getMissingIpaWords();
+    const qualityAudit = getVocabularyQualityAudit();
     const pendingGrammarWords = getPendingGrammarWords();
     const pendingReports = reports.filter(r => r.status === 'pending').length;
     const pendingWordCount = pendingWords.filter(r => r.status === 'pending').length;
@@ -7014,13 +7509,14 @@ async function loadAdminStats() {
     el.innerHTML = `
       <div class="admin-stat-grid">
         <div class="admin-stat"><div class="admin-stat-n">${W.length}</div><div class="admin-stat-l">词库总量</div></div>
-        <div class="admin-stat"><div class="admin-stat-n">${categoryStats.length}</div><div class="admin-stat-l">分类数量</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${categoryStats.length}</div><div class="admin-stat-l">主题数量</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${pendingWordCount}</div><div class="admin-stat-l">待审核新词</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${pendingReports}</div><div class="admin-stat-l">待处理报错</div></div>
         <div class="admin-stat"><div class="admin-stat-n">${missingIpaWords.length}</div><div class="admin-stat-l">待校对音标</div></div>
+        <div class="admin-stat"><div class="admin-stat-n">${qualityAudit.rows.length}</div><div class="admin-stat-l">质量问题词条</div></div>
       </div>
       <div class="admin-chart">
-        <div class="admin-chart-title">各分类词汇数量</div>
+        <div class="admin-chart-title">各主题词汇数量</div>
         ${renderAdminCategoryRows(categoryStats)}
       </div>
       <div class="admin-chart">
@@ -7035,11 +7531,13 @@ async function loadAdminStats() {
         <div class="admin-chart-title">最近 7 天客户端故障</div>
         ${clientEventsResult.status === 'fulfilled' ? renderClientEventRows(clientEvents) : `<div class="empty-state">故障汇总无法读取：${escapeHtml(clientEventsResult.reason.message)}</div>`}
       </div>`;
+    renderVocabularyQualityPanel();
     renderMissingIpaPanel();
     renderPendingWordsPanel(pendingWords);
     renderPendingGrammarPanel();
   } catch (e) {
     el.innerHTML = `<div class="empty-state">词库统计加载失败：${escapeHtml(e.message || '未知错误')}</div>`;
+    renderVocabularyQualityPanel();
     renderMissingIpaPanel();
     loadAdminPendingWords();
     renderPendingGrammarPanel();
@@ -7076,7 +7574,7 @@ function renderMissingIpaPanel() {
         return `<div class="admin-word-row">
           <div>
             <div class="admin-word-name">${escapeHtml(w.zh || w.ro)}</div>
-            <div class="admin-word-meta">${escapeHtml(w.ro)} · 自动推测：${stressToHtml(stress.text)} · ${escapeHtml(getGrammarInfo(w))}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
+            <div class="admin-word-meta">${escapeHtml(w.ro)} · 自动推测：${stressToHtml(stress.text)} · ${escapeHtml(getGrammarInfo(w))} · ${escapeHtml(getClassificationSummary(w))}</div>
           </div>
           <div class="admin-word-actions">
             <button class="admin-btn edit" onclick="openEditById(${Number(w.id)})">补音标</button>
@@ -7130,7 +7628,9 @@ function renderPendingWordRow(row) {
       <div class="report-meta">提交：${escapeHtml(row.submitted_email || '未知管理员')}${submittedAt ? ` · ${submittedAt}` : ''}</div>
       <div class="pending-word-grid">
         <div class="pending-word-cell"><div class="pending-word-label">重音</div><div class="pending-word-value">${escapeHtml(row.ipa || '未填写')}</div></div>
-        <div class="pending-word-cell"><div class="pending-word-label">分类</div><div class="pending-word-value">${escapeHtml(normalizeCategory(row.cat))}</div></div>
+        <div class="pending-word-cell"><div class="pending-word-label">主题</div><div class="pending-word-value">${escapeHtml(getTopicLabel(normalizeTopic(row.topic || row.cat)))}</div></div>
+        <div class="pending-word-cell"><div class="pending-word-label">词性</div><div class="pending-word-value">${escapeHtml(getPartOfSpeechLabel(normalizePartOfSpeech(row.part_of_speech, row)))}</div></div>
+        <div class="pending-word-cell"><div class="pending-word-label">词汇单位</div><div class="pending-word-value">${escapeHtml(getUnitTypeLabel(normalizeUnitType(row.unit_type, row, row.part_of_speech)))}</div></div>
         <div class="pending-word-cell"><div class="pending-word-label">语法</div><div class="pending-word-value">${escapeHtml(row.hint || '未填写')}</div></div>
         <div class="pending-word-cell"><div class="pending-word-label">例句</div><div class="pending-word-value">${escapeHtml(row.example_ro || '未填写')}${row.example_zh ? `<br>${escapeHtml(row.example_zh)}` : ''}</div></div>
       </div>
@@ -7148,11 +7648,10 @@ async function approvePendingWord(rowId) {
     const row = rows.find(r => Number(r.id) === Number(rowId));
     if (!row) { showToast('找不到待审核词汇'); return; }
     const result = await apiApprovePendingWord(row);
-    W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory);
+    W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory).filter(word => !looksLikeTemplateWord(word));
     rebuildWordRoIndex();
     applyFilters();
-    document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    updateVocabCountLabels();
     buildCats(); renderCard(); renderList();
     await loadAdminPendingWords();
     await refreshAdminBadge();
@@ -7176,11 +7675,10 @@ async function approveAllPendingWords() {
     const btn = document.getElementById('pending-approve-all-btn');
     if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
     const result = await apiApprovePendingWords(pending);
-    W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory);
+    W = (await apiLoadWords({ preferCloud: true })).map(normalizeWordCategory).filter(word => !looksLikeTemplateWord(word));
     rebuildWordRoIndex();
     applyFilters();
-    document.getElementById('s-total').textContent = W.length;
-    document.getElementById('topbar-badge').textContent = W.length + '词 · A1-B2';
+    updateVocabCountLabels();
     buildCats(); renderCard(); renderList();
     await loadAdminPendingWords();
     await refreshAdminBadge();
@@ -7227,7 +7725,12 @@ async function editPendingWord(rowId) {
     document.getElementById('aw-ro').value = row.ro || '';
     document.getElementById('aw-ipa').value = row.ipa || '';
     document.getElementById('aw-hint').value = row.hint || '';
-    document.getElementById('aw-cat').value = normalizeCategory(row.cat);
+    populateCategoryDatalist();
+    document.getElementById('aw-topic').value = normalizeTopic(row.topic || row.cat);
+    document.getElementById('aw-pos').value = normalizePartOfSpeech(row.part_of_speech, row);
+    document.getElementById('aw-unit').value = normalizeUnitType(row.unit_type, row, row.part_of_speech);
+    document.getElementById('aw-cefr').value = normalizeCefr(row.cefr);
+    document.getElementById('aw-register').value = normalizeRegister(row.register);
     document.getElementById('aw-example-ro').value = row.example_ro || '';
     document.getElementById('aw-example-zh').value = row.example_zh || '';
     document.getElementById('aw-result').textContent = '保存后会直接修改当前审核项，不会生成新的申请。';
@@ -7259,7 +7762,7 @@ function renderPendingGrammarPanel() {
         return `<div class="admin-word-row">
           <div>
             <div class="admin-word-name">${escapeHtml(w.zh || w.ro)}</div>
-            <div class="admin-word-meta">${escapeHtml(w.ro)} · ${stressToHtml(stress.text)} · ${escapeHtml(grammar)}${w.cat ? ` · ${escapeHtml(w.cat)}` : ''}</div>
+            <div class="admin-word-meta">${escapeHtml(w.ro)} · ${stressToHtml(stress.text)} · ${escapeHtml(grammar)} · ${escapeHtml(getClassificationSummary(w))}</div>
           </div>
           <div class="admin-word-actions">
             <button class="admin-btn edit" onclick="openEditById(${Number(w.id)})">核对</button>
@@ -7285,7 +7788,15 @@ async function applyStressGrammarPatch() {
       const patch = patchById.get(w.id);
       return w.ipa !== patch.ipa || w.hint !== patch.hint;
     })
-    .map(w => patchById.get(w.id));
+    .map(w => {
+      const patch = patchById.get(w.id);
+      const merged = { ...w, ...patch };
+      const partOfSpeech = normalizePartOfSpeech(merged.part_of_speech, merged);
+      return {
+        ...patch,
+        grammar_data: normalizeGrammarData(null, merged, partOfSpeech)
+      };
+    });
 
   if (!pendingRows.length) {
     if (status) status.textContent = '补全数据已经全部应用。';
@@ -7299,7 +7810,12 @@ async function applyStressGrammarPatch() {
       if (status) status.textContent = `正在写入 ${n} / ${total} 条...`;
     });
     const byId = new Map(pendingRows.map(row => [row.id, row]));
-    W = W.map(w => byId.has(w.id) ? { ...w, ipa: byId.get(w.id).ipa, hint: byId.get(w.id).hint } : w);
+    W = W.map(w => byId.has(w.id) ? {
+      ...w,
+      ipa: byId.get(w.id).ipa,
+      hint: byId.get(w.id).hint,
+      grammar_data: byId.get(w.id).grammar_data
+    } : w);
     rebuildWordRoIndex();
     applyFilters();
     renderCard();
@@ -7358,11 +7874,11 @@ function getAdminWrongStats(rows) {
 }
 
 function renderAdminCategoryRows(rows) {
-  if (!rows.length) return '<div class="empty-state">暂无分类数据</div>';
+  if (!rows.length) return '<div class="empty-state">暂无主题数据</div>';
   const max = Math.max(...rows.map(r => r.count), 1);
   return rows.slice(0, 12).map(r => `
     <div class="admin-mini-row">
-      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.cat)}</div>
+      <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(getTopicLabel(r.cat))}</div>
       <div class="admin-mini-meter"><div class="admin-mini-fill" style="width:${Math.round(r.count / max * 100)}%"></div></div>
       <div style="color:var(--text2)">${r.count}词</div>
     </div>`).join('');
@@ -7396,7 +7912,7 @@ function renderAdminWrongRows(rows) {
 
 const ISSUE_LABELS = {
   wrong_zh: '中文有误', wrong_ro: '罗语有误', wrong_ipa: '音标有误',
-  wrong_hint: '提示有误', wrong_cat: '分类有误', other: '其他'
+  wrong_hint: '提示有误', wrong_cat: '主题或词性有误', other: '其他'
 };
 
 async function refreshAdminBadge() {

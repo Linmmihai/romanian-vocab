@@ -29,28 +29,6 @@
     return uniqueBy(tiers.flatMap(tier => Array.isArray(tier) ? tier : []), keyOf).slice(0, limit);
   }
 
-  function interleavePriority(primary = [], secondary = [], options = {}) {
-    const keyOf = options.keyOf || (value => String(value || ''));
-    const limit = Math.max(1, Number(options.limit || 200));
-    const primaryBatch = Math.max(1, Number(options.primaryBatch || 3));
-    const secondaryBatch = Math.max(1, Number(options.secondaryBatch || 1));
-    const primaryItems = uniqueBy(primary, keyOf);
-    const primaryKeys = new Set(primaryItems.map(keyOf));
-    const secondaryItems = uniqueBy(secondary, keyOf).filter(item => !primaryKeys.has(keyOf(item)));
-    const result = [];
-    let primaryIndex = 0;
-    let secondaryIndex = 0;
-    while (result.length < limit && (primaryIndex < primaryItems.length || secondaryIndex < secondaryItems.length)) {
-      for (let count = 0; count < primaryBatch && primaryIndex < primaryItems.length && result.length < limit; count++) {
-        result.push(primaryItems[primaryIndex++]);
-      }
-      for (let count = 0; count < secondaryBatch && secondaryIndex < secondaryItems.length && result.length < limit; count++) {
-        result.push(secondaryItems[secondaryIndex++]);
-      }
-    }
-    return result;
-  }
-
   function composeOpenQueue(options = {}) {
     const keyOf = options.keyOf || (value => String(value || ''));
     const sortWords = options.sortWords || (items => uniqueBy(items, keyOf));
@@ -82,7 +60,7 @@
     };
   }
 
-  const api = { uniqueBy, sortByPhase, buildTieredPlan, interleavePriority, composeOpenQueue };
+  const api = { uniqueBy, sortByPhase, buildTieredPlan, composeOpenQueue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.RomanianVocabDailyPlan = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

@@ -28,6 +28,12 @@ assert(api.includes('readPendingDailyState(userId)?.[today]?.queue'), 'daily que
 assert(api.includes('readPendingDailyState(userId)?.[today]?.log'), 'today log reads must overlay pending log state');
 assert(api.includes('pendingLogs'), 'recent logs must include pending local logs');
 assert(api.includes('Object.keys(readPendingProgress(userId)).length'), 'progress retry remaining count must include writes created during an in-flight retry');
+assert(api.includes('pendingCorrection'), 'undo corrections must override monotonic progress merging');
+assert(api.includes('force_replace'), 'daily rollback writes must survive retry merging');
+assert(api.includes('introduced_word_id'), 'daily new-card introductions must be part of the synchronized queue state');
+assert(api.includes('Number(cloudLog.new_words || 0) === expectedProcessed'), 'cloud verification must require the exact post-undo daily count');
+assert(api.includes('sameSet(expectedOpenIds, cloudOpenIds)'), 'cloud verification must reject extra or missing queue cards');
+assert(api.includes('sameSet(expectedIntroducedIds, cloudIntroducedIds)'), 'cloud verification must include the daily new-card cap state');
 
 assert(app.includes('function hasPendingSync'), 'UI sync state must include daily pending state');
 assert(app.includes('function reconcileProgressPendingFlags'), 'UI flags must be reconciled from the durable pending queue after retry');

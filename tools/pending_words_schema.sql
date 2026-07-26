@@ -4,7 +4,28 @@ create table if not exists public.pending_words (
   ro text not null,
   ipa text default '',
   hint text default '',
-  cat text default 'Daily Life',
+  cat text default 'unclassified',
+  topic text default 'unclassified' check (
+    topic in ('daily_life', 'people_society', 'education_language', 'work_management',
+      'economics_finance', 'law_public_affairs', 'health_medicine', 'nature_agriculture',
+      'science_technology', 'history_culture_arts', 'philosophy_abstract', 'defense_security',
+      'unclassified')
+  ),
+  part_of_speech text default 'other' check (
+    part_of_speech in ('noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition',
+      'conjunction', 'numeral', 'interjection', 'expression', 'proper_noun', 'other')
+  ),
+  unit_type text default 'word' check (
+    unit_type in ('word', 'verb_phrase', 'collocation', 'expression', 'sentence_pattern',
+      'term', 'proper_name')
+  ),
+  grammar_data jsonb not null default '{}'::jsonb check (jsonb_typeof(grammar_data) = 'object'),
+  cefr text check (cefr is null or cefr in ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')),
+  register text check (register is null or register in ('neutral', 'formal', 'informal', 'colloquial', 'literary', 'technical')),
+  verification_status text not null default 'needs_review' check (
+    verification_status in ('verified', 'imported', 'needs_review')
+  ),
+  source text not null default 'admin_submission',
   example_ro text default '',
   example_zh text default '',
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),

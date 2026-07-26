@@ -111,6 +111,8 @@
   }
 
   function getGrammarInfo(word) {
+    const taxonomy = global.RomanianVocabTaxonomy;
+    if (taxonomy?.formatGrammarInfo) return taxonomy.formatGrammarInfo(word);
     return String(word?.grammar_note || word?.grammar || word?.forms || word?.hint || '').trim() || inferGrammarInfo(word);
   }
 
