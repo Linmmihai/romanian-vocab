@@ -370,9 +370,28 @@ test('card front uses a real Chinese cloze and exposes answer consequences', asy
   await expect(page.locator('#fc-front-example')).not.toContainText('物理');
   await page.locator('#main-card').click();
   await expect(page.locator('#fc-example')).toContainText('Fizica explică');
-  await expect(page.locator('#mark-unknown-btn')).toContainText('10分钟后 · 继续学习');
-  await expect(page.locator('#mark-fuzzy-btn')).toContainText('1天后 · 继续学习');
-  await expect(page.locator('#mark-known-btn')).toContainText('1天后 · 通过今日任务');
+  await expect(page.locator('#mark-unknown-btn')).toHaveText('✕ 不认识 · 10分');
+  await expect(page.locator('#mark-fuzzy-btn')).toHaveText('≈ 模糊 · 1天');
+  await expect(page.locator('#mark-known-btn')).toHaveText('✓ 准确回忆 · 1天');
+  await expect(page.locator('#mark-known-btn')).toHaveAttribute('aria-label', '✓ 准确回忆，1天后，通过今日任务');
+});
+
+test('answer buttons stay on one line at mobile width', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await enterOfflineApp(page);
+  await page.locator('#main-card').click();
+
+  const buttonMetrics = await page.locator('.card-answer-row > button').evaluateAll(buttons => buttons.map(button => ({
+    whiteSpace: getComputedStyle(button).whiteSpace,
+    clientWidth: button.clientWidth,
+    scrollWidth: button.scrollWidth
+  })));
+
+  expect(buttonMetrics).toHaveLength(3);
+  buttonMetrics.forEach(metric => {
+    expect(metric.whiteSpace).toBe('nowrap');
+    expect(metric.scrollWidth).toBeLessThanOrEqual(metric.clientWidth);
+  });
 });
 
 test('card information uses independent taxonomy fields and hides empty learning metadata', async ({ page }) => {
@@ -404,6 +423,46 @@ test('card information uses independent taxonomy fields and hides empty learning
   await expect(detail).not.toContainText('未安排');
   await expect(detail).not.toContainText('阶段 0');
   await expect(detail).not.toContainText('辅助标签');
+});
+
+test('verb phrases and ordinary collocations show distinct classification labels', async ({ page }) => {
+  await enterOfflineApp(page);
+  await page.evaluate(() => {
+    filtered = [getWordByRo('a da banii înapoi')];
+    idx = 0;
+    flashOverrideRo = null;
+    flipped = false;
+    renderCard();
+  });
+
+  await page.locator('#main-card').click();
+  await expect(page.locator('#fc-cat2')).toContainText('日常与个人生活 · 动词短语');
+  await expect(page.locator('#fc-cat2')).not.toContainText('动词 · 动词短语');
+
+  await page.evaluate(() => {
+    filtered = [getWordByRo('a lipi eticheta')];
+    idx = 0;
+    flipped = false;
+    renderCard();
+  });
+  await page.locator('#main-card').click();
+  await expect(page.locator('#fc-cat2')).toContainText('日常与个人生活 · 动词 · 搭配');
+});
+
+test('new core phrases are prioritized ahead of ordinary unseen words', async ({ page }) => {
+  await enterOfflineApp(page);
+  const priorities = await page.evaluate(() => {
+    const core = getWordByRo('Mi se pare că...');
+    const ordinary = getWordByRo('fenomen');
+    return {
+      core: getDailyPhasePriority(core),
+      ordinary: getDailyPhasePriority(ordinary),
+      coreQuality: core?.grammar_data?.phrase_quality
+    };
+  });
+
+  expect(priorities.coreQuality).toBe('core');
+  expect(priorities.core).toBeLessThan(priorities.ordinary);
 });
 
 test('vocabulary list filters topic and part of speech independently', async ({ page }) => {

@@ -62,7 +62,7 @@ const WORDS_LOAD_TIMEOUT_MS = 3500;
 const BUNDLED_WORDS_LOAD_TIMEOUT_MS = 6000;
 // v3 invalidates caches created before online users became cloud-first. Those
 // caches can contain deleted word IDs that violate progress.word_id's FK.
-const VOCAB_DATA_VERSION = '20260725-card-taxonomy-v2';
+const VOCAB_DATA_VERSION = '20260726-phrase-curation-v1';
 const WORDS_CACHE_KEY = `words_cache:${VOCAB_DATA_VERSION}`;
 const WORDS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
