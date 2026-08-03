@@ -11,6 +11,7 @@ assert(api.includes('function clearPendingDailyStatePart'), 'daily state pending
 assert(api.includes('function apiRetryPendingDailyState'), 'daily state pending entries must have an explicit retry worker');
 assert(api.includes('function apiGetPendingSyncSummary'), 'UI must derive pending counts from durable local queues');
 assert(api.includes('function apiVerifyTodayState'), 'manual sync must verify today state with a cloud read-back');
+assert(api.includes('function apiVerifyProgressState'), 'manual sync must verify all progress with a cloud read-back');
 assert(api.includes('queueDailyStateForSync(userId, today, { queue: payload })'), 'daily queue saves must be queued before cloud sync');
 assert(api.includes('queueDailyStateForSync(userId, today, { log: localPayload })'), 'daily log saves must be queued before cloud sync');
 assert(api.includes('function createDailySyncToken'), 'daily pending writes must have per-write sync tokens');
@@ -19,8 +20,8 @@ assert(api.includes("clearPendingDailyStatePart(userId, today, 'queue', payload.
 assert(api.includes("clearPendingDailyStatePart(userId, today, 'log', localPayload.sync_token, localPayload.updated_at)"), 'daily log pending must clear after successful cloud upsert');
 assert(api.includes('currentToken !== syncedToken'), 'pending clear must not delete a newer local write with a different token');
 assert(api.includes('pendingSyncToken: createProgressSyncToken(key)'), 'progress pending writes must store token');
-assert(api.includes('pendingSyncToken: p.pendingSyncToken'), 'progress retry must clear only the saved pending token');
-assert(api.includes('updated_at|schema cache|Could not find'), 'daily log updated_at must have schema fallback');
+assert(api.includes('clearPendingProgress(userId, wordId, wordRo, expectedToken)'), 'progress retry must clear only the saved pending token');
+assert(!api.includes('updated_at|schema cache|Could not find'), 'daily log sync must fail closed instead of silently dropping updated_at');
 assert(api.includes('local, syncError, pendingSync'), 'cloud payloads must strip client-only fields');
 assert(api.includes('queue_date: date'), 'daily queue retry must use the pending entry date');
 assert(api.includes('log_date: date'), 'daily log retry must use the pending entry date');

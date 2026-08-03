@@ -105,7 +105,12 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("fastPath: 'active-queue-full'"), 'expected active queues to have a repair fast path');
   assert(app.includes('activeOpenCount >= activeSlots'), 'expected only active cards to satisfy the remaining daily quota');
   assert(app.includes('cap - Number(todayNewWords || 0)'), 'expected open slots to use the canonical daily completion count');
-  assert(app.includes("path = 'due-only'"), 'global due reviews must strictly block queued new cards');
+  assert(app.includes('if (globalDueWords.length)'), 'global due reviews must strictly block queued new cards');
+  assert(app.includes("path = result.length ? 'due-only' : 'due-scope-fallback'"), 'a due review outside the selected topic must force the all-topic fallback instead of releasing new cards');
+  assert(app.includes('function canContinueIncrementalTodayPool'), 'cached new-card pools must recheck the global due gate before advancing');
+  assert(app.includes('return getRemainingTodayReviewWords().length === 0;'), 'incremental today mode must stop as soon as a review becomes due');
+  assert(app.includes("if (flashMode === 'today' && filtered.length && !canContinueIncrementalTodayPool(filtered))"), 'manual next-card navigation must not bypass a newly reopened review gate');
+  assert(app.includes('return words.filter(isDueReviewWord);'), 'daily completion bookkeeping must not hide a card that becomes due again');
   assert(!app.includes('RomanianVocabDailyPlan.interleavePriority'), 'today mode must not interleave new cards while reviews are due');
   assert(app.includes('isTodayBlockingReviewWord'), 'expected blocking review cards in today mode to count when known');
   assert(app.includes('const completesTodayTask = isKnownAction;'), 'expected fuzzy answers not to complete daily tasks');

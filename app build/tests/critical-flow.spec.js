@@ -169,6 +169,14 @@ test('manual sync is serialized and only succeeds after cloud verification', asy
       queueOk: true,
       verifiedAt: new Date().toISOString()
     });
+    window.apiLoadProgress = async () => ({});
+    window.apiVerifyProgressState = async () => ({
+      ok: true,
+      expectedCount: 0,
+      cloudCount: 0,
+      mismatchCount: 0,
+      verifiedAt: new Date().toISOString()
+    });
     const first = manualSyncToday();
     const second = manualSyncToday();
     const samePromise = first === second;
@@ -225,6 +233,8 @@ test('manual sync stays unconfirmed when cloud read-back does not match today st
     todayQueueCompleted = new Set();
     window.apiGetPendingSyncSummary = () => ({ progressCount: 0, dailyCount: 0, totalCount: 0, lastError: '' });
     window.triggerCloudProgressBackup = async () => ({ attempted: 1, saved: 1, failed: 0, remaining: 0, dailyRemaining: 0 });
+    window.apiLoadProgress = async () => ({});
+    window.apiVerifyProgressState = async () => ({ ok: true, expectedCount: 0, cloudCount: 0, mismatchCount: 0 });
     window.apiVerifyTodayState = async () => ({ ok: false, logOk: true, queueOk: false });
     return (await manualSyncToday()).ok;
   });
@@ -234,6 +244,76 @@ test('manual sync stays unconfirmed when cloud read-back does not match today st
   await expect(page.locator('#account-sync-status')).toHaveText('云端同步尚未确认');
   await expect(page.locator('#account-sync-detail')).toContainText('每日队列尚未通过云端回读确认');
   await expect(page.locator('#manual-sync-btn')).toHaveText('重新同步');
+});
+
+test('manual sync stays unconfirmed when any progress row differs from cloud', async ({ page }) => {
+  await enterOfflineApp(page);
+  const result = await page.evaluate(async () => {
+    localStorage.removeItem('offline-mode');
+    currentUser = { id: '00000000-0000-4000-8000-000000000123', email: 'progress-verify@example.com' };
+    userRole = 'user';
+    progressMap = { 1: { word_id: 1, word_ro: 'test', seen: true, known: true, qr: 1, qt: 1, level: 'learning' } };
+    fastProgressQueue.clear();
+    todayQueue = [];
+    todayQueueCompleted = new Set();
+    window.apiGetPendingSyncSummary = () => ({ progressCount: 0, dailyCount: 0, totalCount: 0, lastError: '' });
+    window.triggerCloudProgressBackup = async () => ({ attempted: 1, saved: 1, failed: 0, remaining: 0, dailyRemaining: 0 });
+    window.apiLoadProgress = async () => ({ ...progressMap });
+    window.apiVerifyTodayState = async () => ({ ok: true, logOk: true, queueOk: true });
+    window.apiVerifyProgressState = async () => ({ ok: false, expectedCount: 1, cloudCount: 1, mismatchCount: 1 });
+    return await manualSyncToday();
+  });
+
+  expect(result.ok).toBe(false);
+  await page.locator('#sync-badge').click();
+  await expect(page.locator('#account-sync-status')).toHaveText('云端同步尚未确认');
+  await expect(page.locator('#account-sync-detail')).toContainText('学习进度尚未通过云端回读确认');
+});
+
+test('cloud progress loading paginates beyond one thousand rows', async ({ page }) => {
+  await enterOfflineApp(page);
+  const result = await page.evaluate(async () => {
+    localStorage.removeItem('offline-mode');
+    currentUser = { id: '00000000-0000-4000-8000-000000000456', email: 'pagination@example.com' };
+    const allRows = Array.from({ length: 1010 }, (_, index) => ({
+      word_id: index + 1,
+      word_ro: `word-${index + 1}`,
+      seen: true,
+      known: true,
+      quiz_right: 1,
+      quiz_total: 1,
+      level: 'learning',
+      review_stage: 1,
+      card_state: 'learning',
+      recent_results: []
+    }));
+    const ranges = [];
+    const originalFrom = sb.from;
+    sb.from = (table) => {
+      if (table !== 'progress') return originalFrom.call(sb, table);
+      const query = {
+        select() { return query; },
+        eq() { return query; },
+        order() { return query; },
+        range(from, to) {
+          ranges.push([from, to]);
+          return Promise.resolve({ data: allRows.slice(from, to + 1), error: null });
+        }
+      };
+      return query;
+    };
+    try {
+      const loaded = await apiLoadProgress(currentUser.id);
+      return { count: Object.keys(loaded).length, ranges };
+    } finally {
+      sb.from = originalFrom;
+    }
+  });
+
+  expect(result).toEqual({
+    count: 1010,
+    ranges: [[0, 499], [500, 999], [1000, 1499]]
+  });
 });
 
 test('daily completion goal and new-card cap remain separate', async ({ page }) => {
@@ -402,13 +482,13 @@ test('history is read-only and undo restores the entire last answer', async ({ p
     const progressCorrections = Object.values(readPendingProgress(currentUser.id));
     const daily = readPendingDailyState(currentUser.id)[getLocalDateKey()] || {};
     return {
-      deletesCreatedProgress: progressCorrections.some(progress => progress.pendingCorrection && progress.pendingDelete),
+      avoidsDuplicateCorrection: progressCorrections.length === 0,
       queueForceReplace: daily.queue?.force_replace === true,
       logForceReplace: daily.log?.force_replace === true
     };
   });
   expect(correctionState).toEqual({
-    deletesCreatedProgress: true,
+    avoidsDuplicateCorrection: true,
     queueForceReplace: true,
     logForceReplace: true
   });
@@ -577,4 +657,323 @@ test('speech failure is visible instead of silent', async ({ page }) => {
     return speak(1);
   });
   await expect(page.getByText('当前浏览器不支持发音播放')).toBeVisible();
+});
+
+test('global due reviews block new cards even when another topic is selected', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(() => {
+    progressMap = {};
+    todayQueueCompleted = new Set();
+    todaySeenWords = new Set();
+    todayIntroducedWords = new Set();
+    todayNewWords = 0;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    idx = 0;
+    flashOverrideRo = null;
+
+    const dueWord = W[0];
+    const newWord = W.find(word => word.cat !== dueWord.cat);
+    const dueAt = new Date(Date.now() - 60_000).toISOString();
+    setProgress(dueWord.ro, {
+      seen: true,
+      known: true,
+      qr: 2,
+      qt: 2,
+      level: 'learning',
+      cardState: 'review',
+      dueAt,
+      nextReviewAt: dueAt,
+      intervalDays: 1,
+      reps: 2
+    }, { source: 'e2e-global-due-gate', replace: true });
+    todayQueue = [newWord.ro];
+    curCat = newWord.cat;
+
+    applyFilters();
+    renderCard();
+    return {
+      dueRo: dueWord.ro,
+      currentRo: getCurrentFlashWord()?.ro,
+      category: curCat,
+      allDue: filtered.every(isDueReviewWord)
+    };
+  });
+
+  expect(state.currentRo).toBe(state.dueRo);
+  expect(state.category).toBe('全部');
+  expect(state.allDue).toBe(true);
+});
+
+test('a review becoming due mid-session preempts the cached new-card pool', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(() => {
+    progressMap = {};
+    todayQueueCompleted = new Set();
+    todaySeenWords = new Set();
+    todayIntroducedWords = new Set();
+    todayNewWords = 0;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    curCat = '全部';
+    idx = 0;
+    flashOverrideRo = null;
+
+    const waitingWord = W[0];
+    const newWords = W.slice(1, 4);
+    const futureDueAt = new Date(Date.now() + 10 * 60_000).toISOString();
+    setProgress(waitingWord.ro, {
+      seen: true,
+      known: false,
+      qr: 0,
+      qt: 1,
+      level: 'learning',
+      cardState: 'learning',
+      dueAt: futureDueAt,
+      nextReviewAt: futureDueAt,
+      reps: 1
+    }, { source: 'e2e-mid-session-waiting', replace: true });
+    todayQueue = [waitingWord.ro, ...newWords.map(word => word.ro)];
+    applyFilters();
+    const answeredRo = getCurrentFlashWord()?.ro;
+    const pastDueAt = new Date(Date.now() - 60_000).toISOString();
+    setProgress(waitingWord.ro, {
+      ...getProgress(waitingWord.ro),
+      dueAt: pastDueAt,
+      nextReviewAt: pastDueAt
+    }, { source: 'e2e-mid-session-due', replace: true });
+
+    advanceFlashcardAfterAnswer(answeredRo, { incrementalToday: true });
+    return {
+      waitingRo: waitingWord.ro,
+      currentRo: getCurrentFlashWord()?.ro,
+      currentIsDue: isDueReviewWord(getCurrentFlashWord())
+    };
+  });
+
+  expect(state.currentRo).toBe(state.waitingRo);
+  expect(state.currentIsDue).toBe(true);
+});
+
+test('manual next navigation cannot bypass a review becoming due mid-session', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(() => {
+    progressMap = {};
+    todayQueueCompleted = new Set();
+    todaySeenWords = new Set();
+    todayIntroducedWords = new Set();
+    todayNewWords = 0;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    curCat = '全部';
+    idx = 0;
+    flashOverrideRo = null;
+
+    const waitingWord = W[0];
+    const newWords = W.slice(1, 4);
+    const futureDueAt = new Date(Date.now() + 10 * 60_000).toISOString();
+    setProgress(waitingWord.ro, {
+      seen: true,
+      known: false,
+      qt: 1,
+      qr: 0,
+      level: 'learning',
+      cardState: 'learning',
+      dueAt: futureDueAt,
+      nextReviewAt: futureDueAt,
+      reps: 1
+    }, { source: 'e2e-manual-next-waiting', replace: true });
+    todayQueue = [waitingWord.ro, ...newWords.map(word => word.ro)];
+    applyFilters();
+
+    const pastDueAt = new Date(Date.now() - 60_000).toISOString();
+    setProgress(waitingWord.ro, {
+      ...getProgress(waitingWord.ro),
+      dueAt: pastDueAt,
+      nextReviewAt: pastDueAt
+    }, { source: 'e2e-manual-next-due', replace: true });
+    nextCard();
+
+    return {
+      waitingRo: waitingWord.ro,
+      currentRo: getCurrentFlashWord()?.ro,
+      currentIsDue: isDueReviewWord(getCurrentFlashWord())
+    };
+  });
+
+  expect(state.currentRo).toBe(state.waitingRo);
+  expect(state.currentIsDue).toBe(true);
+});
+
+test('a completed daily card that lapses becomes blocking again without recounting', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(() => {
+    progressMap = {};
+    todaySeenWords = new Set();
+    todayIntroducedWords = new Set();
+    todayNewWords = 1;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    curCat = '全部';
+    idx = 0;
+    flashOverrideRo = null;
+
+    const lapsedWord = W[0];
+    const newWord = W[1];
+    const dueAt = new Date(Date.now() - 60_000).toISOString();
+    setProgress(lapsedWord.ro, {
+      seen: true,
+      known: false,
+      qt: 3,
+      qr: 2,
+      level: 'learning',
+      cardState: 'learning',
+      dueAt,
+      nextReviewAt: dueAt,
+      reps: 3,
+      lapses: 1
+    }, { source: 'e2e-completed-card-lapse', replace: true });
+    todayQueueCompleted = new Set([lapsedWord.ro]);
+    todayQueue = [newWord.ro];
+
+    applyFilters();
+    return {
+      lapsedRo: lapsedWord.ro,
+      currentRo: getCurrentFlashWord()?.ro,
+      completedCount: todayQueueCompleted.size,
+      todayCount: todayNewWords,
+      currentIsDue: isDueReviewWord(getCurrentFlashWord())
+    };
+  });
+
+  expect(state.currentRo).toBe(state.lapsedRo);
+  expect(state.currentIsDue).toBe(true);
+  expect(state.completedCount).toBe(1);
+  expect(state.todayCount).toBe(1);
+});
+
+test('cross-day undo is rejected without mutating the answered progress', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(async () => {
+    const word = getCurrentFlashWord();
+    markCard('known');
+    const progressAfterAnswer = cloneCardState(getProgress(word.ro));
+    const todayCountAfterAnswer = todayNewWords;
+    lastCardAnswerSnapshot.dailyDateKey = '2000-01-01';
+
+    await undoLastCardAnswer();
+    const progressAfterUndoAttempt = getProgress(word.ro);
+    return {
+      qtAfterAnswer: progressAfterAnswer.qt,
+      qtAfterUndoAttempt: progressAfterUndoAttempt.qt,
+      todayCountAfterAnswer,
+      todayCountAfterUndoAttempt: todayNewWords,
+      snapshotCleared: lastCardAnswerSnapshot === null
+    };
+  });
+
+  expect(state.qtAfterUndoAttempt).toBe(state.qtAfterAnswer);
+  expect(state.todayCountAfterUndoAttempt).toBe(state.todayCountAfterAnswer);
+  expect(state.snapshotCleared).toBe(true);
+});
+
+test('pending accuracy is flushed to the previous date during rollover', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(() => {
+    const previousDate = '2030-01-01';
+    const nextDate = '2030-01-02';
+    localStorage.removeItem(todayAccuracyKey(previousDate));
+    localStorage.removeItem(todayAccuracyKey(nextDate));
+    activeDailyDateKey = previousDate;
+    pendingTodayAccuracyStats = { correct: 1, total: 1 };
+
+    resetDailyRuntimeState(nextDate);
+    return {
+      previous: readTodayAccuracyStats(previousDate),
+      next: readTodayAccuracyStats(nextDate),
+      pending: { ...pendingTodayAccuracyStats },
+      activeDate: activeDailyDateKey
+    };
+  });
+
+  expect(state.previous).toEqual({ correct: 1, total: 1 });
+  expect(state.next).toEqual({ correct: 0, total: 0 });
+  expect(state.pending).toEqual({ correct: 0, total: 0 });
+  expect(state.activeDate).toBe('2030-01-02');
+});
+
+test('an async today-log response is discarded when midnight passes in flight', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(async () => {
+    const NativeDate = Date;
+    const dayMs = 24 * 60 * 60 * 1000;
+    let fakeNow = new NativeDate('2030-01-01T23:59:59').getTime();
+    const originalApiGetTodayLog = apiGetTodayLog;
+    let calls = 0;
+
+    window.Date = class extends NativeDate {
+      constructor(...args) {
+        if (args.length) super(...args);
+        else super(fakeNow);
+      }
+      static now() {
+        return fakeNow;
+      }
+    };
+    apiGetTodayLog = async () => {
+      calls += 1;
+      const requestedDate = getDateKeyFor(new Date());
+      if (calls === 1) fakeNow += dayMs;
+      return {
+        user_id: currentUser.id,
+        log_date: requestedDate,
+        new_words: calls,
+        goal: 200,
+        completed: false
+      };
+    };
+
+    await loadTodayLog();
+    const result = {
+      calls,
+      activeDate: activeDailyDateKey,
+      logDate: todayLog.log_date,
+      todayCount: todayNewWords
+    };
+    apiGetTodayLog = originalApiGetTodayLog;
+    window.Date = NativeDate;
+    return result;
+  });
+
+  expect(state.calls).toBe(2);
+  expect(state.activeDate).toBe('2030-01-02');
+  expect(state.logDate).toBe('2030-01-02');
+  expect(state.todayCount).toBe(2);
+});
+
+test('review mode does not auto-start new cards when the new-card limit is zero', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const shouldStart = await page.evaluate(() => {
+    progressMap = {};
+    progressVersion++;
+    todayQueue = [];
+    todayQueueCompleted = new Set();
+    todaySeenWords = new Set();
+    todayIntroducedWords = new Set();
+    todayNewWords = 0;
+    dailyQueueLoaded = true;
+    flashMode = 'review';
+    dailyNewLimit = 0;
+    return shouldAutoStartTodayAfterReview();
+  });
+
+  expect(shouldStart).toBe(false);
 });
