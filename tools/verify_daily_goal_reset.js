@@ -139,8 +139,8 @@ function simulateLoadedQueueCorrection({
   assert(app.includes('if (!ensureDailyStateCurrent({ reload: true })) return null;'), 'queue saves should not persist stale previous-day runtime state');
   assert(app.includes('Number(todayLog?.goal || 0) > dailyGoal'), 'cloud daily log with stale higher goal should be overwritten');
   assert(app.includes('queueChanged = queueChanged || todayQueue.length !== originalQueueLength'), 'stale-goal queue correction must not be overwritten by later normalization checks');
-  assert(index.includes('app.js?v=20260726-queue-slot-fix'), 'app.js cache-busting version must include the queue-slot fix');
-  assert(serviceWorker.includes("ro-vocab-pwa-v36"), 'service worker cache name must move with app shell behavior changes');
+  assert(index.includes('app.js?v=20260802-production-sync-v3'), 'app.js cache-busting version must include the multi-device sync fix');
+  assert(serviceWorker.includes("ro-vocab-pwa-v40"), 'service worker cache name must move with app shell behavior changes');
 }
 
 console.log('daily goal reset verification passed');

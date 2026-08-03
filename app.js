@@ -486,8 +486,8 @@ function dailyNewLimitKey() {
   return `daily_new_limit:${currentUser?.id || 'local'}`;
 }
 
-function todayAccuracyKey() {
-  return `daily_accuracy:${currentUser?.id || 'local'}:${getDateKeyFor(new Date())}`;
+function todayAccuracyKey(dateKey = activeDailyDateKey || getDateKeyFor(new Date())) {
+  return `daily_accuracy:${currentUser?.id || 'local'}:${dateKey}`;
 }
 
 function isDailyStateCurrent() {
@@ -495,6 +495,11 @@ function isDailyStateCurrent() {
 }
 
 function resetDailyRuntimeState(dateKey = getDateKeyFor(new Date())) {
+  const previousDateKey = activeDailyDateKey;
+  if (previousDateKey && pendingTodayAccuracyStats.total) {
+    flushTodayAccuracyStats(previousDateKey);
+  }
+  pendingTodayAccuracyStats = { correct: 0, total: 0 };
   activeDailyDateKey = dateKey;
   todayLog = null;
   todayNewWords = 0;
@@ -505,6 +510,10 @@ function resetDailyRuntimeState(dateKey = getDateKeyFor(new Date())) {
   todayQueueRecord = null;
   dailyGoal = Math.max(defaultDailyGoal, readTodayTemporaryGoal());
   dailyCheckinPromptShown = false;
+  lastCardAnswerSnapshot = null;
+  flashHistory = [];
+  flashOverrideRo = null;
+  lastLearningHint = '';
   dailyQueueLoaded = false;
   dailyQueueVersion++;
   invalidateCalendarCache();
@@ -950,9 +959,9 @@ function getTodayAttemptStats() {
   };
 }
 
-function readTodayAccuracyStats() {
+function readTodayAccuracyStats(dateKey = activeDailyDateKey) {
   try {
-    const raw = JSON.parse(localStorage.getItem(todayAccuracyKey()) || '{}');
+    const raw = JSON.parse(localStorage.getItem(todayAccuracyKey(dateKey)) || '{}');
     return {
       correct: Math.max(0, Number(raw.correct || 0)),
       total: Math.max(0, Number(raw.total || 0))
@@ -962,9 +971,9 @@ function readTodayAccuracyStats() {
   }
 }
 
-function writeTodayAccuracyStats(stats) {
+function writeTodayAccuracyStats(stats, dateKey = activeDailyDateKey) {
   try {
-    localStorage.setItem(todayAccuracyKey(), JSON.stringify({
+    localStorage.setItem(todayAccuracyKey(dateKey), JSON.stringify({
       correct: Math.max(0, Number(stats.correct || 0)),
       total: Math.max(0, Number(stats.total || 0))
     }));
@@ -976,14 +985,14 @@ function queueTodayAccuracyAttempt(correct) {
   if (correct) pendingTodayAccuracyStats.correct += 1;
 }
 
-function flushTodayAccuracyStats() {
+function flushTodayAccuracyStats(dateKey = activeDailyDateKey) {
   if (!pendingTodayAccuracyStats.total) return;
   const pending = pendingTodayAccuracyStats;
   pendingTodayAccuracyStats = { correct: 0, total: 0 };
-  const stats = readTodayAccuracyStats();
+  const stats = readTodayAccuracyStats(dateKey);
   stats.total += pending.total;
   stats.correct += pending.correct;
-  writeTodayAccuracyStats(stats);
+  writeTodayAccuracyStats(stats, dateKey);
 }
 
 function getTodayCheckinAccuracy() {
@@ -1302,17 +1311,21 @@ function reconcileProgressPendingFlags() {
   return getPendingSyncSummary();
 }
 
-async function refreshCloudProgressAfterLocalLoad() {
+async function refreshCloudProgressAfterLocalLoad(options = {}) {
+  if (isOfflineMode() || !currentUser?.id) return;
   try {
     const refreshKey = `progress_cloud_refresh_at:${currentUser.id}`;
     const lastRefreshAt = Number(localStorage.getItem(refreshKey) || 0);
-    if (Date.now() - lastRefreshAt < CLOUD_PROGRESS_REFRESH_COOLDOWN_MS) return;
+    if (!options.force && Date.now() - lastRefreshAt < CLOUD_PROGRESS_REFRESH_COOLDOWN_MS) return;
     localStorage.setItem(refreshKey, String(Date.now()));
+    if (typeof apiMergeLegacyProgressBaselines === 'function') {
+      await apiMergeLegacyProgressBaselines(currentUser.id, progressMap);
+    }
     const loadedProgress = await apiLoadProgress(currentUser.id);
     const progressSource = loadedProgress.__progressSource || 'cloud';
-    // A background refresh must never replace a richer local/pending record
-    // with an older cloud snapshot.
-    replaceProgressMap(mergeProgressMaps(progressMap, loadedProgress));
+    // Cloud is authoritative after durable pending events are overlaid by
+    // apiLoadProgress. This allows corrections and undo from another device.
+    replaceProgressMap(loadedProgress);
     progressLoaded = true;
     const stillPending = progressSource === 'cloudWithPending' || hasPendingProgress(loadedProgress) || hasPendingSync();
     setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
@@ -1371,7 +1384,10 @@ function setupProgressAutoBackup() {
       flushPendingFastCardState();
       triggerCloudProgressBackup('页面隐藏', { limit: 100 });
     }
-    else scheduleIdleProgressBackup();
+    else {
+      scheduleIdleProgressBackup();
+      refreshCloudProgressAfterLocalLoad({ force: true });
+    }
   });
   window.addEventListener('pagehide', () => {
     flushPendingFastCardState();
@@ -1382,7 +1398,8 @@ function setupProgressAutoBackup() {
     triggerCloudProgressBackup('退出页面', { limit: 100 });
   });
   window.addEventListener('online', () => {
-    triggerCloudProgressBackup('网络恢复', { force: true, limit: 250 });
+    Promise.resolve(triggerCloudProgressBackup('网络恢复', { force: true, limit: 250 }))
+      .finally(() => refreshCloudProgressAfterLocalLoad({ force: true }));
   });
   scheduleIdleProgressBackup();
 }
@@ -1400,6 +1417,7 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
   if (!hasPendingSync() && !options.force) return null;
   setSyncBadge(`${reason}中...`, '');
   progressCloudSyncInFlight = (async () => {
+    let cloudReadConfirmed = false;
     try {
       const [progressResult, dailyResult] = await Promise.allSettled([
         apiRetryPendingProgress(currentUser.id, options.limit || 100),
@@ -1419,17 +1437,31 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
         result.dailyAttempted = Number(dailyResult.value?.retry?.attempted || 0);
         result.dailyRemaining = Number(dailyResult.value?.retry?.remaining || 0);
       }
-      const pendingSummary = reconcileProgressPendingFlags();
+      let pendingSummary = reconcileProgressPendingFlags();
       result.pendingSummary = pendingSummary;
+      if (!result.failed && pendingSummary.totalCount === 0) {
+        const cloudProgress = await apiLoadProgress(currentUser.id);
+        if (cloudProgress.__progressSource !== 'localFallback') {
+          result.cloudProgress = cloudProgress;
+          replaceProgressMap(cloudProgress);
+          pendingSummary = reconcileProgressPendingFlags();
+          result.pendingSummary = pendingSummary;
+        } else {
+          result.failed = true;
+          result.error = new Error(cloudProgress.__progressError || '云端进度回读失败');
+        }
+      }
       const stillPending = result.failed || result.remaining || result.dailyRemaining ||
         pendingSummary.totalCount > 0 || hasPendingProgress();
       if (!result.attempted && !result.dailyAttempted) {
+        cloudReadConfirmed = !stillPending;
         setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
         return result;
       }
       if (stillPending) {
         setSyncBadge('本机待同步', '');
       } else {
+        cloudReadConfirmed = true;
         setSyncBadge('已同步', 'saved');
       }
       return result;
@@ -1441,7 +1473,7 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
       progressCloudSyncInFlight = null;
       renderSyncStatus();
       setTimeout(() => {
-        if (!hasPendingSync()) setSyncBadge('', '');
+        if (cloudReadConfirmed && !hasPendingSync()) setSyncBadge('', '');
       }, 2000);
     }
   })();
@@ -1504,14 +1536,26 @@ function saveTodayLogBackground(promise, label = '今日记录待同步') {
 }
 
 async function loadTodayLog() {
-  activeDailyDateKey = getDateKeyFor(new Date());
+  const loadDateKey = getDateKeyFor(new Date());
+  activeDailyDateKey = loadDateKey;
   todayIntroducedWords = readTodayIntroducedWords();
+  let loadedTodayLog = null;
+  let loadError = null;
   try {
-    todayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
+    loadedTodayLog = await apiGetTodayLog(currentUser.id, dailyGoal);
   } catch (error) {
-    todayLog = { new_words: 0, goal: dailyGoal, completed: false, syncError: error.message };
+    loadError = error;
+  }
+  if (loadDateKey !== getDateKeyFor(new Date())) {
+    resetDailyRuntimeState();
+    return loadTodayLog();
+  }
+  if (loadError) {
+    todayLog = { new_words: 0, goal: dailyGoal, completed: false, syncError: loadError.message };
     setSyncBadge('今日记录读取失败', '');
-    showToast(`今日记录读取失败：${error.message || '请刷新重试'}`);
+    showToast(`今日记录读取失败：${loadError.message || '请刷新重试'}`);
+  } else {
+    todayLog = loadedTodayLog;
   }
   if (todayLog?.syncError) {
     setSyncBadge('今日记录待同步', '');
@@ -1532,11 +1576,17 @@ async function loadTodayLog() {
 }
 
 async function loadDailyQueue() {
-  activeDailyDateKey = getDateKeyFor(new Date());
+  const loadDateKey = getDateKeyFor(new Date());
+  activeDailyDateKey = loadDateKey;
   todayIntroducedWords = readTodayIntroducedWords();
   dailyQueueLoaded = false;
   const previousTodayCount = todayLog?.new_words || 0;
   const saved = await apiGetDailyQueue(currentUser.id, dailyGoal);
+  if (loadDateKey !== getDateKeyFor(new Date())) {
+    resetDailyRuntimeState();
+    await loadTodayLog();
+    return loadDailyQueue();
+  }
   let queueChanged = false;
   let forceQueueLocal = false;
   const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
@@ -1740,15 +1790,17 @@ function isPendingLearningRetryWord(w) {
 }
 
 function getRemainingDueReviewWords(words = W) {
-  return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueReviewWord(w));
+  // Completion is a daily quota ledger, not a scheduler override. A card that
+  // lapses after completion must become blocking again without double-counting.
+  return words.filter(isDueReviewWord);
 }
 
 function getRemainingDueLearningStepWords(words = W) {
-  return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueLearningStepWord(w));
+  return words.filter(isDueLearningStepWord);
 }
 
 function getRemainingGraduatedReviewWords(words = W) {
-  return words.filter(w => !setHasRo(todayQueueCompleted, w.ro) && isDueGraduatedReviewWord(w));
+  return words.filter(isDueGraduatedReviewWord);
 }
 
 function getRemainingTodayReviewWords() {
@@ -1942,7 +1994,8 @@ function getDailyWordList(words = W, options = {}) {
   const scopedKeys = options.ignoreCategory || curCat === '全部'
     ? null
     : new Set(scoped.map(w => roKey(w.ro)));
-  const globalDueWords = sortDailyPhaseWords(getRemainingTodayReviewWords())
+  const globalDueWords = sortDailyPhaseWords(getRemainingTodayReviewWords());
+  const scopedDueWords = globalDueWords
     .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)));
   const openQueuedRos = todayQueue.filter(ro => !setHasRo(todayQueueCompleted, ro));
   const openWords = openQueuedRos
@@ -1951,12 +2004,12 @@ function getDailyWordList(words = W, options = {}) {
     .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)))
     .filter(w => !isRetryDeferred(w));
   const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
-  const allDueWords = uniqueWordsByRo([...globalDueWords, ...dueOpenWords]);
-  if (allDueWords.length) {
+  const allDueWords = uniqueWordsByRo([...scopedDueWords, ...dueOpenWords]);
+  if (globalDueWords.length) {
     const result = sortDailyPhaseWords(allDueWords).slice(0, limit);
     resultSize = result.length;
-    path = 'due-only';
-    debugDailyQueue('getDailyWordList:due-only', {
+    path = result.length ? 'due-only' : 'due-scope-fallback';
+    debugDailyQueue(`getDailyWordList:${path}`, {
       options,
       scopedCount: scoped.length,
       openWordCount: openWords.length,
@@ -3187,19 +3240,31 @@ function manualSyncToday() {
       if (pending.totalCount || hasPendingProgress()) {
         throw new Error(result?.dailyError?.message || result?.dailyError || result?.error?.message || '仍有学习数据等待同步');
       }
-      const verification = await apiVerifyTodayState(currentUser.id, snapshot);
+      const cloudProgress = result?.cloudProgress || await apiLoadProgress(currentUser.id);
+      const cloudProgressSource = cloudProgress.__progressSource || 'cloud';
+      if (cloudProgressSource === 'localFallback') {
+        throw new Error('云端进度回读失败，不能确认同步成功');
+      }
+      replaceProgressMap(cloudProgress);
+      const [verification, progressVerification] = await Promise.all([
+        apiVerifyTodayState(currentUser.id, snapshot),
+        apiVerifyProgressState(currentUser.id, progressMap)
+      ]);
       pending = reconcileProgressPendingFlags();
       if (!verification?.ok) {
         const missing = [!verification?.logOk ? '今日记录' : '', !verification?.queueOk ? '每日队列' : ''].filter(Boolean).join('和');
         throw new Error(`${missing || '今日数据'}尚未通过云端回读确认`);
       }
+      if (!progressVerification?.ok) {
+        throw new Error(`学习进度尚未通过云端回读确认（${progressVerification?.mismatchCount || 0} 条不一致）`);
+      }
       if (pending.totalCount || hasPendingProgress()) {
         throw new Error('同步过程中产生了新的学习记录，请再次同步');
       }
 
-      markCloudSyncSuccess(verification.verifiedAt || new Date());
+      markCloudSyncSuccess(progressVerification.verifiedAt || verification.verifiedAt || new Date());
       showToast('今日记录已同步到云端');
-      return { ok: true, verification };
+      return { ok: true, verification, progressVerification };
     } catch (error) {
       const pending = reconcileProgressPendingFlags();
       const message = error?.message || String(error || '同步失败');
@@ -3339,7 +3404,7 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const { memory, progress: nextProgress } = buildProgressUpdate(prev, known, qr, qt, success, options);
   setProgress(canonicalRo, nextProgress, { source: 'syncProgress:optimistic' });
   const localStatus = typeof queueProgressForSync === 'function'
-    ? queueProgressForSync(currentUser.id, wordId, word?.ro || canonicalRo, { ...nextProgress, word_id: wordId, word_ro: word?.ro || canonicalRo, pendingSync: true }, memory)
+    ? queueProgressForSync(currentUser.id, wordId, word?.ro || canonicalRo, { ...nextProgress, word_id: wordId, word_ro: word?.ro || canonicalRo, pendingSync: true }, memory, prev)
     : { ok: false };
   if (localStatus.ok) {
     setProgress(canonicalRo, { ...nextProgress, pendingSync: !isOfflineMode() }, { source: 'syncProgress:queued' });
@@ -3523,11 +3588,20 @@ function persistFastCardAnswer(result) {
   if (!result?.canonicalRo || !currentUser?.id) return;
   const word = getWordByRo(result.canonicalRo);
   const wordId = word?.id ?? null;
+  const existing = fastProgressQueue.get(result.canonicalRo);
+  const pendingEvent = typeof createProgressPendingEvent === 'function'
+    ? createProgressPendingEvent(String(wordId || result.canonicalRo), result.prev || {}, result.progress || {})
+    : null;
   fastProgressQueue.set(result.canonicalRo, {
     wordId,
     wordRo: result.canonicalRo,
     progress: { ...result.progress, word_id: wordId, word_ro: word?.ro || result.canonicalRo, pendingSync: true },
-    memory: result.memory
+    memory: result.memory,
+    baseProgress: existing?.baseProgress || result.prev || {},
+    pendingEvents: [
+      ...(Array.isArray(existing?.pendingEvents) ? existing.pendingEvents : []),
+      ...(pendingEvent ? [pendingEvent] : [])
+    ]
   });
   if (fastProgressFlushTimer) return;
   fastProgressFlushTimer = scheduleIdleTask(flushFastProgressQueue);
@@ -4733,6 +4807,15 @@ function renderNextFlashCardInstantFront() {
   });
 }
 
+function canContinueIncrementalTodayPool(words = filtered) {
+  const pool = Array.isArray(words) ? words : [];
+  if (!pool.length) return false;
+  if (pool.every(isDueReviewWord)) return true;
+  // A learning step can become due while the learner is working through a
+  // cached new-card pool. Reopen the global gate before showing the next card.
+  return getRemainingTodayReviewWords().length === 0;
+}
+
 function nextCard() {
   if (flashOverrideRo) {
     flashOverrideRo = null;
@@ -4740,6 +4823,13 @@ function nextCard() {
     return;
   }
   const current = getCurrentFlashWord();
+  if (flashMode === 'today' && filtered.length && !canContinueIncrementalTodayPool(filtered)) {
+    if (current) flashHistory.push(current.ro);
+    applyFilters();
+    idx = 0;
+    renderFlashCardAfterFrontReset();
+    return;
+  }
   if (flashMode === 'today' && (!filtered.length || filtered.length <= 1)) {
     const fallback = getNextDailyFallbackWord(current?.ro);
     if (fallback) {
@@ -4760,7 +4850,14 @@ function shouldAutoStartTodayAfterReview() {
   if (flashMode !== 'review') return false;
   if (!dailyQueueLoaded || shouldPauseTodayStudyForCheckin() || shouldPauseTodayStudyForGoal()) return false;
   if (getRemainingDueReviewWords(W).length > 0) return false;
-  return getUnseenWords(W).some(w => !setHasRo(todaySeenWords, w.ro) && !setHasRo(todayQueueCompleted, w.ro));
+  const hasQueuedUnseen = todayQueue
+    .filter(ro => !setHasRo(todayQueueCompleted, ro))
+    .map(ro => getWordByRo(ro))
+    .filter(Boolean)
+    .some(isUnseenWord);
+  if (hasQueuedUnseen) return true;
+  if (!getRemainingDailyNewSlots()) return false;
+  return getEligibleUnseenWordsForToday(W).length > 0;
 }
 
 function advanceFlashcardAfterAnswer(currentRo, options = {}) {
@@ -4783,7 +4880,7 @@ function advanceFlashcardAfterAnswer(currentRo, options = {}) {
   if (options.incrementalToday && flashMode === 'today') {
     const currentKey = roKey(currentRo);
     filtered = filtered.filter(item => roKey(item?.ro) !== currentKey);
-    if (filtered.length) {
+    if (canContinueIncrementalTodayPool(filtered)) {
       idx = Math.min(idx, filtered.length - 1);
       return;
     }
@@ -4991,6 +5088,7 @@ function cloneCardState(value) {
 
 function captureCardAnswerSnapshot(w, progress, queuePhaseBefore) {
   return {
+    dailyDateKey: activeDailyDateKey,
     wordRo: w.ro,
     wordId: w.id ?? null,
     queuePhaseBefore,
@@ -5018,6 +5116,14 @@ async function undoLastCardAnswer() {
     showToast('没有可撤销的作答');
     return;
   }
+  const currentDateKey = getDateKeyFor(new Date());
+  if (snapshot.dailyDateKey && snapshot.dailyDateKey !== currentDateKey) {
+    lastCardAnswerSnapshot = null;
+    ensureDailyStateCurrent({ reload: true });
+    updateCardHistoryControls();
+    showToast('日期已切换，不能撤销前一天的作答');
+    return;
+  }
   flashcardAnswerInFlight = true;
   updateCardHistoryControls();
   try {
@@ -5025,6 +5131,10 @@ async function undoLastCardAnswer() {
       clearTimeout(todayStateFlushTimer);
       todayStateFlushTimer = null;
     }
+    const bufferedAfterAnswer = fastProgressQueue.get(snapshot.wordRo) || null;
+    const bufferedEventCount = Array.isArray(bufferedAfterAnswer?.pendingEvents) ? bufferedAfterAnswer.pendingEvents.length : 0;
+    const snapshotEventCount = Array.isArray(snapshot.fastProgressEntry?.pendingEvents) ? snapshot.fastProgressEntry.pendingEvents.length : 0;
+    const answerExistsOnlyInFastBuffer = bufferedEventCount > snapshotEventCount;
     fastProgressQueue.delete(snapshot.wordRo);
     if (snapshot.fastProgressEntry) fastProgressQueue.set(snapshot.wordRo, snapshot.fastProgressEntry);
     if (snapshot.hadProgress) {
@@ -5032,14 +5142,16 @@ async function undoLastCardAnswer() {
     } else {
       deleteProgress(snapshot.wordRo);
     }
-    const correctionStatus = queueProgressCorrectionForSync(
-      currentUser.id,
-      snapshot.wordId,
-      snapshot.wordRo,
-      snapshot.hadProgress ? snapshot.progress : null,
-      snapshot.progress || {}
-    );
-    if (!correctionStatus.ok) throw correctionStatus.error || new Error('撤销进度写入失败');
+    if (!answerExistsOnlyInFastBuffer) {
+      const correctionStatus = queueProgressCorrectionForSync(
+        currentUser.id,
+        snapshot.wordId,
+        snapshot.wordRo,
+        snapshot.hadProgress ? snapshot.progress : null,
+        snapshot.progress || {}
+      );
+      if (!correctionStatus.ok) throw correctionStatus.error || new Error('撤销进度写入失败');
+    }
 
     todayQueue = [...snapshot.todayQueue];
     todayQueueCompleted = new Set(snapshot.todayQueueCompleted);
@@ -6441,6 +6553,9 @@ async function importProgressBackup(file) {
             errorStreak: p.errorStreak || 0,
             lastWrongAt: p.lastWrongAt || null,
             weakClearedAt: p.weakClearedAt || null
+          },
+          {
+            progress: p
           }
         );
         importedRows++;

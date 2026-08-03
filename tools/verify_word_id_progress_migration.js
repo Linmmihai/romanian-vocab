@@ -10,7 +10,7 @@ const queueBackfill = fs.readFileSync(path.join(root, 'tools/daily_queue_word_id
 const legacyConsolidation = fs.readFileSync(path.join(root, 'tools/consolidate_legacy_progress_variants.sql'), 'utf8');
 const stateRepair = fs.readFileSync(path.join(root, 'tools/repair_legacy_consolidation_state.sql'), 'utf8');
 
-assert(api.includes("onConflict: 'user_id,word_id'"), 'apiSaveProgress must upsert by user_id,word_id');
+assert(api.includes("sb.rpc('apply_progress_sync_event'"), 'apiSaveProgress must use the atomic word-id progress RPC');
 assert(api.includes('word_id: stableWordId'), 'apiSaveProgress payload must include word_id');
 assert(api.includes('progressEntryKey(wordId, wordRo)'), 'local progress keys must use wordId first');
 assert(app.includes('let wordIdIndex = new Map();'), 'app must build a word id index');

@@ -38,7 +38,7 @@ const normalize = value => String(value || '').normalize('NFC').trim().toLocaleL
 
 {
   assert(app.includes('getRemainingDailyNewSlots'), 'daily queue must enforce a new-card cap');
-  assert(app.includes("path = 'due-only'"), 'due cards must produce a strict due-only display path');
+  assert(app.includes("path = result.length ? 'due-only' : 'due-scope-fallback'"), 'due cards must produce a strict due-only display path, including cross-topic fallback');
   assert(html.includes('id="new-limit-input"'), 'new-card cap must be user-configurable');
   assert(html.includes('已引入新词'), 'new-card count must be distinguished from completed cards');
 }
