@@ -32,8 +32,15 @@ const normalize = value => String(value || '').normalize('NFC').trim().toLocaleL
   assert(api.includes('function queueProgressCorrectionForSync'), 'API storage must support exact undo corrections');
   assert(api.includes('pendingDelete: true'), 'undoing a first answer must be able to delete the created progress row');
   assert(api.includes('pendingCorrection'), 'pending corrections must override monotonic progress merges');
-  assert(api.includes('force_replace'), 'daily count and queue rollback must survive cloud merge retries');
+  assert(api.includes('applyDailyQueueEventLocally'), 'daily queue undo must use a reversible base-target delta');
+  assert(api.includes('const countDelta = target.new_words - base.new_words'), 'daily count undo must subtract only its own atomic delta');
   assert(html.includes('历史回看 · 不会重复计分'), 'read-only history state must be visible');
+}
+
+{
+  assert(app.includes("if (key === 'ArrowRight' || key.toLowerCase() === 'n') { nextCard(); return true; }"), 'right-arrow shortcut should use the guarded card navigation path');
+  assert(app.includes('请先选择“不认识”“模糊”或“准确回忆”，完成当前单词'), 'a flipped card must require an explicit memory result before advancing');
+  assert(app.includes('作答后会自动进入下一词'), 'an unflipped card must explain the answer-first flow');
 }
 
 {

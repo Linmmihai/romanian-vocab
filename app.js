@@ -160,22 +160,12 @@ function normalizeDailyNewLimitValue(value, fallback = DEFAULT_DAILY_NEW_LIMIT) 
 }
 
 function getEffectiveDailyNewLimit() {
-  const fixedLimit = normalizeDailyNewLimitValue(dailyNewLimit, DEFAULT_DAILY_NEW_LIMIT);
-  if (!fixedLimit) return 0;
-  const temporaryGoalIncrease = Math.max(
-    0,
-    Number(dailyGoal || 0) - Number(defaultDailyGoal || 0)
-  );
-  return Math.min(DAILY_NEW_LIMIT_MAX, fixedLimit + temporaryGoalIncrease);
+  return normalizeDailyNewLimitValue(dailyNewLimit, DEFAULT_DAILY_NEW_LIMIT);
 }
 
 function getTodayNewLimitProgressText() {
   const effectiveLimit = getEffectiveDailyNewLimit();
-  const progress = `${todayIntroducedWords.size}/${effectiveLimit}`;
-  const temporaryIncrease = Math.max(0, effectiveLimit - Number(dailyNewLimit || 0));
-  return temporaryIncrease
-    ? `${progress}（固定 ${dailyNewLimit}，今日临时 +${temporaryIncrease}）`
-    : progress;
+  return `${todayIntroducedWords.size}/${effectiveLimit}`;
 }
 
 async function migrateLegacyDailyGoal(userId, profileGoal) {
@@ -607,6 +597,21 @@ function resolveLoadedDailyGoal({ logGoal = 0, queueGoal = 0, completedCount = 0
 function getDailyQueueLocalSaveMessage() {
   if (isOfflineMode()) return '离线模式：每日队列已保存在本设备';
   return '每日队列已保存在本设备，暂未同步到其他设备';
+}
+
+function handleDailyQueueSyncError(record, operation = '保存') {
+  if (!record?.syncError) return false;
+  const safelyStored = !!record.local || !!record.pendingSync ||
+    (typeof hasPendingDailyState === 'function' && currentUser?.id && hasPendingDailyState(currentUser.id));
+  console.warn(`Daily queue cloud ${operation} deferred`, record.syncError);
+  if (safelyStored) {
+    setSyncBadge('队列待同步', '');
+    showProgressSaveWarning('每日队列已安全保存在本机，稍后会自动同步');
+  } else {
+    setSyncBadge('队列同步失败', '');
+    showProgressSaveWarning(`每日队列${operation}失败：${record.syncError}`);
+  }
+  return true;
 }
 
 function hasOpenTodayQueue() {
@@ -1591,10 +1596,7 @@ async function loadDailyQueue() {
   let forceQueueLocal = false;
   const logGoal = normalizeDailyGoalValue(todayLog?.goal, defaultDailyGoal);
   const localTemporaryGoal = hasTodayTemporaryGoal() ? readTodayTemporaryGoal() : 0;
-  if (saved?.syncError) {
-    showToast(`每日队列未能云端同步：${saved.syncError}`);
-    setSyncBadge('队列同步失败', '');
-  }
+  handleDailyQueueSyncError(saved, '读取');
   const savedWordRefs = saved?.word_id?.length ? saved.word_id : (saved?.word_ro || []);
   const savedCompletedRefs = saved?.completed_word_id?.length ? saved.completed_word_id : (saved?.completed_word_ro || []);
   const savedIntroducedRefs = saved?.introduced_word_id?.length ? saved.introduced_word_id : (saved?.introduced_word_ro || []);
@@ -1679,10 +1681,7 @@ async function loadDailyQueue() {
     });
     invalidateCalendarCache();
   }
-  if (todayQueueRecord?.syncError) {
-    showToast(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
-    setSyncBadge('队列同步失败', '');
-  } else if (todayQueueRecord?.local) {
+  if (!handleDailyQueueSyncError(todayQueueRecord, '保存') && todayQueueRecord?.local) {
     showToast(getDailyQueueLocalSaveMessage());
   }
   dailyQueueLoaded = true;
@@ -1739,16 +1738,20 @@ function getStudyQueuePhase(w) {
 }
 
 function isDueLearningStepWord(w) {
-  const phase = getStudyQueuePhase(w);
-  return phase === 'learning-due' || phase === 'relearning-due';
+  return getStudyQueuePhase(w) === 'learning-due';
+}
+
+function isDueRelearningStepWord(w) {
+  return getStudyQueuePhase(w) === 'relearning-due';
 }
 
 function isDueGraduatedReviewWord(w) {
-  return getStudyQueuePhase(w) === 'review-due';
+  const phase = getStudyQueuePhase(w);
+  return phase === 'review-due' || phase === 'relearning-due';
 }
 
 function isOverdueLearningOrReinforcingWord(w) {
-  return isDueLearningStepWord(w);
+  return isDueLearningStepWord(w) || isDueRelearningStepWord(w);
 }
 
 function getReinforcementWordsDueToday(words = W) {
@@ -1801,6 +1804,10 @@ function getRemainingDueLearningStepWords(words = W) {
 
 function getRemainingGraduatedReviewWords(words = W) {
   return words.filter(isDueGraduatedReviewWord);
+}
+
+function getRemainingFormalReviewWords(words = W) {
+  return getRemainingGraduatedReviewWords(words).filter(w => !isRetryDeferred(w));
 }
 
 function getRemainingTodayReviewWords() {
@@ -2063,7 +2070,7 @@ function getAuxiliaryLabels(w) {
 
 function getContinueAfterGoalText() {
   if (dailyGoal < DAILY_GOAL_MAX) {
-    return '想继续学习，可以点下方 +30、+50，或自定义扩展今天的任务量。';
+    return '可以再完成 10 个、自定义数量，或先清空剩余复习再进入新词。';
   }
   return '今日任务已到上限，可以继续做智能测验巩固。';
 }
@@ -2097,8 +2104,11 @@ async function setDailyGoalAndRebuild(goal, message = '每日通过目标已更�
   await apiSetDailyGoal(currentUser.id, nextGoal);
   todayQueue = buildOpenTodayQueue(dailyGoal);
   appendExplicitTodayQueueCards(dailyGoal);
-  await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
+  await saveTodayQueue({ forceLocal: true });
+  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, {
+    completed: isDailyCheckinDone(),
+    forceLocal: true
+  });
   invalidateCalendarCache();
   applyFilters();
   renderCard();
@@ -2168,10 +2178,7 @@ async function saveTodayQueue(options = {}) {
     todayQueueRecord = { user_id: currentUser.id, queue_date: getLocalDateKey(), ...payload, local: true };
     savePromise.then((record) => {
       todayQueueRecord = record;
-      if (record?.syncError) {
-        setSyncBadge('队列同步失败', '');
-        showProgressSaveWarning(`每日队列未能云端保存：${record.syncError}`);
-      }
+      handleDailyQueueSyncError(record, '保存');
     }).catch((error) => {
       console.warn('Daily queue background save failed', error);
       setSyncBadge('队列待同步', '');
@@ -2179,10 +2186,7 @@ async function saveTodayQueue(options = {}) {
   } else {
     todayQueueRecord = await savePromise;
   }
-  if (todayQueueRecord?.syncError) {
-    setSyncBadge('队列同步失败', '');
-    showProgressSaveWarning(`每日队列未能云端保存：${todayQueueRecord.syncError}`);
-  }
+  if (!options.background) handleDailyQueueSyncError(todayQueueRecord, '保存');
   dailyQueueVersion++;
   invalidateCalendarCache();
   invalidateQuizPracticePool();
@@ -2466,7 +2470,7 @@ function applyFilters() {
     }
   } else if (flashMode === 'review') {
     path = 'review';
-    filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueReviewWord);
+    filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueGraduatedReviewWord);
     debugDailyQueue('applyFilters:review', { scopedCount: scoped.length });
   } else {
     path = 'default';
@@ -2511,7 +2515,7 @@ async function addWordToTodayQueue(wordRo) {
   }
   if (!getRemainingDailyNewSlots(queuedUnseenCount)) {
     const effectiveLimit = getEffectiveDailyNewLimit();
-    showToast(`今日可引入新词额度为 ${effectiveLimit} 个；提高固定上限或临时增加今日任务后可以继续添加`);
+    showToast(`今日可引入新词额度为 ${effectiveLimit} 个；请在学习设置中调整每日新词上限`);
     return;
   }
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
@@ -3023,7 +3027,7 @@ function upStats() {
   const vals = Object.values(progressMap);
   const mastered = vals.filter(p => getStoredLevel(p) === 'mastered').length;
   const learning = vals.filter(isStartedNotMastered).length;
-  const dueCount = getRemainingDueReviewWords(W).length;
+  const dueCount = getRemainingFormalReviewWords(W).length;
   const wbCount = getWrongWords().length;
 
   setText('s-mastered', mastered);
@@ -4227,8 +4231,9 @@ function restoreAdminSections() {
 function updateReviewBadge() {
   const badge = document.getElementById('review-tab-badge') || document.getElementById('flash-tab-badge');
   if (!badge) return;
-  // Reviews are a global gate: any due review should block new daily cards.
-  const count = getRemainingTodayReviewWords().length;
+  // The badge is specifically for graduated review/relearning work. Initial
+  // learning steps still block new cards, but remain labelled as learning.
+  const count = getRemainingFormalReviewWords(W).length;
   badge.textContent = count;
   badge.style.display = count > 0 ? 'inline' : 'none';
 }
@@ -4243,6 +4248,14 @@ function openDailyCheckinModal() {
   setText('checkin-fixed-goal', defaultDailyGoal);
   setText('checkin-today-count', todayNewWords);
   setText('checkin-accuracy', `${getTodayCheckinAccuracy()}%`);
+  const remainingReviews = getRemainingFormalReviewWords(W).length;
+  setText('checkin-review-remaining', remainingReviews);
+  const finishReviewsButton = document.getElementById('checkin-finish-reviews-btn');
+  if (finishReviewsButton) {
+    finishReviewsButton.textContent = remainingReviews
+      ? `完成剩余 ${remainingReviews} 个复习`
+      : '复习已清空，开始新词';
+  }
   modal.style.display = 'flex';
 }
 
@@ -4290,22 +4303,20 @@ async function continueTodayAfterGoal(amount = 10) {
   await extendTodayGoal(amount);
 }
 
-async function continueTodayWithoutLimit() {
+async function continueTodayCustomAfterGoal() {
   completeDailyCheckin();
-  const nextGoal = DAILY_GOAL_MAX;
-  dailyGoal = nextGoal;
-  setGoalInputValue(defaultDailyGoal);
-  writeTodayTemporaryGoal(nextGoal);
-  todayQueue = buildOpenTodayQueue(dailyGoal);
-  appendExplicitTodayQueueCards(Math.min(DAILY_GOAL_MAX, todayQueueCompleted.size + todayQueue.length + 50));
-  await saveTodayQueue();
-  await apiUpdateTodayLog(currentUser.id, todayNewWords, dailyGoal, defaultDailyGoal, { completed: isDailyCheckinDone() });
-  invalidateCalendarCache();
-  applyFilters();
-  renderCard();
-  renderDailyGoal();
-  renderCalendar();
-  showToast('今天已切换为不限量继续；明天仍按固定目标');
+  await extendTodayGoalCustom();
+}
+
+async function continueRemainingReviewsToday() {
+  completeDailyCheckin();
+  const remainingReviews = getRemainingFormalReviewWords(W).length;
+  const remainingNewCards = getRemainingDailyNewSlots();
+  const extra = Math.max(1, remainingReviews + remainingNewCards);
+  await extendTodayGoal(extra);
+  showToast(remainingReviews > 0
+    ? `已安排剩余 ${remainingReviews} 个复习；清空后再进入新词`
+    : `复习已清空，接下来按新词上限学习 ${remainingNewCards} 个新词`);
 }
 
 function maybePromptDailyCheckin() {
@@ -4326,6 +4337,7 @@ function renderDailyGoal() {
   const canExtend = currentDone && checkinDone && dailyGoal < DAILY_GOAL_MAX;
   const isTemporaryExtended = dailyGoal > defaultDailyGoal;
   const attempts = getTodayAttemptStats();
+  const remainingReviews = getRemainingFormalReviewWords(W).length;
   const todayNewLimitProgress = getTodayNewLimitProgressText();
   const title = currentDone ? '今日通过目标已完成' : (baseDone ? '今日固定通过目标已完成' : '今日通过进度');
   el.innerHTML = `
@@ -4348,8 +4360,8 @@ function renderDailyGoal() {
     ${canExtend ? `
       <div class="goal-extend">
         <span>继续今天：</span>
-        <button class="btn-sm" onclick="extendTodayGoal(30)">+30</button>
-        <button class="btn-sm" onclick="extendTodayGoal(50)">+50</button>
+        <button class="btn-sm" onclick="extendTodayGoal(10)">再完成 10 个</button>
+        ${remainingReviews ? `<button class="btn-sm" onclick="continueRemainingReviewsToday()">完成剩余 ${remainingReviews} 个复习</button>` : ''}
         <button class="btn-sm" onclick="extendTodayGoalCustom()">自定义</button>
       </div>` : ''}`;
   renderDailyReminderSettings();
@@ -4823,27 +4835,10 @@ function nextCard() {
     return;
   }
   const current = getCurrentFlashWord();
-  if (flashMode === 'today' && filtered.length && !canContinueIncrementalTodayPool(filtered)) {
-    if (current) flashHistory.push(current.ro);
-    applyFilters();
-    idx = 0;
-    renderFlashCardAfterFrontReset();
-    return;
-  }
-  if (flashMode === 'today' && (!filtered.length || filtered.length <= 1)) {
-    const fallback = getNextDailyFallbackWord(current?.ro);
-    if (fallback) {
-      if (current) flashHistory.push(current.ro);
-      flashOverrideRo = fallback.ro;
-      renderFlashCardAfterFrontReset();
-      return;
-    }
-  }
-  if (!filtered.length) return;
-  if (current && !flashOverrideRo) flashHistory.push(current.ro);
-  flashOverrideRo = null;
-  idx = (idx + 1) % filtered.length;
-  renderFlashCardAfterFrontReset();
+  if (!current) return;
+  showToast(flipped
+    ? '请先选择“不认识”“模糊”或“准确回忆”，完成当前单词'
+    : '请先翻开卡片并完成当前单词，作答后会自动进入下一词');
 }
 
 function shouldAutoStartTodayAfterReview() {
@@ -6421,7 +6416,7 @@ function getWeakestCategory() {
 function renderAchievements(summary, logs = []) {
   const el = document.getElementById('achievement-list');
   if (!el) return;
-  const dueCount = getRemainingDueReviewWords(W).length;
+  const dueCount = getRemainingFormalReviewWords(W).length;
   const wrongCount = getWrongWords().length;
   const tasks30 = fillDailyLogs(logs, 30).reduce((sum, l) => sum + (l.new_words || 0), 0);
   const badges = [

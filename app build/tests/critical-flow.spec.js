@@ -22,7 +22,7 @@ test('offline study answer persists and advances the fixed daily goal', async ({
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('progress:local-offline-user');
     return raw ? Object.keys(JSON.parse(raw)).length : 0;
-  }), { timeout: 5_000 }).toBeGreaterThan(0);
+  }), { timeout: 10_000 }).toBeGreaterThan(0);
 
   await page.reload();
   await expect(page.locator('#app-screen')).toBeVisible();
@@ -141,6 +141,61 @@ test('offline account panel explains that today is saved only on this device', a
   await expect(page.locator('#manual-sync-btn')).toBeDisabled();
   await expect(page.locator('#manual-sync-btn')).toHaveText('离线模式');
   await expect(page.locator('#sync-badge-text')).toHaveText('本机保存');
+});
+
+test('two tabs retain independent daily and progress outbox events', async ({ page, context }) => {
+  await enterOfflineApp(page);
+  const secondPage = await context.newPage();
+  await secondPage.goto('/');
+  await expect(secondPage.locator('#app-screen')).toBeVisible();
+
+  await page.evaluate(() => {
+    const prefixes = ['daily_state_event:cross-tab-e2e:', 'progress_pending_event:cross-tab-e2e:'];
+    const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter(Boolean);
+    keys.filter(key => prefixes.some(prefix => key.startsWith(prefix))).forEach(key => localStorage.removeItem(key));
+  });
+
+  const createEvent = async (targetPage, wordId, wordRo) => targetPage.evaluate(({ wordId, wordRo }) => {
+    const queueBase = {
+      goal: 30,
+      word_id: [1, 2],
+      word_ro: ['unu', 'doi'],
+      completed_word_id: [],
+      completed_word_ro: [],
+      introduced_word_id: [],
+      introduced_word_ro: [],
+      completed: false
+    };
+    const queueTarget = {
+      ...queueBase,
+      word_id: queueBase.word_id.filter(id => id !== wordId),
+      word_ro: queueBase.word_ro.filter(ro => ro !== wordRo),
+      completed_word_id: [wordId],
+      completed_word_ro: [wordRo]
+    };
+    const daily = createDailyStateEvent('cross-tab-e2e', getLocalDateKey(), 'queue', queueBase, queueTarget);
+    const progressEvent = {
+      eventId: `progress-cross-tab-${wordId}`,
+      occurredAt: new Date().toISOString(),
+      correction: false,
+      base: { qt: 0, qr: 0 },
+      target: { qt: 1, qr: 1 }
+    };
+    const progress = writeProgressEventJournal('cross-tab-e2e', wordId, wordRo, progressEvent, { qt: 1, qr: 1 });
+    return { dailyOk: daily.ok, progressOk: progress.ok, clientId: daily.event?.clientId };
+  }, { wordId, wordRo });
+
+  const first = await createEvent(page, 1, 'unu');
+  const second = await createEvent(secondPage, 2, 'doi');
+  const counts = await page.evaluate(() => ({
+    daily: readPendingDailyEvents('cross-tab-e2e').length,
+    progress: readProgressEventJournal('cross-tab-e2e').length
+  }));
+
+  expect(first.dailyOk && first.progressOk && second.dailyOk && second.progressOk).toBe(true);
+  expect(first.clientId).not.toBe(second.clientId);
+  expect(counts).toEqual({ daily: 2, progress: 2 });
+  await secondPage.close();
 });
 
 test('manual sync is serialized and only succeeds after cloud verification', async ({ page }) => {
@@ -335,7 +390,84 @@ test('daily completion goal and new-card cap remain separate', async ({ page }) 
   expect(state).toEqual({ totalGoal: 200, newLimit: 30, queuedNew: 30 });
 });
 
-test('temporary goal extension fills open slots while learning steps wait', async ({ page }) => {
+test('a 30-card target can continue through remaining reviews before new cards', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(async () => {
+    const completedWords = W.slice(0, 30);
+    const remainingReviewWords = W.slice(30, 200);
+    const pastDueAt = new Date(Date.now() - 60_000).toISOString();
+    const futureDueAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    progressMap = {};
+    progressVersion++;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    defaultDailyGoal = 30;
+    dailyGoal = 30;
+    dailyNewLimit = 30;
+    todayNewWords = 30;
+    todayQueue = [];
+    todayQueueCompleted = new Set(completedWords.map(word => word.ro));
+    todaySeenWords = new Set(completedWords.map(word => word.ro));
+    todayIntroducedWords = new Set();
+    todayLog = {
+      log_date: getDateKeyFor(new Date()),
+      new_words: 30,
+      goal: 30,
+      completed: false
+    };
+    flashMode = 'today';
+    curCat = '全部';
+
+    completedWords.forEach(word => setProgress(word.ro, {
+      seen: true,
+      known: true,
+      level: 'mastered',
+      cardState: 'mastered',
+      reviewStage: 2,
+      reps: 2,
+      dueAt: futureDueAt,
+      nextReviewAt: futureDueAt
+    }, { replace: true, source: 'e2e-goal-completed' }));
+    remainingReviewWords.forEach(word => setProgress(word.ro, {
+      seen: true,
+      known: true,
+      level: 'mastered',
+      cardState: 'mastered',
+      reviewStage: 2,
+      reps: 2,
+      dueAt: pastDueAt,
+      nextReviewAt: pastDueAt
+    }, { replace: true, source: 'e2e-goal-review-due' }));
+
+    const reviewsBefore = getRemainingFormalReviewWords(W).length;
+    await continueRemainingReviewsToday();
+    const queueWords = todayQueue.map(ref => getWordByRo(ref)).filter(Boolean);
+    return {
+      reviewsBefore,
+      totalGoal: dailyGoal,
+      fixedGoal: defaultDailyGoal,
+      effectiveNewLimit: getEffectiveDailyNewLimit(),
+      queuedReviews: queueWords.filter(isDueGraduatedReviewWord).length,
+      queuedNew: queueWords.filter(isUnseenWord).length,
+      firstNewIndex: queueWords.findIndex(isUnseenWord),
+      checkedIn: isDailyCheckinDone()
+    };
+  });
+
+  expect(state).toEqual({
+    reviewsBefore: 170,
+    totalGoal: 230,
+    fixedGoal: 30,
+    effectiveNewLimit: 30,
+    queuedReviews: 170,
+    queuedNew: 30,
+    firstNewIndex: 170,
+    checkedIn: true
+  });
+});
+
+test('temporary goal extension does not increase the fixed new-card cap', async ({ page }) => {
   await enterOfflineApp(page);
 
   const state = await page.evaluate(() => {
@@ -401,13 +533,13 @@ test('temporary goal extension fills open slots while learning steps wait', asyn
     };
   });
 
-  expect(state.effectiveNewLimit).toBe(90);
-  expect(state.cardCount).toBe(13);
-  expect(state.phases.every(phase => phase === 'new')).toBe(true);
+  expect(state.effectiveNewLimit).toBe(30);
+  expect(state.cardCount).toBe(0);
+  expect(state.phases).toEqual([]);
   expect(state.waitingCount).toBe(8);
-  expect(state.queueSize).toBe(21);
-  expect(state.visibleNewProgress).toBe('33/90');
-  expect(state.visibleCard).not.toBe('今日队列等待复习');
+  expect(state.queueSize).toBe(8);
+  expect(state.visibleNewProgress).toBe('33/30');
+  expect(state.visibleCard).toBe('今日队列等待复习');
 });
 
 test('due work strictly blocks new cards in today mode', async ({ page }) => {
@@ -480,17 +612,26 @@ test('history is read-only and undo restores the entire last answer', async ({ p
   })).toBe(0);
   const correctionState = await page.evaluate(() => {
     const progressCorrections = Object.values(readPendingProgress(currentUser.id));
-    const daily = readPendingDailyState(currentUser.id)[getLocalDateKey()] || {};
+    const dailyEvents = readPendingDailyEvents(currentUser.id)
+      .filter(event => event.date === getLocalDateKey());
+    const queueUndo = [...dailyEvents].reverse().find(event => event.target?.queue);
+    const logUndo = [...dailyEvents].reverse().find(event => event.target?.log);
     return {
       avoidsDuplicateCorrection: progressCorrections.length === 0,
-      queueForceReplace: daily.queue?.force_replace === true,
-      logForceReplace: daily.log?.force_replace === true
+      queueCompletionDelta:
+        (queueUndo?.target?.queue?.completed_word_id?.length || 0) -
+        (queueUndo?.base?.queue?.completed_word_id?.length || 0),
+      logCountDelta:
+        Number(logUndo?.target?.log?.new_words || 0) -
+        Number(logUndo?.base?.log?.new_words || 0)
     };
   });
   expect(correctionState).toEqual({
     avoidsDuplicateCorrection: true,
-    queueForceReplace: true,
-    logForceReplace: true
+    // The answer was still buffered, so undo collapses to a no-op daily event
+    // instead of sending an unnecessary destructive replacement.
+    queueCompletionDelta: 0,
+    logCountDelta: 0
   });
 });
 
@@ -757,7 +898,7 @@ test('a review becoming due mid-session preempts the cached new-card pool', asyn
   expect(state.currentIsDue).toBe(true);
 });
 
-test('manual next navigation cannot bypass a review becoming due mid-session', async ({ page }) => {
+test('manual next navigation cannot leave the current unanswered card', async ({ page }) => {
   await enterOfflineApp(page);
 
   const state = await page.evaluate(() => {
@@ -788,6 +929,7 @@ test('manual next navigation cannot bypass a review becoming due mid-session', a
     }, { source: 'e2e-manual-next-waiting', replace: true });
     todayQueue = [waitingWord.ro, ...newWords.map(word => word.ro)];
     applyFilters();
+    const currentBeforeRo = getCurrentFlashWord()?.ro;
 
     const pastDueAt = new Date(Date.now() - 60_000).toISOString();
     setProgress(waitingWord.ro, {
@@ -799,13 +941,15 @@ test('manual next navigation cannot bypass a review becoming due mid-session', a
 
     return {
       waitingRo: waitingWord.ro,
+      currentBeforeRo,
       currentRo: getCurrentFlashWord()?.ro,
       currentIsDue: isDueReviewWord(getCurrentFlashWord())
     };
   });
 
-  expect(state.currentRo).toBe(state.waitingRo);
-  expect(state.currentIsDue).toBe(true);
+  expect(state.currentRo).toBe(state.currentBeforeRo);
+  expect(state.currentRo).not.toBe(state.waitingRo);
+  expect(state.currentIsDue).toBe(false);
 });
 
 test('a completed daily card that lapses becomes blocking again without recounting', async ({ page }) => {

@@ -109,7 +109,8 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("path = result.length ? 'due-only' : 'due-scope-fallback'"), 'a due review outside the selected topic must force the all-topic fallback instead of releasing new cards');
   assert(app.includes('function canContinueIncrementalTodayPool'), 'cached new-card pools must recheck the global due gate before advancing');
   assert(app.includes('return getRemainingTodayReviewWords().length === 0;'), 'incremental today mode must stop as soon as a review becomes due');
-  assert(app.includes("if (flashMode === 'today' && filtered.length && !canContinueIncrementalTodayPool(filtered))"), 'manual next-card navigation must not bypass a newly reopened review gate');
+  assert(app.includes('请先翻开卡片并完成当前单词，作答后会自动进入下一词'), 'manual next-card navigation must require an answer instead of skipping');
+  assert(!app.includes("idx = (idx + 1) % filtered.length;"), 'manual navigation must not advance the active study index');
   assert(app.includes('return words.filter(isDueReviewWord);'), 'daily completion bookkeeping must not hide a card that becomes due again');
   assert(!app.includes('RomanianVocabDailyPlan.interleavePriority'), 'today mode must not interleave new cards while reviews are due');
   assert(app.includes('isTodayBlockingReviewWord'), 'expected blocking review cards in today mode to count when known');
@@ -131,11 +132,14 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("if (isUnseenWord(w)) return getUnseenContentPriority(w);"), 'expected unseen cards to use content-quality priority behind learning and review cards');
   assert(app.includes("if (phraseQuality === 'core') return 3;"), 'expected reviewed core phrases to lead the unseen-card tier');
   assert(app.includes("if (phraseQuality === 'needs_review') return 5;"), 'expected unreviewed phrase content to trail ordinary unseen cards');
-  assert(app.includes('function getEffectiveDailyNewLimit()'), 'expected temporary goal extensions to expose an effective same-day new-card limit');
-  assert(app.includes('fixedLimit + temporaryGoalIncrease'), 'expected explicit same-day goal increases to add usable new-card capacity');
+  assert(app.includes('function getEffectiveDailyNewLimit()'), 'expected one canonical daily new-card limit helper');
+  assert(app.includes('return normalizeDailyNewLimitValue(dailyNewLimit, DEFAULT_DAILY_NEW_LIMIT);'), 'temporary review extensions must not inflate the independent new-card limit');
   assert(app.includes('Number(getEffectiveDailyNewLimit() || 0)'), 'expected queue repair to use the effective same-day new-card limit');
   assert(app.includes("queuePhase === 'learning-due'"), 'expected learning steps to have a distinct visible state');
   assert(app.includes("queuePhase === 'review-due' || queuePhase === 'relearning-due'"), 'expected due review and relearning cards to render as review');
+  assert(app.includes('filtered = sortReviewDueWithWeakPriority(scoped).filter(isDueGraduatedReviewWord);'), 'review mode must exclude initial new-card learning steps');
+  assert(app.includes('const dueCount = getRemainingFormalReviewWords(W).length;'), 'the pending-review statistic must exclude initial learning steps');
+  assert(app.includes('function continueRemainingReviewsToday()'), 'goal completion must offer a finish-remaining-reviews path');
   assert(index.includes('id="today-focus-meta"'), 'expected one concise daily-plan explanation instead of repeated stage cards');
   assert(index.includes('严格先做已到点内容，再按新词上限引入新卡'), 'expected the strict priority and new-card cap to be visible');
   assert(app.includes('const DEFAULT_DAILY_GOAL = 200;'), 'expected the default daily processing quota to be 200');

@@ -12,10 +12,10 @@ assert(schedulerMigration.includes('add column if not exists recent_results json
 assert(schedulerMigration.includes('progress_user_due_at_idx'), 'scheduler migration must index per-user due lookups');
 assert(schedulerMigration.includes('validate constraint progress_card_state_check'), 'scheduler migration must validate the card-state constraint after backfill');
 assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
-assert(index.includes('scheduler.js?v=20260802-production-sync-v3'), 'scheduler cache buster must move with the multi-device sync fix');
-assert(index.includes('api.js?v=20260802-production-sync-v3'), 'API cache buster must match the multi-device sync fix');
-assert(index.includes('app.js?v=20260802-production-sync-v3'), 'app cache buster must match the multi-device sync fix');
-assert(serviceWorker.includes('ro-vocab-pwa-v40'), 'service worker cache must move with the multi-device sync fix');
+assert(index.includes('scheduler.js?v=20260805-storage-safe-sync-v6'), 'scheduler cache buster must move with the storage-safe sync fix');
+assert(index.includes('api.js?v=20260805-storage-safe-sync-v6'), 'API cache buster must match the storage-safe sync fix');
+assert(index.includes('app.js?v=20260805-storage-safe-sync-v6'), 'app cache buster must match the storage-safe sync fix');
+assert(serviceWorker.includes('ro-vocab-pwa-v43'), 'service worker cache must move with the storage-safe sync fix');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;
