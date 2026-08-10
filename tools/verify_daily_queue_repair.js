@@ -113,8 +113,8 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(!app.includes("idx = (idx + 1) % filtered.length;"), 'manual navigation must not advance the active study index');
   assert(app.includes('return words.filter(isDueReviewWord);'), 'daily completion bookkeeping must not hide a card that becomes due again');
   assert(!app.includes('RomanianVocabDailyPlan.interleavePriority'), 'today mode must not interleave new cards while reviews are due');
-  assert(app.includes('isTodayBlockingReviewWord'), 'expected blocking review cards in today mode to count when known');
-  assert(app.includes('const completesTodayTask = isKnownAction;'), 'expected fuzzy answers not to complete daily tasks');
+  assert(app.includes('wasTodayBlockingReviewWord'), 'expected blocking review cards to use their pre-answer classification');
+  assert(app.includes("const completesTodayTask = isKnownAction && (isReviewTask || formalReviewsBeforeAnswer === 0);"), 'learning steps must not consume a review target while formal reviews remain');
   assert(app.includes('function appendExplicitTodayQueueCards'), 'expected explicit goal changes to keep their fast append path');
   assert(app.includes('return wordByRoIndex.get(key) || null'), 'expected getWordByRo to use indexed lookup');
   assert(app.includes('skipRepair: true'), 'expected applyFilters to avoid duplicate getDailyWordList repair');
@@ -127,8 +127,8 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes("todayQueue.join('|')"), 'expected metrics cache key to include todayQueue signature');
   assert(app.includes('todayQueueCompleted.size'), 'expected metrics cache key to include completed queue size');
   assert(app.includes('getDailyWordList:using-active-queue-before-load'), 'expected active repaired queues to render before dailyQueueLoaded settles');
-  assert(app.includes("if (isDueLearningStepWord(w)) return 0;"), 'expected due learning steps to have first queue priority');
-  assert(app.includes("if (isDueGraduatedReviewWord(w)) return 1;"), 'expected graduated reviews to follow learning steps');
+  assert(app.includes("if (isDueGraduatedReviewWord(w)) return 0;"), 'expected graduated reviews to have first queue priority');
+  assert(app.includes("if (isDueLearningStepWord(w)) return 1;"), 'expected initial learning steps to follow formal reviews');
   assert(app.includes("if (isUnseenWord(w)) return getUnseenContentPriority(w);"), 'expected unseen cards to use content-quality priority behind learning and review cards');
   assert(app.includes("if (phraseQuality === 'core') return 3;"), 'expected reviewed core phrases to lead the unseen-card tier');
   assert(app.includes("if (phraseQuality === 'needs_review') return 5;"), 'expected unreviewed phrase content to trail ordinary unseen cards');
@@ -141,7 +141,8 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes('const dueCount = getRemainingFormalReviewWords(W).length;'), 'the pending-review statistic must exclude initial learning steps');
   assert(app.includes('function continueRemainingReviewsToday()'), 'goal completion must offer a finish-remaining-reviews path');
   assert(index.includes('id="today-focus-meta"'), 'expected one concise daily-plan explanation instead of repeated stage cards');
-  assert(index.includes('严格先做已到点内容，再按新词上限引入新卡'), 'expected the strict priority and new-card cap to be visible');
+  assert(index.includes('严格先完成正式复习，再处理学习步骤和新词'), 'expected the review-first priority to be visible');
+  assert(index.includes('正式待复习'), 'the formal review metric must not be confused with initial learning steps');
   assert(app.includes('const DEFAULT_DAILY_GOAL = 200;'), 'expected the default daily processing quota to be 200');
   assert(app.includes('const DEFAULT_DAILY_NEW_LIMIT = 30;'), 'expected an independent default daily new-card limit');
 }

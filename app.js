@@ -1827,8 +1827,11 @@ function getUnseenContentPriority(w) {
 
 function getDailyPhasePriority(w) {
   if (!w?.ro) return 9;
-  if (isDueLearningStepWord(w)) return 0;
-  if (isDueGraduatedReviewWord(w)) return 1;
+  // The user's daily target is review-first: graduated reviews and relearning
+  // must reduce the visible review backlog before initial new-card learning
+  // steps are allowed to take over the session.
+  if (isDueGraduatedReviewWord(w)) return 0;
+  if (isDueLearningStepWord(w)) return 1;
   const scheduler = normalizeScheduler(getProgress(w.ro) || {});
   if (scheduler.needsReinforcement || scheduler.cardState === 'reinforcing') return 2;
   if (isUnseenWord(w)) return getUnseenContentPriority(w);
@@ -1849,17 +1852,18 @@ function buildReviewFirstDailyPlan(words = W, limit = dailyGoal) {
   const cap = Math.max(1, Number(limit || dailyGoal || DEFAULT_DAILY_GOAL));
   const blocked = new Set([...todaySeenWords, ...todayQueueCompleted].map(roKey));
   const usable = words.filter(w => w?.ro && !blocked.has(roKey(w.ro)));
-  const overdueLearning = sortReviewDueWithWeakPriority(usable).filter(isOverdueLearningOrReinforcingWord);
-  const overdueSet = new Set(overdueLearning.map(w => roKey(w.ro)));
-  const due = sortReviewDueWithWeakPriority(usable).filter(w => !overdueSet.has(roKey(w.ro)) && isDueReviewWord(w));
-  const dueSet = new Set([...overdueSet, ...due.map(w => roKey(w.ro))]);
+  const due = sortReviewDueWithWeakPriority(usable).filter(isDueGraduatedReviewWord);
+  const dueSet = new Set(due.map(w => roKey(w.ro)));
+  const overdueLearning = sortReviewDueWithWeakPriority(usable)
+    .filter(w => !dueSet.has(roKey(w.ro)) && isDueLearningStepWord(w));
+  overdueLearning.forEach(w => dueSet.add(roKey(w.ro)));
   const weak = getReinforcementWordsDueToday(usable).filter(w => !dueSet.has(roKey(w.ro)));
   const weakSet = new Set([...dueSet, ...weak.map(w => roKey(w.ro))]);
   const unseen = getUnseenWords(usable)
     .filter(w => !weakSet.has(roKey(w.ro)))
     .slice(0, getRemainingDailyNewSlots());
   return window.RomanianVocabDailyPlan.buildTieredPlan(
-    [overdueLearning, due, weak, unseen],
+    [due, overdueLearning, weak, unseen],
     { limit: cap, keyOf: w => roKey(w?.ro) }
   );
 }
@@ -2948,19 +2952,19 @@ function renderReviewPanel() {
   const baseGoalDone = isDefaultGoalDone();
   const summaryText = currentGoalDone
     ? `已完成 ${todayNewWords}/${dailyGoal}`
-    : (dueLearning > 0
-      ? `先做 ${nextLearningBatch} 个学习步骤`
-      : (dueReview > 0 ? `再复习 ${nextReviewBatch} 个` : (newOpenQueueCount > 0 ? `学习 ${newOpenQueueCount} 个新词` : '等待学习步骤')));
+    : (dueReview > 0
+      ? `先复习 ${nextReviewBatch} 个`
+      : (dueLearning > 0 ? `再做 ${nextLearningBatch} 个学习步骤` : (newOpenQueueCount > 0 ? `学习 ${newOpenQueueCount} 个新词` : '等待学习步骤')));
   setText('flash-control-summary', summaryText);
   const taskType = current ? getDailyTaskType(current) : '';
   const baseNote = currentGoalDone
     ? `今日通过目标已完成：${todayNewWords}/${dailyGoal} 个。${getContinueAfterGoalText()}`
     : (baseGoalDone
       ? `今日固定目标已完成：${todayNewWords}/${defaultDailyGoal} 个；临时加量进度 ${todayNewWords}/${dailyGoal}。`
-      : (dueLearning > 0
-        ? `先完成 ${nextLearningBatch} 个已到点的学习步骤，再处理正式复习。${taskType ? `当前卡片：${taskType}。` : ''}`
-        : (dueReview > 0
-          ? `再完成 ${nextReviewBatch} 个到期复习，之后才进入新词。${taskType ? `当前卡片：${taskType}。` : ''}`
+      : (dueReview > 0
+        ? `先完成 ${nextReviewBatch} 个到期复习；正式复习清空后，再处理新词学习步骤。${taskType ? `当前卡片：${taskType}。` : ''}`
+        : (dueLearning > 0
+          ? `正式复习已清空；再完成 ${nextLearningBatch} 个已到点的学习步骤。${taskType ? `当前卡片：${taskType}。` : ''}`
           : (newOpenQueueCount > 0
             ? `现在可以学习新词；今日已引入 ${todayNewLimitProgress} 个，等待步骤到点后会优先出现。${taskType ? `当前卡片：${taskType}。` : ''}`
             : `今日已引入新词 ${todayNewLimitProgress} 个；没有到期内容时会等待下一学习步骤。${taskType ? `当前卡片：${taskType}。` : ''}`))));
@@ -2993,14 +2997,14 @@ function renderTodayFocus(metrics = null) {
   const attempts = getTodayAttemptStats();
   const todayNewLimitProgress = getTodayNewLimitProgressText();
   const title = `今日通过 ${todayNewWords}/${dailyGoal}`;
-  const action = learningDueCount > 0
-    ? `学习步骤 ${learningDueCount}`
-    : (reviewDueCount > 0 ? `到期复习 ${reviewDueCount}` : (currentDone ? '已完成' : `新词 ${newOpenQueueCount}`));
+  const action = reviewDueCount > 0
+    ? `到期复习 ${reviewDueCount}`
+    : (learningDueCount > 0 ? `学习步骤 ${learningDueCount}` : (currentDone ? '已完成' : `新词 ${newOpenQueueCount}`));
   const meta = currentDone
     ? `今天已通过目标；共作答 ${attempts.total} 次，已引入新词 ${todayNewLimitProgress}。`
     : (waitingLearningCount > 0 && !learningDueCount && !reviewDueCount
       ? `${waitingLearningCount} 个学习步骤正在等待；已作答 ${attempts.total} 次，新词 ${todayNewLimitProgress}。`
-      : `严格先做已到点内容；共作答 ${attempts.total} 次，新词 ${todayNewLimitProgress}。`);
+      : `严格先做${reviewDueCount > 0 ? '正式复习' : '已到点内容'}；共作答 ${attempts.total} 次，新词 ${todayNewLimitProgress}。`);
   setText('today-focus-title', title);
   setText('today-focus-action', action);
   setText('today-focus-meta', meta);
@@ -4989,7 +4993,6 @@ function markCard(answer) {
   const isKnownAction = action === 'known';
   const isUnknownAction = action === 'unknown';
   const isFuzzyAction = action === 'fuzzy';
-  const completesTodayTask = isKnownAction;
   if (!['unknown', 'fuzzy', 'known'].includes(action)) {
     finishDailyQueuePerf(perf, { path: 'invalid-action', action, vocabScanned: 0 });
     return;
@@ -5002,10 +5005,17 @@ function markCard(answer) {
     const schedulerBefore = normalizeScheduler(p || {});
     const queuePhaseBefore = getStudyQueuePhase(w);
     const answerSnapshot = captureCardAnswerSnapshot(w, p, queuePhaseBefore);
+    const formalReviewsBeforeAnswer = flashMode === 'today'
+      ? getRemainingFormalReviewWords(W).length
+      : 0;
     const isReviewTask = queuePhaseBefore === 'review-due' ||
       queuePhaseBefore === 'relearning-due' ||
       schedulerBefore.cardState === 'mastered' ||
       (schedulerBefore.cardState === 'reinforcing' && schedulerBefore.lapses > 0);
+    // A learning step for a newly introduced card must not advance a review
+    // target while formal reviews remain. Once the review backlog is empty,
+    // successful learning/new cards may fill any remaining daily target.
+    const completesTodayTask = isKnownAction && (isReviewTask || formalReviewsBeforeAnswer === 0);
     const interaction = isReviewTask
       ? (isKnownAction ? 'review_correct' : (isFuzzyAction ? 'review_fuzzy' : 'review_wrong'))
       : (isKnownAction ? 'flashcard_known' : (isFuzzyAction ? 'flashcard_fuzzy' : 'flashcard_unknown'));
@@ -5017,10 +5027,13 @@ function markCard(answer) {
     const isOpenTodayWord = flashMode === 'today'
       && roListIncludes(todayQueue, w.ro)
       && !setHasRo(todayQueueCompleted, w.ro);
-    const isTodayBlockingReviewWord = flashMode === 'today' && !isOpenTodayWord && isDueReviewWord(w);
+    // This must use the pre-answer classification. The optimistic progress
+    // update above moves dueAt into the future, so calling isDueReviewWord here
+    // would incorrectly turn every just-completed external review into false.
+    const wasTodayBlockingReviewWord = flashMode === 'today' && !isOpenTodayWord && isReviewTask;
     if (flashMode === 'today' && completesTodayTask) {
       lastLearningHint = '';
-      dailyStateResult = (isOpenTodayWord || isTodayBlockingReviewWord)
+      dailyStateResult = (isOpenTodayWord || wasTodayBlockingReviewWord)
         ? commitTodayWordCompletion(w.ro, { fast: true, deferGoalPrompt: true })
         : null;
     } else if (flashMode === 'today') {

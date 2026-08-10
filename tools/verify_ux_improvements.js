@@ -14,7 +14,7 @@ assert(app.includes('const DEFAULT_DAILY_NEW_LIMIT = 30;'), 'app needs an indepe
 assert(api.includes('const API_DEFAULT_DAILY_GOAL = 200;'), 'API/offline default processing goal must be 200');
 assert(dailyPlan.includes('const activeSlots = openSlots;'), 'waiting retries must not consume answerable daily quota slots');
 assert(!dailyPlan.includes('function interleavePriority'), 'new cards must not be interleaved while due work exists');
-assert(html.includes('严格先做已到点内容，再按新词上限引入新卡'), 'home must explain strict review priority and the new-card cap');
+assert(html.includes('严格先完成正式复习，再处理学习步骤和新词'), 'home must explain the formal-review-first priority');
 assert(!html.includes('id="today-step-learning"'), 'repeated daily-stage cards should be removed from the home page');
 
 assert(html.includes('id="list-status-filter"'), 'vocabulary list needs a status filter');

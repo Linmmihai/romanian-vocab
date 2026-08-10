@@ -583,6 +583,178 @@ test('due work strictly blocks new cards in today mode', async ({ page }) => {
   expect(state.phases.every(phase => ['learning-due', 'relearning-due', 'review-due'].includes(phase))).toBe(true);
 });
 
+test('formal reviews reduce the backlog and learning steps cannot consume the review goal', async ({ page }) => {
+  await enterOfflineApp(page);
+
+  const state = await page.evaluate(async () => {
+    const formalReview = W[0];
+    const learningStep = W[1];
+    const unseen = W[2];
+    const pastDueAt = new Date(Date.now() - 60_000).toISOString();
+
+    progressMap = {};
+    progressVersion++;
+    todayQueueCompleted = new Set();
+    todaySeenWords = new Set();
+    todayIntroducedWords = new Set();
+    todayNewWords = 0;
+    defaultDailyGoal = 30;
+    dailyGoal = 30;
+    dailyQueueLoaded = true;
+    progressLoaded = true;
+    flashMode = 'today';
+    curCat = '全部';
+    idx = 0;
+    flashOverrideRo = null;
+    todayLog = {
+      log_date: getDateKeyFor(new Date()),
+      new_words: 0,
+      goal: 30,
+      completed: false
+    };
+
+    setProgress(formalReview.ro, {
+      seen: true,
+      known: true,
+      qr: 5,
+      qt: 6,
+      level: 'learning',
+      cardState: 'review',
+      reviewStage: 2,
+      reviewCount: 2,
+      reps: 6,
+      intervalDays: 3,
+      dueAt: pastDueAt,
+      nextReviewAt: pastDueAt,
+      lastReviewedAt: new Date(Date.now() - 3 * 86_400_000).toISOString()
+    }, { replace: true, source: 'e2e-formal-review-first' });
+    setProgress(learningStep.ro, {
+      seen: true,
+      known: false,
+      qr: 0,
+      qt: 1,
+      level: 'learning',
+      cardState: 'learning',
+      reviewStage: 0,
+      reviewCount: 0,
+      reps: 1,
+      intervalDays: 0,
+      dueAt: pastDueAt,
+      nextReviewAt: pastDueAt,
+      lastReviewedAt: new Date(Date.now() - 15 * 60_000).toISOString()
+    }, { replace: true, source: 'e2e-initial-learning-step' });
+
+    todayQueue = [dailyWordKey(learningStep.ro), dailyWordKey(unseen.ro)];
+    applyFilters();
+    const firstPhase = getStudyQueuePhase(getCurrentFlashWord());
+    const formalBefore = getRemainingFormalReviewWords(W).length;
+
+    // Adversarially force the lower-priority learning card to be answered
+    // while a formal review remains. It must not consume the 30-review goal.
+    filtered = [learningStep];
+    idx = 0;
+    markCard('known');
+    const afterLearning = {
+      goalCount: todayNewWords,
+      formalRemaining: getRemainingFormalReviewWords(W).length,
+      learningStillCompleted: setHasRo(todayQueueCompleted, learningStep.ro),
+      visibleTotalDue: document.getElementById('review-due-count')?.textContent || ''
+    };
+
+    // Also cover a globally blocking review that is not part of the persisted
+    // daily queue. Its due classification must be captured before dueAt moves.
+    todayQueue = roListWithout(todayQueue, formalReview.ro);
+    const formalWasOpen = roListIncludes(todayQueue, formalReview.ro);
+    filtered = [formalReview];
+    idx = 0;
+    flashOverrideRo = null;
+    markCard('known');
+    upStats();
+    const afterFormal = {
+      goalCount: todayNewWords,
+      formalRemaining: getRemainingFormalReviewWords(W).length,
+      formalCompleted: setHasRo(todayQueueCompleted, formalReview.ro),
+      visibleFormalRemaining: document.getElementById('s-wrong')?.textContent || ''
+    };
+    await undoLastCardAnswer();
+    upStats();
+    const afterUndo = {
+      goalCount: todayNewWords,
+      formalRemaining: getRemainingFormalReviewWords(W).length,
+      formalCompleted: setHasRo(todayQueueCompleted, formalReview.ro),
+      visibleFormalRemaining: document.getElementById('s-wrong')?.textContent || ''
+    };
+
+    // A missed formal review is deferred, not completed. It must not advance
+    // the goal and must return to the formal backlog when its retry is due.
+    filtered = [formalReview];
+    idx = 0;
+    markCard('unknown');
+    const afterUnknown = {
+      goalCount: todayNewWords,
+      formalRemaining: getRemainingFormalReviewWords(W).length,
+      phase: getStudyQueuePhase(formalReview)
+    };
+    const deferredProgress = getProgress(formalReview.ro);
+    setProgress(formalReview.ro, {
+      ...deferredProgress,
+      dueAt: pastDueAt,
+      nextReviewAt: pastDueAt
+    }, { replace: true, source: 'e2e-relearning-becomes-due' });
+    upStats();
+    const afterRetryDue = {
+      goalCount: todayNewWords,
+      formalRemaining: getRemainingFormalReviewWords(W).length,
+      phase: getStudyQueuePhase(formalReview),
+      visibleFormalRemaining: document.getElementById('s-wrong')?.textContent || ''
+    };
+
+    return {
+      firstPhase,
+      formalBefore,
+      formalWasOpen,
+      afterLearning,
+      afterFormal,
+      afterUndo,
+      afterUnknown,
+      afterRetryDue
+    };
+  });
+
+  expect(state.firstPhase).toBe('review-due');
+  expect(state.formalBefore).toBe(1);
+  expect(state.formalWasOpen).toBe(false);
+  expect(state.afterLearning).toEqual({
+    goalCount: 0,
+    formalRemaining: 1,
+    learningStillCompleted: false,
+    visibleTotalDue: '1'
+  });
+  expect(state.afterFormal).toEqual({
+    goalCount: 1,
+    formalRemaining: 0,
+    formalCompleted: true,
+    visibleFormalRemaining: '0'
+  });
+  expect(state.afterUndo).toEqual({
+    goalCount: 0,
+    formalRemaining: 1,
+    formalCompleted: false,
+    visibleFormalRemaining: '1'
+  });
+  expect(state.afterUnknown).toEqual({
+    goalCount: 0,
+    formalRemaining: 0,
+    phase: 'relearning-waiting'
+  });
+  expect(state.afterRetryDue).toEqual({
+    goalCount: 0,
+    formalRemaining: 1,
+    phase: 'relearning-due',
+    visibleFormalRemaining: '1'
+  });
+});
+
 test('history is read-only and undo restores the entire last answer', async ({ page }) => {
   await enterOfflineApp(page);
   const originalChinese = (await page.locator('#fc-zh').innerText()).trim();

@@ -142,8 +142,8 @@ function simulateLoadedQueueCorrection({
   assert(app.includes('await saveTodayQueue({ forceLocal: true });'), 'an explicit fixed-goal change must authoritatively replace stale cloud queue state');
   assert(app.includes('function continueRemainingReviewsToday()'), 'after reaching the fixed target, the learner must be able to finish the remaining reviews');
   assert(index.includes('id="checkin-review-remaining"'), 'goal completion must show how many formal reviews remain');
-  assert(index.includes('app.js?v=20260805-storage-safe-sync-v6'), 'app.js cache-busting version must include the storage-safe sync fix');
-  assert(serviceWorker.includes("ro-vocab-pwa-v43"), 'service worker cache name must move with app shell behavior changes');
+  assert(index.includes('app.js?v=20260809-formal-review-first-v7'), 'app.js cache-busting version must include the formal-review-first fix');
+  assert(serviceWorker.includes("ro-vocab-pwa-v44"), 'service worker cache name must move with app shell behavior changes');
 }
 
 console.log('daily goal reset verification passed');

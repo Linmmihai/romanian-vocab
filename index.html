@@ -636,7 +636,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <div class="today-focus-title" id="today-focus-title">今日路径</div>
         <div class="today-focus-action" id="today-focus-action">继续学习</div>
       </div>
-      <div class="today-focus-meta" id="today-focus-meta">严格先做已到点内容，再按新词上限引入新卡。</div>
+      <div class="today-focus-meta" id="today-focus-meta">严格先完成正式复习，再处理学习步骤和新词。</div>
     </div>
     <div id="flash-content" class="flash-study" style="display:none">
       <div class="card-wrap">
@@ -697,7 +697,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
           <div class="stat"><div class="stat-n" id="s-mastered" style="color:var(--green-text)">0</div><div class="stat-l">已掌握</div></div>
           <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">学习中</div></div>
-          <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">全库待复习</div></div>
+          <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">正式待复习</div></div>
         </div>
         <div class="review-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -705,7 +705,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             <div style="font-size:12px;color:var(--text2)">Anki 式每日队列</div>
           </div>
           <div class="review-grid">
-            <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">学习/复习到期</div></div>
+            <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">总到期（学习+复习）</div></div>
             <div class="review-metric"><div class="review-n" id="review-new-count">0/200</div><div class="review-l">已通过</div></div>
             <div class="review-metric"><div class="review-n" id="review-new-remaining">0/30</div><div class="review-l">已引入新词</div></div>
           </div>
@@ -1401,16 +1401,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260805-storage-safe-sync-v6';</script>
-<script src="scheduler.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="progress-model.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="daily-plan.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="taxonomy.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="romanian-text.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="api.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="telemetry.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="auth.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="app.js?v=20260805-storage-safe-sync-v6"></script>
-<script src="pwa.js?v=20260805-storage-safe-sync-v6"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260809-formal-review-first-v7';</script>
+<script src="scheduler.js?v=20260809-formal-review-first-v7"></script>
+<script src="progress-model.js?v=20260809-formal-review-first-v7"></script>
+<script src="daily-plan.js?v=20260809-formal-review-first-v7"></script>
+<script src="taxonomy.js?v=20260809-formal-review-first-v7"></script>
+<script src="romanian-text.js?v=20260809-formal-review-first-v7"></script>
+<script src="api.js?v=20260809-formal-review-first-v7"></script>
+<script src="telemetry.js?v=20260809-formal-review-first-v7"></script>
+<script src="auth.js?v=20260809-formal-review-first-v7"></script>
+<script src="app.js?v=20260809-formal-review-first-v7"></script>
+<script src="pwa.js?v=20260809-formal-review-first-v7"></script>
 </body>
 </html>
