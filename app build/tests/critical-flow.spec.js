@@ -41,8 +41,11 @@ test('failed new cards stay in Anki learning steps instead of becoming reinforce
 
   await page.locator('.nav-tab[data-page="list"]').click();
   await page.locator('#search-input').fill(wordRo);
-  const row = page.locator('.word-row');
-  await expect(row).toHaveCount(1);
+  const exactWord = page.locator('.word-ro').filter({
+    hasText: new RegExp(`^${wordRo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+  });
+  await expect(exactWord).toHaveCount(1);
+  const row = exactWord.locator('../..');
   await expect(row).toContainText('学习中');
   await expect(row).not.toContainText('需加强');
 });
@@ -394,8 +397,9 @@ test('a 30-card target can continue through remaining reviews before new cards',
   await enterOfflineApp(page);
 
   const state = await page.evaluate(async () => {
-    const completedWords = W.slice(0, 30);
-    const remainingReviewWords = W.slice(30, 200);
+    const collectionWords = getLearningCollectionWords(W);
+    const completedWords = collectionWords.slice(0, 30);
+    const remainingReviewWords = collectionWords.slice(30, 200);
     const pastDueAt = new Date(Date.now() - 60_000).toISOString();
     const futureDueAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
     progressMap = {};
@@ -917,20 +921,96 @@ test('verb phrases and ordinary collocations show distinct classification labels
   await expect(page.locator('#fc-cat2')).toContainText('日常与个人生活 · 动词 · 搭配');
 });
 
-test('new core phrases are prioritized ahead of ordinary unseen words', async ({ page }) => {
+test('reviewed core phrases are prioritized ahead of unreviewed frequency cards', async ({ page }) => {
   await enterOfflineApp(page);
   const priorities = await page.evaluate(() => {
     const core = getWordByRo('Mi se pare că...');
-    const ordinary = getWordByRo('fenomen');
+    const firstWords = getUnseenWords(W).slice(0, 40);
     return {
       core: getDailyPhasePriority(core),
-      ordinary: getDailyPhasePriority(ordinary),
-      coreQuality: core?.grammar_data?.phrase_quality
+      coreQuality: core?.grammar_data?.phrase_quality,
+      coreVerification: core?.verification_status,
+      firstAreReviewedCore: firstWords.every(word =>
+        word.verification_status === 'verified' && word.grammar_data?.phrase_quality === 'core')
     };
   });
 
   expect(priorities.coreQuality).toBe('core');
-  expect(priorities.core).toBeLessThan(priorities.ordinary);
+  expect(priorities.coreVerification).toBe('verified');
+  expect(priorities.firstAreReviewedCore).toBe(true);
+});
+
+test('default study uses the news core and specialist books stay opt-in', async ({ page }) => {
+  await enterOfflineApp(page);
+  await expect(page.locator('#learning-collection-select')).toHaveValue('news_core');
+  await expect(page.locator('#learning-collection-note')).toContainText('默认课程');
+
+  const coreState = await page.evaluate(() => ({
+    collection: learningCollectionId,
+    count: getLearningCollectionWords(W).length,
+    hasPrincipiu: getLearningCollectionWords(W).some(word => word.ro === 'principiu'),
+    hasTokamak: getLearningCollectionWords(W).some(word => word.ro === 'tokamak'),
+    invalidQueueCards: todayQueue.filter(ro => {
+      const word = getWordByRo(ro);
+      return !word || !wordMatchesLearningCollection(word, learningCollectionId);
+    }).length
+  }));
+  expect(coreState).toEqual({
+    collection: 'news_core',
+    count: 1789,
+    hasPrincipiu: true,
+    hasTokamak: false,
+    invalidQueueCards: 0
+  });
+
+  await page.locator('details.flash-controls > summary').click();
+  await expect(page.locator('#learning-collection-select')).toBeVisible();
+  await page.locator('#learning-collection-select').selectOption('specialist_science_technology');
+  await expect(page.locator('#learning-collection-select')).toHaveValue('specialist_science_technology');
+  await expect(page.locator('#learning-collection-note')).toContainText('科学、工程、AI 和网络技术');
+  const specialistState = await page.evaluate(() => ({
+    collection: learningCollectionId,
+    count: getLearningCollectionWords(W).length,
+    hasTokamak: getLearningCollectionWords(W).some(word => word.ro === 'tokamak'),
+    invalidQueueCards: todayQueue.filter(ro => {
+      const word = getWordByRo(ro);
+      return !word || !wordMatchesLearningCollection(word, learningCollectionId);
+    }).length
+  }));
+  expect(specialistState).toEqual({
+    collection: 'specialist_science_technology',
+    count: 424,
+    hasTokamak: true,
+    invalidQueueCards: 0
+  });
+});
+
+test('collection switch invalidates undo from the previous book', async ({ page }) => {
+  await enterOfflineApp(page);
+  const result = await page.evaluate(async () => {
+    const coreWord = getWordByRo('principiu');
+    lastCardAnswerSnapshot = captureCardAnswerSnapshot(coreWord, null, 'new');
+    await setLearningCollection('specialist_science_technology');
+    await undoLastCardAnswer();
+    return {
+      snapshotCleared: lastCardAnswerSnapshot === null,
+      collection: learningCollectionId,
+      invalidQueueCards: todayQueue.filter(ro => {
+        const word = getWordByRo(ro);
+        return !word || !wordMatchesLearningCollection(word, learningCollectionId);
+      }).length
+    };
+  });
+  expect(result).toEqual({ snapshotCleared: true, collection: 'specialist_science_technology', invalidQueueCards: 0 });
+});
+
+test('manual sync snapshot preserves the selected collection', async ({ page }) => {
+  await enterOfflineApp(page);
+  const snapshot = await page.evaluate(async () => {
+    await setLearningCollection('specialist_science_technology');
+    return buildTodaySyncSnapshot();
+  });
+  expect(snapshot.queue.collection_id).toBe('specialist_science_technology');
 });
 
 test('vocabulary list filters topic and part of speech independently', async ({ page }) => {

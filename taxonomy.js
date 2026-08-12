@@ -53,10 +53,46 @@
 
   const CEFR_LEVELS = Object.freeze(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
   const VERIFICATION_STATUSES = Object.freeze(['verified', 'imported', 'needs_review']);
+  const LEARNING_TRACKS = Object.freeze([
+    { value: 'news_core', label: '新闻通用核心' },
+    { value: 'news_extension', label: '新闻扩展词' },
+    { value: 'specialist', label: '专项术语' },
+    { value: 'scenario_phrasebook', label: '生活场景词书' },
+    { value: 'quarantine', label: '隔离待核对' }
+  ]);
+  const LEARNING_COLLECTIONS = Object.freeze([
+    { value: 'news_core', label: '新闻通用核心', description: '默认课程：通用高频词和跨栏目新闻表达' },
+    { value: 'news_extension', label: '新闻扩展词', description: '中频新闻词，适合识读扩展' },
+    { value: 'scenario_phrasebook', label: '生活场景词书', description: '办事、就医、出行和服务场景表达' },
+    { value: 'specialist_law_public_affairs', label: '法律与公共事务', description: '法律、司法、公共行政和欧盟制度' },
+    { value: 'specialist_economics_finance', label: '经济与金融', description: '宏观经济、银行、投资和财税' },
+    { value: 'specialist_health_medicine', label: '医疗与健康', description: '临床、护理、公共卫生和医药' },
+    { value: 'specialist_science_technology', label: '科技与工程', description: '科学、工程、AI 和网络技术' },
+    { value: 'specialist_environment_agriculture', label: '能源、环境与农业', description: '新能源、气候、农业和食品' },
+    { value: 'specialist_defense_security', label: '国防与安全', description: '军事、安全和地缘政治' },
+    { value: 'specialist_work_management', label: '企业与管理', description: '经营、组织、项目和人力资源' },
+    { value: 'specialist_history_culture', label: '历史、文化与艺术', description: '历史、文学、艺术和宗教' },
+    { value: 'specialist_education_language', label: '教育与语言', description: '教学、语言学和教育制度' },
+    { value: 'specialist_philosophy', label: '哲学与思想', description: '哲学流派和抽象理论' }
+  ]);
+  const SPECIALIST_BOOK_BY_TOPIC = Object.freeze({
+    law_public_affairs: 'specialist_law_public_affairs',
+    economics_finance: 'specialist_economics_finance',
+    health_medicine: 'specialist_health_medicine',
+    science_technology: 'specialist_science_technology',
+    nature_agriculture: 'specialist_environment_agriculture',
+    defense_security: 'specialist_defense_security',
+    work_management: 'specialist_work_management',
+    history_culture_arts: 'specialist_history_culture',
+    education_language: 'specialist_education_language',
+    philosophy_abstract: 'specialist_philosophy'
+  });
   const topicValues = new Set(TOPICS.map(item => item.value));
   const posValues = new Set(PARTS_OF_SPEECH.map(item => item.value));
   const unitValues = new Set(UNIT_TYPES.map(item => item.value));
   const registerValues = new Set(REGISTERS.map(item => item.value));
+  const learningTrackValues = new Set(LEARNING_TRACKS.map(item => item.value));
+  const learningCollectionValues = new Set(LEARNING_COLLECTIONS.map(item => item.value));
 
   const TOPIC_ALIASES = Object.freeze({
     'daily life': 'daily_life',
@@ -251,6 +287,44 @@
 
   function getRegisterLabel(value) {
     return labelFor(REGISTERS, value, '');
+  }
+
+  function getLearningTrackLabel(value) {
+    return labelFor(LEARNING_TRACKS, normalizeLearningTrack(value), '隔离待核对');
+  }
+
+  function getLearningCollectionLabel(value) {
+    return labelFor(LEARNING_COLLECTIONS, normalizeLearningCollection(value), '新闻通用核心');
+  }
+
+  function normalizeLearningTrack(value) {
+    const normalized = lower(value);
+    return learningTrackValues.has(normalized) ? normalized : 'quarantine';
+  }
+
+  function normalizeLearningCollection(value) {
+    const normalized = lower(value);
+    return learningCollectionValues.has(normalized) ? normalized : 'news_core';
+  }
+
+  function normalizeContentStatus(value) {
+    const normalized = lower(value);
+    return ['active', 'needs_review', 'archived'].includes(normalized) ? normalized : 'needs_review';
+  }
+
+  function getSpecialistBook(word) {
+    const explicit = lower(word?.specialist_book || word?.specialistBook);
+    if (learningCollectionValues.has(explicit) && explicit.startsWith('specialist_')) return explicit;
+    return SPECIALIST_BOOK_BY_TOPIC[normalizeTopic(word?.topic || word?.cat, word)] || '';
+  }
+
+  function wordMatchesLearningCollection(word, collection = 'news_core') {
+    if (!word || normalizeContentStatus(word.content_status || word.contentStatus) !== 'active') return false;
+    const normalizedCollection = normalizeLearningCollection(collection);
+    if (normalizedCollection.startsWith('specialist_')) {
+      return getSpecialistBook(word) === normalizedCollection;
+    }
+    return normalizeLearningTrack(word.learning_track || word.learningTrack) === normalizedCollection;
   }
 
   function normalizeTopic(value, word = null) {
@@ -449,7 +523,11 @@
       cefr: normalizeCefr(word?.cefr),
       register: normalizeRegister(word?.register),
       verification_status: normalizeVerificationStatus(word?.verification_status || word?.verificationStatus),
-      source: clean(word?.source || 'legacy_import')
+      source: clean(word?.source || 'legacy_import'),
+      learning_track: normalizeLearningTrack(word?.learning_track || word?.learningTrack),
+      specialist_book: getSpecialistBook(word),
+      content_status: normalizeContentStatus(word?.content_status || word?.contentStatus),
+      naturalness_status: clean(word?.naturalness_status || word?.naturalnessStatus || 'needs_review')
     };
   }
 
@@ -491,6 +569,9 @@
     REGISTERS,
     CEFR_LEVELS,
     VERIFICATION_STATUSES,
+    LEARNING_TRACKS,
+    LEARNING_COLLECTIONS,
+    SPECIALIST_BOOK_BY_TOPIC,
     normalizeTopic,
     normalizePartOfSpeech,
     normalizeUnitType,
@@ -498,12 +579,19 @@
     normalizeCefr,
     normalizeRegister,
     normalizeVerificationStatus,
+    normalizeLearningTrack,
+    normalizeLearningCollection,
+    normalizeContentStatus,
     normalizeWord,
     formatGrammarInfo,
     getTopicLabel,
     getPartOfSpeechLabel,
     getUnitTypeLabel,
     getRegisterLabel,
+    getLearningTrackLabel,
+    getLearningCollectionLabel,
+    getSpecialistBook,
+    wordMatchesLearningCollection,
     getClassificationSummary,
     looksLikeTemplateWord,
     normalizedWordKey,

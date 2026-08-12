@@ -30,6 +30,6 @@ assert(app.includes("showToast('今日记录已同步到云端')"), 'success cop
 assert(api.includes("sb.from('daily_log')"), 'cloud verification must read the daily log');
 assert(api.includes("sb.from('daily_queue')"), 'cloud verification must read the daily queue');
 assert(auth.includes('window.renderCloudSyncPanel?.();'), 'opening the account modal must refresh current sync details');
-assert(html.includes("window.ROMANIAN_VOCAB_APP_VERSION='20260809-formal-review-first-v7'"), 'formal-review-first fix must have a distinct app version');
+assert(html.includes("window.ROMANIAN_VOCAB_APP_VERSION='20260812-adversarial-v2'"), 'formal-review-first fix must have a distinct app version');
 
 console.log('manual sync UI verification passed');

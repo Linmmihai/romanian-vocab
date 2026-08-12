@@ -174,6 +174,7 @@ declare
   v_completed integer[];
   v_introduced integer[];
   v_goal integer;
+  v_collection_id text;
   v_new_words integer;
   v_queue_completed boolean;
   v_log_completed boolean;
@@ -215,14 +216,19 @@ begin
     nullif(v_target_log ->> 'goal', '')::integer,
     200
   )));
+  v_collection_id := coalesce(
+    nullif(v_base_queue ->> 'collection_id', ''),
+    nullif(v_target_queue ->> 'collection_id', ''),
+    'news_core'
+  );
 
   insert into public.daily_queue (
-    user_id, queue_date, goal, word_id, word_ro,
+    user_id, queue_date, collection_id, goal, word_id, word_ro,
     completed_word_id, completed_word_ro,
     introduced_word_id, introduced_word_ro,
     completed, updated_at, sync_revision
   ) values (
-    v_user_id, p_state_date, v_goal, v_base_open, '{}'::text[],
+    v_user_id, p_state_date, v_collection_id, v_goal, v_base_open, '{}'::text[],
     v_base_completed, '{}'::text[], v_base_introduced, '{}'::text[],
     coalesce((v_base_queue ->> 'completed')::boolean, false), v_now, 0
   ) on conflict (user_id, queue_date) do nothing;
@@ -299,12 +305,19 @@ begin
   v_open := v_queue.word_id;
   v_completed := v_queue.completed_word_id;
   v_introduced := v_queue.introduced_word_id;
+  v_collection_id := coalesce(v_queue.collection_id, 'news_core');
   v_goal := v_queue.goal;
   v_new_words := greatest(0, v_log.new_words);
   v_queue_completed := v_queue.completed;
   v_log_completed := v_log.completed;
 
   if p_target_state ? 'queue' then
+    if v_target_queue ? 'collection_id' and (
+      not (v_base_queue ? 'collection_id')
+      or (v_target_queue ->> 'collection_id') is distinct from (v_base_queue ->> 'collection_id')
+    ) then
+      v_collection_id := coalesce(nullif(v_target_queue ->> 'collection_id', ''), 'news_core');
+    end if;
     v_open := public.daily_state_apply_int_delta(v_open, v_base_open, v_target_open);
     v_completed := public.daily_state_apply_int_delta(v_completed, v_base_completed, v_target_completed);
     v_introduced := public.daily_state_apply_int_delta(v_introduced, v_base_introduced, v_target_introduced);
@@ -351,7 +364,8 @@ begin
   v_revision := greatest(v_queue.sync_revision, v_log.sync_revision) + 1;
 
   update public.daily_queue q
-  set goal = v_goal,
+  set collection_id = v_collection_id,
+      goal = v_goal,
       word_id = v_open,
       completed_word_id = v_completed,
       introduced_word_id = v_introduced,

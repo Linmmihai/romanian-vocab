@@ -70,7 +70,7 @@ const WORDS_LOAD_TIMEOUT_MS = 3500;
 const BUNDLED_WORDS_LOAD_TIMEOUT_MS = 6000;
 // v3 invalidates caches created before online users became cloud-first. Those
 // caches can contain deleted word IDs that violate progress.word_id's FK.
-const VOCAB_DATA_VERSION = '20260726-phrase-curation-v1';
+const VOCAB_DATA_VERSION = '20260812-adversarial-v2';
 const LEGACY_WORDS_CACHE_PREFIX = 'words_cache:';
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
@@ -309,6 +309,7 @@ function storageValuesWithPrefix(prefix) {
 
 function normalizeDailyQueueSyncState(queue = {}) {
   return {
+    collection_id: String(queue.collection_id || 'news_core'),
     goal: Math.max(1, Number(queue.goal || API_DEFAULT_DAILY_GOAL)),
     word_id: normalizeIdArray(queue.word_id),
     word_ro: normalizeRoArray(queue.word_ro || []),
@@ -459,10 +460,12 @@ function applyDailyQueueEventLocally(currentPayload = {}, basePayload = {}, targ
   const word_ro = applyRoArrayDelta(current.word_ro, base.word_ro, target.word_ro)
     .filter(value => !completedRoKeys.has(normalizeProgressWordRoKey(value)));
   const goalChanged = Number(target.goal) !== Number(base.goal);
+  const collectionChanged = target.collection_id !== base.collection_id;
   const completedChanged = target.completed !== base.completed;
   return {
     ...currentPayload,
     ...current,
+    collection_id: collectionChanged ? target.collection_id : current.collection_id,
     goal: goalChanged ? target.goal : current.goal,
     word_id,
     word_ro,
@@ -1406,6 +1409,9 @@ function normalizeIdArray(values = []) {
 
 function mergeDailyQueuePayload(localPayload, cloudPayload = null) {
   if (!cloudPayload) return localPayload;
+  if (localPayload.collection_id && cloudPayload.collection_id && localPayload.collection_id !== cloudPayload.collection_id) {
+    return localPayload;
+  }
   const completed_word_id = normalizeIdArray([
     ...(cloudPayload.completed_word_id || []),
     ...(localPayload.completed_word_id || [])
@@ -2257,6 +2263,7 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
     return {
       user_id: userId,
       queue_date: date,
+      collection_id: parsed.collection_id || 'news_core',
       goal: parsed.goal || goal || API_DEFAULT_DAILY_GOAL,
       word_id: normalizeIdArray(parsed.word_id),
       word_ro: Array.isArray(parsed.word_ro) ? parsed.word_ro : [],
@@ -2276,6 +2283,7 @@ function readLocalQueue(userId, goal, date = getQueueDateKey()) {
 
 function writeLocalQueue(userId, queue, date = getQueueDateKey()) {
   const payload = {
+    collection_id: queue.collection_id || 'news_core',
     goal: queue.goal || API_DEFAULT_DAILY_GOAL,
     word_id: normalizeIdArray(queue.word_id),
     word_ro: queue.word_ro || [],
@@ -2331,6 +2339,7 @@ async function apiGetDailyQueue(userId, goal) {
       return {
         user_id: userId,
         queue_date: today,
+        collection_id: 'news_core',
         goal: goal || API_DEFAULT_DAILY_GOAL,
         word_id: [],
         word_ro: [],
@@ -2363,6 +2372,7 @@ async function apiSaveDailyQueue(userId, queue, options = {}) {
   const payload = {
     user_id: userId,
     queue_date: today,
+    collection_id: queue.collection_id || 'news_core',
     goal: queue.goal || API_DEFAULT_DAILY_GOAL,
     word_id: normalizeIdArray(queue.word_id),
     word_ro: queue.word_ro || [],
@@ -2782,6 +2792,7 @@ async function apiVerifyTodayState(userId, snapshot = {}) {
     : sameSet(expectedIntroducedRos, cloudIntroducedRos, normalizeProgressWordRoKey);
   const queueOk = !!cloudQueue && referenceOk &&
     introducedOk &&
+    String(cloudQueue.collection_id || 'news_core') === String(expectedQueue.collection_id || 'news_core') &&
     Number(cloudQueue.goal || 0) === Number(expectedQueue.goal || 0) &&
     cloudQueue.completed === !!expectedQueue.completed;
 
