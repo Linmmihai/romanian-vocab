@@ -694,10 +694,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       </summary>
       <div class="flash-controls-body">
         <div class="stats-grid">
-          <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">总词汇</div></div>
+          <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">本词书词汇</div></div>
           <div class="stat"><div class="stat-n" id="s-mastered" style="color:var(--green-text)">0</div><div class="stat-l">已掌握</div></div>
           <div class="stat"><div class="stat-n" id="s-learning" style="color:var(--yellow-text)">0</div><div class="stat-l">学习中</div></div>
-          <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">正式待复习</div></div>
+          <div class="stat"><div class="stat-n" id="s-wrong" style="color:var(--red-text)">0</div><div class="stat-l">本词书正式待复习</div></div>
         </div>
         <div class="review-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -710,6 +710,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             <div class="review-metric"><div class="review-n" id="review-new-remaining">0/30</div><div class="review-l">已引入新词</div></div>
           </div>
           <div class="review-note" id="review-note">按学习步骤、到期复习、新词的顺序出卡。</div>
+        </div>
+        <div class="cat-panel">
+          <div class="cat-panel-title">当前词书</div>
+          <select id="learning-collection-select" aria-label="选择学习词书" onchange="setLearningCollection(this.value)" style="width:100%;padding:9px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg);color:var(--text)"></select>
+          <div class="review-note" id="learning-collection-note" style="margin-top:8px">默认学习新闻通用核心，专项术语按需启用。</div>
         </div>
         <div class="cat-panel">
           <div class="cat-panel-title">主题筛选</div>
@@ -1038,8 +1043,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
     <div class="guide-card">
       <div class="guide-kicker">Cum înveți · 如何使用</div>
-      <div class="guide-title">按队列顺序学习，不必自己挑词</div>
-      <div class="guide-subtitle">默认每天通过 200 个词，但每天最多只引入 30 个新词。已到点的学习步骤和复习会严格排在新词前；答“不认识/模糊”只会继续学习，不会被算作通过。</div>
+      <div class="guide-title">先选词书，再按队列顺序学习</div>
+      <div class="guide-subtitle">默认使用新闻通用核心；法律、金融、医疗、科技等术语词书只在需要时启用。每天最多引入 30 个新词，当前词书内已到点的学习步骤和复习会严格排在新词前。</div>
       <div class="manual-grid">
         <div class="manual-item">
           <div class="manual-title">① 今日顺序</div>
@@ -1093,6 +1098,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <option value="review">待复习</option>
           <option value="mastered">已掌握</option>
         </select>
+        <select id="list-collection-filter" aria-label="按词书筛选" onchange="resetListPageAndRender()"><option value="all">全部词书</option></select>
         <select id="list-topic-filter" aria-label="按主题筛选" onchange="resetListPageAndRender()"><option value="all">全部主题</option></select>
         <select id="list-pos-filter" aria-label="按词性筛选" onchange="resetListPageAndRender()"><option value="all">全部词性</option></select>
         <span class="list-summary" id="list-summary">正在整理词汇…</span>
@@ -1401,16 +1407,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260809-formal-review-first-v7';</script>
-<script src="scheduler.js?v=20260809-formal-review-first-v7"></script>
-<script src="progress-model.js?v=20260809-formal-review-first-v7"></script>
-<script src="daily-plan.js?v=20260809-formal-review-first-v7"></script>
-<script src="taxonomy.js?v=20260809-formal-review-first-v7"></script>
-<script src="romanian-text.js?v=20260809-formal-review-first-v7"></script>
-<script src="api.js?v=20260809-formal-review-first-v7"></script>
-<script src="telemetry.js?v=20260809-formal-review-first-v7"></script>
-<script src="auth.js?v=20260809-formal-review-first-v7"></script>
-<script src="app.js?v=20260809-formal-review-first-v7"></script>
-<script src="pwa.js?v=20260809-formal-review-first-v7"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260812-adversarial-v2';</script>
+<script src="scheduler.js?v=20260812-adversarial-v2"></script>
+<script src="progress-model.js?v=20260812-adversarial-v2"></script>
+<script src="daily-plan.js?v=20260812-adversarial-v2"></script>
+<script src="taxonomy.js?v=20260812-adversarial-v2"></script>
+<script src="romanian-text.js?v=20260812-adversarial-v2"></script>
+<script src="api.js?v=20260812-adversarial-v2"></script>
+<script src="telemetry.js?v=20260812-adversarial-v2"></script>
+<script src="auth.js?v=20260812-adversarial-v2"></script>
+<script src="app.js?v=20260812-adversarial-v2"></script>
+<script src="pwa.js?v=20260812-adversarial-v2"></script>
 </body>
 </html>

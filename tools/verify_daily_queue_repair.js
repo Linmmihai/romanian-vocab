@@ -111,7 +111,7 @@ function shouldFastPathActiveQueue({ todayQueue, completed = [], deferred = [], 
   assert(app.includes('return getRemainingTodayReviewWords().length === 0;'), 'incremental today mode must stop as soon as a review becomes due');
   assert(app.includes('请先翻开卡片并完成当前单词，作答后会自动进入下一词'), 'manual next-card navigation must require an answer instead of skipping');
   assert(!app.includes("idx = (idx + 1) % filtered.length;"), 'manual navigation must not advance the active study index');
-  assert(app.includes('return words.filter(isDueReviewWord);'), 'daily completion bookkeeping must not hide a card that becomes due again');
+  assert(app.includes('return getLearningCollectionWords(words).filter(isDueReviewWord);'), 'daily completion bookkeeping must not hide a card that becomes due again inside the active collection');
   assert(!app.includes('RomanianVocabDailyPlan.interleavePriority'), 'today mode must not interleave new cards while reviews are due');
   assert(app.includes('wasTodayBlockingReviewWord'), 'expected blocking review cards to use their pre-answer classification');
   assert(app.includes("const completesTodayTask = isKnownAction && (isReviewTask || formalReviewsBeforeAnswer === 0);"), 'learning steps must not consume a review target while formal reviews remain');

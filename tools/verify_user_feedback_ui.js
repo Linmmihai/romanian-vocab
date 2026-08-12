@@ -27,7 +27,7 @@ const mobileToastRule = html.indexOf('.toast{bottom:calc(64px + env(safe-area-in
 assert(baseToastRule !== -1 && mobileToastRule > baseToastRule, 'mobile toast override should follow the base rule and clear the bottom navigation');
 assert(html.includes('id="toast" role="status" aria-live="polite"'), 'toast should announce status updates accessibly');
 assert(html.includes('id="sync-badge-text" role="status" aria-live="polite"'), 'sync status should announce changes accessibly');
-assert(html.includes('app.js?v=20260809-formal-review-first-v7'), 'app cache buster should include the formal-review-first fix');
-assert(serviceWorker.includes('ro-vocab-pwa-v44'), 'service worker cache should include the formal-review-first fix');
+assert(html.includes('app.js?v=20260812-adversarial-v2'), 'app cache buster should include the formal-review-first fix');
+assert(serviceWorker.includes('ro-vocab-pwa-v45-adversarial-v2'), 'service worker cache should include the formal-review-first fix');
 
 console.log('user feedback UI verification passed');

@@ -53,6 +53,7 @@ const {
 } = sandbox.__dailyAtomic;
 
 const baseQueue = {
+  collection_id: 'news_core',
   goal: 30,
   word_id: [1, 2, 3],
   word_ro: ['unu', 'doi', 'trei'],
@@ -92,6 +93,10 @@ assert.deepStrictEqual([...cloudQueue.word_id], [3], 'completed cards must be re
 assert.strictEqual(cloudLog.new_words, 32, 'same-base +1 count deltas must add instead of last-write-winning at 31');
 assert.strictEqual(cloudQueue.goal, 30, 'client timestamps must have no authority over daily state');
 
+const specialistQueue = { ...cloudQueue, collection_id: 'specialist_science_technology' };
+cloudQueue = applyDailyQueueEventLocally(cloudQueue, cloudQueue, specialistQueue);
+assert.strictEqual(cloudQueue.collection_id, 'specialist_science_technology', 'collection switches must survive the atomic local merge');
+
 const undoAQueue = baseQueue;
 const undoALog = baseLog;
 cloudQueue = applyDailyQueueEventLocally(cloudQueue, deviceAQueue, undoAQueue);
@@ -130,6 +135,7 @@ assert(sql.includes('primary key (user_id, event_id)'), 'daily event idempotency
 assert(sql.includes('for update;'), 'daily rows and client sequence must be locked before applying an event');
 assert(sql.includes('v_new_words + v_log_delta'), 'daily counts must be applied as atomic deltas');
 assert(sql.includes('public.daily_state_apply_int_delta'), 'queue memberships must be applied as set deltas');
+assert(sql.includes('set collection_id = v_collection_id'), 'atomic daily synchronization must persist the selected vocabulary collection');
 assert(sql.includes('if p_client_seq <= v_last_seq then'), 'late same-client requests must be ignored');
 assert(sql.includes('if p_client_seq <> v_last_seq + 1 then'), 'the server must reject a client sequence gap that would lose an earlier delta');
 assert(sql.includes('security invoker'), 'daily sync must honor caller RLS');

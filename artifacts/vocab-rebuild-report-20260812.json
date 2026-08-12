@@ -1,0 +1,1336 @@
+{
+  "generatedAt": "2026-08-12T14:22:35.279Z",
+  "corpusEvidence": {
+    "corola": "CoRoLa lemma frequency v1 (2022)",
+    "news": "MOROCO Romanian-only news documents (2018 snapshot)",
+    "newsDocuments": 18161,
+    "newsTokens": 5428243
+  },
+  "totalWords": 4867,
+  "trackCounts": {
+    "news_core": 1789,
+    "news_extension": 588,
+    "scenario_phrasebook": 1254,
+    "specialist": 1236
+  },
+  "collectionCounts": {
+    "specialist_defense_security": 186,
+    "specialist_economics_finance": 205,
+    "specialist_education_language": 231,
+    "specialist_environment_agriculture": 224,
+    "specialist_health_medicine": 225,
+    "specialist_history_culture": 598,
+    "specialist_law_public_affairs": 206,
+    "specialist_philosophy": 207,
+    "specialist_science_technology": 424,
+    "specialist_work_management": 208
+  },
+  "naturalnessCounts": {
+    "verified": 202,
+    "revised": 81,
+    "corpus_attested": 0,
+    "needs_review": 4584
+  },
+  "frequencyCoverage": {
+    "rankedSingleWords": 2130,
+    "newsAttestedEntries": 2789
+  },
+  "corrections": [
+    {
+      "id": 3202,
+      "before": {
+        "ro": "absolut",
+        "zh": "绝对",
+        "hint": "adj: absolută / absoluți / absolute",
+        "example_ro": "Radu a refuzat categoric orice compromis care ar fi afectat calitatea proiectului."
+      },
+      "after": {
+        "ro": "absolut",
+        "zh": "绝对",
+        "hint": "adj: absolută / absoluți / absolute",
+        "example_ro": "Radu a refuzat categoric orice compromis care ar fi afectat calitatea proiectului."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3203,
+      "before": {
+        "ro": "relativ",
+        "zh": "相对",
+        "hint": "adj: relativă / relativi / relative",
+        "example_ro": "El este un student relativ harnic."
+      },
+      "after": {
+        "ro": "relativ",
+        "zh": "相对",
+        "hint": "adj: relativă / relativi / relative",
+        "example_ro": "El este un student relativ harnic."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3205,
+      "before": {
+        "ro": "principiu",
+        "zh": "原则；原理",
+        "hint": "s.n.: principii",
+        "example_ro": "Elena a acționat conform principiului că onestitatea trebuie să primeze întotdeauna."
+      },
+      "after": {
+        "ro": "principiu",
+        "zh": "原则；原理",
+        "hint": "s.n.: principii",
+        "example_ro": "Elena a acționat conform principiului că onestitatea trebuie să primeze întotdeauna."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3207,
+      "before": {
+        "ro": "infinit",
+        "zh": "无限",
+        "hint": "adj: infinită / infiniți / infinite",
+        "example_ro": "Ana a contemplat ideea că spațiul ar putea fi infinit la seminarul de fizică."
+      },
+      "after": {
+        "ro": "infinit",
+        "zh": "无限",
+        "hint": "adj: infinită / infiniți / infinite",
+        "example_ro": "Ana a contemplat ideea că spațiul ar putea fi infinit la seminarul de fizică."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3213,
+      "before": {
+        "ro": "scepticism",
+        "zh": "怀疑；怀疑态度",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Radu a abordat noua teorie cu scepticism până când a văzut datele experimentale."
+      },
+      "after": {
+        "ro": "scepticism",
+        "zh": "怀疑；怀疑态度",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Radu a abordat noua teorie cu scepticism până când a văzut datele experimentale."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3231,
+      "before": {
+        "ro": "apărare",
+        "zh": "防御；辩护",
+        "hint": "s.f.: apărări",
+        "example_ro": "Ana a prezentat planul de apărare al orașului în fața consiliului."
+      },
+      "after": {
+        "ro": "apărare",
+        "zh": "防御；辩护",
+        "hint": "s.f.: apărări",
+        "example_ro": "Ana a prezentat planul de apărare al orașului în fața consiliului."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3252,
+      "before": {
+        "ro": "diplomă",
+        "zh": "文凭；毕业证书",
+        "hint": "s.f.: diplome",
+        "example_ro": "Ana a înrămat diploma și a pus-o pe peretele din biroul de acasă."
+      },
+      "after": {
+        "ro": "diplomă",
+        "zh": "文凭；毕业证书",
+        "hint": "s.f.: diplome",
+        "example_ro": "Ana a înrămat diploma și a pus-o pe peretele din biroul de acasă."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3265,
+      "before": {
+        "ro": "temă",
+        "zh": "主题；作业",
+        "hint": "s.f.: teme",
+        "example_ro": "Ana a terminat tema de matematică cu o oră înainte de culcare."
+      },
+      "after": {
+        "ro": "temă",
+        "zh": "主题；作业",
+        "hint": "s.f.: teme",
+        "example_ro": "Ana a terminat tema de matematică cu o oră înainte de culcare."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3332,
+      "before": {
+        "ro": "ortopedie",
+        "zh": "骨科",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Ana a așteptat trei săptămâni pentru o programare la ortopedie după accidentarea de la schi."
+      },
+      "after": {
+        "ro": "ortopedie",
+        "zh": "骨科",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Ana a așteptat trei săptămâni pentru o programare la ortopedie după accidentarea de la schi."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3333,
+      "before": {
+        "ro": "prim ajutor",
+        "zh": "急救",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Mihai i-a acordat primul ajutor colegului care leșinase în sala de conferințe."
+      },
+      "after": {
+        "ro": "prim ajutor",
+        "zh": "急救",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Mihai i-a acordat primul ajutor colegului care leșinase în sala de conferințe."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3335,
+      "before": {
+        "ro": "anatomie",
+        "zh": "解剖",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Elena a petrecut un semestru întreg studiind anatomia înainte de primul stagiu clinic."
+      },
+      "after": {
+        "ro": "anatomie",
+        "zh": "解剖",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Elena a petrecut un semestru întreg studiind anatomia înainte de primul stagiu clinic."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3353,
+      "before": {
+        "ro": "gherilă",
+        "zh": "游击战",
+        "hint": "s.f.: gherile",
+        "example_ro": "Elena a analizat tactica de gherilă folosită în războaiele de independență din America Latină."
+      },
+      "after": {
+        "ro": "gherilă",
+        "zh": "游击战",
+        "hint": "s.f.: gherile",
+        "example_ro": "Elena a analizat tactica de gherilă folosită în războaiele de independență din America Latină."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3410,
+      "before": {
+        "ro": "dialectică",
+        "zh": "辩证法",
+        "hint": "s.f.: dialectici",
+        "example_ro": "Mihai a explicat dialectica hegeliană cu ajutorul unui exemplu din istoria politică europeană."
+      },
+      "after": {
+        "ro": "dialectică",
+        "zh": "辩证法",
+        "hint": "s.f.: dialectici",
+        "example_ro": "Mihai a explicat dialectica hegeliană cu ajutorul unui exemplu din istoria politică europeană."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3430,
+      "before": {
+        "ro": "crimă",
+        "zh": "谋杀；严重罪行",
+        "hint": "s.f.: crime",
+        "example_ro": "Radu a citit că ancheta privind crima din apartament continuă și că nu există încă suspecți."
+      },
+      "after": {
+        "ro": "crimă",
+        "zh": "谋杀；严重罪行",
+        "hint": "s.f.: crime",
+        "example_ro": "Radu a citit că ancheta privind crima din apartament continuă și că nu există încă suspecți."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3436,
+      "before": {
+        "ro": "regulament",
+        "zh": "规章；条例；规则",
+        "hint": "s.n.: regulamente",
+        "example_ro": "Radu a citit regulamentul intern înainte de prima zi la noul loc de muncă."
+      },
+      "after": {
+        "ro": "regulament",
+        "zh": "规章；条例；规则",
+        "hint": "s.n.: regulamente",
+        "example_ro": "Radu a citit regulamentul intern înainte de prima zi la noul loc de muncă."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3445,
+      "before": {
+        "ro": "curriculum",
+        "zh": "课程",
+        "hint": "s.n.: curricula",
+        "example_ro": "Profesorul a modificat curriculumul după feedbackul studenților."
+      },
+      "after": {
+        "ro": "curriculum",
+        "zh": "课程",
+        "hint": "s.n.: curricula",
+        "example_ro": "Profesorul a modificat curriculumul după feedbackul studenților."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3463,
+      "before": {
+        "ro": "ediție",
+        "zh": "版本；版次",
+        "hint": "s.f.: ediții",
+        "example_ro": "Radu a cumpărat ediția critică a romanului cu note și comentarii ale cercetătorilor."
+      },
+      "after": {
+        "ro": "ediție",
+        "zh": "版本；版次",
+        "hint": "s.f.: ediții",
+        "example_ro": "Radu a cumpărat ediția critică a romanului cu note și comentarii ale cercetătorilor."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3511,
+      "before": {
+        "ro": "recoltă",
+        "zh": "收成；收获物",
+        "hint": "s.f.: recolte",
+        "example_ro": "Fermierii au anunțat că recolta de grâu din acest an a fost excepțională."
+      },
+      "after": {
+        "ro": "recoltă",
+        "zh": "收成；收获物",
+        "hint": "s.f.: recolte",
+        "example_ro": "Fermierii au anunțat că recolta de grâu din acest an a fost excepțională."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3515,
+      "before": {
+        "ro": "grâu",
+        "zh": "小麦",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Radu a vândut grâul recoltat imediat după treierat ca să profite de prețul ridicat."
+      },
+      "after": {
+        "ro": "grâu",
+        "zh": "小麦",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Radu a vândut grâul recoltat imediat după treierat ca să profite de prețul ridicat."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3529,
+      "before": {
+        "ro": "asistentă",
+        "zh": "护士",
+        "hint": "s.f.: asistente",
+        "example_ro": "Elena lucrează ca asistentă medicală într-o clinică universitară și îi pregătește pe pacienți pentru consultații."
+      },
+      "after": {
+        "ro": "asistentă",
+        "zh": "护士",
+        "hint": "s.f.: asistente",
+        "example_ro": "Elena lucrează ca asistentă medicală într-o clinică universitară și îi pregătește pe pacienți pentru consultații."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3545,
+      "before": {
+        "ro": "informație",
+        "zh": "信息",
+        "hint": "s.f.: informații",
+        "example_ro": "Mihai a verificat informația din trei surse independente înainte să o includă în raport."
+      },
+      "after": {
+        "ro": "informație",
+        "zh": "信息",
+        "hint": "s.f.: informații",
+        "example_ro": "Mihai a verificat informația din trei surse independente înainte să o includă în raport."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3565,
+      "before": {
+        "ro": "instrument",
+        "zh": "工具；仪器；乐器",
+        "hint": "s.n.: instrumente",
+        "example_ro": "Radu a cântat la un instrument de suflat timp de opt ani înainte să se apuce de chitară."
+      },
+      "after": {
+        "ro": "instrument",
+        "zh": "工具；仪器；乐器",
+        "hint": "s.n.: instrumente",
+        "example_ro": "Radu a cântat la un instrument de suflat timp de opt ani înainte să se apuce de chitară."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3785,
+      "before": {
+        "ro": "transcendență",
+        "zh": "超验",
+        "hint": "s.f.: transcendențe",
+        "example_ro": "Radu a dezbătut dacă transcendența poate fi accesată prin experiența mistică sau doar prin rațiune."
+      },
+      "after": {
+        "ro": "transcendență",
+        "zh": "超验",
+        "hint": "s.f.: transcendențe",
+        "example_ro": "Radu a dezbătut dacă transcendența poate fi accesată prin experiența mistică sau doar prin rațiune."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3794,
+      "before": {
+        "ro": "ipotecă",
+        "zh": "抵押权；不动产抵押",
+        "hint": "s.f.: ipoteci",
+        "example_ro": "Banca a înscris o ipotecă asupra locuinței."
+      },
+      "after": {
+        "ro": "ipotecă",
+        "zh": "抵押权；不动产抵押",
+        "hint": "s.f.: ipoteci",
+        "example_ro": "Banca a înscris o ipotecă asupra locuinței."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3813,
+      "before": {
+        "ro": "notariat",
+        "zh": "公证处；公证机构",
+        "hint": "s.n.: notariate",
+        "example_ro": "Mihai a mers la notariat să autentifice procura înainte ca mama lui să plece în străinătate."
+      },
+      "after": {
+        "ro": "notariat",
+        "zh": "公证处；公证机构",
+        "hint": "s.n.: notariate",
+        "example_ro": "Mihai a mers la notariat să autentifice procura înainte ca mama lui să plece în străinătate."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3849,
+      "before": {
+        "ro": "naționalism",
+        "zh": "民族主义",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Ana a dezbătut dacă naționalismul economic este o soluție viabilă în contextul globalizării."
+      },
+      "after": {
+        "ro": "naționalism",
+        "zh": "民族主义",
+        "hint": "s.n.: (fără plural)",
+        "example_ro": "Ana a dezbătut dacă naționalismul economic este o soluție viabilă în contextul globalizării."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3883,
+      "before": {
+        "ro": "compresor",
+        "zh": "压缩机",
+        "hint": "s.n.: compresoare",
+        "example_ro": "Radu a montat compresorul nou în sala tehnică înainte de pornirea sistemului de climatizare."
+      },
+      "after": {
+        "ro": "compresor",
+        "zh": "压缩机",
+        "hint": "s.n.: compresoare",
+        "example_ro": "Radu a montat compresorul nou în sala tehnică înainte de pornirea sistemului de climatizare."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3935,
+      "before": {
+        "ro": "fuziuni și achiziții",
+        "zh": "并购",
+        "hint": "s.f.pl.: fuziuni și achiziții",
+        "example_ro": "Radu a consiliat echipa juridică în procesul de fuziuni și achiziții."
+      },
+      "after": {
+        "ro": "fuziuni și achiziții",
+        "zh": "并购",
+        "hint": "s.f.pl.: fuziuni și achiziții",
+        "example_ro": "Radu a consiliat echipa juridică în procesul de fuziuni și achiziții."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 3973,
+      "before": {
+        "ro": "hermeneutică",
+        "zh": "诠释学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Cursul de hermeneutică ne-a ajutat să citim textele vechi cu mai multă atenție."
+      },
+      "after": {
+        "ro": "hermeneutică",
+        "zh": "诠释学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Cursul de hermeneutică ne-a ajutat să citim textele vechi cu mai multă atenție."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4008,
+      "before": {
+        "ro": "clasare",
+        "zh": "结案；撤案（刑事程序）",
+        "hint": "s.f.: clasări",
+        "example_ro": "Procurorii au dispus clasarea dosarului din lipsă de probe."
+      },
+      "after": {
+        "ro": "clasare",
+        "zh": "结案；撤案（刑事程序）",
+        "hint": "s.f.: clasări",
+        "example_ro": "Procurorii au dispus clasarea dosarului din lipsă de probe."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4051,
+      "before": {
+        "ro": "emigrare",
+        "zh": "移居国外；外迁",
+        "hint": "s.f.: emigrări",
+        "example_ro": "Emigrarea tinerilor a devenit o problemă pentru multe comunități mici."
+      },
+      "after": {
+        "ro": "emigrare",
+        "zh": "移居国外；外迁",
+        "hint": "s.f.: emigrări",
+        "example_ro": "Emigrarea tinerilor a devenit o problemă pentru multe comunități mici."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4099,
+      "before": {
+        "ro": "endocrinologie",
+        "zh": "内分泌学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Medicul endocrinolog i-a recomandat analize hormonale."
+      },
+      "after": {
+        "ro": "endocrinologie",
+        "zh": "内分泌学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Medicul endocrinolog i-a recomandat analize hormonale."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4162,
+      "before": {
+        "ro": "piață",
+        "zh": "市场；集市；广场",
+        "hint": "s.f.: piețe",
+        "example_ro": "Ana cumpără legume proaspete de la piață în fiecare sâmbătă dimineață."
+      },
+      "after": {
+        "ro": "piață",
+        "zh": "市场；集市；广场",
+        "hint": "s.f.: piețe",
+        "example_ro": "Ana cumpără legume proaspete de la piață în fiecare sâmbătă dimineață."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4170,
+      "before": {
+        "ro": "contingență",
+        "zh": "偶然性",
+        "hint": "s.f.: contingențe",
+        "example_ro": "Filosoful discută contingența evenimentelor istorice."
+      },
+      "after": {
+        "ro": "contingență",
+        "zh": "偶然性",
+        "hint": "s.f.: contingențe",
+        "example_ro": "Filosoful discută contingența evenimentelor istorice."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4172,
+      "before": {
+        "ro": "sine",
+        "zh": "自己；自身",
+        "hint": "pron. reflexiv accentuat: sine",
+        "example_ro": "Terapia l-a ajutat să vorbească mai sincer despre sine."
+      },
+      "after": {
+        "ro": "sine",
+        "zh": "自己；自身",
+        "hint": "pron. reflexiv accentuat: sine",
+        "example_ro": "Terapia l-a ajutat să vorbească mai sincer despre sine."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4173,
+      "before": {
+        "ro": "celălalt",
+        "zh": "另一个；其余的；对方",
+        "hint": "pron.: ceilalți / celelalte",
+        "example_ro": "Celălalt candidat și-a anunțat retragerea."
+      },
+      "after": {
+        "ro": "celălalt",
+        "zh": "另一个；其余的；对方",
+        "hint": "pron.: ceilalți / celelalte",
+        "example_ro": "Celălalt candidat și-a anunțat retragerea."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4254,
+      "before": {
+        "ro": "microbiologie",
+        "zh": "微生物学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Microbiologia este importantă pentru producerea vaccinurilor și antibioticelor."
+      },
+      "after": {
+        "ro": "microbiologie",
+        "zh": "微生物学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Microbiologia este importantă pentru producerea vaccinurilor și antibioticelor."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4263,
+      "before": {
+        "ro": "imunologie",
+        "zh": "免疫学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Imunologia studiază felul în care corpul se apără de infecții."
+      },
+      "after": {
+        "ro": "imunologie",
+        "zh": "免疫学",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Imunologia studiază felul în care corpul se apără de infecții."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4388,
+      "before": {
+        "ro": "rău",
+        "zh": "坏的；糟糕的；恶劣的",
+        "hint": "adj.: rea / răi / rele",
+        "example_ro": "Vremea rea a întârziat zborurile."
+      },
+      "after": {
+        "ro": "rău",
+        "zh": "坏的；糟糕的；恶劣的",
+        "hint": "adj.: rea / răi / rele",
+        "example_ro": "Vremea rea a întârziat zborurile."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4389,
+      "before": {
+        "ro": "frumos",
+        "zh": "漂亮的；美好的",
+        "hint": "adj.: frumoasă / frumoși / frumoase",
+        "example_ro": "Orașul este frumos primăvara."
+      },
+      "after": {
+        "ro": "frumos",
+        "zh": "漂亮的；美好的",
+        "hint": "adj.: frumoasă / frumoși / frumoase",
+        "example_ro": "Orașul este frumos primăvara."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4568,
+      "before": {
+        "ro": "criza migrației",
+        "zh": "移民危机",
+        "hint": "s.f.: crize ale migrației",
+        "example_ro": "Criza migrației a pus presiune pe sistemele europene de azil."
+      },
+      "after": {
+        "ro": "criza migrației",
+        "zh": "移民危机",
+        "hint": "s.f.: crize ale migrației",
+        "example_ro": "Criza migrației a pus presiune pe sistemele europene de azil."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4580,
+      "before": {
+        "ro": "inseparabilitate cuantică",
+        "zh": "量子纠缠",
+        "hint": "s.f.: inseparabilități cuantice",
+        "example_ro": "Inseparabilitatea cuantică leagă stările unor particule aflate la distanță."
+      },
+      "after": {
+        "ro": "inseparabilitate cuantică",
+        "zh": "量子纠缠",
+        "hint": "s.f.: inseparabilități cuantice",
+        "example_ro": "Inseparabilitatea cuantică leagă stările unor particule aflate la distanță."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4660,
+      "before": {
+        "ro": "cultivarea arborelui de cacao",
+        "zh": "可可种植",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Cultivarea arborelui de cacao este vulnerabilă la boli și la schimbările climatice."
+      },
+      "after": {
+        "ro": "cultivarea arborelui de cacao",
+        "zh": "可可种植",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Cultivarea arborelui de cacao este vulnerabilă la boli și la schimbările climatice."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4834,
+      "before": {
+        "ro": "modalitate",
+        "zh": "方式；办法",
+        "hint": "s.f.: modalități",
+        "example_ro": "Guvernul caută o modalitate de a reduce costurile."
+      },
+      "after": {
+        "ro": "modalitate",
+        "zh": "方式；办法",
+        "hint": "s.f.: modalități",
+        "example_ro": "Guvernul caută o modalitate de a reduce costurile."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 4846,
+      "before": {
+        "ro": "empatie",
+        "zh": "共情；同理心",
+        "hint": "s.f.: empatii",
+        "example_ro": "Empatia îl ajută să înțeleagă durerea celuilalt fără judecată."
+      },
+      "after": {
+        "ro": "empatie",
+        "zh": "共情；同理心",
+        "hint": "s.f.: empatii",
+        "example_ro": "Empatia îl ajută să înțeleagă durerea celuilalt fără judecată."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5050,
+      "before": {
+        "ro": "teoremă",
+        "zh": "定理",
+        "hint": "s.f.: teoreme",
+        "example_ro": "Teorema a fost demonstrată după ani de încercări."
+      },
+      "after": {
+        "ro": "teoremă",
+        "zh": "定理",
+        "hint": "s.f.: teoreme",
+        "example_ro": "Teorema a fost demonstrată după ani de încercări."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5201,
+      "before": {
+        "ro": "metoda Lean Startup",
+        "zh": "精益创业",
+        "hint": "s.f.: metode Lean Startup",
+        "example_ro": "Metoda Lean Startup testează rapid ipotezele înaintea unor investiții mari."
+      },
+      "after": {
+        "ro": "metoda Lean Startup",
+        "zh": "精益创业",
+        "hint": "s.f.: metode Lean Startup",
+        "example_ro": "Metoda Lean Startup testează rapid ipotezele înaintea unor investiții mari."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5228,
+      "before": {
+        "ro": "arta noilor media",
+        "zh": "新媒体艺术",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Arta noilor media folosește ecrane, cod și instalații interactive."
+      },
+      "after": {
+        "ro": "arta noilor media",
+        "zh": "新媒体艺术",
+        "hint": "s.f.: (fără plural)",
+        "example_ro": "Arta noilor media folosește ecrane, cod și instalații interactive."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5284,
+      "before": {
+        "ro": "reducere",
+        "zh": "减少；降价；折扣",
+        "hint": "s.f.: reduceri",
+        "example_ro": "Elena a cumpărat jacheta cu o reducere de treizeci la sută."
+      },
+      "after": {
+        "ro": "reducere",
+        "zh": "减少；降价；折扣",
+        "hint": "s.f.: reduceri",
+        "example_ro": "Elena a cumpărat jacheta cu o reducere de treizeci la sută."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5377,
+      "before": {
+        "ro": "cui",
+        "zh": "钉子",
+        "hint": "s.n.: cuie",
+        "example_ro": "Un cui ruginit ieșea din scândură."
+      },
+      "after": {
+        "ro": "cui",
+        "zh": "钉子",
+        "hint": "s.n.: cuie",
+        "example_ro": "Un cui ruginit ieșea din scândură."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5501,
+      "before": {
+        "ro": "acord",
+        "zh": "协议；一致；同意",
+        "hint": "s.n.: acorduri",
+        "example_ro": "Au ajuns la un acord după o discuție lungă."
+      },
+      "after": {
+        "ro": "acord",
+        "zh": "协议；一致；同意",
+        "hint": "s.n.: acorduri",
+        "example_ro": "Au ajuns la un acord după o discuție lungă."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5530,
+      "before": {
+        "ro": "a raporta",
+        "zh": "报告；汇报；举报",
+        "hint": "verb: conj. I (raportez/raportezi/raportează)",
+        "example_ro": "Poți raporta incidentul direct pe platforma oficială."
+      },
+      "after": {
+        "ro": "a raporta",
+        "zh": "报告；汇报；举报",
+        "hint": "verb: conj. I (raportez/raportezi/raportează)",
+        "example_ro": "Poți raporta incidentul direct pe platforma oficială."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5650,
+      "before": {
+        "ro": "a se retrage",
+        "zh": "退出；撤回；撤退；退休",
+        "hint": "verb: conj. III (mă retrag/te retragi/se retrage)",
+        "example_ro": "Candidatul s-a retras din cursă înainte de vot."
+      },
+      "after": {
+        "ro": "a se retrage",
+        "zh": "退出；撤回；撤退；退休",
+        "hint": "verb: conj. III (mă retrag/te retragi/se retrage)",
+        "example_ro": "Candidatul s-a retras din cursă înainte de vot."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5654,
+      "before": {
+        "ro": "a recunoaște",
+        "zh": "认出；承认；认可",
+        "hint": "verb: conj. III (recunosc/recunoști/recunoaște)",
+        "example_ro": "Ministrul a recunoscut că măsura a fost aplicată prea târziu."
+      },
+      "after": {
+        "ro": "a recunoaște",
+        "zh": "认出；承认；认可",
+        "hint": "verb: conj. III (recunosc/recunoști/recunoaște)",
+        "example_ro": "Ministrul a recunoscut că măsura a fost aplicată prea târziu."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5683,
+      "before": {
+        "ro": "a activa",
+        "zh": "从事；任职；活跃于",
+        "hint": "verb: conj. I (activez/ activezi/ activează )",
+        "example_ro": "Actorul activează în cadrul teatrului de peste zece ani."
+      },
+      "after": {
+        "ro": "a activa",
+        "zh": "从事；任职；活跃于",
+        "hint": "verb: conj. I (activez/ activezi/ activează )",
+        "example_ro": "Actorul activează în cadrul teatrului de peste zece ani."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 5722,
+      "before": {
+        "ro": "înainte",
+        "zh": "向前；以前；在……之前",
+        "hint": "adverb",
+        "example_ro": "Mergi înainte până vezi farmacia."
+      },
+      "after": {
+        "ro": "înainte",
+        "zh": "向前；以前；在……之前",
+        "hint": "adverb",
+        "example_ro": "Mergi înainte până vezi farmacia."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6104,
+      "before": {
+        "ro": "durere de spate",
+        "zh": "背痛；腰背痛",
+        "hint": "s.f.: dureri de spate",
+        "example_ro": "Durerea de spate s-a agravat după mutarea mobilei."
+      },
+      "after": {
+        "ro": "durere de spate",
+        "zh": "背痛；腰背痛",
+        "hint": "s.f.: dureri de spate",
+        "example_ro": "Durerea de spate s-a agravat după mutarea mobilei."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6131,
+      "before": {
+        "ro": "loc de muncă",
+        "zh": "工作；工作岗位；工作场所",
+        "hint": "s.n.: locuri de muncă",
+        "example_ro": "Un loc de muncă stabil îi oferă mai multă siguranță."
+      },
+      "after": {
+        "ro": "loc de muncă",
+        "zh": "工作；工作岗位；工作场所",
+        "hint": "s.n.: locuri de muncă",
+        "example_ro": "Un loc de muncă stabil îi oferă mai multă siguranță."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6241,
+      "before": {
+        "ro": "adunare",
+        "zh": "集会；大会；集合",
+        "hint": "s.f.: adunări",
+        "example_ro": "Adunarea generală va avea loc vineri."
+      },
+      "after": {
+        "ro": "adunare",
+        "zh": "集会；大会；集合",
+        "hint": "s.f.: adunări",
+        "example_ro": "Adunarea generală va avea loc vineri."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6294,
+      "before": {
+        "ro": "suprafață",
+        "zh": "表面；面积",
+        "hint": "s.f.: suprafețe",
+        "example_ro": "Suprafața mesei a fost curățată înainte de experiment."
+      },
+      "after": {
+        "ro": "suprafață",
+        "zh": "表面；面积",
+        "hint": "s.f.: suprafețe",
+        "example_ro": "Suprafața mesei a fost curățată înainte de experiment."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6378,
+      "before": {
+        "ro": "a juca un rol",
+        "zh": "扮演角色；发挥作用",
+        "hint": "verb: conj. I (joc/joci/joacă)",
+        "example_ro": "Investițiile joacă un rol important în creșterea economică."
+      },
+      "after": {
+        "ro": "a juca un rol",
+        "zh": "扮演角色；发挥作用",
+        "hint": "verb: conj. I (joc/joci/joacă)",
+        "example_ro": "Investițiile joacă un rol important în creșterea economică."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6435,
+      "before": {
+        "ro": "agent de curățenie",
+        "zh": "清洁人员",
+        "hint": "s.m./s.f.: agenți / agente de curățenie",
+        "example_ro": "Agentul de curățenie vine seara, după ce pleacă angajații."
+      },
+      "after": {
+        "ro": "agent de curățenie",
+        "zh": "清洁人员",
+        "hint": "s.m./s.f.: agenți / agente de curățenie",
+        "example_ro": "Agentul de curățenie vine seara, după ce pleacă angajații."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6712,
+      "before": {
+        "ro": "rubrică",
+        "zh": "专栏",
+        "hint": "s.f.: rubrici",
+        "example_ro": "Scrie o rubrică săptămânală despre viața urbană."
+      },
+      "after": {
+        "ro": "rubrică",
+        "zh": "专栏",
+        "hint": "s.f.: rubrici",
+        "example_ro": "Scrie o rubrică săptămânală despre viața urbană."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6796,
+      "before": {
+        "ro": "polițist de frontieră",
+        "zh": "边防警察",
+        "hint": "s.m./s.f.: polițiști / polițiste de frontieră",
+        "example_ro": "Polițistul de frontieră patrulează zona noaptea."
+      },
+      "after": {
+        "ro": "polițist de frontieră",
+        "zh": "边防警察",
+        "hint": "s.m./s.f.: polițiști / polițiste de frontieră",
+        "example_ro": "Polițistul de frontieră patrulează zona noaptea."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 6938,
+      "before": {
+        "ro": "pui",
+        "zh": "幼崽；小鸡；鸡",
+        "hint": "s.m. (fără plural uzual în sens culinar)",
+        "example_ro": "Radu a cumpărat un pui întreg de la piață sâmbătă."
+      },
+      "after": {
+        "ro": "pui",
+        "zh": "幼崽；小鸡；鸡",
+        "hint": "s.m. (fără plural uzual în sens culinar)",
+        "example_ro": "Radu a cumpărat un pui întreg de la piață sâmbătă."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7146,
+      "before": {
+        "ro": "birou",
+        "zh": "办公室；书桌",
+        "hint": "s.n.: birouri",
+        "example_ro": "Lucrez la birou până târziu."
+      },
+      "after": {
+        "ro": "birou",
+        "zh": "办公室；书桌",
+        "hint": "s.n.: birouri",
+        "example_ro": "Lucrez la birou până târziu."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7400,
+      "before": {
+        "ro": "apă plată",
+        "zh": "无气泡水；静水",
+        "hint": "s.f.: ape plate",
+        "example_ro": "Prefer apă plată, nu minerală."
+      },
+      "after": {
+        "ro": "apă plată",
+        "zh": "无气泡水；静水",
+        "hint": "s.f.: ape plate",
+        "example_ro": "Prefer apă plată, nu minerală."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7439,
+      "before": {
+        "ro": "notiță",
+        "zh": "便条；笔记",
+        "hint": "s.f.: notițe",
+        "example_ro": "Am scris adresa pe o notiță."
+      },
+      "after": {
+        "ro": "notiță",
+        "zh": "便条；笔记",
+        "hint": "s.f.: notițe",
+        "example_ro": "Am scris adresa pe o notiță."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7521,
+      "before": {
+        "ro": "singur",
+        "zh": "独自的；一个人的；单身的",
+        "hint": "adj.: singură / singuri / singure",
+        "example_ro": "După divorț, locuiește singur."
+      },
+      "after": {
+        "ro": "singur",
+        "zh": "独自的；一个人的；单身的",
+        "hint": "adj.: singură / singuri / singure",
+        "example_ro": "După divorț, locuiește singur."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7581,
+      "before": {
+        "ro": "loc",
+        "zh": "地方；位置；座位",
+        "hint": "s.n.: locuri",
+        "example_ro": "Locurile din față sunt ocupate."
+      },
+      "after": {
+        "ro": "loc",
+        "zh": "地方；位置；座位",
+        "hint": "s.n.: locuri",
+        "example_ro": "Locurile din față sunt ocupate."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7663,
+      "before": {
+        "ro": "bilet de trimitere",
+        "zh": "转诊单",
+        "hint": "s.n.: bilete de trimitere",
+        "example_ro": "Medicul de familie mi-a dat un bilet de trimitere."
+      },
+      "after": {
+        "ro": "bilet de trimitere",
+        "zh": "转诊单",
+        "hint": "s.n.: bilete de trimitere",
+        "example_ro": "Medicul de familie mi-a dat un bilet de trimitere."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7887,
+      "before": {
+        "ro": "înfundat",
+        "zh": "堵塞的；鼻塞的；低沉的",
+        "hint": "adj.: înfundată / înfundați / înfundate",
+        "example_ro": "Chiuveta este înfundată."
+      },
+      "after": {
+        "ro": "înfundat",
+        "zh": "堵塞的；鼻塞的；低沉的",
+        "hint": "adj.: înfundată / înfundați / înfundate",
+        "example_ro": "Chiuveta este înfundată."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7901,
+      "before": {
+        "ro": "aplică (lampă de perete)",
+        "zh": "壁灯",
+        "hint": "s.f.: aplice",
+        "example_ro": "Aplica din hol luminează slab."
+      },
+      "after": {
+        "ro": "aplică (lampă de perete)",
+        "zh": "壁灯",
+        "hint": "s.f.: aplice",
+        "example_ro": "Aplica din hol luminează slab."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 7987,
+      "before": {
+        "ro": "integral",
+        "zh": "完整的；全部的；全额地",
+        "hint": "adj.: integrală / integrali / integrale",
+        "example_ro": "Raportul integral va fi publicat mâine."
+      },
+      "after": {
+        "ro": "integral",
+        "zh": "完整的；全部的；全额地",
+        "hint": "adj.: integrală / integrali / integrale",
+        "example_ro": "Raportul integral va fi publicat mâine."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8037,
+      "before": {
+        "ro": "taxă de drum",
+        "zh": "道路通行费",
+        "hint": "s.f.: taxe de drum",
+        "example_ro": "Taxa de drum se plătește online."
+      },
+      "after": {
+        "ro": "taxă de drum",
+        "zh": "道路通行费",
+        "hint": "s.f.: taxe de drum",
+        "example_ro": "Taxa de drum se plătește online."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8061,
+      "before": {
+        "ro": "prin",
+        "zh": "通过；经由；借助；穿过",
+        "hint": "prepoziție",
+        "example_ro": "Intrăm prin poarta principală."
+      },
+      "after": {
+        "ro": "prin",
+        "zh": "通过；经由；借助；穿过",
+        "hint": "prepoziție",
+        "example_ro": "Intrăm prin poarta principală."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8071,
+      "before": {
+        "ro": "permanent",
+        "zh": "一直；持续地；永久地",
+        "hint": "adv.: invariabil",
+        "example_ro": "Parcarea este permanent ocupată."
+      },
+      "after": {
+        "ro": "permanent",
+        "zh": "一直；持续地；永久地",
+        "hint": "adv.: invariabil",
+        "example_ro": "Parcarea este permanent ocupată."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8119,
+      "before": {
+        "ro": "a se schimba",
+        "zh": "改变；发生变化；换衣服",
+        "hint": "verb: conj. I (mă schimb/te schimbi/se schimbă)",
+        "example_ro": "Situația s-a schimbat rapid."
+      },
+      "after": {
+        "ro": "a se schimba",
+        "zh": "改变；发生变化；换衣服",
+        "hint": "verb: conj. I (mă schimb/te schimbi/se schimbă)",
+        "example_ro": "Situația s-a schimbat rapid."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8449,
+      "before": {
+        "ro": "a rezerva un loc la curs",
+        "zh": "预约课程名额",
+        "hint": "verb: conj. I (rezerv/rezervi/rezervă)",
+        "example_ro": "Îmi rezerv din aplicație un loc la cursul de yoga."
+      },
+      "after": {
+        "ro": "a rezerva un loc la curs",
+        "zh": "预约课程名额",
+        "hint": "verb: conj. I (rezerv/rezervi/rezervă)",
+        "example_ro": "Îmi rezerv din aplicație un loc la cursul de yoga."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8626,
+      "before": {
+        "ro": "la mijloc",
+        "zh": "在中间",
+        "hint": "loc. adv.: invariabil",
+        "example_ro": "Masa este la mijloc."
+      },
+      "after": {
+        "ro": "la mijloc",
+        "zh": "在中间",
+        "hint": "loc. adv.: invariabil",
+        "example_ro": "Masa este la mijloc."
+      },
+      "preservedWordId": true
+    },
+    {
+      "id": 8698,
+      "before": {
+        "ro": "ora de somn",
+        "zh": "睡觉时间",
+        "hint": "s.f.: ore de somn",
+        "example_ro": "Ora de somn e după prânz."
+      },
+      "after": {
+        "ro": "ora de somn",
+        "zh": "睡觉时间",
+        "hint": "s.f.: ore de somn",
+        "example_ro": "Ora de somn e după prânz."
+      },
+      "preservedWordId": true
+    }
+  ]
+}

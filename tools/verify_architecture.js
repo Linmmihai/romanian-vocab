@@ -17,16 +17,16 @@ const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260809-formal-review-first-v7',
-  'progress-model.js?v=20260809-formal-review-first-v7',
-  'daily-plan.js?v=20260809-formal-review-first-v7',
-  'taxonomy.js?v=20260809-formal-review-first-v7',
-  'romanian-text.js?v=20260809-formal-review-first-v7',
-  'api.js?v=20260809-formal-review-first-v7',
-  'telemetry.js?v=20260809-formal-review-first-v7',
-  'auth.js?v=20260809-formal-review-first-v7',
-  'app.js?v=20260809-formal-review-first-v7',
-  'pwa.js?v=20260809-formal-review-first-v7'
+  'scheduler.js?v=20260812-adversarial-v2',
+  'progress-model.js?v=20260812-adversarial-v2',
+  'daily-plan.js?v=20260812-adversarial-v2',
+  'taxonomy.js?v=20260812-adversarial-v2',
+  'romanian-text.js?v=20260812-adversarial-v2',
+  'api.js?v=20260812-adversarial-v2',
+  'telemetry.js?v=20260812-adversarial-v2',
+  'auth.js?v=20260812-adversarial-v2',
+  'app.js?v=20260812-adversarial-v2',
+  'pwa.js?v=20260812-adversarial-v2'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -44,7 +44,7 @@ assert(serviceWorker.includes("'./taxonomy.js'"), 'PWA app shell must include th
 assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v44"), 'PWA cache must advance with the formal-review-first fix');
+assert(serviceWorker.includes("ro-vocab-pwa-v45-adversarial-v2"), 'PWA cache must advance with the vocabulary rebuild');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');
