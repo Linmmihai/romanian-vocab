@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
-const runtimeFiles = ['app.js', 'api.js', 'auth.js', 'scheduler.js', 'progress-model.js', 'daily-plan.js', 'index.html'];
+const runtimeFiles = ['app.js', 'api.js', 'auth.js', 'scheduler.js', 'progress-model.js', 'daily-plan.js', 'quiz-engine.js', 'index.html'];
 const sources = runtimeFiles.map(file => [file, fs.readFileSync(path.join(root, file), 'utf8')]);
 const runtimeText = sources.map(([, source]) => source).join('\n');
 const intentionalEntrypoints = new Set([

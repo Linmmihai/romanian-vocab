@@ -36,7 +36,8 @@ let grammarCoursesLoadPromise = null;
 let grammarSearchQuery = '';
 
 let qMode = 'zh';     // 测验模式：'zh' | 'ro'
-let qExerciseMode = 'translation'; // translation | nounPlural | verbConj | stress | listening
+let qExerciseMode = 'diagnostic'; // diagnostic | translation | listening | dictation | nounPlural | verbConj | stress
+let qDifficulty = 'standard'; // foundation | standard | challenge
 let qPracticeScope = 'smart'; // smart | today | weak | wrong | due | new | all
 let qList = [];
 let qIdx = 0;
@@ -45,6 +46,12 @@ let qTotal = 0;       // 本次会话累计答题（不重置）
 let qRoundRight = 0;  // 本轮答对（用于显示结算）
 let qRoundTotal = 0;  // 本轮答题
 let qRoundWrong = 0;  // 本轮答错（用于结算建议）
+let qRoundResults = [];
+let qCurrentAudioPlays = 0;
+let qCurrentAudioSource = '';
+let qItemStartedAt = 0;
+let qAnswerLocked = false;
+let quizAudioElement = null;
 let qStarted = false;
 let qScopedPracticePool = null;
 let qScopedPracticePoolKey = '';
@@ -108,6 +115,17 @@ const {
   looksLikeTemplateWord,
   qualityIssues: getTaxonomyQualityIssues
 } = window.RomanianVocabTaxonomy;
+const {
+  normalizeRomanianAnswer,
+  getTrustedAudioUrl: getTrustedQuizAudioUrl,
+  classifyDictation,
+  getDifficultyRank: getQuizDifficultyRank,
+  filterWordsByDifficulty,
+  isAssessmentEligible,
+  buildDiagnosticPlan,
+  buildDistractors,
+  summarizeResults: summarizeQuizResults
+} = window.RomanianVocabQuizEngine;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -4147,12 +4165,15 @@ function switchPersonalStatsPanel(panel = 'overview') {
 document.addEventListener('click', (event) => {
   const quizOption = event.target.closest?.('.opt[data-quiz-action]');
   if (quizOption) {
-    if (quizOption.style.pointerEvents === 'none') return;
+    if (quizOption.style.pointerEvents === 'none' || quizOption.disabled || qAnswerLocked) return;
     const action = quizOption.dataset.quizAction;
-    const ok = quizOption.dataset.ok === '1';
     if (action === 'answer') {
-      answerQ(quizOption, ok, quizOption.dataset.ro || '', quizOption.dataset.zh || '');
+      const answerWord = getCurrentQuizWord();
+      const ok = roKey(quizOption.dataset.optionRo || '') === roKey(answerWord?.ro || '');
+      answerQ(quizOption, ok, answerWord?.ro || '');
     } else if (action === 'exercise') {
+      const exercise = qList[qIdx];
+      const ok = String(quizOption.dataset.option || '') === String(exercise?.answer || '');
       answerExerciseQ(quizOption, ok);
     }
     return;
@@ -4210,7 +4231,7 @@ function closeTopModal() {
 
 function clickQuizOption(index) {
   const options = Array.from(document.querySelectorAll('#quiz-area .opt[data-quiz-action]'))
-    .filter(btn => btn.style.pointerEvents !== 'none');
+    .filter(btn => btn.style.pointerEvents !== 'none' && !btn.disabled);
   const btn = options[index];
   if (!btn) return false;
   btn.click();
@@ -4290,7 +4311,7 @@ function handleQuizShortcut(key) {
   }
   if (isQuizInProgress()) {
     if (/^[1-4]$/.test(key)) return clickQuizOption(Number(key) - 1);
-    if (qExerciseMode === 'listening' && key.toLowerCase() === 'p') { speakQuizWord(0.9); return true; }
+    if (isCurrentQuizAudioItem() && key.toLowerCase() === 'p') { speakQuizWord(1); return true; }
     return false;
   }
   if (/^[1-4]$/.test(key)) return setQuizSizeByShortcut(key);
@@ -5811,17 +5832,106 @@ function speakWb(rate) {
   speechSynthesis.speak(u);
 }
 
-function speakQuizWord(rate = 0.9) {
-  const w = qList[qIdx];
-  if (!w || !String(w.ro || '').trim()) return;
-  if (!('speechSynthesis' in window)) return;
+function getQuizWordFromEntry(entry) {
+  return entry?.word || entry || null;
+}
+
+function getCurrentQuizWord() {
+  return getQuizWordFromEntry(qList[qIdx]);
+}
+
+function getCurrentQuizItemType() {
+  return qExerciseMode === 'diagnostic'
+    ? (qList[qIdx]?.type || 'translation')
+    : qExerciseMode;
+}
+
+function isCurrentQuizAudioItem() {
+  return ['listening', 'dictation'].includes(getCurrentQuizItemType());
+}
+
+function stopQuizAudio() {
+  if (quizAudioElement) {
+    quizAudioElement.pause();
+    quizAudioElement.removeAttribute('src');
+    quizAudioElement = null;
+  }
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+
+function setCurrentAudioQuestionEnabled(enabled) {
+  if (qAnswerLocked) return;
+  document.querySelectorAll('#quiz-area .opt[data-quiz-action]').forEach(button => { button.disabled = !enabled; });
+  const input = document.getElementById('quiz-dictation-input');
+  const submit = document.getElementById('quiz-dictation-submit');
+  if (input) input.disabled = !enabled;
+  if (submit) submit.disabled = !enabled;
+  if (enabled && input) input.focus();
+}
+
+function updateQuizAudioUi() {
+  const maxPlays = 2;
+  const button = document.getElementById('quiz-play-btn');
+  const meta = document.getElementById('quiz-audio-meta');
+  if (button) {
+    button.disabled = qCurrentAudioPlays >= maxPlays;
+    button.textContent = qCurrentAudioPlays >= maxPlays ? '已播放 2 次' : `播放${qCurrentAudioPlays ? '（再听一次）' : ''}`;
+  }
+  if (meta) {
+    const source = qCurrentAudioSource === 'recording' ? '真人录音' : (qCurrentAudioSource ? '设备合成音' : '等待播放');
+    meta.textContent = `${source} · ${qCurrentAudioPlays}/${maxPlays} 次`;
+  }
+}
+
+function speakQuizWithSynthesis(word, rate) {
+  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance !== 'function') return false;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(w.ro);
-  u.lang = 'ro-RO';
-  u.rate = rate;
-  const rv = speechSynthesis.getVoices().find(v => v.lang.startsWith('ro'));
-  if (rv) u.voice = rv;
-  speechSynthesis.speak(u);
+  const utterance = new SpeechSynthesisUtterance(word.ro);
+  utterance.lang = 'ro-RO';
+  utterance.rate = rate;
+  const romanianVoice = speechSynthesis.getVoices().find(voice => voice.lang.toLowerCase().startsWith('ro'));
+  if (romanianVoice) utterance.voice = romanianVoice;
+  speechSynthesis.speak(utterance);
+  qCurrentAudioSource = 'tts';
+  setCurrentAudioQuestionEnabled(true);
+  updateQuizAudioUi();
+  return true;
+}
+
+function speakQuizWord(rate = 1) {
+  const word = getCurrentQuizWord();
+  if (!word || !String(word.ro || '').trim() || !isCurrentQuizAudioItem()) return false;
+  if (qCurrentAudioPlays >= 2) {
+    showToast('科学测验每题最多播放 2 次');
+    return false;
+  }
+  stopQuizAudio();
+  qCurrentAudioPlays++;
+  const audioUrl = getWordAudioUrl(word);
+  if (audioUrl) {
+    quizAudioElement = new Audio(audioUrl);
+    quizAudioElement.preload = 'auto';
+    qCurrentAudioSource = 'recording';
+    updateQuizAudioUi();
+    quizAudioElement.play().then(() => {
+      setCurrentAudioQuestionEnabled(true);
+    }).catch(() => {
+      quizAudioElement = null;
+      if (!speakQuizWithSynthesis(word, rate)) {
+        qCurrentAudioSource = '';
+        qCurrentAudioPlays--;
+        updateQuizAudioUi();
+        showToast('当前设备无法播放这道听力题');
+      }
+    });
+    return true;
+  }
+  if (speakQuizWithSynthesis(word, rate)) return true;
+  qCurrentAudioPlays--;
+  qCurrentAudioSource = '';
+  updateQuizAudioUi();
+  showToast('当前设备没有可用的语音播放能力');
+  return false;
 }
 
 function startWrongbookQuiz() {
@@ -5904,12 +6014,17 @@ function isQuizInProgress() {
 }
 
 function resetQuizSession() {
+  stopQuizAudio();
   qStarted = false;
   qList = [];
   qIdx = 0;
   qRoundRight = 0;
   qRoundTotal = 0;
   qRoundWrong = 0;
+  qRoundResults = [];
+  qCurrentAudioPlays = 0;
+  qCurrentAudioSource = '';
+  qAnswerLocked = false;
 }
 
 function invalidateQuizPracticePool() {
@@ -5931,6 +6046,16 @@ function setExerciseMode(mode) {
   qStarted = false;
   invalidateQuizPracticePool();
   document.querySelectorAll('.exercise-btn').forEach(b => b.classList.toggle('active', b.dataset.exercise === mode));
+  showQuizSetup();
+}
+
+function setQuizDifficulty(difficulty) {
+  qDifficulty = ['foundation', 'standard', 'challenge'].includes(difficulty) ? difficulty : 'standard';
+  qStarted = false;
+  invalidateQuizPracticePool();
+  document.querySelectorAll('#quiz-difficulty-bar .study-mode-btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.difficulty === qDifficulty);
+  });
   showQuizSetup();
 }
 
@@ -5999,6 +6124,7 @@ function getCachedScopedPracticePool() {
     curCat,
     qPracticeScope,
     qExerciseMode,
+    qDifficulty,
     W.length,
     todayQueue.length,
     todayQueueCompleted.size,
@@ -6022,6 +6148,20 @@ function getPracticeScopeLabel() {
     new: '未学',
     all: '全部'
   }[qPracticeScope] || '智能练习';
+}
+
+function getQuizDifficultyLabel() {
+  return {
+    foundation: '基础难度',
+    standard: '标准难度',
+    challenge: '挑战难度'
+  }[qDifficulty] || '标准难度';
+}
+
+function getQuizEligiblePool() {
+  let pool = filterWordsByDifficulty(getCachedScopedPracticePool(), qDifficulty);
+  if (qExerciseMode === 'diagnostic') pool = pool.filter(isAssessmentEligible);
+  return pool;
 }
 
 function shuffleGroup(words) {
@@ -6132,7 +6272,7 @@ function getMistakeTip(w, context = {}) {
 }
 
 function buildExercisePool() {
-  const scoped = getScopedPracticePool();
+  const scoped = getQuizEligiblePool();
   if (qExerciseMode === 'nounPlural') {
     const verified = scoped.map(w => ({ w, answer: parseNounPlural(w) })).filter(x => x.answer);
     const answers = [...new Set(verified.map(x => x.answer))];
@@ -6183,29 +6323,60 @@ function buildExercisePool() {
   return buildReviewPriorityPool(scoped);
 }
 
+function getWordAudioUrl(word) {
+  return getTrustedQuizAudioUrl(word, location.href);
+}
+
+function getQuizAudioCoverage(words) {
+  const pool = Array.isArray(words) ? words : [];
+  return {
+    recordings: pool.filter(word => !!getWordAudioUrl(word)).length,
+    total: pool.length
+  };
+}
+
+function getQuizModeName(mode = qExerciseMode) {
+  return {
+    diagnostic: '综合诊断',
+    translation: '翻译辨认',
+    listening: '听音辨义',
+    dictation: '听写',
+    nounPlural: '名词复数',
+    verbConj: '动词变位',
+    stress: '重音选择'
+  }[mode] || '测验';
+}
+
 function showQuizSetup() {
-  const pool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? getCachedScopedPracticePool() : buildExercisePool();
+  const pool = ['diagnostic', 'translation', 'listening', 'dictation'].includes(qExerciseMode)
+    ? getQuizEligiblePool()
+    : buildExercisePool();
   const qmodeBar = document.querySelector('.qmode-bar');
   const directionSection = document.getElementById('quiz-direction-section');
   if (qmodeBar) qmodeBar.style.display = qExerciseMode === 'translation' ? 'flex' : 'none';
   if (directionSection) directionSection.style.display = qExerciseMode === 'translation' ? 'block' : 'none';
-  const modeName = {
-    translation: '翻译测验',
-    listening: '听力测验',
-    nounPlural: '名词复数',
-    verbConj: '动词变位',
-    stress: '重音选择'
-  }[qExerciseMode];
+  const modeName = getQuizModeName();
   const isDefaultSmart = qPracticeScope === 'smart' && qExerciseMode === 'translation' && qMode === 'zh';
-  const primaryTitle = isDefaultSmart ? '开始智能练习' : `开始${modeName}`;
-  const primarySub = isDefaultSmart
+  const primaryTitle = qExerciseMode === 'diagnostic'
+    ? '开始词汇能力诊断'
+    : (isDefaultSmart ? '开始智能练习' : `开始${modeName}`);
+  const primarySub = qExerciseMode === 'diagnostic'
+    ? '70% 为听力题：听音辨义检查词义识别，听写检查声音到拼写的解码；同一词本轮只出现一次。'
+    : isDefaultSmart
     ? '系统会优先抽到期、近期答错和学习中的词，适合每天完成任务后检查记忆。'
     : `${getPracticeScopeLabel()} · ${modeName}${qExerciseMode === 'translation' ? ` · ${qMode === 'zh' ? '中文到罗语' : '罗语到中文'}` : ''}`;
+  const audioCoverage = getQuizAudioCoverage(pool);
+  const audioNote = ['diagnostic', 'listening', 'dictation'].includes(qExerciseMode)
+    ? (audioCoverage.recordings > 0
+      ? `真人录音覆盖 ${audioCoverage.recordings}/${audioCoverage.total} 词；其余题使用设备罗语合成音。每道听力题最多播放 2 次。`
+      : `当前题库没有已核对真人录音，本轮使用设备罗语合成音，每题最多播放 2 次；结果只能解释为词级听辨。`)
+    : '';
   document.getElementById('quiz-area').innerHTML = `
     <div class="quiz-section quiz-start-panel">
-      <div class="quiz-start-meta">${curCat !== '全部' ? getCategoryLabel(curCat) : '全部主题'} · ${getPracticeScopeLabel()} · ${modeName} · ${pool.length} 题</div>
+      <div class="quiz-start-meta">${curCat !== '全部' ? getCategoryLabel(curCat) : '全部主题'} · ${getPracticeScopeLabel()} · ${getQuizDifficultyLabel()} · ${modeName} · ${pool.length} 题</div>
       <div class="quiz-start-title">${escapeHtml(primaryTitle)}</div>
       <div class="quiz-start-sub">${escapeHtml(primarySub)}</div>
+      ${audioNote ? `<div class="quiz-validity-note">${escapeHtml(audioNote)}<br>词库难度是当前题库内的相对分层，不是 CEFR 定级；综合诊断只使用“已核对/已修订”词条。</div>` : ''}
       <div style="font-size:13px;font-weight:750;margin-bottom:.8rem;color:var(--text2)">本轮题目数</div>
       <div class="quiz-size-row">
         <button class="qsize-btn${qSize===20?' active':''}" aria-pressed="${qSize===20}" data-n="20" onclick="setQSize(20)">20题</button>
@@ -6220,31 +6391,41 @@ function showQuizSetup() {
 
 function startQuiz() {
   invalidateQuizPracticePool();
-  const activePool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? getCachedScopedPracticePool() : buildExercisePool();
+  const activePool = ['diagnostic', 'translation', 'listening', 'dictation'].includes(qExerciseMode)
+    ? getQuizEligiblePool()
+    : buildExercisePool();
   if (!activePool.length) { showToast('当前模式没有可测验的词'); return; }
-  const pool = qExerciseMode === 'translation' || qExerciseMode === 'listening' ? buildReviewPriorityPool(activePool) : shuffleGroup(activePool);
-  qList = qSize > 0 ? pool.slice(0, qSize) : pool;
+  if (qExerciseMode === 'diagnostic') {
+    qList = buildDiagnosticPlan(activePool, { size: qSize, difficulty: qDifficulty });
+  } else {
+    const pool = ['translation', 'listening', 'dictation'].includes(qExerciseMode)
+      ? buildReviewPriorityPool(activePool)
+      : shuffleGroup(activePool);
+    qList = qSize > 0 ? pool.slice(0, qSize) : pool;
+  }
   qIdx = 0;
   qRoundRight = 0;
   qRoundTotal = 0;
   qRoundWrong = 0;
+  qRoundResults = [];
   qStarted = true;
   renderQuiz();
 }
 
-function renderQuizAnswerButton(option, answerWord, label) {
-  const ok = option.ro === answerWord.ro;
-  return `<button class="opt" data-quiz-action="answer" data-ok="${ok ? '1' : '0'}" data-ro="${escapeHtml(answerWord.ro)}" data-zh="${escapeHtml(answerWord.zh)}" data-option-ro="${escapeHtml(option.ro)}">${escapeHtml(label)}</button>`;
+function renderQuizAnswerButton(option, answerWord, label, disabled = false) {
+  return `<button class="opt" data-quiz-action="answer" data-option-ro="${escapeHtml(option.ro)}"${disabled ? ' disabled' : ''}>${escapeHtml(label)}</button>`;
 }
 
 function renderExerciseAnswerButton(option, answer, label) {
-  const ok = option === answer;
-  return `<button class="opt" data-quiz-action="exercise" data-ok="${ok ? '1' : '0'}" data-option="${escapeHtml(option)}">${label}</button>`;
+  return `<button class="opt" data-quiz-action="exercise" data-option="${escapeHtml(option)}">${label}</button>`;
 }
 
 function renderQuizSessionTools() {
+  const shortcut = getCurrentQuizItemType() === 'dictation'
+    ? '快捷键：P 播放 · Enter 提交/下一题'
+    : (isCurrentQuizAudioItem() ? '快捷键：P 播放 · 1–4 选择 · Enter 下一题' : '快捷键：1–4 选择 · Enter 下一题');
   return `<div class="quiz-session-tools">
-    <span>快捷键：1–4 选择 · Enter 下一题</span>
+    <span>${shortcut}</span>
     <button class="quiz-exit-btn" type="button" onclick="endQuizEarly()">结束本轮</button>
   </div>`;
 }
@@ -6257,96 +6438,122 @@ function endQuizEarly() {
   showResult({ endedEarly: true });
 }
 
-function renderQuiz() {
-  if (qIdx >= qList.length) { showResult(); return; }
-  const pct = Math.round(qIdx / qList.length * 100);
-  const livePct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
-  if (qExerciseMode === 'listening') {
-    const w = qList[qIdx];
-    const optionPool = getCachedScopedPracticePool().filter(x => roKey(x.ro) !== roKey(w.ro));
-    const optionPoolKeys = new Set(optionPool.map(o => roKey(o.ro)));
-    const fallbackPool = W.filter(x => roKey(x.ro) !== roKey(w.ro) && !optionPoolKeys.has(roKey(x.ro)));
-    const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
-    const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
-    document.getElementById('quiz-area').innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;color:var(--text2)">
-        <span>第 ${qIdx + 1} / ${qList.length} 题</span>
-        <span style="color:${livePct>=60?'var(--green-text)':'var(--red-text)'}">答对 ${qRoundRight}/${qRoundTotal}${qRoundTotal>0?' ('+livePct+'%)':''}</span>
-      </div>
-      <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
-      </div>
-      ${renderQuizSessionTools()}
-      <div class="quiz-q">听音选择中文</div>
-      <div class="quiz-sub">先听罗马尼亚语，再选择对应中文</div>
-      <button class="btn-primary" style="max-width:180px;margin:0 auto 1rem;display:block" onclick="speakQuizWord(0.9)">播放</button>
-      <div class="opts">${opts.map(o => {
-        return renderQuizAnswerButton(o, w, o.zh);
-      }).join('')}</div>
-      <div class="quiz-fb" id="qfb"></div>
-      <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
-    setTimeout(() => speakQuizWord(0.9), 150);
-    return;
-  }
-  if (qExerciseMode !== 'translation') {
-    const ex = qList[qIdx];
-    const opts = shuffleGroup(ex.options);
-    document.getElementById('quiz-area').innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;color:var(--text2)">
-        <span>第 ${qIdx + 1} / ${qList.length} 题</span>
-        <span style="color:${livePct>=60?'var(--green-text)':'var(--red-text)'}">答对 ${qRoundRight}/${qRoundTotal}${qRoundTotal>0?' ('+livePct+'%)':''}</span>
-      </div>
-      <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
-      </div>
-      ${renderQuizSessionTools()}
-      <div class="quiz-q">${escapeHtml(ex.question)}</div>
-      <div class="quiz-sub">${escapeHtml(ex.sub)}</div>
-      <div class="opts">${opts.map(o => {
-        const label = ex.type === 'stress' ? stressToHtml(o) : escapeHtml(o);
-        return renderExerciseAnswerButton(o, ex.answer, label);
-      }).join('')}</div>
-      <div class="quiz-fb" id="qfb"></div>
-      <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
-    return;
-  }
-
-  const w = qList[qIdx];
-  const optionPool = getCachedScopedPracticePool().filter(x => roKey(x.ro) !== roKey(w.ro));
-  const optionPoolKeys = new Set(optionPool.map(o => roKey(o.ro)));
-  const fallbackPool = W.filter(x => roKey(x.ro) !== roKey(w.ro) && !optionPoolKeys.has(roKey(x.ro)));
-  const wrongs = [...optionPool, ...fallbackPool].sort(() => Math.random() - 0.5).slice(0, 3);
-  const opts = [w, ...wrongs].sort(() => Math.random() - 0.5);
-  if (opts.length < 2) {
-    document.getElementById('quiz-area').innerHTML = `
-      <div class="result-box">
-        <div class="result-label">当前词库太少，至少需要 2 个词才能测验</div>
-        <button class="restart-btn" onclick="switchPage('flash')">返回学习</button>
-      </div>`;
-    return;
-  }
-  const qText = qMode === 'zh' ? w.zh : w.ro;
-  document.getElementById('quiz-area').innerHTML = `
+function renderQuizHeader() {
+  const progressPct = Math.round(qIdx / qList.length * 100);
+  const summary = summarizeQuizResults(qRoundResults);
+  return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;color:var(--text2)">
-      <span>第 ${qIdx + 1} / ${qList.length} 题</span>
-      <span style="color:${livePct>=60?'var(--green-text)':'var(--red-text)'}">答对 ${qRoundRight}/${qRoundTotal}${qRoundTotal>0?' ('+livePct+'%)':''}</span>
+      <span>第 ${qIdx + 1} / ${qList.length} 题 · ${getQuizDifficultyLabel()}</span>
+      <span>${qRoundTotal ? `本轮 ${summary.percent}%` : '尚未计分'}</span>
     </div>
     <div style="background:var(--bg3);border-radius:99px;height:6px;margin-bottom:1rem;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
-    </div>
+      <div style="height:100%;width:${progressPct}%;background:var(--blue);border-radius:99px;transition:width .3s"></div>
+    </div>`;
+}
+
+function getQuizAnswerOptions(answer, direction) {
+  const primaryPool = getQuizEligiblePool();
+  let fallbackPool = filterWordsByDifficulty(getLearningCollectionWords(W), qDifficulty);
+  if (qExerciseMode === 'diagnostic') fallbackPool = fallbackPool.filter(isAssessmentEligible);
+  const distractors = buildDistractors(answer, [...primaryPool, ...fallbackPool], { count: 3, direction });
+  return shuffleGroup([answer, ...distractors]);
+}
+
+function renderInsufficientQuizPool() {
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="result-box">
+      <div class="result-label">当前条件下找不到至少 2 个无歧义选项，请放宽主题或难度。</div>
+      <button class="restart-btn" onclick="showQuizSetup()">返回设置</button>
+    </div>`;
+}
+
+function renderListeningQuiz(word) {
+  const options = getQuizAnswerOptions(word, 'ro-to-zh');
+  if (options.length < 2) { renderInsufficientQuizPool(); return; }
+  document.getElementById('quiz-area').innerHTML = `
+    ${renderQuizHeader()}
     ${renderQuizSessionTools()}
-    <div class="quiz-q">${escapeHtml(qText)}</div>
-    <div class="quiz-sub">${qMode === 'zh' ? '选择对应的罗马尼亚语' : '选择对应的中文'}</div>
-    <div class="opts">${opts.map(o => {
-      const label = qMode === 'zh' ? o.ro : o.zh;
-      return renderQuizAnswerButton(o, w, label);
+    <div class="quiz-q">听音选择中文</div>
+    <div class="quiz-sub">必须先播放；最多听 2 次，再选择对应词义</div>
+    <div class="quiz-audio-row">
+      <button class="btn-primary" id="quiz-play-btn" style="max-width:180px" onclick="speakQuizWord(1)">播放</button>
+      <span class="quiz-audio-meta" id="quiz-audio-meta">等待播放 · 0/2 次</span>
+    </div>
+    <div class="opts">${options.map(option => renderQuizAnswerButton(option, word, option.zh, true)).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
+}
+
+function renderDictationQuiz(word) {
+  document.getElementById('quiz-area').innerHTML = `
+    ${renderQuizHeader()}
+    ${renderQuizSessionTools()}
+    <div class="quiz-q">听写罗马尼亚语</div>
+    <div class="quiz-sub">必须先播放；请写出完整词或短语，变音符号也计入拼写</div>
+    <div class="quiz-audio-row">
+      <button class="btn-primary" id="quiz-play-btn" style="max-width:180px" onclick="speakQuizWord(1)">播放</button>
+      <span class="quiz-audio-meta" id="quiz-audio-meta">等待播放 · 0/2 次</span>
+    </div>
+    <form class="quiz-dictation-form" onsubmit="answerDictation(event)">
+      <input class="quiz-dictation-input" id="quiz-dictation-input" aria-label="输入听到的罗马尼亚语" autocomplete="off" autocapitalize="none" spellcheck="false" disabled>
+      <button class="next-btn" id="quiz-dictation-submit" type="submit" disabled>提交答案</button>
+    </form>
+    <div class="quiz-fb" id="qfb"></div>
+    <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
+}
+
+function renderTranslationQuiz(word, direction = qMode === 'zh' ? 'zh-to-ro' : 'ro-to-zh') {
+  const options = getQuizAnswerOptions(word, direction);
+  if (options.length < 2) { renderInsufficientQuizPool(); return; }
+  const toRomanian = direction === 'zh-to-ro';
+  document.getElementById('quiz-area').innerHTML = `
+    ${renderQuizHeader()}
+    ${renderQuizSessionTools()}
+    <div class="quiz-q">${escapeHtml(toRomanian ? word.zh : word.ro)}</div>
+    <div class="quiz-sub">${toRomanian ? '选择对应的罗马尼亚语' : '选择对应的中文'}</div>
+    <div class="opts">${options.map(option => renderQuizAnswerButton(option, word, toRomanian ? option.ro : option.zh)).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
+}
+
+function renderQuiz() {
+  stopQuizAudio();
+  if (qIdx >= qList.length) { showResult(); return; }
+  qCurrentAudioPlays = 0;
+  qCurrentAudioSource = '';
+  qItemStartedAt = Date.now();
+  qAnswerLocked = false;
+  const itemType = getCurrentQuizItemType();
+  const word = getCurrentQuizWord();
+  if (!word) { nextQ(); return; }
+
+  if (itemType === 'listening') { renderListeningQuiz(word); return; }
+  if (itemType === 'dictation') { renderDictationQuiz(word); return; }
+  if (qExerciseMode === 'diagnostic') { renderTranslationQuiz(word, 'ro-to-zh'); return; }
+  if (qExerciseMode === 'translation') { renderTranslationQuiz(word); return; }
+
+  const exercise = qList[qIdx];
+  const options = shuffleGroup(exercise.options);
+  document.getElementById('quiz-area').innerHTML = `
+    ${renderQuizHeader()}
+    ${renderQuizSessionTools()}
+    <div class="quiz-q">${escapeHtml(exercise.question)}</div>
+    <div class="quiz-sub">${escapeHtml(exercise.sub)}</div>
+    <div class="opts">${options.map(option => {
+      const label = exercise.type === 'stress' ? stressToHtml(option) : escapeHtml(option);
+      return renderExerciseAnswerButton(option, exercise.answer, label);
     }).join('')}</div>
     <div class="quiz-fb" id="qfb"></div>
     <button class="next-btn" id="qnxt" onclick="nextQ()" style="display:none">下一题 →</button>`;
 }
 
 async function answerQ(btn, ok, ro, zh) {
-  btn.parentElement.querySelectorAll('.opt').forEach(b => b.style.pointerEvents = 'none');
+  if (qAnswerLocked) return;
+  qAnswerLocked = true;
+  btn.parentElement.querySelectorAll('.opt').forEach(button => {
+    button.style.pointerEvents = 'none';
+    button.disabled = true;
+  });
   qTotal++;
   qRoundTotal++;
   if (ok) {
@@ -6362,15 +6569,31 @@ async function answerQ(btn, ok, ro, zh) {
     });
     document.getElementById('qfb').style.color = 'var(--red-text)';
   }
-  const w = qList[qIdx];
-  document.getElementById('qfb').innerHTML = buildFeedbackHtml(w, ok, { type: qExerciseMode === 'listening' ? 'listening' : 'translation' });
-  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: qExerciseMode });
+  const word = getCurrentQuizWord();
+  const itemType = getCurrentQuizItemType();
+  qRoundResults.push({
+    type: itemType,
+    exact: ok,
+    points: ok ? 1 : 0,
+    difficulty: getQuizDifficultyRank(word),
+    replayCount: isCurrentQuizAudioItem() ? qCurrentAudioPlays : 0,
+    audioSource: isCurrentQuizAudioItem() ? qCurrentAudioSource : '',
+    responseMs: Math.max(0, Date.now() - qItemStartedAt),
+    optionsCount: btn.parentElement.querySelectorAll('.opt').length
+  });
+  document.getElementById('qfb').innerHTML = buildFeedbackHtml(word, ok, { type: itemType });
+  await recordInteraction(word.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: itemType });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
 
 async function answerExerciseQ(btn, ok) {
-  btn.parentElement.querySelectorAll('.opt').forEach(b => b.style.pointerEvents = 'none');
+  if (qAnswerLocked) return;
+  qAnswerLocked = true;
+  btn.parentElement.querySelectorAll('.opt').forEach(button => {
+    button.style.pointerEvents = 'none';
+    button.disabled = true;
+  });
   qTotal++;
   qRoundTotal++;
   if (ok) {
@@ -6389,38 +6612,120 @@ async function answerExerciseQ(btn, ok) {
   }
   const ex = qList[qIdx];
   const w = ex.word;
+  qRoundResults.push({
+    type: ex.type,
+    exact: ok,
+    points: ok ? 1 : 0,
+    difficulty: getQuizDifficultyRank(w),
+    replayCount: 0,
+    audioSource: '',
+    responseMs: Math.max(0, Date.now() - qItemStartedAt),
+    optionsCount: btn.parentElement.querySelectorAll('.opt').length
+  });
   document.getElementById('qfb').innerHTML = buildFeedbackHtml(w, ok, { type: ex.type, answer: ex.answer });
   await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: qExerciseMode });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
 
-function nextQ() { qIdx++; renderQuiz(); }
+async function answerDictation(event) {
+  event?.preventDefault?.();
+  if (qAnswerLocked) return;
+  const input = document.getElementById('quiz-dictation-input');
+  const typed = input?.value || '';
+  const word = getCurrentQuizWord();
+  const result = classifyDictation(typed, word?.ro || '');
+  if (result.kind === 'blank') {
+    showToast('请先输入你听到的内容');
+    return;
+  }
+  qAnswerLocked = true;
+  if (input) input.disabled = true;
+  const submit = document.getElementById('quiz-dictation-submit');
+  if (submit) submit.disabled = true;
+  qTotal++;
+  qRoundTotal++;
+  if (result.exact) {
+    qRight++;
+    qRoundRight++;
+  } else {
+    qRoundWrong++;
+  }
+  qRoundResults.push({
+    type: 'dictation',
+    exact: result.exact,
+    points: result.points,
+    difficulty: getQuizDifficultyRank(word),
+    replayCount: qCurrentAudioPlays,
+    audioSource: qCurrentAudioSource,
+    responseMs: Math.max(0, Date.now() - qItemStartedAt),
+    optionsCount: 0
+  });
+  const feedback = document.getElementById('qfb');
+  if (result.exact) {
+    feedback.style.color = 'var(--green-text)';
+    feedback.innerHTML = `<div>正确</div><div style="font-weight:500">${escapeHtml(word.ro)} · ${escapeHtml(word.zh)}</div>`;
+  } else if (result.kind === 'diacritics') {
+    feedback.style.color = 'var(--yellow-text)';
+    feedback.innerHTML = `<div>听辨正确，拼写部分得分</div><div style="font-weight:500">标准拼写：${escapeHtml(word.ro)}</div><div style="font-size:12px;margin-top:5px">声音识别计为正确；本轮听写按 0.5 分记录，请补全 ă/â/î/ș/ț。</div>`;
+  } else {
+    feedback.style.color = 'var(--red-text)';
+    feedback.innerHTML = `<div>未识别正确</div><div style="font-weight:500">答案：${escapeHtml(word.ro)} · ${escapeHtml(word.zh)}</div><div style="font-size:12px;margin-top:5px">再对照词首、重音和结尾，避免只凭词形猜测。</div>`;
+  }
+  await recordInteraction(word.ro, result.listeningCorrect ? 'quiz_correct' : 'quiz_wrong', { exerciseType: 'listening' });
+  upStats();
+  document.getElementById('qnxt').style.display = 'block';
+}
+
+function nextQ() {
+  stopQuizAudio();
+  qIdx++;
+  renderQuiz();
+}
 
 function showResult(options = {}) {
+  stopQuizAudio();
   const endedEarly = !!options.endedEarly;
   qStarted = false;
-  const pct = qRoundTotal > 0 ? Math.round(qRoundRight / qRoundTotal * 100) : 0;
+  const summary = summarizeQuizResults(qRoundResults);
+  const pct = summary.percent;
   const dueCount = getRemainingDueReviewWords(W).length;
+  const notFullCredit = Math.max(0, summary.total - summary.exact);
   const nextTitle = endedEarly
     ? `本轮已完成 ${qRoundTotal}/${qList.length} 题`
-    : qRoundWrong > 0
-    ? `本轮错了 ${qRoundWrong} 题`
+    : notFullCredit > 0
+    ? `本轮有 ${notFullCredit} 题未满分`
     : (dueCount > 0 ? `还有 ${dueCount} 个到期词` : '本轮状态稳定');
-  const nextText = qRoundWrong > 0
+  const nextText = qExerciseMode === 'diagnostic' && notFullCredit > 0
+    ? '先看分维度结果：听音辨义低，优先练声音到词义；听写低，优先练声音到词形与变音符号。'
+    : qRoundWrong > 0
     ? '建议马上再做一轮智能练习，系统会优先安排近期答错的词。'
     : (dueCount > 0
       ? '先完成到期复习，再继续新词或专项练习。'
       : '可以再做一轮智能练习，或回到今日任务继续扩大词量。');
-  const primaryAction = qRoundWrong > 0
+  const primaryAction = qExerciseMode === 'diagnostic'
+    ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="startQuiz()">按相同设置再测</button>`
+    : qRoundWrong > 0
     ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="startDefaultSmartQuiz()">继续智能练习</button>`
     : (dueCount > 0
       ? `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="setPracticeScope('due');switchPage('quiz')">复习到期词</button>`
       : `<button class="restart-btn" style="border-color:var(--blue);color:var(--blue-text)" onclick="startDefaultSmartQuiz()">再做智能练习</button>`);
+  const dimensionHtml = summary.dimensions.map(dimension => `
+    <div class="quiz-result-metric">
+      <strong>${dimension.percent}%</strong>
+      <span>${escapeHtml(dimension.label)} · ${dimension.points}/${dimension.total}</span>
+    </div>`).join('');
+  const listeningNote = summary.listeningCount
+    ? (summary.recordingCount === summary.listeningCount
+      ? `本轮 ${summary.listeningCount} 道听力题均使用已标注真人录音，平均播放 ${summary.averageListeningPlays.toFixed(1)} 次。`
+      : `本轮 ${summary.listeningCount} 道听力题中，真人录音 ${summary.recordingCount} 道，其余使用设备合成音；只能解释为词级听辨，不能外推到真实对话、广播或多口音理解。`)
+    : '本轮没有听力题，不能据此判断听辨能力。';
   document.getElementById('quiz-area').innerHTML = `
     <div class="result-box">
-      <div class="result-score">${qRoundRight}/${qRoundTotal}</div>
-      <div class="result-label">${qRoundTotal ? `本轮正确率 ${pct}% · ${pct >= 80 ? '稳定' : pct >= 60 ? '还需巩固' : '需要加强'}` : '本轮尚未作答'}</div>
+      <div class="result-score">${pct}%</div>
+      <div class="result-label">${qRoundTotal ? `本轮得分 ${summary.points}/${summary.total} · ${summary.evidenceLabel}${summary.partial ? ` · ${summary.partial} 题部分得分` : ''}` : '本轮尚未作答'}</div>
+      ${dimensionHtml ? `<div class="quiz-result-grid">${dimensionHtml}</div>` : ''}
+      <div class="quiz-validity-note">${escapeHtml(listeningNote)}<br>结果只反映当前词库、当前难度与本轮作答，不是 CEFR 定级，也不代表完整罗马尼亚语水平。</div>
       <div class="result-next">
         <div class="result-next-title">${escapeHtml(nextTitle)}</div>
         <div class="result-next-text">${escapeHtml(nextText)}</div>

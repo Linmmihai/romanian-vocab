@@ -13,20 +13,22 @@ const progressModel = read('progress-model.js');
 const dailyPlan = read('daily-plan.js');
 const taxonomy = read('taxonomy.js');
 const romanianText = read('romanian-text.js');
+const quizEngine = read('quiz-engine.js');
 const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260812-adversarial-v2',
-  'progress-model.js?v=20260812-adversarial-v2',
-  'daily-plan.js?v=20260812-adversarial-v2',
-  'taxonomy.js?v=20260812-adversarial-v2',
-  'romanian-text.js?v=20260812-adversarial-v2',
-  'api.js?v=20260812-adversarial-v2',
-  'telemetry.js?v=20260812-adversarial-v2',
-  'auth.js?v=20260812-adversarial-v2',
-  'app.js?v=20260812-adversarial-v2',
-  'pwa.js?v=20260812-adversarial-v2'
+  'scheduler.js?v=20260819-scientific-quiz-v1',
+  'progress-model.js?v=20260819-scientific-quiz-v1',
+  'daily-plan.js?v=20260819-scientific-quiz-v1',
+  'taxonomy.js?v=20260819-scientific-quiz-v1',
+  'romanian-text.js?v=20260819-scientific-quiz-v1',
+  'quiz-engine.js?v=20260819-scientific-quiz-v1',
+  'api.js?v=20260819-scientific-quiz-v1',
+  'telemetry.js?v=20260819-scientific-quiz-v1',
+  'auth.js?v=20260819-scientific-quiz-v1',
+  'app.js?v=20260819-scientific-quiz-v1',
+  'pwa.js?v=20260819-scientific-quiz-v1'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -36,15 +38,17 @@ assert(build.includes("'progress-model.js',"), 'web build completeness list must
 assert(build.includes("'daily-plan.js'"), 'web build must copy and require the daily planner');
 assert(build.includes("'taxonomy.js'"), 'web build must copy and require the vocabulary taxonomy');
 assert(build.includes("'romanian-text.js'"), 'web build must copy and require Romanian text helpers');
+assert(build.includes("'quiz-engine.js'"), 'web build must copy and require the quiz engine');
 assert(build.includes("'telemetry.js'"), 'web build must copy and require telemetry');
 assert(build.includes("'pwa.js'"), 'web build must copy and require the PWA update controller');
 assert(serviceWorker.includes("'./progress-model.js'"), 'PWA app shell must include the progress model');
 assert(serviceWorker.includes("'./daily-plan.js'"), 'PWA app shell must include the daily planner');
 assert(serviceWorker.includes("'./taxonomy.js'"), 'PWA app shell must include the vocabulary taxonomy');
 assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must include Romanian text helpers');
+assert(serviceWorker.includes("'./quiz-engine.js'"), 'PWA app shell must include the quiz engine');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v45-adversarial-v2"), 'PWA cache must advance with the vocabulary rebuild');
+assert(serviceWorker.includes("ro-vocab-pwa-v46-scientific-quiz-v1"), 'PWA cache must advance with the scientific quiz release');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');
@@ -57,6 +61,9 @@ assert(taxonomy.includes('function normalizeTopic'), 'taxonomy module must own t
 assert(taxonomy.includes('function normalizePartOfSpeech'), 'taxonomy module must own part-of-speech normalization');
 assert(taxonomy.includes('function normalizeUnitType'), 'taxonomy module must own lexical-unit normalization');
 assert(romanianText.includes('function stressToHtml'), 'Romanian text module must own stress rendering');
+assert(quizEngine.includes('function buildDiagnosticPlan'), 'quiz engine must own diagnostic blueprint construction');
+assert(quizEngine.includes('function buildDistractors'), 'quiz engine must own distractor construction');
+assert(quizEngine.includes('function classifyDictation'), 'quiz engine must own dictation scoring');
 assert(telemetry.includes('function reportClientIssue'), 'telemetry must own client issue reporting');
 assert(pwa.includes('function showUpdatePrompt'), 'PWA controller must own the update prompt');
 assert(progressModel.includes('getGrammarRight: grammarRight'), 'progress model must expose grammar-right normalization');
