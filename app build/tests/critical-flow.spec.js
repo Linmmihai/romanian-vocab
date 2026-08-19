@@ -63,6 +63,116 @@ test('primary navigation remains usable on a mobile viewport', async ({ page }) 
   }
 });
 
+test('scientific diagnostic uses a trusted, non-repeating blueprint with listening majority', async ({ page }) => {
+  await enterOfflineApp(page);
+  await page.locator('.nav-tab[data-page="quiz"]').click();
+
+  await expect(page.getByText('70% 为听力题')).toBeVisible();
+  await expect(page.getByText(/当前题库没有已核对真人录音/)).toBeVisible();
+  await expect(page.getByText(/不是 CEFR 定级/)).toBeVisible();
+  await page.getByRole('button', { name: '开始词汇能力诊断' }).click();
+
+  const blueprint = await page.evaluate(() => ({
+    total: qList.length,
+    unique: new Set(qList.map(item => item.word.ro)).size,
+    trusted: qList.every(item => ['verified', 'revised'].includes(item.word.naturalness_status)),
+    types: qList.reduce((counts, item) => {
+      counts[item.type] = (counts[item.type] || 0) + 1;
+      return counts;
+    }, {})
+  }));
+  expect(blueprint).toEqual({
+    total: 20,
+    unique: 20,
+    trusted: true,
+    types: { listening: 7, dictation: 7, translation: 6 }
+  });
+
+  await expect(page.getByText('听音选择中文')).toBeVisible();
+  await expect(page.locator('.opt[data-quiz-action="answer"]')).toHaveCount(4);
+  await expect(page.locator('.opt[data-quiz-action="answer"]:enabled')).toHaveCount(0);
+  expect(await page.evaluate(() => qRoundTotal)).toBe(0);
+
+  await page.evaluate(() => {
+    speechSynthesis.cancel = () => {};
+    speechSynthesis.speak = () => {};
+    speechSynthesis.getVoices = () => [];
+  });
+  await page.locator('#quiz-play-btn').click();
+  await expect(page.locator('.opt[data-quiz-action="answer"]:enabled')).toHaveCount(4);
+  await page.locator('#quiz-play-btn').click();
+  await expect(page.locator('#quiz-play-btn')).toBeDisabled();
+  await expect(page.locator('#quiz-audio-meta')).toHaveText(/设备合成音 · 2\/2 次/);
+
+  const queueBeforeAnswer = await page.evaluate(() => ({
+    wordRo: getCurrentQuizWord().ro,
+    completed: todayQueueCompleted.size
+  }));
+  await page.evaluate(() => {
+    const answer = getCurrentQuizWord();
+    const button = [...document.querySelectorAll('.opt[data-quiz-action="answer"]')]
+      .find(option => roKey(option.dataset.optionRo || '') === roKey(answer.ro));
+    button.click();
+  });
+  await expect(page.locator('#qfb')).toContainText('正确');
+  const listeningEvidence = await page.evaluate((wordRo) => ({
+    result: qRoundResults[0],
+    progress: getProgress(wordRo),
+    completed: todayQueueCompleted.size
+  }), queueBeforeAnswer.wordRo);
+  expect(listeningEvidence.result.type).toBe('listening');
+  expect(listeningEvidence.result.replayCount).toBe(2);
+  expect(listeningEvidence.result.audioSource).toBe('tts');
+  expect(listeningEvidence.progress.seenViaCard).toBe(false);
+  expect(listeningEvidence.completed).toBe(queueBeforeAnswer.completed);
+});
+
+test('dictation separates sound recognition from Romanian diacritic spelling', async ({ page }) => {
+  await enterOfflineApp(page);
+  await page.locator('.nav-tab[data-page="quiz"]').click();
+
+  const target = await page.evaluate(() => {
+    const word = W.find(item =>
+      ['verified', 'revised'].includes(item.naturalness_status) &&
+      /[ăâîșț]/i.test(item.ro)
+    );
+    qExerciseMode = 'dictation';
+    qDifficulty = 'standard';
+    qList = [word];
+    qIdx = 0;
+    qStarted = true;
+    qRoundRight = 0;
+    qRoundTotal = 0;
+    qRoundWrong = 0;
+    qRoundResults = [];
+    renderQuiz();
+    return { ro: word.ro, withoutDiacritics: window.RomanianVocabQuizEngine.stripRomanianDiacritics(word.ro) };
+  });
+
+  await expect(page.locator('#quiz-dictation-input')).toBeDisabled();
+  await page.evaluate(() => {
+    speechSynthesis.cancel = () => {};
+    speechSynthesis.speak = () => {};
+    speechSynthesis.getVoices = () => [];
+  });
+  await page.locator('#quiz-play-btn').click();
+  await page.locator('#quiz-dictation-input').fill(target.withoutDiacritics);
+  await page.locator('#quiz-dictation-submit').click();
+
+  await expect(page.locator('#qfb')).toContainText('听辨正确，拼写部分得分');
+  await expect(page.locator('#qfb')).toContainText(target.ro);
+  const evidence = await page.evaluate(() => ({ result: qRoundResults[0], right: qRoundRight, total: qRoundTotal }));
+  expect(evidence.result.points).toBe(0.5);
+  expect(evidence.result.exact).toBe(false);
+  expect(evidence.right).toBe(0);
+  expect(evidence.total).toBe(1);
+
+  await page.locator('#qnxt').click();
+  await expect(page.locator('.result-score')).toHaveText('50%');
+  await expect(page.locator('.quiz-result-metric')).toContainText('听写解码');
+  await expect(page.locator('.quiz-validity-note')).toContainText('不是 CEFR 定级');
+});
+
 test('grammar tab supports grammar-system browsing, summaries, and search', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterOfflineApp(page);

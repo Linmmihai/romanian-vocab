@@ -254,9 +254,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
 .opt{padding:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:15px;cursor:pointer;text-align:center;box-shadow:var(--shadow);transition:all .15s}
 .opt:hover{background:var(--bg2)}
+.opt:disabled{cursor:not-allowed;opacity:.58;background:var(--bg2)}
 .opt.correct{border-color:var(--green);background:var(--green-bg);color:var(--green-text)}
 .opt.wrong{border-color:var(--red);background:var(--red-bg);color:var(--red-text)}
 .quiz-fb{text-align:center;font-size:14px;min-height:22px;margin-bottom:1rem;font-weight:600}
+.quiz-audio-row{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:0 auto 1rem}
+.quiz-audio-meta{font-size:12px;color:var(--text2)}
+.quiz-dictation-form{display:grid;gap:10px;max-width:440px;margin:0 auto 1rem}
+.quiz-dictation-input{width:100%;padding:12px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:17px;text-align:center;background:white;color:var(--text)}
+.quiz-dictation-input:disabled{background:var(--bg2);color:var(--text3)}
+.quiz-result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:520px;margin:0 auto 16px}
+.quiz-result-metric{background:var(--bg2);border-radius:var(--radius-sm);padding:10px 8px}
+.quiz-result-metric strong{display:block;font-size:20px;color:var(--text);margin-bottom:2px}
+.quiz-result-metric span{font-size:12px;color:var(--text2)}
+.quiz-validity-note{max-width:520px;margin:0 auto 16px;padding:10px 12px;border:1px solid var(--yellow-border);border-radius:var(--radius-sm);background:var(--yellow-bg);color:var(--yellow-text);font-size:12px;line-height:1.5;text-align:left}
 .next-btn{display:block;width:100%;padding:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg2);font-size:14px;font-weight:600;cursor:pointer}
 .result-box{text-align:center;padding:2.5rem;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
 .result-score{font-size:52px;font-weight:700}
@@ -853,11 +864,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="quiz-section">
             <div class="quiz-section-label">题型</div>
             <div class="exercise-bar">
-              <button class="exercise-btn active" data-exercise="translation" onclick="setExerciseMode('translation')">翻译</button>
-              <button class="exercise-btn" data-exercise="listening" onclick="setExerciseMode('listening')">听力</button>
+              <button class="exercise-btn active" data-exercise="diagnostic" onclick="setExerciseMode('diagnostic')">综合诊断</button>
+              <button class="exercise-btn" data-exercise="translation" onclick="setExerciseMode('translation')">翻译辨认</button>
+              <button class="exercise-btn" data-exercise="listening" onclick="setExerciseMode('listening')">听音辨义</button>
+              <button class="exercise-btn" data-exercise="dictation" onclick="setExerciseMode('dictation')">听写</button>
               <button class="exercise-btn" data-exercise="nounPlural" onclick="setExerciseMode('nounPlural')">名词复数</button>
               <button class="exercise-btn" data-exercise="verbConj" onclick="setExerciseMode('verbConj')">动词变位</button>
               <button class="exercise-btn" data-exercise="stress" onclick="setExerciseMode('stress')">重音选择</button>
+            </div>
+          </div>
+          <div class="quiz-section">
+            <div class="quiz-section-label">难度（词库内相对难度，不等于 CEFR）</div>
+            <div class="study-mode-bar" id="quiz-difficulty-bar">
+              <button class="study-mode-btn" data-difficulty="foundation" onclick="setQuizDifficulty('foundation')">基础</button>
+              <button class="study-mode-btn active" data-difficulty="standard" onclick="setQuizDifficulty('standard')">标准</button>
+              <button class="study-mode-btn" data-difficulty="challenge" onclick="setQuizDifficulty('challenge')">挑战</button>
             </div>
           </div>
           <div class="quiz-section">
@@ -1060,7 +1081,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         </div>
         <div class="manual-item">
           <div class="manual-title">测验与复习</div>
-          <div class="manual-text">测验用于主动回忆翻译、复数、变位和重音。系统会优先抽取到期或近期答错的词，帮助你继续巩固。</div>
+          <div class="manual-text">综合诊断用已核对词条检查词义辨认、听音辨义和听写解码，同一词一轮只出现一次；每道听力题最多播放两次。结果只代表当前词库中的本轮表现，不等于 CEFR 或真实对话听力。翻译、复数、变位和重音仍可作为专项练习。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">查词与加词</div>
@@ -1407,16 +1428,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20260812-adversarial-v2';</script>
-<script src="scheduler.js?v=20260812-adversarial-v2"></script>
-<script src="progress-model.js?v=20260812-adversarial-v2"></script>
-<script src="daily-plan.js?v=20260812-adversarial-v2"></script>
-<script src="taxonomy.js?v=20260812-adversarial-v2"></script>
-<script src="romanian-text.js?v=20260812-adversarial-v2"></script>
-<script src="api.js?v=20260812-adversarial-v2"></script>
-<script src="telemetry.js?v=20260812-adversarial-v2"></script>
-<script src="auth.js?v=20260812-adversarial-v2"></script>
-<script src="app.js?v=20260812-adversarial-v2"></script>
-<script src="pwa.js?v=20260812-adversarial-v2"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20260819-scientific-quiz-v1';</script>
+<script src="scheduler.js?v=20260819-scientific-quiz-v1"></script>
+<script src="progress-model.js?v=20260819-scientific-quiz-v1"></script>
+<script src="daily-plan.js?v=20260819-scientific-quiz-v1"></script>
+<script src="taxonomy.js?v=20260819-scientific-quiz-v1"></script>
+<script src="romanian-text.js?v=20260819-scientific-quiz-v1"></script>
+<script src="quiz-engine.js?v=20260819-scientific-quiz-v1"></script>
+<script src="api.js?v=20260819-scientific-quiz-v1"></script>
+<script src="telemetry.js?v=20260819-scientific-quiz-v1"></script>
+<script src="auth.js?v=20260819-scientific-quiz-v1"></script>
+<script src="app.js?v=20260819-scientific-quiz-v1"></script>
+<script src="pwa.js?v=20260819-scientific-quiz-v1"></script>
 </body>
 </html>

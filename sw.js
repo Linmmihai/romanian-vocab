@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ro-vocab-pwa-v45-adversarial-v2';
+const CACHE_NAME = 'ro-vocab-pwa-v46-scientific-quiz-v1';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const APP_SHELL_PATHS = [
   './daily-plan.js',
   './taxonomy.js',
   './romanian-text.js',
+  './quiz-engine.js',
   './api.js',
   './telemetry.js',
   './auth.js',
