@@ -12,10 +12,10 @@ assert(schedulerMigration.includes('add column if not exists recent_results json
 assert(schedulerMigration.includes('progress_user_due_at_idx'), 'scheduler migration must index per-user due lookups');
 assert(schedulerMigration.includes('validate constraint progress_card_state_check'), 'scheduler migration must validate the card-state constraint after backfill');
 assert(schedulerMigration.includes("notify pgrst, 'reload schema'"), 'scheduler migration must refresh the Data API schema cache');
-assert(index.includes('scheduler.js?v=20260819-scientific-quiz-v1'), 'scheduler cache buster must move with the scientific quiz release');
-assert(index.includes('api.js?v=20260819-scientific-quiz-v1'), 'API cache buster must match the scientific quiz release');
-assert(index.includes('app.js?v=20260819-scientific-quiz-v1'), 'app cache buster must match the scientific quiz release');
-assert(serviceWorker.includes('ro-vocab-pwa-v46-scientific-quiz-v1'), 'service worker cache must move with the scientific quiz release');
+assert(index.includes('scheduler.js?v=20260831-leaderboard-sync-v1'), 'scheduler cache buster must move with the leaderboard sync fix');
+assert(index.includes('api.js?v=20260831-leaderboard-sync-v1'), 'API cache buster must match the leaderboard sync fix');
+assert(index.includes('app.js?v=20260831-leaderboard-sync-v1'), 'app cache buster must match the leaderboard sync fix');
+assert(serviceWorker.includes('ro-vocab-pwa-v47-leaderboard-sync-v1'), 'service worker cache must move with the leaderboard sync fix');
 
 const NOW = '2026-06-21T08:00:00.000Z';
 const TEN_MINUTES = 10 * 60 * 1000;

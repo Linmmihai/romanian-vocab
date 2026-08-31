@@ -7129,8 +7129,12 @@ function renderHardestWords() {
   }).join('') : '<div class="empty-state">暂时没有薄弱词记录</div>';
 }
 
+let leaderboardRenderToken = 0;
+
 async function renderLeaderboard() {
   const el = document.getElementById('leaderboard-list');
+  if (!el) return;
+  const renderToken = ++leaderboardRenderToken;
   if (isOfflineMode()) {
     el.innerHTML = '<div class="empty-state">班级排行需要登录后查看；本机学习数据不会参与排名。</div>';
     return;
@@ -7138,11 +7142,16 @@ async function renderLeaderboard() {
   el.innerHTML = '<div class="empty-state">加载中...</div>';
 
   try {
-    const [usersResult, rowsResult, logsResult] = await Promise.allSettled([
+    flushPendingFastCardState();
+    const syncResult = await triggerCloudProgressBackup('刷新排行', { force: true, limit: 1000 });
+    if (renderToken !== leaderboardRenderToken) return;
+    const [usersResult, rowsResult, logsResult, currentLogsResult] = await Promise.allSettled([
       apiLoadLeaderboardUsers(),
       apiLoadAllProgress(),
-      apiGetClassRecentLogs(30)
+      apiGetClassRecentLogs(30),
+      apiGetRecentLogs(currentUser.id, 30)
     ]);
+    if (renderToken !== leaderboardRenderToken) return;
     const failures = [];
     if (usersResult.status === 'rejected') failures.push('profiles: ' + usersResult.reason.message);
     if (rowsResult.status === 'rejected') failures.push('progress: ' + rowsResult.reason.message);
@@ -7165,9 +7174,16 @@ async function renderLeaderboard() {
       if (!logsByUser[l.user_id]) logsByUser[l.user_id] = [];
       logsByUser[l.user_id].push(l);
     });
+    if (currentLogsResult.status === 'fulfilled') {
+      logsByUser[currentUser.id] = currentLogsResult.value || [];
+    }
 
     const leaderboard = users.map(u => {
-      const s = calcProgressSummary(byUser[u.id] || {});
+      // The current user's in-memory map includes durable local outbox entries,
+      // so their leaderboard totals stay aligned with personal statistics even
+      // while a network retry is still pending.
+      const userProgress = u.id === currentUser.id ? progressMap : (byUser[u.id] || {});
+      const s = calcProgressSummary(userProgress);
       return {
         id: u.id,
         email: u.email || '',
@@ -7195,10 +7211,14 @@ async function renderLeaderboard() {
     if (leaderboard.length) {
       el.innerHTML += `<div class="empty-state" style="padding:10px;font-size:12px">已刷新：${new Date().toLocaleTimeString('zh', { hour: '2-digit', minute: '2-digit' })} · 读取 ${rows.length} 条练习记录</div>`;
     }
+    if (syncResult?.failed || syncResult?.remaining || syncResult?.dailyRemaining || hasPendingSync()) {
+      el.innerHTML += '<div class="empty-state">你的最新记录已计入本页，但仍在本机等待同步；网络恢复后会自动上传。</div>';
+    }
     if (logsResult.status === 'rejected') {
       el.innerHTML += `<div class="empty-state">连续学习天数暂时无法读取：${escapeHtml(logsResult.reason.message)}</div>`;
     }
   } catch (e) {
+    if (renderToken !== leaderboardRenderToken) return;
     el.innerHTML = `<div class="empty-state">排行榜暂时无法读取：${escapeHtml(e.message || '未知错误')}</div>`;
   }
 }

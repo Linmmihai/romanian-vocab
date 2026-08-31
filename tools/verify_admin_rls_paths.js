@@ -34,7 +34,7 @@ assertBefore(
 
 assertBefore(
   functionBlock(api, 'apiGetClassRecentLogs'),
-  "sb.rpc('admin_get_class_recent_logs', { days_count: days })",
+  "sb.rpc('admin_get_class_recent_logs', { days_count: safeDays })",
   "sb.from('daily_log').select('*')",
   'class log reads should try the admin RPC before falling back to raw daily_log reads'
 );
@@ -85,7 +85,7 @@ assert(sql.includes("revoke all on function public.handle_new_user() from authen
   assert(sql.includes(`grant execute on function public.${signature} to authenticated;`), `expected authenticated grant for ${signature}`);
 });
 
-assert(index.includes('api.js?v=20260819-scientific-quiz-v1'), 'api.js cache-busting version must move with the scientific quiz release');
-assert(serviceWorker.includes("ro-vocab-pwa-v46-scientific-quiz-v1"), 'service worker cache name must move with the scientific quiz release');
+assert(index.includes('api.js?v=20260831-leaderboard-sync-v1'), 'api.js cache-busting version must move with the leaderboard sync fix');
+assert(serviceWorker.includes("ro-vocab-pwa-v47-leaderboard-sync-v1"), 'service worker cache name must move with the leaderboard sync fix');
 
 console.log('admin RLS path verification passed');

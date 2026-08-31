@@ -18,17 +18,17 @@ const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
 
 const scriptOrder = [
-  'scheduler.js?v=20260819-scientific-quiz-v1',
-  'progress-model.js?v=20260819-scientific-quiz-v1',
-  'daily-plan.js?v=20260819-scientific-quiz-v1',
-  'taxonomy.js?v=20260819-scientific-quiz-v1',
-  'romanian-text.js?v=20260819-scientific-quiz-v1',
-  'quiz-engine.js?v=20260819-scientific-quiz-v1',
-  'api.js?v=20260819-scientific-quiz-v1',
-  'telemetry.js?v=20260819-scientific-quiz-v1',
-  'auth.js?v=20260819-scientific-quiz-v1',
-  'app.js?v=20260819-scientific-quiz-v1',
-  'pwa.js?v=20260819-scientific-quiz-v1'
+  'scheduler.js?v=20260831-leaderboard-sync-v1',
+  'progress-model.js?v=20260831-leaderboard-sync-v1',
+  'daily-plan.js?v=20260831-leaderboard-sync-v1',
+  'taxonomy.js?v=20260831-leaderboard-sync-v1',
+  'romanian-text.js?v=20260831-leaderboard-sync-v1',
+  'quiz-engine.js?v=20260831-leaderboard-sync-v1',
+  'api.js?v=20260831-leaderboard-sync-v1',
+  'telemetry.js?v=20260831-leaderboard-sync-v1',
+  'auth.js?v=20260831-leaderboard-sync-v1',
+  'app.js?v=20260831-leaderboard-sync-v1',
+  'pwa.js?v=20260831-leaderboard-sync-v1'
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -48,7 +48,7 @@ assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must inclu
 assert(serviceWorker.includes("'./quiz-engine.js'"), 'PWA app shell must include the quiz engine');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v46-scientific-quiz-v1"), 'PWA cache must advance with the scientific quiz release');
+assert(serviceWorker.includes("ro-vocab-pwa-v47-leaderboard-sync-v1"), 'PWA cache must advance with the leaderboard sync fix');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');

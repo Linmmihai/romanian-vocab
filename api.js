@@ -2042,26 +2042,42 @@ async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RET
 /**
  * 加载全班学习进度（排行榜用）
  */
+async function apiLoadPagedRows(loadPage, pageSize = PROGRESS_PAGE_SIZE) {
+  const size = Math.max(1, Number(pageSize || PROGRESS_PAGE_SIZE));
+  const rows = [];
+  for (let from = 0; ; from += size) {
+    const to = from + size - 1;
+    const { data, error } = await loadPage(from, to);
+    if (error) return { data: rows, error };
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < size) return { data: rows, error: null };
+  }
+}
+
 async function apiLoadAllProgress() {
   if (isOfflineMode()) return [];
   if (typeof sb.rpc === 'function') {
-    const { data, error } = await sb.rpc('admin_load_all_progress');
+    const { data, error } = await apiLoadPagedRows((from, to) => withTimeout(
+      sb.rpc('admin_load_all_progress')
+        .order('id', { ascending: true })
+        .range(from, to),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '全班进度读取超时'
+    ));
     if (!error) return data || [];
     if (!isMissingRpcError(error)) throw new Error(error.message);
   }
-  let all = [], from = 0;
-  while (true) {
-    const { data, error } = await sb.from('progress')
+  const { data, error } = await apiLoadPagedRows((from, to) => withTimeout(
+    sb.from('progress')
       .select('*')
-      .order('updated_at', { ascending: false })
-      .range(from, from + 999);
-    if (error) throw new Error(error.message);
-    if (!data || !data.length) break;
-    all = all.concat(data);
-    if (data.length < 1000) break;
-    from += 1000;
-  }
-  return all;
+      .order('id', { ascending: true })
+      .range(from, to),
+    PROGRESS_LOAD_TIMEOUT_MS,
+    '全班进度读取超时'
+  ));
+  if (error) throw new Error(error.message);
+  return data || [];
 }
 
 async function apiLoadClientEventSummary(days = 7) {
@@ -2849,17 +2865,31 @@ async function apiGetRecentLogs(userId, days = 14) {
  */
 async function apiGetClassRecentLogs(days = 30) {
   if (isOfflineMode()) return apiGetRecentLogs(OFFLINE_USER_ID, days);
+  const safeDays = Math.max(1, Math.min(365, Number(days) || 30));
   if (typeof sb.rpc === 'function') {
-    const { data, error } = await sb.rpc('admin_get_class_recent_logs', { days_count: days });
+    const { data, error } = await apiLoadPagedRows((from, to) => withTimeout(
+      sb.rpc('admin_get_class_recent_logs', { days_count: safeDays })
+        .order('log_date', { ascending: false })
+        .order('user_id', { ascending: true })
+        .range(from, to),
+      DAILY_STATE_TIMEOUT_MS,
+      '全班学习记录读取超时'
+    ));
     if (!error) return data || [];
     if (!isMissingRpcError(error)) throw new Error(error.message);
   }
   const since = new Date();
-  since.setDate(since.getDate() - days + 1);
+  since.setDate(since.getDate() - safeDays + 1);
   const sinceStr = getLocalDateKey(since);
-  const { data, error } = await sb.from('daily_log').select('*')
-    .gte('log_date', sinceStr)
-    .order('log_date', { ascending: false });
+  const { data, error } = await apiLoadPagedRows((from, to) => withTimeout(
+    sb.from('daily_log').select('*')
+      .gte('log_date', sinceStr)
+      .order('log_date', { ascending: false })
+      .order('user_id', { ascending: true })
+      .range(from, to),
+    DAILY_STATE_TIMEOUT_MS,
+    '全班学习记录读取超时'
+  ));
   if (error) throw new Error(error.message);
   return data || [];
 }

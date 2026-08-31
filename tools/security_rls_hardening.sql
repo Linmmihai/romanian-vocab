@@ -102,7 +102,7 @@ begin
   return query
     select *
       from public.progress
-     order by updated_at desc;
+     order by id;
 end;
 $$;
 
@@ -129,7 +129,7 @@ begin
     select *
       from public.daily_log
      where log_date >= since_date
-     order by log_date desc;
+     order by log_date desc, user_id;
 end;
 $$;
 
