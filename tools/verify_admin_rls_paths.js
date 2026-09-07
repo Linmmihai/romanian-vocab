@@ -7,6 +7,7 @@ const api = fs.readFileSync(path.join(root, 'api.js'), 'utf8');
 const sql = fs.readFileSync(path.join(root, 'tools', 'security_rls_hardening.sql'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const runtime = require('./runtime-version');
 
 function assertBefore(source, first, second, message) {
   const firstIndex = source.indexOf(first);
@@ -85,7 +86,7 @@ assert(sql.includes("revoke all on function public.handle_new_user() from authen
   assert(sql.includes(`grant execute on function public.${signature} to authenticated;`), `expected authenticated grant for ${signature}`);
 });
 
-assert(index.includes('api.js?v=20260831-leaderboard-sync-v1'), 'api.js cache-busting version must move with the leaderboard sync fix');
-assert(serviceWorker.includes("ro-vocab-pwa-v47-leaderboard-sync-v1"), 'service worker cache name must move with the leaderboard sync fix');
+assert(index.includes(runtime.script('api.js')), 'api.js cache buster must match the unified runtime version entrypoint');
+assert(serviceWorker.includes(runtime.cacheName), 'service worker cache must match the unified runtime version entrypoint');
 
 console.log('admin RLS path verification passed');

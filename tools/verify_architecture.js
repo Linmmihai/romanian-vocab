@@ -16,19 +16,25 @@ const romanianText = read('romanian-text.js');
 const quizEngine = read('quiz-engine.js');
 const telemetry = read('telemetry.js');
 const pwa = read('pwa.js');
+const runtime = require('./runtime-version');
 
 const scriptOrder = [
-  'scheduler.js?v=20260831-leaderboard-sync-v1',
-  'progress-model.js?v=20260831-leaderboard-sync-v1',
-  'daily-plan.js?v=20260831-leaderboard-sync-v1',
-  'taxonomy.js?v=20260831-leaderboard-sync-v1',
-  'romanian-text.js?v=20260831-leaderboard-sync-v1',
-  'quiz-engine.js?v=20260831-leaderboard-sync-v1',
-  'api.js?v=20260831-leaderboard-sync-v1',
-  'telemetry.js?v=20260831-leaderboard-sync-v1',
-  'auth.js?v=20260831-leaderboard-sync-v1',
-  'app.js?v=20260831-leaderboard-sync-v1',
-  'pwa.js?v=20260831-leaderboard-sync-v1'
+  runtime.script('scheduler.js'),
+  runtime.script('learning-evidence.js'),
+  runtime.script('progress-model.js'),
+  runtime.script('daily-plan.js'),
+  runtime.script('taxonomy.js'),
+  runtime.script('content-quality.js'),
+  runtime.script('romanian-text.js'),
+  runtime.script('quiz-engine.js'),
+  runtime.script('study-session.js'),
+  runtime.script('api.js'),
+  runtime.script('telemetry.js'),
+  runtime.script('auth.js'),
+  runtime.script('study-session-ui.js'),
+  runtime.script('content-quality-ui.js'),
+  runtime.script('app.js'),
+  runtime.script('pwa.js')
 ].map(script => index.indexOf(script));
 
 assert(scriptOrder.every(position => position >= 0), 'all runtime modules must be present in index.html');
@@ -48,7 +54,7 @@ assert(serviceWorker.includes("'./romanian-text.js'"), 'PWA app shell must inclu
 assert(serviceWorker.includes("'./quiz-engine.js'"), 'PWA app shell must include the quiz engine');
 assert(serviceWorker.includes("'./telemetry.js'"), 'PWA app shell must include telemetry');
 assert(serviceWorker.includes("'./pwa.js'"), 'PWA app shell must include the update controller');
-assert(serviceWorker.includes("ro-vocab-pwa-v47-leaderboard-sync-v1"), 'PWA cache must advance with the leaderboard sync fix');
+assert(serviceWorker.includes(runtime.cacheName), 'PWA cache must match the unified runtime version entrypoint');
 assert(serviceWorker.includes("'./data/grammar-courses.json'"), 'PWA app shell must include grammar course data');
 assert(serviceWorker.includes("'./data/grammar-content.json'"), 'PWA app shell must include structured grammar content');
 assert(build.includes("'data/grammar-courses.json'"), 'web build must require grammar course data');
@@ -76,3 +82,8 @@ assert(!app.includes('getProgressGrammarQr'), 'app.js must not call the removed 
 assert(!app.includes('getProgressGrammarQt'), 'app.js must not call the removed grammar-total helper');
 
 console.log('architecture verification passed');
+
+for (const file of ['learning-evidence.js', 'content-quality.js', 'study-session.js', 'study-session-ui.js', 'content-quality-ui.js']) {
+  assert(build.includes(`'${file}'`), `${file} must be built`);
+  assert(serviceWorker.includes(`'./${file}'`), `${file} must be cached for offline use`);
+}

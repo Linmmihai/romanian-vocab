@@ -32,7 +32,7 @@ await build({
   outfile: path.join(out, 'vendor', 'supabase.js')
 });
 
-const files = ['scheduler.js', 'progress-model.js', 'daily-plan.js', 'taxonomy.js', 'romanian-text.js', 'quiz-engine.js', 'api.js', 'telemetry.js', 'auth.js', 'app.js', 'pwa.js', 'manifest.webmanifest', 'sw.js'];
+const files = ['learning-evidence.js', 'content-quality.js', 'study-session.js', 'study-session-ui.js', 'content-quality-ui.js', 'scheduler.js', 'progress-model.js', 'daily-plan.js', 'taxonomy.js', 'romanian-text.js', 'quiz-engine.js', 'api.js', 'telemetry.js', 'auth.js', 'app.js', 'pwa.js', 'manifest.webmanifest', 'sw.js'];
 for (const file of files) {
   await copyFile(path.join(webRoot, file), path.join(out, file));
 }
@@ -72,6 +72,11 @@ html = html.replace(
 await writeFile(path.join(out, 'index.html'), html);
 
 const requiredFiles = [
+  'learning-evidence.js',
+  'content-quality.js',
+  'study-session.js',
+  'study-session-ui.js',
+  'content-quality-ui.js',
   'index.html',
   'scheduler.js',
   'progress-model.js',

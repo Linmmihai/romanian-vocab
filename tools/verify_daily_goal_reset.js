@@ -142,8 +142,9 @@ function simulateLoadedQueueCorrection({
   assert(app.includes('await saveTodayQueue({ forceLocal: true });'), 'an explicit fixed-goal change must authoritatively replace stale cloud queue state');
   assert(app.includes('function continueRemainingReviewsToday()'), 'after reaching the fixed target, the learner must be able to finish the remaining reviews');
   assert(index.includes('id="checkin-review-remaining"'), 'goal completion must show how many formal reviews remain');
-  assert(index.includes('app.js?v=20260831-leaderboard-sync-v1'), 'app.js cache-busting version must include the leaderboard sync fix');
-  assert(serviceWorker.includes("ro-vocab-pwa-v47-leaderboard-sync-v1"), 'service worker cache name must move with app shell behavior changes');
+  const runtime = require('./runtime-version');
+  assert(index.includes(runtime.script('app.js')), 'app cache buster must match the unified runtime version entrypoint');
+  assert(serviceWorker.includes(runtime.cacheName), 'service worker cache must match the unified runtime version entrypoint');
 }
 
 console.log('daily goal reset verification passed');

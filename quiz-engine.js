@@ -1,11 +1,14 @@
 (function (root, factory) {
-  const api = factory();
+  const contentQuality = root?.RomanianVocabContentQuality ||
+    (typeof require === 'function' ? require('./content-quality.js') : null);
+  const api = factory(contentQuality);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.RomanianVocabQuizEngine = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (contentQuality) {
   'use strict';
 
-  const TRUSTED_STATUSES = new Set(['verified', 'revised']);
+  if (!contentQuality?.isTrustedWord) throw new Error('RomanianVocabContentQuality must load before quiz-engine.js');
+  const TRUSTED_STATUSES = new Set(contentQuality.TRUSTED_NATURALNESS_STATUSES);
   const DIFFICULTY_RANK = { beginner: 1, intermediate: 2, advanced: 3 };
   const DIMENSION_LABELS = {
     translation: '词义辨认',
@@ -80,13 +83,7 @@
     return pool;
   }
 
-  function isAssessmentEligible(word) {
-    return !!(
-      clean(word?.ro) &&
-      clean(word?.zh) &&
-      TRUSTED_STATUSES.has(String(word?.naturalness_status || '').toLowerCase())
-    );
-  }
+  const isAssessmentEligible = contentQuality.isTrustedWord;
 
   function uniqueWords(words) {
     const seen = new Set();

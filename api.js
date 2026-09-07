@@ -75,6 +75,8 @@ const LEGACY_WORDS_CACHE_PREFIX = 'words_cache:';
 const PENDING_PROGRESS_RETRY_LIMIT = 25;
 const PENDING_PROGRESS_RETRY_CONCURRENCY = 5;
 const PENDING_DAILY_STATE_RETRY_LIMIT = 10;
+const LEARNING_EVIDENCE_PAGE_SIZE = 500;
+const LEARNING_EVIDENCE_BATCH_SIZE = 200;
 
 function apiNormalizedRoKey(value) {
   return String(value || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ro');
@@ -125,9 +127,28 @@ function localKey(userId, name) {
   return `${name}:${userId || OFFLINE_USER_ID}`;
 }
 
+// Pending commit values remain readable when storage is temporarily full.
+function studyCommitWrites() {
+  const writes = new Map();
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('study_commit:')) keys.push(key);
+  }
+  for (const key of keys.sort()) {
+    const record = JSON.parse(localStorage.getItem(key));
+    for (const [target, value] of record?.writes || []) writes.set(target, value);
+  }
+  return writes;
+}
+
+function readStudyStorageString(key) {
+  return studyCommitWrites().get(key) ?? localStorage.getItem(key);
+}
+
 function readJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = readStudyStorageString(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
@@ -187,6 +208,10 @@ function removeOversizedVocabularyCaches() {
 
 function criticalStorageUserId(key) {
   const prefixes = [
+    'learning_evidence:',
+    'learning_evidence_outbox:',
+    'learning_evidence_tombstone:',
+    'study_commit:',
     'daily_state_pending:',
     'progress_pending:',
     'daily_state_event:',
@@ -222,6 +247,424 @@ function writeLocalStorageString(key, value) {
     // mirror. Preserve pending events first if storage is still exhausted.
     try { localStorage.removeItem(localKey(userId, 'progress')); } catch {}
     localStorage.setItem(key, value);
+  }
+}
+
+// One durable commit record protects the progress event and its daily effects.
+// Recovery copies exact event IDs/values, so interruption and retry cannot add
+// another answer. Rebuildable progress mirrors are deliberately excluded.
+function recoverStudyCommits() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('study_commit:')) keys.push(key);
+  }
+  for (const key of keys.sort()) {
+    const record = JSON.parse(localStorage.getItem(key));
+    if (!record) continue;
+    for (const [target, value] of record.writes) writeLocalStorageString(target, value);
+    localStorage.removeItem(key);
+  }
+}
+
+function commitLocalStudyWrites(userId, eventId, writes) {
+  const commitKey = `study_commit:${userId}:${new Date().toISOString()}:${eventId}`;
+  writeLocalStorageString(commitKey, JSON.stringify({ writes }));
+  let recoveryError = null;
+  try { recoverStudyCommits(); } catch (error) { recoveryError = error; }
+  return { ok: true, recoveryError };
+}
+
+function learningEvidencePrefix(userId) {
+  return `learning_evidence:${userId || OFFLINE_USER_ID}:`;
+}
+
+function learningEvidenceOutboxPrefix(userId) {
+  return `learning_evidence_outbox:${userId || OFFLINE_USER_ID}:`;
+}
+
+function learningEvidenceTombstonePrefix(userId) {
+  return `learning_evidence_tombstone:${userId || OFFLINE_USER_ID}:`;
+}
+
+function learningEvidenceMigrationKey(userId) {
+  return localKey(userId, 'learning_evidence_outbox_v1');
+}
+
+function learningEvidenceRecordKey(userId, wordId, wordRo) {
+  return `${learningEvidencePrefix(userId)}${progressEntryKey(wordId, wordRo)}`;
+}
+
+function learningEvidenceOutboxKey(userId, eventId) {
+  return `${learningEvidenceOutboxPrefix(userId)}${eventId}`;
+}
+
+function learningEvidenceTombstoneKey(userId, eventId) {
+  return `${learningEvidenceTombstonePrefix(userId)}${eventId}`;
+}
+
+function readLearningEvidenceTombstones(userId) {
+  return new Map(storageValuesWithPrefix(learningEvidenceTombstonePrefix(userId))
+    .filter(record => record?.eventId)
+    .map(record => [String(record.eventId), record]));
+}
+
+function readPendingLearningEvidence(userId) {
+  try { recoverStudyCommits(); } catch {}
+  return storageValuesWithPrefix(learningEvidenceOutboxPrefix(userId))
+    .filter(record => record?.eventId)
+    .sort((left, right) => String(left.createdAt || '').localeCompare(String(right.createdAt || '')) ||
+      String(left.eventId).localeCompare(String(right.eventId)));
+}
+
+function normalizeLearningEvidenceEvent(event, wordId, wordRo) {
+  if (!event || typeof event !== 'object') return null;
+  const eventId = String(event.id || '').trim();
+  if (!eventId) return null;
+  return {
+    ...event,
+    id: eventId,
+    ...(event.wordId === undefined && wordId !== null && wordId !== undefined ? { wordId } : {}),
+    ...(event.wordRo === undefined && wordRo ? { wordRo } : {})
+  };
+}
+
+function createLearningEvidenceOutboxRecord(wordId, wordRo, event, deleted = false) {
+  const eventId = String(event?.id || event?.eventId || '').trim();
+  if (!eventId) return null;
+  const normalizedWordId = wordId !== null && wordId !== undefined && String(wordId).trim() !== ''
+    ? Number(wordId)
+    : null;
+  return {
+    eventId,
+    wordId: Number.isFinite(normalizedWordId) ? normalizedWordId : null,
+    wordRo: String(wordRo || event?.wordRo || '').trim(),
+    payload: deleted ? null : event,
+    deleted: !!deleted,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+    lastError: ''
+  };
+}
+
+function buildLearningEvidenceWrites(userId, wordId, wordRo, progress, replace = false, deletedEventIds = []) {
+  const key = `${learningEvidencePrefix(userId)}${progressEntryKey(wordId, wordRo)}`;
+  const stored = readJson(key, null);
+  if (!progress?.learningEvidence && !(replace && stored)) return [];
+  const engine = globalThis.RomanianVocabLearningEvidence;
+  if (!engine) throw new Error('Learning evidence module is unavailable');
+  const tombstones = readLearningEvidenceTombstones(userId);
+  const requestedDeletes = new Set((deletedEventIds || []).map(String).filter(Boolean));
+  const previous = engine.normalizeEvidence(stored?.evidence || {});
+  const incoming = engine.normalizeEvidence(progress?.learningEvidence || {});
+  const previousEvents = previous.events.filter(event => event?.id &&
+    !tombstones.has(String(event.id)) && !requestedDeletes.has(String(event.id)));
+  const incomingEvents = incoming.events
+    .map(event => normalizeLearningEvidenceEvent(event, wordId, wordRo))
+    .filter(event => event && !tombstones.has(event.id) && !requestedDeletes.has(event.id));
+  const previousIds = new Set(previousEvents.map(event => String(event.id)));
+  // Evidence is an event set independent from the mutable progress snapshot.
+  // A correction may target one answer while newer events from another device
+  // already exist locally, so only explicit event IDs may be removed.
+  const evidence = engine.mergeEvidence(
+    { ...previous, events: previousEvents },
+    { ...incoming, events: incomingEvents }
+  );
+  const writes = [[key, JSON.stringify({ wordId, wordRo, evidence })]];
+
+  if (userId !== OFFLINE_USER_ID) {
+    for (const event of incomingEvents) {
+      if (previousIds.has(event.id)) continue;
+      const record = createLearningEvidenceOutboxRecord(wordId, wordRo, event, false);
+      if (record) writes.push([learningEvidenceOutboxKey(userId, event.id), JSON.stringify(record)]);
+    }
+  }
+  if (replace && requestedDeletes.size) {
+    const allEvents = [...previous.events, ...incoming.events];
+    for (const eventId of requestedDeletes) {
+      const event = allEvents.find(candidate => String(candidate?.id || '') === eventId) || { id: eventId };
+      const record = createLearningEvidenceOutboxRecord(wordId, wordRo, event, true);
+      if (!record) continue;
+      const tombstone = {
+        eventId,
+        wordId: record.wordId,
+        wordRo: record.wordRo,
+        deleted: true,
+        changedAt: record.createdAt
+      };
+      writes.push([learningEvidenceTombstoneKey(userId, eventId), JSON.stringify(tombstone)]);
+      if (userId !== OFFLINE_USER_ID) {
+        writes.push([learningEvidenceOutboxKey(userId, eventId), JSON.stringify(record)]);
+      }
+    }
+  }
+  return writes;
+}
+
+function apiReadLearningEvidence(userId) {
+  const tombstones = readLearningEvidenceTombstones(userId);
+  const engine = globalThis.RomanianVocabLearningEvidence;
+  return Object.fromEntries(storageValuesWithPrefix(learningEvidencePrefix(userId))
+    .map(record => ({
+      ...record,
+      evidence: engine?.normalizeEvidence
+        ? engine.normalizeEvidence({
+            ...(record?.evidence || {}),
+            events: (record?.evidence?.events || []).filter(event => event?.id && !tombstones.has(String(event.id)))
+          })
+        : record?.evidence
+    }))
+    .filter(record => record?.evidence?.events?.length)
+    .map(record => [progressEntryKey(record.wordId, record.wordRo), record]));
+}
+
+function attachLocalLearningEvidence(userId, map) {
+  Object.values(map || {}).forEach(progress => {
+    if (progress && typeof progress === 'object') delete progress.learningEvidence;
+  });
+  for (const [key, record] of Object.entries(apiReadLearningEvidence(userId))) {
+    map[key] = {
+      ...(map[key] || { word_id: record.wordId, word_ro: record.wordRo }),
+      learningEvidence: record.evidence
+    };
+  }
+  return map;
+}
+
+function createLearningEvidenceEventId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `evidence:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+}
+
+function migrateLegacyLearningEvidenceToOutbox(userId) {
+  if (!userId || userId === OFFLINE_USER_ID || isOfflineMode()) return { migrated: 0, skipped: true };
+  const markerKey = learningEvidenceMigrationKey(userId);
+  if (localStorage.getItem(markerKey) === '1') return { migrated: 0, skipped: true };
+  try { recoverStudyCommits(); } catch {}
+  const tombstones = readLearningEvidenceTombstones(userId);
+  const engine = globalThis.RomanianVocabLearningEvidence;
+  if (!engine) throw new Error('Learning evidence module is unavailable');
+  let migrated = 0;
+  for (const record of storageValuesWithPrefix(learningEvidencePrefix(userId))) {
+    const events = (record?.evidence?.events || []).map(event => {
+      const eventId = String(event?.id || '').trim() || createLearningEvidenceEventId();
+      return normalizeLearningEvidenceEvent({ ...event, id: eventId }, record.wordId, record.wordRo);
+    }).filter(Boolean);
+    const normalized = engine.normalizeEvidence({ ...(record?.evidence || {}), events });
+    const recordWrites = [[
+      learningEvidenceRecordKey(userId, record.wordId, record.wordRo),
+      JSON.stringify({ wordId: record.wordId, wordRo: record.wordRo, evidence: normalized })
+    ]];
+    for (const event of normalized.events) {
+      if (tombstones.has(event.id) || readStudyStorageString(learningEvidenceOutboxKey(userId, event.id))) continue;
+      const pending = createLearningEvidenceOutboxRecord(record.wordId, record.wordRo, event, false);
+      if (!pending) continue;
+      recordWrites.push([learningEvidenceOutboxKey(userId, event.id), JSON.stringify(pending)]);
+      migrated++;
+    }
+    if (recordWrites.length > 1 || events.some((event, index) => event.id !== record?.evidence?.events?.[index]?.id)) {
+      const status = commitLocalStudyWrites(userId, `evidence-migration-${createLearningEvidenceEventId()}`, recordWrites);
+      if (status.recoveryError) throw status.recoveryError;
+    }
+  }
+  writeLocalStorageString(markerKey, '1');
+  return { migrated };
+}
+
+function removeLearningEvidenceEventFromRecords(records, eventId) {
+  let changed = false;
+  for (const record of records.values()) {
+    const events = record?.evidence?.events || [];
+    const filtered = events.filter(event => String(event?.id || '') !== eventId);
+    if (filtered.length === events.length) continue;
+    record.evidence = globalThis.RomanianVocabLearningEvidence.normalizeEvidence({
+      ...(record.evidence || {}),
+      events: filtered
+    });
+    changed = true;
+  }
+  return changed;
+}
+
+function applyCloudLearningEvidenceRows(userId, rows = []) {
+  const engine = globalThis.RomanianVocabLearningEvidence;
+  if (!engine) throw new Error('Learning evidence module is unavailable');
+  const records = new Map(storageValuesWithPrefix(learningEvidencePrefix(userId))
+    .map(record => [progressEntryKey(record.wordId, record.wordRo), { ...record }]));
+  const tombstones = readLearningEvidenceTombstones(userId);
+  const touchedRecords = new Set();
+  const newTombstones = [];
+
+  for (const row of rows || []) {
+    const eventId = String(row?.event_id || row?.eventId || '').trim();
+    if (!eventId) continue;
+    const deleted = !!row.deleted;
+    if (deleted) {
+      const tombstone = {
+        eventId,
+        wordId: row.word_id ?? row.wordId ?? null,
+        wordRo: row.word_ro || row.wordRo || '',
+        deleted: true,
+        changedAt: row.changed_at || row.changedAt || new Date().toISOString()
+      };
+      tombstones.set(eventId, tombstone);
+      newTombstones.push(tombstone);
+      for (const [key, record] of records) {
+        const before = record?.evidence?.events?.length || 0;
+        removeLearningEvidenceEventFromRecords(new Map([[key, record]]), eventId);
+        if ((record?.evidence?.events?.length || 0) !== before) touchedRecords.add(key);
+      }
+      continue;
+    }
+    if (tombstones.has(eventId)) continue;
+    const payload = normalizeLearningEvidenceEvent(
+      { ...(row.payload || {}), id: eventId },
+      row.word_id ?? row.wordId ?? row.payload?.wordId ?? null,
+      row.word_ro || row.wordRo || row.payload?.wordRo || ''
+    );
+    if (!payload) continue;
+    const wordId = row.word_id ?? row.wordId ?? payload.wordId ?? null;
+    const wordRo = row.word_ro || row.wordRo || payload.wordRo || '';
+    const key = progressEntryKey(wordId, wordRo);
+    if (!key) continue;
+    const existing = records.get(key) || { wordId, wordRo, evidence: {} };
+    existing.wordId = existing.wordId ?? wordId;
+    existing.wordRo = existing.wordRo || wordRo;
+    existing.evidence = engine.mergeEvidence(existing.evidence, { events: [payload] });
+    records.set(key, existing);
+    touchedRecords.add(key);
+  }
+
+  for (const tombstone of newTombstones) {
+    writeLocalStorageString(
+      learningEvidenceTombstoneKey(userId, tombstone.eventId),
+      JSON.stringify(tombstone)
+    );
+  }
+  for (const key of touchedRecords) {
+    const record = records.get(key);
+    if (!record) continue;
+    writeLocalStorageString(
+      learningEvidenceRecordKey(userId, record.wordId, record.wordRo),
+      JSON.stringify(record)
+    );
+  }
+  return { rows: rows.length, tombstones: newTombstones.length };
+}
+
+function importLearningEvidenceSyncState(userId, state = {}) {
+  const tombstones = (Array.isArray(state.tombstones) ? state.tombstones : [])
+    .map(item => ({
+      event_id: String(item?.eventId || item?.event_id || '').trim(),
+      word_id: item?.wordId ?? item?.word_id ?? null,
+      word_ro: item?.wordRo || item?.word_ro || '',
+      deleted: true,
+      changed_at: item?.changedAt || item?.changed_at || new Date().toISOString()
+    }))
+    .filter(item => item.event_id);
+  if (tombstones.length) applyCloudLearningEvidenceRows(userId, tombstones);
+
+  const localTombstones = readLearningEvidenceTombstones(userId);
+  const pending = Array.isArray(state.pending) ? state.pending : [];
+  let imported = 0;
+  for (const item of pending) {
+    const eventId = String(item?.eventId || item?.event_id || item?.payload?.id || '').trim();
+    if (!eventId) continue;
+    const deleted = !!item.deleted || localTombstones.has(eventId);
+    const wordId = item.wordId ?? item.word_id ?? item.payload?.wordId ?? null;
+    const wordRo = item.wordRo || item.word_ro || item.payload?.wordRo || '';
+    if (!deleted && item.payload) {
+      applyCloudLearningEvidenceRows(userId, [{
+        event_id: eventId,
+        word_id: wordId,
+        word_ro: wordRo,
+        payload: { ...item.payload, id: eventId },
+        deleted: false
+      }]);
+    }
+    if (userId !== OFFLINE_USER_ID) {
+      const record = createLearningEvidenceOutboxRecord(
+        wordId,
+        wordRo,
+        deleted ? { id: eventId } : { ...(item.payload || {}), id: eventId },
+        deleted
+      );
+      if (record) writeLocalStorageString(learningEvidenceOutboxKey(userId, eventId), JSON.stringify(record));
+    }
+    imported++;
+  }
+  // A backup may contain acknowledged tombstones that are absent from its
+  // pending queue. Requeue them on an online device until this account's cloud
+  // independently confirms the permanent deletion.
+  if (userId !== OFFLINE_USER_ID) {
+    for (const item of tombstones) {
+      const record = createLearningEvidenceOutboxRecord(
+        item.word_id,
+        item.word_ro,
+        { id: item.event_id },
+        true
+      );
+      if (record) writeLocalStorageString(learningEvidenceOutboxKey(userId, item.event_id), JSON.stringify(record));
+    }
+  }
+  return { imported, tombstones: tombstones.length };
+}
+
+function commitStudyAnswer(userId, entry, daily = null) {
+  try {
+    recoverStudyCommits();
+    const now = new Date().toISOString();
+    const key = progressEntryKey(entry.wordId, entry.wordRo);
+    const event = createProgressPendingEvent(key, entry.baseProgress, entry.progress);
+    const { learningEvidence: _localEvidence, ...syncProgress } = entry.progress;
+    const pendingProgress = {
+      ...syncProgress, word_id: entry.wordId, word_ro: entry.wordRo,
+      pendingSync: true, pendingSyncAt: now,
+      pendingSyncToken: createProgressSyncToken(key), pendingCorrection: false, pendingDelete: false
+    };
+    const writes = [[`${progressEventJournalPrefix(userId)}${event.eventId}`, JSON.stringify({
+      userId, wordId: entry.wordId, wordRo: entry.wordRo, event,
+      pendingProgress, memory: entry.memory, createdAt: now
+    })]];
+    writes.push(...buildLearningEvidenceWrites(userId, entry.wordId, entry.wordRo, entry.progress));
+    let nextSequence = dailySyncClientSequence;
+    if (daily) {
+      const date = daily.date;
+      const eventId = createDailySyncToken('answer', date);
+      const logs = readJson(localKey(userId, 'daily_log'), {});
+      // Deltas describe this answer, not a possibly newer mirror from another tab.
+      const baseQueue = daily.baseQueue;
+      const baseLog = daily.baseLog;
+      const queue = { ...daily.queue, updated_at: now, sync_token: eventId };
+      const log = { ...daily.log, user_id: userId, log_date: date, updated_at: now, sync_token: eventId, local: true };
+      nextSequence++;
+      const dailyEvent = {
+        eventId, userId, date, clientId: DAILY_SYNC_CLIENT_ID, clientSeq: nextSequence,
+        parts: ['queue', 'log'],
+        base: { queue: normalizeDailyQueueSyncState(baseQueue), log: normalizeDailyLogSyncState(baseLog) },
+        target: { queue: normalizeDailyQueueSyncState(queue), log: normalizeDailyLogSyncState(log) },
+        tokens: { queue: eventId, log: eventId },
+        targetUpdatedAt: { queue: now, log: now }, createdAt: now, attempts: 0
+      };
+      const pending = readPendingDailyState(userId);
+      pending[date] = { queue, log, pendingSyncAt: now, updatedAt: now, attempts: 0 };
+      writes.push(
+        [`${dailyStateEventPrefix(userId)}${eventId}`, JSON.stringify(dailyEvent)],
+        [dailyStatePendingKey(userId), JSON.stringify(pending)],
+        [getLocalQueueKey(userId, date), JSON.stringify(queue)],
+        [localKey(userId, 'daily_log'), JSON.stringify({ ...logs, [date]: log })],
+        ...(daily.localWrites || []).map(([target, value]) => [target, JSON.stringify(value)])
+      );
+    }
+    let { recoveryError } = commitLocalStudyWrites(userId, event.eventId, writes);
+    // From this point the answer is durable, even if mirror recovery is deferred.
+    dailySyncClientSequence = nextSequence;
+    if (!recoveryError) {
+      try { writeLocalProgressEntry(userId, entry.wordId, entry.wordRo, entry.progress); } catch (error) { recoveryError = error; }
+    }
+    return { ok: true, event, recoveryError };
+  } catch (error) {
+    return { ok: false, error };
   }
 }
 
@@ -294,17 +737,19 @@ let dailySyncClientSequence = 0;
 const dailyStateSyncChains = new Map();
 
 function storageValuesWithPrefix(prefix) {
-  const values = [];
+  const values = new Map();
   try {
     for (let index = 0; index < Number(localStorage.length || 0); index++) {
       const key = localStorage.key(index);
       if (!key || !key.startsWith(prefix)) continue;
       const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      try { values.push(JSON.parse(raw)); } catch {}
+      if (raw) { try { values.set(key, JSON.parse(raw)); } catch {} }
+    }
+    for (const [key, raw] of studyCommitWrites()) {
+      if (key.startsWith(prefix)) values.set(key, JSON.parse(raw));
     }
   } catch {}
-  return values;
+  return [...values.values()];
 }
 
 function normalizeDailyQueueSyncState(queue = {}) {
@@ -368,6 +813,7 @@ function createDailyStateEvent(userId, date, part, basePayload, targetPayload) {
 }
 
 function readPendingDailyEvents(userId) {
+  try { recoverStudyCommits(); } catch {}
   return storageValuesWithPrefix(dailyStateEventPrefix(userId))
     .filter(event => event?.eventId && event?.date)
     .sort((left, right) => {
@@ -390,9 +836,9 @@ function clearPendingDailyEvent(userId, eventId) {
   try { localStorage.removeItem(`${dailyStateEventPrefix(userId)}${eventId}`); } catch {}
 }
 
-function writeProgressEventJournal(userId, wordId, wordRo, event, pendingProgress = {}, memory = {}) {
+function writeProgressEventJournal(userId, wordId, wordRo, event, pendingProgress = {}, memory = {}, evidenceDeletedEventIds = []) {
   if (!event?.eventId) return { ok: false, error: new Error('Missing progress event id') };
-  const { pendingEvents: _embeddedEvents, ...pendingSnapshot } = pendingProgress || {};
+  const { pendingEvents: _embeddedEvents, learningEvidence: _localEvidence, ...pendingSnapshot } = pendingProgress || {};
   const record = {
     userId,
     wordId: wordId !== null && wordId !== undefined ? Number(wordId) : null,
@@ -406,7 +852,20 @@ function writeProgressEventJournal(userId, wordId, wordRo, event, pendingProgres
     createdAt: event.occurredAt || new Date().toISOString()
   };
   try {
-    writeLocalStorageString(`${progressEventJournalPrefix(userId)}${event.eventId}`, JSON.stringify(record));
+    const journalWrite = [`${progressEventJournalPrefix(userId)}${event.eventId}`, JSON.stringify(record)];
+    const evidenceWrites = buildLearningEvidenceWrites(
+      userId,
+      wordId,
+      wordRo,
+      pendingProgress,
+      !!(pendingProgress.pendingCorrection || pendingProgress.pendingDelete),
+      evidenceDeletedEventIds
+    );
+    if (evidenceWrites.length) {
+      const status = commitLocalStudyWrites(userId, event.eventId, [journalWrite, ...evidenceWrites]);
+      return { ...status, record };
+    }
+    writeLocalStorageString(...journalWrite);
     return { ok: true, record };
   } catch (error) {
     return { ok: false, error };
@@ -544,6 +1003,7 @@ function readProgressMemoryBackup(userId) {
 }
 
 function readPendingProgress(userId) {
+  try { recoverStudyCommits(); } catch {}
   const pending = readJson(progressPendingKey(userId), {});
   for (const record of readProgressEventJournal(userId)) {
     const key = progressEntryKey(record.wordId, record.wordRo);
@@ -576,6 +1036,7 @@ function hasPendingDailyState(userId) {
 
 function apiGetPendingSyncSummary(userId) {
   const pendingProgress = readPendingProgress(userId);
+  const pendingEvidence = readPendingLearningEvidence(userId);
   const pendingDaily = readPendingDailyState(userId);
   const pendingDailyEvents = readPendingDailyEvents(userId);
   const dailyEntries = Object.values(pendingDaily || {}).filter(entry => entry?.queue || entry?.log);
@@ -585,22 +1046,25 @@ function apiGetPendingSyncSummary(userId) {
   const dailyCount = pendingDailyEvents.length || legacyDailyCount;
   const timestamps = [
     ...Object.values(pendingProgress || {}).map(entry => entry?.pendingSyncAt),
+    ...pendingEvidence.map(entry => entry?.createdAt),
     ...dailyEntries.map(entry => entry?.pendingSyncAt),
     ...pendingDailyEvents.map(event => event?.createdAt)
   ].filter(Boolean).sort();
-  const errors = [...dailyEntries, ...pendingDailyEvents]
+  const errors = [...dailyEntries, ...pendingDailyEvents, ...pendingEvidence]
     .map(entry => entry?.lastError)
     .filter(Boolean);
   const lastError = errors.length ? errors[errors.length - 1] : '';
   const progressCount = Object.keys(pendingProgress || {}).length;
+  const evidenceCount = pendingEvidence.length;
   return {
     progressCount,
+    evidenceCount,
     dailyCount,
     dailyDateCount: new Set([
       ...Object.keys(pendingDaily || {}).filter(date => pendingDaily[date]?.queue || pendingDaily[date]?.log),
       ...pendingDailyEvents.map(event => event.date)
     ]).size,
-    totalCount: progressCount + dailyCount,
+    totalCount: progressCount + evidenceCount + dailyCount,
     oldestPendingAt: timestamps[0] || null,
     lastError
   };
@@ -717,7 +1181,7 @@ function readLocalProgressFallback(userId) {
       map[nextKey] = mergeStoredProgress(map[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
     }
   });
-  return map;
+  return attachLocalLearningEvidence(userId, map);
 }
 
 function writeLocalProgressSnapshot(userId, progressMap = {}) {
@@ -771,7 +1235,7 @@ function writePendingProgress(userId, wordId, wordRo, progress = {}, baseProgres
     writeJson(progressPendingKey(userId), pending);
     return { ok: true };
   } catch (error) {
-    return { ok: false, error };
+    return { ok: true, mirrorError: error };
   }
 }
 
@@ -807,7 +1271,7 @@ function queueProgressForSync(userId, wordId, wordRo, progress = {}, memory = {}
   };
 }
 
-function queueProgressCorrectionForSync(userId, wordId, wordRo, progress = null, memory = {}) {
+function queueProgressCorrectionForSync(userId, wordId, wordRo, progress = null, memory = {}, options = {}) {
   const key = progressEntryKey(wordId, wordRo);
   if (!userId || !key) return { ok: false, error: new Error('Missing progress identity') };
   const localProgress = readJson(localKey(userId, 'progress'), {});
@@ -856,7 +1320,8 @@ function queueProgressCorrectionForSync(userId, wordId, wordRo, progress = null,
     resolvedWordRo,
     correctionEvent,
     pendingProgress[key],
-    memory
+    memory,
+    options.evidenceDeletedEventIds || []
   );
   if (!journalStatus.ok) return journalStatus;
   try {
@@ -1090,6 +1555,7 @@ function writeAuthoritativeDailyState(userId, date, cloudState = {}) {
 }
 
 async function syncDailyStateEvent(userId, event) {
+  recoverStudyCommits();
   const { data, error } = await withTimeout(
     sb.rpc('apply_daily_state_sync_event', {
       p_event_id: event.eventId,
@@ -1320,63 +1786,7 @@ function mergeStoredProgress(existing = null, incoming = {}, backup = {}) {
 
 function mergeCloudProgress(localProgress = {}, cloudRow = null) {
   const cloudProgress = cloudRow ? rowToProgress(cloudRow) : {};
-  const qr = Math.max(Number(localProgress.qr || 0), Number(cloudProgress.qr || 0));
-  const qt = Math.max(Number(localProgress.qt || 0), Number(cloudProgress.qt || 0), qr);
-  const reviewStage = Math.max(
-    RomanianVocabScheduler.getReviewStage(localProgress),
-    RomanianVocabScheduler.getReviewStage(cloudProgress)
-  );
-  const wrongCount = Math.max(Number(localProgress.wrongCount || 0), Number(cloudProgress.wrongCount || 0));
-  const errorStreak = Math.max(Number(localProgress.errorStreak || 0), Number(cloudProgress.errorStreak || 0));
-  const correctStreakSinceWrong = Math.max(Number(localProgress.correctStreakSinceWrong || 0), Number(cloudProgress.correctStreakSinceWrong || 0));
-  const grammarQr = Math.max(Number(localProgress.grammarQr || 0), Number(cloudProgress.grammarQr || 0));
-  const grammarQt = Math.max(Number(localProgress.grammarQt || 0), Number(cloudProgress.grammarQt || 0), grammarQr);
-  const lastReviewedAt = RomanianVocabProgressModel.newerIso(localProgress.lastReviewedAt, cloudProgress.lastReviewedAt) || new Date().toISOString();
-  const lastWrongAt = RomanianVocabProgressModel.newerIso(localProgress.lastWrongAt, cloudProgress.lastWrongAt);
-  const weakClearedAt = RomanianVocabProgressModel.newerIso(localProgress.weakClearedAt, cloudProgress.weakClearedAt);
-  const wasMasteredAt = RomanianVocabProgressModel.newerIso(localProgress.wasMasteredAt, cloudProgress.wasMasteredAt);
-  const {
-    existingScheduler: cloudScheduler,
-    incomingScheduler: localScheduler,
-    schedulerBase
-  } = RomanianVocabProgressModel.selectSchedulerBase(cloudProgress, localProgress);
-  const nextReviewAt = RomanianVocabProgressModel.newerIso(
-    localProgress.nextReviewAt || localProgress.nextReview,
-    cloudProgress.nextReviewAt || cloudProgress.nextReview
-  ) || lastReviewedAt;
-  const dueAt = schedulerBase.dueAt || nextReviewAt;
-  const merged = {
-    ...cloudProgress,
-    ...localProgress,
-    seen: !!(localProgress.seen || cloudProgress.seen || localProgress.known || cloudProgress.known || qt || reviewStage),
-    seenViaCard: !!(localProgress.seenViaCard || cloudProgress.seenViaCard),
-    known: !!(localProgress.known || cloudProgress.known || qr > 0 || reviewStage > 0),
-    qr,
-    qt,
-    grammarQr,
-    grammarQt,
-    reviewStage,
-    reviewCount: reviewStage,
-    nextReviewAt,
-    dueAt,
-    cardState: schedulerBase.cardState || 'new',
-    intervalDays: Number(schedulerBase.intervalDays || 0),
-    memoryStrength: Number(schedulerBase.memoryStrength || 0),
-    reps: Math.max(Number(localScheduler.reps || 0), Number(cloudScheduler.reps || 0)),
-    correctCount: Math.max(Number(localScheduler.correctCount || 0), Number(cloudScheduler.correctCount || 0)),
-    fuzzyCount: Math.max(Number(localScheduler.fuzzyCount || 0), Number(cloudScheduler.fuzzyCount || 0)),
-    forgetCount: Math.max(Number(localScheduler.forgetCount || 0), Number(cloudScheduler.forgetCount || 0)),
-    lapses: Math.max(Number(localScheduler.lapses || 0), Number(cloudScheduler.lapses || 0)),
-    recentResults: Array.isArray(schedulerBase.recentResults) ? schedulerBase.recentResults : [],
-    needsReinforcement: !!schedulerBase.needsReinforcement,
-    lastReviewedAt,
-    wasMasteredAt,
-    wrongCount,
-    errorStreak,
-    correctStreakSinceWrong,
-    lastWrongAt,
-    weakClearedAt
-  };
+  const merged = RomanianVocabProgressModel.mergeEntries(cloudProgress, localProgress);
   merged.level = RomanianVocabProgressModel.normalizeLevel(merged);
   return merged;
 }
@@ -1747,6 +2157,170 @@ async function apiDeleteWord(wordId) {
 
 // ── 学习进度 ──────────────────────────────────────────────
 
+async function apiLoadCloudLearningEvidenceRows(userId) {
+  const rows = [];
+  for (let from = 0; ; from += LEARNING_EVIDENCE_PAGE_SIZE) {
+    const to = from + LEARNING_EVIDENCE_PAGE_SIZE - 1;
+    const { data, error } = await withTimeout(
+      sb.from('learning_evidence_events')
+        .select('user_id,event_id,word_id,word_ro,payload,deleted,changed_at,created_at')
+        .eq('user_id', userId)
+        .order('event_id', { ascending: true })
+        .range(from, to),
+      PROGRESS_LOAD_TIMEOUT_MS,
+      '云端学习证据读取超时'
+    );
+    if (error) throw new Error(error.message || '云端学习证据读取失败');
+    rows.push(...(data || []));
+    if (!data || data.length < LEARNING_EVIDENCE_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+async function apiLoadAndMergeLearningEvidence(userId) {
+  if (isOfflineMode()) return { rows: 0, tombstones: 0, skipped: true };
+  migrateLegacyLearningEvidenceToOutbox(userId);
+  const rows = await apiLoadCloudLearningEvidenceRows(userId);
+  return applyCloudLearningEvidenceRows(userId, rows);
+}
+
+function sameLearningEvidenceOutboxRecord(current, expected) {
+  if (!current || !expected || String(current.eventId) !== String(expected.eventId)) return false;
+  if (!!current.deleted !== !!expected.deleted) return false;
+  if (current.deleted) return true;
+  return JSON.stringify(current.payload || null) === JSON.stringify(expected.payload || null);
+}
+
+function clearConfirmedLearningEvidenceOutbox(userId, expected) {
+  const key = learningEvidenceOutboxKey(userId, expected.eventId);
+  const current = readJson(key, null);
+  if (!sameLearningEvidenceOutboxRecord(current, expected)) return false;
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function markLearningEvidenceOutboxError(userId, records, error) {
+  const message = error?.message || String(error || '同步失败');
+  for (const record of records || []) {
+    const key = learningEvidenceOutboxKey(userId, record.eventId);
+    const current = readJson(key, null);
+    if (!sameLearningEvidenceOutboxRecord(current, record)) continue;
+    try {
+      writeLocalStorageString(key, JSON.stringify({
+        ...current,
+        attempts: Number(current.attempts || 0) + 1,
+        lastError: message
+      }));
+    } catch {}
+  }
+}
+
+async function retryPendingLearningEvidenceBatch(userId, limit = LEARNING_EVIDENCE_BATCH_SIZE) {
+  if (isOfflineMode()) return { attempted: 0, saved: 0, failed: 0, remaining: 0 };
+  migrateLegacyLearningEvidenceToOutbox(userId);
+  const pending = readPendingLearningEvidence(userId);
+  const batch = pending.slice(0, Math.max(1, Math.min(
+    LEARNING_EVIDENCE_BATCH_SIZE,
+    Number(limit || LEARNING_EVIDENCE_BATCH_SIZE)
+  )));
+  if (!batch.length) return { attempted: 0, saved: 0, failed: 0, remaining: 0, totalPending: 0 };
+  const payload = batch.map(record => ({
+    event_id: record.eventId,
+    ...(record.wordId !== null && record.wordId !== undefined ? { word_id: Number(record.wordId) } : {}),
+    ...(record.wordRo ? { word_ro: record.wordRo } : {}),
+    ...(!record.deleted ? { payload: record.payload } : {}),
+    deleted: !!record.deleted
+  }));
+  let data;
+  let error;
+  try {
+    ({ data, error } = await withTimeout(
+      sb.rpc('apply_learning_evidence_batch', { p_events: payload }),
+      PROGRESS_SAVE_TIMEOUT_MS,
+      '云端学习证据保存超时'
+    ));
+  } catch (requestError) {
+    markLearningEvidenceOutboxError(userId, batch, requestError);
+    return {
+      attempted: batch.length,
+      saved: 0,
+      failed: batch.length,
+      remaining: readPendingLearningEvidence(userId).length,
+      totalPending: pending.length,
+      error: requestError
+    };
+  }
+  if (error) {
+    const requestError = new Error(error.message || '云端学习证据保存失败');
+    markLearningEvidenceOutboxError(userId, batch, requestError);
+    return {
+      attempted: batch.length,
+      saved: 0,
+      failed: batch.length,
+      remaining: readPendingLearningEvidence(userId).length,
+      totalPending: pending.length,
+      error: requestError
+    };
+  }
+  const results = Array.isArray(data?.results) ? data.results : [];
+  const resultById = new Map(results.map(row => [String(row?.event_id || row?.eventId || ''), row]));
+  const confirmedRows = batch
+    .map(record => resultById.get(String(record.eventId)))
+    .filter(Boolean);
+  try {
+    if (confirmedRows.length) applyCloudLearningEvidenceRows(userId, confirmedRows);
+  } catch (localError) {
+    markLearningEvidenceOutboxError(userId, batch, localError);
+    return {
+      attempted: batch.length,
+      saved: 0,
+      failed: batch.length,
+      remaining: readPendingLearningEvidence(userId).length,
+      totalPending: pending.length,
+      error: localError
+    };
+  }
+  let saved = 0;
+  for (const record of batch) {
+    if (resultById.has(String(record.eventId)) && clearConfirmedLearningEvidenceOutbox(userId, record)) saved++;
+  }
+  const remaining = readPendingLearningEvidence(userId).length;
+  const failed = Math.max(0, batch.length - saved);
+  if (failed) {
+    markLearningEvidenceOutboxError(
+      userId,
+      batch.filter(record => !resultById.has(String(record.eventId))),
+      new Error('云端未返回完整的学习证据确认')
+    );
+  }
+  return { attempted: batch.length, saved, failed, remaining, totalPending: pending.length };
+}
+
+async function apiRetryPendingLearningEvidence(userId, limit = LEARNING_EVIDENCE_BATCH_SIZE) {
+  if (isOfflineMode()) return { attempted: 0, saved: 0, failed: 0, remaining: 0, totalPending: 0 };
+  migrateLegacyLearningEvidenceToOutbox(userId);
+  const requested = Math.max(1, Number(limit || LEARNING_EVIDENCE_BATCH_SIZE));
+  const totalPending = readPendingLearningEvidence(userId).length;
+  const aggregate = { attempted: 0, saved: 0, failed: 0, remaining: totalPending, totalPending };
+  while (aggregate.attempted < requested && aggregate.remaining > 0) {
+    const result = await retryPendingLearningEvidenceBatch(
+      userId,
+      Math.min(LEARNING_EVIDENCE_BATCH_SIZE, requested - aggregate.attempted)
+    );
+    aggregate.attempted += Number(result.attempted || 0);
+    aggregate.saved += Number(result.saved || 0);
+    aggregate.failed += Number(result.failed || 0);
+    aggregate.remaining = Number(result.remaining || 0);
+    if (result.error) aggregate.error = result.error;
+    if (result.failed || !result.attempted) break;
+  }
+  return aggregate;
+}
+
 async function apiLoadCloudProgressRows(userId) {
   const rows = [];
   for (let from = 0; ; from += PROGRESS_PAGE_SIZE) {
@@ -1774,16 +2348,22 @@ async function apiLoadCloudProgressRows(userId) {
  */
 async function apiLoadProgress(userId) {
   if (isOfflineMode()) return markProgressSource(readLocalProgressFallback(userId), 'offline');
-  let data = null;
-  let error = null;
-  try {
-    data = await apiLoadCloudProgressRows(userId);
-  } catch (loadError) {
-    error = loadError;
-  }
+  const [progressLoad, evidenceLoad] = await Promise.allSettled([
+    apiLoadCloudProgressRows(userId),
+    apiLoadAndMergeLearningEvidence(userId)
+  ]);
+  const data = progressLoad.status === 'fulfilled' ? progressLoad.value : null;
+  const error = progressLoad.status === 'rejected' ? progressLoad.reason : null;
+  const evidenceError = evidenceLoad.status === 'rejected' ? evidenceLoad.reason : null;
   if (error) {
     const fallback = readLocalProgressFallback(userId);
-    if (Object.keys(fallback).length) return markProgressSource(fallback, 'localFallback', error.message);
+    if (Object.keys(fallback).length) {
+      const marked = markProgressSource(fallback, 'localFallback', error.message);
+      if (evidenceError) {
+        try { Object.defineProperty(marked, '__learningEvidenceSyncError', { value: evidenceError.message || String(evidenceError), enumerable: false }); } catch {}
+      }
+      return marked;
+    }
     throw new Error(error.message);
   }
   const memoryBackup = readProgressMemoryBackup(userId);
@@ -1815,8 +2395,13 @@ async function apiLoadProgress(userId) {
       map[nextKey] = mergeStoredProgress(map[nextKey], { ...progress, word_id: wordId, word_ro: wordRo, pendingSync: true }, memoryBackup[nextKey] || memoryBackup[key]);
     }
   });
+  attachLocalLearningEvidence(userId, map);
   writeLocalProgressSnapshot(userId, map);
-  return markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
+  const marked = markProgressSource(map, Object.keys(pendingProgress).length ? 'cloudWithPending' : 'cloud');
+  if (evidenceError) {
+    try { Object.defineProperty(marked, '__learningEvidenceSyncError', { value: evidenceError.message || String(evidenceError), enumerable: false }); } catch {}
+  }
+  return marked;
 }
 
 async function apiVerifyProgressState(userId, expectedMap = {}) {
@@ -1847,6 +2432,7 @@ async function apiVerifyProgressState(userId, expectedMap = {}) {
 }
 
 async function apiApplyProgressSyncEvent(wordId, wordRo, event) {
+  recoverStudyCommits();
   const { data, error } = await withTimeout(
     sb.rpc('apply_progress_sync_event', {
       p_event_id: event.eventId,
@@ -2190,6 +2776,8 @@ async function apiSaveProgress(userId, wordId, wordRo, known, qr, qt, level, rev
     needs_reinforcement: !!scheduler.needsReinforcement
   };
   if (isOfflineMode()) {
+    const evidenceWrites = buildLearningEvidenceWrites(userId, stableWordId, wordRo, options.progress || {});
+    evidenceWrites.forEach(write => writeLocalStorageString(...write));
     const map = readJson(localKey(userId, 'progress'), {});
     const key = progressEntryKey(stableWordId, wordRo);
     map[key] = rowToProgress({ ...schedulerPayload });
@@ -2273,7 +2861,7 @@ function getLocalQueueKey(userId, date = getQueueDateKey()) {
 
 function readLocalQueue(userId, goal, date = getQueueDateKey()) {
   try {
-    const raw = localStorage.getItem(getLocalQueueKey(userId, date));
+    const raw = readStudyStorageString(getLocalQueueKey(userId, date));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return {
@@ -2374,6 +2962,7 @@ async function apiGetDailyQueue(userId, goal) {
 }
 
 async function apiSaveDailyQueue(userId, queue, options = {}) {
+  recoverStudyCommits();
   const today = getQueueDateKey();
   const baseQueue = readLocalQueue(userId, queue.goal, today) || {
     goal: queue.goal || API_DEFAULT_DAILY_GOAL,
@@ -2677,6 +3266,7 @@ async function apiGetTodayLog(userId, goal) {
  * 更新今日完成任务数；数据库字段沿用 daily_log.new_words 以保持兼容
  */
 async function apiUpdateTodayLog(userId, completedTasks, goal, completionGoal = goal, options = {}) {
+  recoverStudyCommits();
   const today = getLocalDateKey();
   const completed = typeof options.completed === 'boolean' ? options.completed : completedTasks >= completionGoal;
   const logs = readJson(localKey(userId, 'daily_log'), {});
@@ -2918,3 +3508,6 @@ async function apiSetDailyGoal(userId, goal) {
 function apiGetLocalDailyGoal(userId = OFFLINE_USER_ID) {
   return Number(localStorage.getItem(localKey(userId, 'daily_goal'))) || API_DEFAULT_DAILY_GOAL;
 }
+
+// Recover an interrupted answer before authentication loads local state.
+try { recoverStudyCommits(); } catch (error) { console.warn('Study commit recovery deferred', error); }

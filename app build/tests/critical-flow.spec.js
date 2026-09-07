@@ -903,7 +903,10 @@ test('history is read-only and undo restores the entire last answer', async ({ p
     const queueUndo = [...dailyEvents].reverse().find(event => event.target?.queue);
     const logUndo = [...dailyEvents].reverse().find(event => event.target?.log);
     return {
-      avoidsDuplicateCorrection: progressCorrections.length === 0,
+      netProgressDelta: progressCorrections.flatMap(entry => entry.pendingEvents || [])
+        .reduce((sum, event) => sum + Number(event.target.qt || 0) - Number(event.base.qt || 0), 0),
+      correctionCount: progressCorrections.flatMap(entry => entry.pendingEvents || [])
+        .filter(event => event.correction).length,
       queueCompletionDelta:
         (queueUndo?.target?.queue?.completed_word_id?.length || 0) -
         (queueUndo?.base?.queue?.completed_word_id?.length || 0),
@@ -913,11 +916,11 @@ test('history is read-only and undo restores the entire last answer', async ({ p
     };
   });
   expect(correctionState).toEqual({
-    avoidsDuplicateCorrection: true,
-    // The answer was still buffered, so undo collapses to a no-op daily event
-    // instead of sending an unnecessary destructive replacement.
-    queueCompletionDelta: 0,
-    logCountDelta: 0
+    // The answer is durable immediately; undo must compensate exactly once.
+    netProgressDelta: 0,
+    correctionCount: 1,
+    queueCompletionDelta: -1,
+    logCountDelta: -1
   });
 });
 

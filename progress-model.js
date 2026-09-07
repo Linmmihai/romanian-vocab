@@ -40,15 +40,27 @@
       existingProgress,
       incomingProgress
     );
-    const existingTime = new Date(existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0).getTime();
-    const incomingTime = new Date(incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0).getTime();
+    const existingReps = Number(existingScheduler.reps || existingProgress.qt || 0);
+    const incomingReps = Number(incomingScheduler.reps || incomingProgress.qt || 0);
+    const existingRevision = Number(existingProgress.syncRevision || existingProgress.sync_revision || 0);
+    const incomingRevision = Number(incomingProgress.syncRevision || incomingProgress.sync_revision || 0);
+    const existingTime = new Date(
+      existingProgress.stateUpdatedAt || existingProgress.state_updated_at || existingScheduler.lastReviewedAt || existingScheduler.dueAt || 0
+    ).getTime();
+    const incomingTime = new Date(
+      incomingProgress.stateUpdatedAt || incomingProgress.state_updated_at || incomingScheduler.lastReviewedAt || incomingScheduler.dueAt || 0
+    ).getTime();
+    const schedulerBaseIsIncoming = !incomingWouldDowngrade && (
+      incomingReps > existingReps ||
+      (incomingReps === existingReps && incomingRevision > existingRevision) ||
+      (incomingReps === existingReps && incomingRevision === existingRevision && incomingTime >= existingTime)
+    );
     return {
       existingScheduler,
       incomingScheduler,
       incomingWouldDowngrade,
-      schedulerBase: incomingWouldDowngrade || incomingTime < existingTime
-        ? existingScheduler
-        : incomingScheduler
+      schedulerBase: schedulerBaseIsIncoming ? incomingScheduler : existingScheduler,
+      stateBase: schedulerBaseIsIncoming ? incomingProgress : existingProgress
     };
   }
 
@@ -59,14 +71,17 @@
     const incomingQt = Number(incoming.qt || 0);
     const base = incomingQt >= existingQt ? incoming : existing;
     const other = base === incoming ? existing : incoming;
+    const qr = Math.max(Number(existing.qr || 0), Number(incoming.qr || 0));
+    const qt = Math.max(existingQt, incomingQt, qr);
+    const grammarQr = Math.max(grammarRight(existing), grammarRight(incoming));
+    const grammarQt = Math.max(grammarTotal(existing), grammarTotal(incoming), grammarQr);
     const reviewStage = Math.max(scheduler.getReviewStage(existing), scheduler.getReviewStage(incoming));
-    const nextReviewAt = newerIso(
-      existing.nextReviewAt || existing.nextReview,
-      incoming.nextReviewAt || incoming.nextReview
-    );
-    const lastReviewedAt = newerIso(existing.lastReviewedAt, incoming.lastReviewedAt);
     const wasMasteredAt = newerIso(existing.wasMasteredAt, incoming.wasMasteredAt);
-    const { existingScheduler, incomingScheduler, schedulerBase } = selectSchedulerBase(existing, incoming);
+    const { existingScheduler, incomingScheduler, schedulerBase, stateBase } = selectSchedulerBase(existing, incoming);
+    const otherState = stateBase === incoming ? existing : incoming;
+    const nextReviewAt = schedulerBase.dueAt || stateBase.nextReviewAt || stateBase.nextReview || null;
+    const lastReviewedAt = stateBase.lastReviewedAt || stateBase.last_reviewed_at || schedulerBase.lastReviewedAt ||
+      otherState.lastReviewedAt || otherState.last_reviewed_at || null;
     const schedulerFields = {
       cardState: schedulerBase.cardState,
       dueAt: schedulerBase.dueAt || null,
@@ -86,27 +101,33 @@
     return {
       ...other,
       ...base,
-      qr: Math.max(Number(existing.qr || 0), Number(incoming.qr || 0)),
-      qt: Math.max(existingQt, incomingQt),
+      ...((existing.learningEvidence || incoming.learningEvidence) && root.RomanianVocabLearningEvidence
+        ? { learningEvidence: root.RomanianVocabLearningEvidence.mergeEvidence(existing.learningEvidence, incoming.learningEvidence) }
+        : {}),
+      qr,
+      qt,
       known: !!(existing.known || incoming.known),
       seen: !!(existing.seen || incoming.seen || existing.known || incoming.known || existingQt || incomingQt || reviewStage),
       seenViaCard: !!(existing.seenViaCard || incoming.seenViaCard),
       reviewStage,
       reviewCount: reviewStage,
-      nextReviewAt: nextReviewAt || base.nextReviewAt || other.nextReviewAt,
+      nextReviewAt,
       lastReviewedAt: lastReviewedAt || base.lastReviewedAt || other.lastReviewedAt,
       ...schedulerFields,
-      grammarQr: Math.max(grammarRight(existing), grammarRight(incoming)),
-      grammarQt: Math.max(grammarTotal(existing), grammarTotal(incoming)),
+      grammarQr,
+      grammarQt,
       wasMasteredAt: wasMasteredAt || null,
-      wrongCount: Math.max(Number(existing.wrongCount || 0), Number(incoming.wrongCount || 0)),
-      errorStreak: Math.max(Number(existing.errorStreak || 0), Number(incoming.errorStreak || 0)),
-      correctStreakSinceWrong: Math.max(
-        Number(existing.correctStreakSinceWrong || 0),
-        Number(incoming.correctStreakSinceWrong || 0)
-      ),
+      wrongCount: Number(stateBase.wrongCount ?? otherState.wrongCount ?? 0),
+      errorStreak: Number(stateBase.errorStreak ?? otherState.errorStreak ?? 0),
+      correctStreakSinceWrong: Number(stateBase.correctStreakSinceWrong ?? otherState.correctStreakSinceWrong ?? 0),
       lastWrongAt: newerIso(existing.lastWrongAt, incoming.lastWrongAt) || null,
-      weakClearedAt: newerIso(existing.weakClearedAt, incoming.weakClearedAt) || null
+      weakClearedAt: newerIso(existing.weakClearedAt, incoming.weakClearedAt) || null,
+      syncRevision: Math.max(
+        Number(existing.syncRevision || existing.sync_revision || 0),
+        Number(incoming.syncRevision || incoming.sync_revision || 0)
+      ),
+      stateUpdatedAt: stateBase.stateUpdatedAt || stateBase.state_updated_at ||
+        otherState.stateUpdatedAt || otherState.state_updated_at || null
     };
   }
 

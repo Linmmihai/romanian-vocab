@@ -7,6 +7,7 @@ const api = fs.readFileSync(path.join(root, 'api.js'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const runtime = require('./runtime-version');
 
 function functionSource(source, name) {
   const start = source.indexOf(`async function ${name}`);
@@ -51,8 +52,8 @@ function functionSource(source, name) {
   assert(leaderboardBlock.includes('logsByUser[currentUser.id] = currentLogsResult.value || []'), 'the current streak must include local pending daily logs');
   assert(leaderboardBlock.includes('renderToken !== leaderboardRenderToken'), 'an older refresh must not overwrite a newer leaderboard result');
 
-  assert(index.includes("window.ROMANIAN_VOCAB_APP_VERSION='20260831-leaderboard-sync-v1'"), 'leaderboard sync fix must ship with a new app version');
-  assert(serviceWorker.includes("ro-vocab-pwa-v45"), 'leaderboard sync fix must ship with a new service-worker cache');
+  assert(index.includes(`window.ROMANIAN_VOCAB_APP_VERSION='${runtime.appVersion}'`), 'app version must match the unified runtime version entrypoint');
+  assert(serviceWorker.includes(runtime.cacheName), 'service-worker cache must match the unified runtime version entrypoint');
 
   console.log('leaderboard sync verification passed');
 })().catch(error => {

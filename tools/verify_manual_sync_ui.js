@@ -8,6 +8,7 @@ const html = read('index.html');
 const app = read('app.js');
 const api = read('api.js');
 const auth = read('auth.js');
+const runtime = require('./runtime-version');
 
 assert(html.includes('id="sync-badge-text"'), 'top bar must keep a persistent sync status');
 assert(html.includes('onclick="openAccountModal()"'), 'top sync status must open its details');
@@ -30,6 +31,6 @@ assert(app.includes("showToast('今日记录已同步到云端')"), 'success cop
 assert(api.includes("sb.from('daily_log')"), 'cloud verification must read the daily log');
 assert(api.includes("sb.from('daily_queue')"), 'cloud verification must read the daily queue');
 assert(auth.includes('window.renderCloudSyncPanel?.();'), 'opening the account modal must refresh current sync details');
-	assert(html.includes("window.ROMANIAN_VOCAB_APP_VERSION='20260831-leaderboard-sync-v1'"), 'leaderboard sync fix must have a distinct app version');
+assert(html.includes(`window.ROMANIAN_VOCAB_APP_VERSION='${runtime.appVersion}'`), 'app version must match the unified runtime version entrypoint');
 
 console.log('manual sync UI verification passed');

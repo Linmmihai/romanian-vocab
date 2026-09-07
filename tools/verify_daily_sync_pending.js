@@ -54,7 +54,7 @@ assert(app.includes("window.addEventListener('online'"), 'app must retry when th
 assert(app.includes('if (!hasPendingSync()) setSyncBadge'), 'sync badge must not clear while any pending state remains');
 assert(app.includes('retryPendingProgressAfterLoad();'), 'startup must trigger pending retry');
 assert(app.includes('|| hasPendingSync()'), 'progress refresh success must not mask daily pending state');
-assert(app.includes('&& !hasDailyPending'), 'daily pending startup retry must not be blocked by progress cooldown');
+assert(app.includes('pendingSummary.dailyCount || pendingSummary.evidenceCount') && app.includes('&& !hasNonProgressPending'), 'daily and evidence pending startup retries must not be blocked by progress cooldown');
 assert(app.includes("triggerCloudProgressBackup('启动同步'"), 'startup retry must use the shared in-flight sync path');
 assert(app.includes('if (!hasPendingSync() && !options.force) return null'), 'clean idle sync should skip no-op cloud writes');
 assert(!app.includes('Object.keys(progressMap).forEach((wordRo)'), 'sync success must not blindly clear flags for writes created during the request');

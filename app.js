@@ -20,6 +20,7 @@ let lastCardAnswerSnapshot = null;
 let curCat = '全部';
 let flashMode = 'today'; // today | review
 let learningCollectionId = 'news_core';
+let learningContentScope = 'all'; // all | trusted（仅限制未学新词）
 let learningCollectionSwitchVersion = 0;
 let todayQueue = [];
 let todayQueueCompleted = new Set();
@@ -126,6 +127,18 @@ const {
   buildDistractors,
   summarizeResults: summarizeQuizResults
 } = window.RomanianVocabQuizEngine;
+const {
+  normalizeContentScope,
+  isTrustedWord,
+  filterWordsForContentScope,
+  summarizeContentScope,
+  sortWordsForContentReview
+} = window.RomanianVocabContentQuality;
+const {
+  mountLearningScopeControl,
+  updateLearningScopeControl,
+  renderWordQualityDetail
+} = window.RomanianVocabContentQualityUI;
 
 // 需加强列表状态（内部仍沿用 wrongbook 命名以兼容本地数据）
 let wbList = [];
@@ -906,7 +919,7 @@ function writeDailyCheckinDone() {
 
 function readTodaySeenWords() {
   try {
-    return new Set(normalizeWordRoList(JSON.parse(localStorage.getItem(todaySeenWordsKey()) || '[]')));
+    return new Set(normalizeWordRoList(JSON.parse(readStudyStorageString(todaySeenWordsKey()) || '[]')));
   } catch {
     return new Set();
   }
@@ -920,7 +933,7 @@ function writeTodaySeenWords() {
 
 function readTodayIntroducedWords() {
   try {
-    return new Set(normalizeWordRoList(JSON.parse(localStorage.getItem(todayIntroducedWordsKey()) || '[]')));
+    return new Set(normalizeWordRoList(JSON.parse(readStudyStorageString(todayIntroducedWordsKey()) || '[]')));
   } catch {
     return new Set();
   }
@@ -991,7 +1004,7 @@ function getTodayAttemptStats() {
 
 function readTodayAccuracyStats(dateKey = activeDailyDateKey) {
   try {
-    const raw = JSON.parse(localStorage.getItem(todayAccuracyKey(dateKey)) || '{}');
+    const raw = JSON.parse(readStudyStorageString(todayAccuracyKey(dateKey)) || '{}');
     return {
       correct: Math.max(0, Number(raw.correct || 0)),
       total: Math.max(0, Number(raw.total || 0))
@@ -1010,10 +1023,6 @@ function writeTodayAccuracyStats(stats, dateKey = activeDailyDateKey) {
   } catch {}
 }
 
-function queueTodayAccuracyAttempt(correct) {
-  pendingTodayAccuracyStats.total += 1;
-  if (correct) pendingTodayAccuracyStats.correct += 1;
-}
 
 function flushTodayAccuracyStats(dateKey = activeDailyDateKey) {
   if (!pendingTodayAccuracyStats.total) return;
@@ -1125,6 +1134,7 @@ async function onLogin(user) {
   dailyGoal = defaultDailyGoal;
   dailyNewLimit = readDailyNewLimit();
   learningCollectionId = readLearningCollection();
+  learningContentScope = readLearningContentScope();
   todayIntroducedWords = readTodayIntroducedWords();
   progressLoaded = false;
 
@@ -1134,6 +1144,16 @@ async function onLogin(user) {
   const newLimitInput = document.getElementById('new-limit-input');
   if (newLimitInput) newLimitInput.value = dailyNewLimit;
 
+  window.RomanianVocabStudySessionUI?.init({
+    getUserId: () => currentUser?.id || 'local',
+    getDateKey: () => getDateKeyFor(new Date()),
+    getRemainingReviewCount: () => getRemainingFormalReviewWords(W).length,
+    getAvailableCount: () => filtered.length,
+    getCurrentWord: () => getCurrentFlashWord(),
+    getDailyGoal: () => dailyGoal,
+    getDailyNewLimit: () => dailyNewLimit,
+    onRequestResume: () => { switchPage('flash'); }
+  });
   showAppScreen(nickname, userRole === 'admin');
 
   // 先加载词库，但不渲染可答卡片；长线进度加载完成后才能判断新词/复习状态。
@@ -1168,8 +1188,57 @@ function writeLearningCollection(value) {
   return learningCollectionId;
 }
 
+function learningContentScopeStorageKey() {
+  return `learning_content_scope:${currentUser?.id || 'local'}`;
+}
+
+function readLearningContentScope() {
+  try {
+    return normalizeContentScope(localStorage.getItem(learningContentScopeStorageKey()) || 'all');
+  } catch {
+    return 'all';
+  }
+}
+
+function writeLearningContentScope(value) {
+  learningContentScope = normalizeContentScope(value);
+  try { localStorage.setItem(learningContentScopeStorageKey(), learningContentScope); } catch {}
+  return learningContentScope;
+}
+
+function shouldRetainWordInTrustedScope(word) {
+  return hasWordProgress(getProgress(word?.ro));
+}
+
+function wordMatchesActiveLearningScope(word, collection = learningCollectionId) {
+  if (!wordMatchesLearningCollection(word, collection)) return false;
+  return learningContentScope === 'all' || isTrustedWord(word) || shouldRetainWordInTrustedScope(word);
+}
+
 function getLearningCollectionWords(words = W) {
-  return (Array.isArray(words) ? words : []).filter(word => wordMatchesLearningCollection(word, learningCollectionId));
+  const collectionWords = (Array.isArray(words) ? words : [])
+    .filter(word => wordMatchesLearningCollection(word, learningCollectionId));
+  return filterWordsForContentScope(collectionWords, learningContentScope, {
+    shouldRetain: shouldRetainWordInTrustedScope
+  });
+}
+
+function getLearningContentScopeSummary() {
+  const collectionWords = W.filter(word => wordMatchesLearningCollection(word, learningCollectionId));
+  return summarizeContentScope(collectionWords, learningContentScope, {
+    shouldRetain: shouldRetainWordInTrustedScope,
+    isDue: isDueReviewWord
+  });
+}
+
+function refreshLearningContentScopeControl() {
+  const options = {
+    scope: learningContentScope,
+    summary: getLearningContentScopeSummary(),
+    onChange: setLearningContentScope
+  };
+  if (!document.getElementById('learning-content-scope-control')) mountLearningScopeControl(options);
+  else updateLearningScopeControl(options);
 }
 
 function populateLearningCollectionControls() {
@@ -1187,6 +1256,43 @@ function populateLearningCollectionControls() {
   });
   const note = LEARNING_COLLECTIONS.find(collection => collection.value === learningCollectionId)?.description || '';
   setText('learning-collection-note', `${getLearningCollectionLabel(learningCollectionId)}：${note}`);
+  refreshLearningContentScopeControl();
+}
+
+async function setLearningContentScope(value) {
+  const next = normalizeContentScope(value);
+  if (next === learningContentScope) {
+    refreshLearningContentScopeControl();
+    return;
+  }
+  flushFastProgressQueue();
+  flushTodayAccuracyStats();
+  writeTodaySeenWords();
+  await saveTodayQueue({ payload: buildDailyQueueSaveSnapshot() });
+  writeLearningContentScope(next);
+  flashHistory = [];
+  flashOverrideRo = null;
+  lastCardAnswerSnapshot = null;
+  resetQuizSession();
+  invalidateQuizPracticePool();
+  todayQueue = todayQueue
+    .map(ro => getWordByRo(ro))
+    .filter(word => word && wordMatchesActiveLearningScope(word))
+    .map(word => word.ro);
+  todayQueue = buildOpenTodayQueue(dailyGoal);
+  appendExplicitTodayQueueCards(dailyGoal);
+  refreshLearningContentScopeControl();
+  updateVocabCountLabels();
+  buildCats();
+  applyFilters();
+  renderCard();
+  renderList();
+  renderDailyGoal();
+  await saveTodayQueue({ forceLocal: true, payload: buildDailyQueueSaveSnapshot() });
+  const summary = getLearningContentScopeSummary();
+  showToast(next === 'trusted'
+    ? `仅引入已核对新词（${summary.trustedCount}/${summary.totalCount}），已有进度和到期复习保持不变`
+    : '已恢复全部内容，新词范围已更新');
 }
 
 async function setLearningCollection(value) {
@@ -1213,7 +1319,7 @@ async function setLearningCollection(value) {
   invalidateQuizPracticePool();
   todayQueue = todayQueue
     .map(ro => getWordByRo(ro))
-    .filter(word => word && wordMatchesLearningCollection(word, learningCollectionId))
+    .filter(word => word && wordMatchesActiveLearningScope(word))
     .map(word => word.ro);
   todayQueue = buildOpenTodayQueue(dailyGoal);
   appendExplicitTodayQueueCards(dailyGoal);
@@ -1348,12 +1454,17 @@ async function loadProgress() {
     const loadedProgress = await apiLoadProgress(currentUser.id);
     const progressSource = loadedProgress.__progressSource || 'cloud';
     const progressError = loadedProgress.__progressError || '';
+    const evidenceError = loadedProgress.__learningEvidenceSyncError || '';
     replaceProgressMap(loadedProgress);
     progressLoaded = true;
     if (progressSource === 'localFallback') {
       window.reportClientIssue?.('progress_load_fallback', progressError, { operation: 'load_progress' });
       setSyncBadge('本机待同步', '');
       showProgressSaveWarning(`云端进度读取失败，已显示本机保存的进度：${progressError || '请稍后重试'}`);
+    } else if (evidenceError) {
+      window.reportClientIssue?.('learning_evidence_load_failed', evidenceError, { operation: 'load_learning_evidence' });
+      setSyncBadge('证据同步失败', '');
+      showProgressSaveWarning(`学习证据云端读取失败，已保留本机记录：${evidenceError}`);
     } else if (progressSource === 'cloudWithPending') {
       setSyncBadge('本机待同步', '');
     } else {
@@ -1392,7 +1503,7 @@ function hasPendingProgress(map = progressMap) {
 
 function getPendingSyncSummary() {
   if (!currentUser?.id || typeof apiGetPendingSyncSummary !== 'function') {
-    return { progressCount: 0, dailyCount: 0, totalCount: 0, lastError: '' };
+    return { progressCount: 0, evidenceCount: 0, dailyCount: 0, totalCount: 0, lastError: '' };
   }
   return apiGetPendingSyncSummary(currentUser.id);
 }
@@ -1436,6 +1547,9 @@ async function refreshCloudProgressAfterLocalLoad(options = {}) {
     }
     const loadedProgress = await apiLoadProgress(currentUser.id);
     const progressSource = loadedProgress.__progressSource || 'cloud';
+    if (loadedProgress.__learningEvidenceSyncError) {
+      throw new Error(loadedProgress.__learningEvidenceSyncError);
+    }
     // Cloud is authoritative after durable pending events are overlaid by
     // apiLoadProgress. This allows corrections and undo from another device.
     replaceProgressMap(loadedProgress);
@@ -1461,8 +1575,9 @@ async function retryPendingProgressAfterLoad() {
   try {
     const retryKey = `progress_pending_retry_at:${currentUser.id}`;
     const lastRetryAt = Number(localStorage.getItem(retryKey) || 0);
-    const hasDailyPending = typeof hasPendingDailyState === 'function' && hasPendingDailyState(currentUser.id);
-    if (Date.now() - lastRetryAt < PENDING_PROGRESS_RETRY_COOLDOWN_MS && !hasDailyPending) {
+    const pendingSummary = getPendingSyncSummary();
+    const hasNonProgressPending = !!(pendingSummary.dailyCount || pendingSummary.evidenceCount);
+    if (Date.now() - lastRetryAt < PENDING_PROGRESS_RETRY_COOLDOWN_MS && !hasNonProgressPending) {
       setSyncBadge('本机待同步', '');
       return;
     }
@@ -1532,9 +1647,10 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
   progressCloudSyncInFlight = (async () => {
     let cloudReadConfirmed = false;
     try {
-      const [progressResult, dailyResult] = await Promise.allSettled([
+      const [progressResult, dailyResult, evidenceResult] = await Promise.allSettled([
         apiRetryPendingProgress(currentUser.id, options.limit || 100),
-        syncDailyStateToCloud()
+        syncDailyStateToCloud(),
+        apiRetryPendingLearningEvidence(currentUser.id, options.limit || 100)
       ]);
       const result = progressResult.status === 'fulfilled'
         ? progressResult.value
@@ -1550,23 +1666,36 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
         result.dailyAttempted = Number(dailyResult.value?.retry?.attempted || 0);
         result.dailyRemaining = Number(dailyResult.value?.retry?.remaining || 0);
       }
+      if (evidenceResult.status === 'rejected') {
+        result.failed = true;
+        result.evidenceError = evidenceResult.reason;
+      } else {
+        result.evidenceAttempted = Number(evidenceResult.value?.attempted || 0);
+        result.evidenceSaved = Number(evidenceResult.value?.saved || 0);
+        result.evidenceFailed = Number(evidenceResult.value?.failed || 0);
+        result.evidenceRemaining = Number(evidenceResult.value?.remaining || 0);
+        if (result.evidenceFailed || result.evidenceRemaining || evidenceResult.value?.error) {
+          result.failed = true;
+          result.evidenceError = evidenceResult.value?.error || new Error('学习证据仍有待同步项');
+        }
+      }
       let pendingSummary = reconcileProgressPendingFlags();
       result.pendingSummary = pendingSummary;
       if (!result.failed && pendingSummary.totalCount === 0) {
         const cloudProgress = await apiLoadProgress(currentUser.id);
-        if (cloudProgress.__progressSource !== 'localFallback') {
+        if (cloudProgress.__progressSource !== 'localFallback' && !cloudProgress.__learningEvidenceSyncError) {
           result.cloudProgress = cloudProgress;
           replaceProgressMap(cloudProgress);
           pendingSummary = reconcileProgressPendingFlags();
           result.pendingSummary = pendingSummary;
         } else {
           result.failed = true;
-          result.error = new Error(cloudProgress.__progressError || '云端进度回读失败');
+          result.error = new Error(cloudProgress.__learningEvidenceSyncError || cloudProgress.__progressError || '云端进度回读失败');
         }
       }
       const stillPending = result.failed || result.remaining || result.dailyRemaining ||
         pendingSummary.totalCount > 0 || hasPendingProgress();
-      if (!result.attempted && !result.dailyAttempted) {
+      if (!result.attempted && !result.dailyAttempted && !result.evidenceAttempted) {
         cloudReadConfirmed = !stillPending;
         setSyncBadge(stillPending ? '本机待同步' : '已同步', stillPending ? '' : 'saved');
         return result;
@@ -1740,7 +1869,7 @@ async function loadDailyQueue() {
     todayQueueCompleted = new Set([...savedCompleted].filter(ro => getWordByRo(ro)));
     todayQueue = uniqueSavedQueue.filter(ro => {
       const word = getWordByRo(ro);
-      return word && wordMatchesLearningCollection(word, learningCollectionId) && !setHasRo(todayQueueCompleted, ro);
+      return word && wordMatchesActiveLearningScope(word) && !setHasRo(todayQueueCompleted, ro);
     });
     todayIntroducedWords = new Set([
       ...readTodayIntroducedWords(),
@@ -2134,7 +2263,7 @@ function getDailyWordList(words = W, options = {}) {
   const openWords = openQueuedRos
     .map(ro => getWordByRo(ro))
     .filter(Boolean)
-    .filter(w => wordMatchesLearningCollection(w, learningCollectionId))
+    .filter(w => wordMatchesActiveLearningScope(w))
     .filter(w => !scopedKeys || scopedKeys.has(roKey(w.ro)))
     .filter(w => !isRetryDeferred(w));
   const dueOpenWords = openWords.filter(w => isOverdueLearningOrReinforcingWord(w) || isDueReviewWord(w));
@@ -2658,6 +2787,10 @@ async function addWordToTodayQueue(wordRo) {
     showToast(`请先切换到${getLearningCollectionLabel(w.learning_track === 'specialist' ? w.specialist_book : w.learning_track)}`);
     return;
   }
+  if (learningContentScope === 'trusted' && !isTrustedWord(w) && isUnseenWord(w)) {
+    showToast('当前仅引入已核对新词；可切回“全部内容”后加入');
+    return;
+  }
   if (!isUnseenWord(w)) { showToast('这个词已经学过，请用智能练习继续巩固'); return; }
   const selectedKeys = new Set([...todayQueue, ...todayQueueCompleted].map(roKey));
   const remainingSlots = Math.max(0, dailyGoal - selectedKeys.size);
@@ -2970,12 +3103,8 @@ function isGrammarUnverified(w) {
   return /待核对|待补充|未核对/.test(getGrammarInfo(w));
 }
 
-function isStressUnverified(w) {
-  return getStressDisplay(w).auto;
-}
-
 function isWordUnverified(w) {
-  return w?.verification_status === 'needs_review' || isGrammarUnverified(w) || isStressUnverified(w);
+  return !isTrustedWord(w);
 }
 
 function unverifiedBadgeHtml(w) {
@@ -3197,6 +3326,7 @@ function upStats() {
 
   const badge = document.getElementById('wb-tab-badge');
   if (badge) { badge.textContent = wbCount; badge.style.display = wbCount > 0 ? 'inline' : 'none'; }
+  refreshLearningContentScopeControl();
   updateReviewBadge();
 }
 
@@ -3275,7 +3405,7 @@ function getSyncViewModel() {
   if (manualSyncInFlight || progressCloudSyncInFlight || syncUiState.phase === 'syncing') {
     return {
       kind: 'syncing', short: '同步中…', title: '正在同步今日记录',
-      detail: '正在提交今日队列、打卡状态和学习进度，请稍候。', pendingCount, lastSuccessAt
+      detail: '正在提交今日队列、打卡状态、学习进度和分项学习证据，请稍候。', pendingCount, lastSuccessAt
     };
   }
   if (pendingCount > 0) {
@@ -3402,12 +3532,15 @@ function manualSyncToday() {
       }
 
       if (pending.totalCount || hasPendingProgress()) {
-        throw new Error(result?.dailyError?.message || result?.dailyError || result?.error?.message || '仍有学习数据等待同步');
+        throw new Error(result?.evidenceError?.message || result?.evidenceError || result?.dailyError?.message || result?.dailyError || result?.error?.message || '仍有学习数据等待同步');
       }
       const cloudProgress = result?.cloudProgress || await apiLoadProgress(currentUser.id);
       const cloudProgressSource = cloudProgress.__progressSource || 'cloud';
       if (cloudProgressSource === 'localFallback') {
         throw new Error('云端进度回读失败，不能确认同步成功');
+      }
+      if (cloudProgress.__learningEvidenceSyncError) {
+        throw new Error(`学习证据回读失败：${cloudProgress.__learningEvidenceSyncError}`);
       }
       replaceProgressMap(cloudProgress);
       const [verification, progressVerification] = await Promise.all([
@@ -3483,25 +3616,59 @@ function handleProgressSaveStatus(status) {
 }
 
 function isCoreMemoryExercise(options = {}) {
-  return !options.exerciseType || ['translation', 'listening'].includes(options.exerciseType);
+  if (window.RomanianVocabLearningEvidence?.isActiveRecall) {
+    return window.RomanianVocabLearningEvidence.isActiveRecall(options);
+  }
+  if (typeof options.activeRecall === 'boolean') return options.activeRecall;
+  return !options.exerciseType;
 }
 
 function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options = {}) {
   const nowIso = new Date().toISOString();
   const coreMemory = isCoreMemoryExercise(options);
+  const grammarExercise = window.RomanianVocabLearningEvidence?.isGrammarExercise
+    ? window.RomanianVocabLearningEvidence.isGrammarExercise(options)
+    : ['nounPlural', 'verbConj', 'stress', 'grammar'].includes(options.exerciseType);
+  const evidence = options.interactionType && window.RomanianVocabLearningEvidence?.buildEvidence
+    ? window.RomanianVocabLearningEvidence.buildEvidence(prev.learningEvidence, options.interactionType, {
+        ...options,
+        correct: typeof options.correct === 'boolean' ? options.correct : success,
+        at: options.at || nowIso,
+        date: options.date || (typeof getLocalDateKey === 'function' ? getLocalDateKey() : undefined),
+        prevProgress: prev
+      })
+    : prev.learningEvidence;
+  if (!coreMemory) {
+    const progress = {
+      ...prev,
+      ...(grammarExercise ? {
+        grammarQr: window.RomanianVocabProgressModel.getGrammarRight(prev) + (success ? 1 : 0),
+        grammarQt: window.RomanianVocabProgressModel.getGrammarTotal(prev) + 1
+      } : {}),
+      ...(evidence ? { learningEvidence: evidence } : {})
+    };
+    return {
+      review: {},
+      level: prev.level || getStoredLevel(prev),
+      memory: {
+        wrongCount: Number(prev.wrongCount || 0),
+        errorStreak: Number(prev.errorStreak || 0),
+        lastWrongAt: prev.lastWrongAt || null,
+        weakClearedAt: prev.weakClearedAt || null
+      },
+      evidence,
+      progress
+    };
+  }
   const schedulerAction = options.schedulerAction || (success ? 'known' : 'unknown');
   const review = options.clearWrongbook
     ? buildReviewFromPrev(prev)
-    : (coreMemory ? getSchedulerReview(prev, schedulerAction, { now: nowIso }) : buildReviewFromPrev(prev));
-  const nextQr = coreMemory ? (qr || 0) : (prev.qr || 0);
-  const nextQt = coreMemory ? (qt || 0) : (prev.qt || 0);
-  const nextKnown = coreMemory ? known : !!prev.known;
-  const grammarQr = coreMemory
-    ? window.RomanianVocabProgressModel.getGrammarRight(prev)
-    : window.RomanianVocabProgressModel.getGrammarRight(prev) + (success ? 1 : 0);
-  const grammarQt = coreMemory
-    ? window.RomanianVocabProgressModel.getGrammarTotal(prev)
-    : window.RomanianVocabProgressModel.getGrammarTotal(prev) + 1;
+    : getSchedulerReview(prev, schedulerAction, { now: nowIso });
+  const nextQr = qr || 0;
+  const nextQt = qt || 0;
+  const nextKnown = known;
+  const grammarQr = window.RomanianVocabProgressModel.getGrammarRight(prev);
+  const grammarQt = window.RomanianVocabProgressModel.getGrammarTotal(prev);
   const calculatedLevel = calcLevel(nextQr, nextQt, nextKnown, { ...prev, ...review });
   const level = coreMemory
     ? resolveNextStoredLevel(prev, calculatedLevel, success, options)
@@ -3554,9 +3721,10 @@ function buildProgressUpdate(prev = {}, known, qr, qt, success = known, options 
     ...review,
     ...memory,
     ...clearedScheduler,
-    correctStreakSinceWrong
+    correctStreakSinceWrong,
+    ...(evidence ? { learningEvidence: evidence } : {})
   }, prev);
-  return { review, level, memory, progress: nextProgress };
+  return { review, level, memory, evidence, progress: nextProgress };
 }
 
 async function syncProgress(wordRo, known, qr, qt, success = known, options = {}) {
@@ -3565,7 +3733,12 @@ async function syncProgress(wordRo, known, qr, qt, success = known, options = {}
   const word = getWordByRo(canonicalRo);
   const wordId = word?.id ?? null;
   const prev = getProgress(canonicalRo) || {};
-  const { memory, progress: nextProgress } = buildProgressUpdate(prev, known, qr, qt, success, options);
+  const progressOptions = {
+    ...options,
+    wordId,
+    wordRo: word?.ro || canonicalRo
+  };
+  const { memory, progress: nextProgress } = buildProgressUpdate(prev, known, qr, qt, success, progressOptions);
   setProgress(canonicalRo, nextProgress, { source: 'syncProgress:optimistic' });
   const localStatus = typeof queueProgressForSync === 'function'
     ? queueProgressForSync(currentUser.id, wordId, word?.ro || canonicalRo, { ...nextProgress, word_id: wordId, word_ro: word?.ro || canonicalRo, pendingSync: true }, memory, prev)
@@ -3704,7 +3877,14 @@ function buildNextProgressForInteraction(wordRo, interactionType, extraOptions =
   const canonicalRo = canonicalWordRo(wordRo);
   const prev = getProgress(canonicalRo) || { known: false, qr: 0, qt: 0 };
   const next = rule(prev);
-  const options = { ...next.options, ...extraOptions };
+  const word = getWordByRo(canonicalRo);
+  const options = {
+    ...next.options,
+    ...extraOptions,
+    interactionType,
+    wordId: word?.id ?? null,
+    wordRo: word?.ro || canonicalRo
+  };
   const { memory, progress } = buildProgressUpdate(prev, next.known, next.qr, next.qt, next.success, options);
   return { canonicalRo, prev, next, options, memory, progress };
 }
@@ -3726,12 +3906,12 @@ function flushFastProgressQueue() {
   }
   if (!fastProgressQueue.size || !currentUser?.id) return;
   const entries = [...fastProgressQueue.values()];
-  fastProgressQueue.clear();
   const localStatus = typeof queueProgressBatchForSync === 'function'
     ? queueProgressBatchForSync(currentUser.id, entries)
     : { ok: false };
   if (localStatus.ok) {
     entries.forEach(entry => {
+      fastProgressQueue.delete(entry.wordRo);
       setProgress(entry.wordRo, { ...entry.progress, pendingSync: !isOfflineMode() }, { source: 'flushFastProgressQueue' });
     });
     setSyncBadge(isOfflineMode() ? '已存本机' : '本机待同步', isOfflineMode() ? 'saved' : '');
@@ -3748,27 +3928,47 @@ function flushFastProgressQueue() {
   updateReviewBadge();
 }
 
-function persistFastCardAnswer(result) {
-  if (!result?.canonicalRo || !currentUser?.id) return;
+function persistFastCardAnswer(result, daily = null) {
+  if (!result?.canonicalRo || !currentUser?.id) return { ok: false };
   const word = getWordByRo(result.canonicalRo);
-  const wordId = word?.id ?? null;
-  const existing = fastProgressQueue.get(result.canonicalRo);
-  const pendingEvent = typeof createProgressPendingEvent === 'function'
-    ? createProgressPendingEvent(String(wordId || result.canonicalRo), result.prev || {}, result.progress || {})
-    : null;
-  fastProgressQueue.set(result.canonicalRo, {
-    wordId,
+  return commitStudyAnswer(currentUser.id, {
+    wordId: word?.id ?? null,
     wordRo: result.canonicalRo,
-    progress: { ...result.progress, word_id: wordId, word_ro: word?.ro || result.canonicalRo, pendingSync: true },
+    progress: result.progress,
     memory: result.memory,
-    baseProgress: existing?.baseProgress || result.prev || {},
-    pendingEvents: [
-      ...(Array.isArray(existing?.pendingEvents) ? existing.pendingEvents : []),
-      ...(pendingEvent ? [pendingEvent] : [])
+    baseProgress: result.prev || {}
+  }, daily);
+}
+
+function buildCardAnswerDailyCommit(word, queuePhase, completes, correct) {
+  const queue = buildDailyQueueSaveSnapshot();
+  const completed = new Set(todayQueueCompleted);
+  const introduced = new Set(todayIntroducedWords);
+  const seen = new Set(todaySeenWords);
+  if (completes) setAddRo(completed, word.ro);
+  if (queuePhase === 'new') setAddRo(introduced, word.ro);
+  setAddRo(seen, word.ro);
+  const count = completes ? Math.max(todayNewWords + 1, completed.size) : todayNewWords;
+  const openQueue = completes ? roListWithout(todayQueue, word.ro) : todayQueue;
+  const accuracy = getTodayAttemptStats();
+  return {
+    date: activeDailyDateKey,
+    baseQueue: queue,
+    baseLog: { new_words: todayNewWords, goal: dailyGoal, completed: isDailyCheckinDone() },
+    queue: {
+      ...queue,
+      word_id: queueIdsToWordIds(openQueue), word_ro: queueIdsToWordRos(openQueue),
+      completed_word_id: queueIdsToWordIds([...completed]), completed_word_ro: queueIdsToWordRos([...completed]),
+      introduced_word_id: queueIdsToWordIds([...introduced]), introduced_word_ro: queueIdsToWordRos([...introduced]),
+      completed: count >= dailyGoal
+    },
+    log: { new_words: count, goal: dailyGoal, completed: isDailyCheckinDone() },
+    localWrites: [
+      [todaySeenWordsKey(), [...seen]],
+      [todayIntroducedWordsKey(), [...introduced]],
+      [todayAccuracyKey(), { total: accuracy.total + 1, correct: accuracy.correct + (correct ? 1 : 0) }]
     ]
-  });
-  if (fastProgressFlushTimer) return;
-  fastProgressFlushTimer = scheduleIdleTask(flushFastProgressQueue);
+  };
 }
 
 function flushPendingFastCardState() {
@@ -3808,7 +4008,15 @@ function flushTodayStatePersistence() {
 function scheduleTodayStatePersistence(goalReached = false) {
   pendingTodayGoalPrompt = pendingTodayGoalPrompt || goalReached;
   if (todayStateFlushTimer) return;
-  todayStateFlushTimer = scheduleIdleTask(flushTodayStatePersistence);
+  todayStateFlushTimer = scheduleIdleTask(() => {
+    todayStateFlushTimer = null;
+    invalidateCalendarCache();
+    renderDailyGoal();
+    updateTodayCalendarCell();
+    renderReviewPanel();
+    updateReviewBadge();
+    upStats();
+  });
 }
 
 async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
@@ -3816,7 +4024,11 @@ async function recordInteraction(wordRo, interactionType, extraOptions = {}) {
   if (!rule) throw new Error(`Unknown interaction type: ${interactionType}`);
   const prev = getProgress(wordRo) || { known: false, qr: 0, qt: 0 };
   const next = rule(prev);
-  await syncProgress(wordRo, next.known, next.qr, next.qt, next.success, { ...next.options, ...extraOptions });
+  await syncProgress(wordRo, next.known, next.qr, next.qt, next.success, {
+    ...next.options,
+    ...extraOptions,
+    interactionType
+  });
   return getProgress(wordRo) || {};
 }
 
@@ -4095,6 +4307,7 @@ function openPronunciationGuide() {
 }
 
 function switchPage(p) {
+  if (p !== 'flash') window.RomanianVocabStudySessionUI?.onCardRendered(null);
   if (p !== 'quiz' && isQuizInProgress()) {
     const answered = qRoundTotal;
     resetQuizSession();
@@ -4774,14 +4987,18 @@ function renderCard() {
     const currentDone = isCurrentTodayGoalDone();
     const pausedForCheckin = shouldPauseTodayStudyForCheckin();
     const pausedForGoal = shouldPauseTodayStudyForGoal();
+    const contentScopeSummary = getLearningContentScopeSummary();
+    const noTrustedNewWords = learningContentScope === 'trusted' && contentScopeSummary.trustedCount === 0 && !hasDueReview;
     const emptyText = {
       today: pausedForCheckin || pausedForGoal
         ? '今日目标已完成'
         : (currentDone
           ? '今日任务已完成'
+          : (noTrustedNewWords
+            ? '当前词书暂无已核对新词'
           : (deferredQueueCount
             ? '今日队列等待复习'
-            : (curCat !== '全部' && (hasDueReview || hasNewWords || hasOpenQueue) ? '当前主题没有今日任务' : '今日没有可安排任务'))),
+            : (curCat !== '全部' && (hasDueReview || hasNewWords || hasOpenQueue) ? '当前主题没有今日任务' : '今日没有可安排任务')))),
       review: '当前没有到期复习词',
     }[flashMode] || '当前主题暂无可学词';
     const actionText = {
@@ -4789,11 +5006,13 @@ function renderCard() {
         ? '今天的目标已完成，请选择是否继续。'
         : (currentDone
         ? '已达到今日目标，系统不会继续加入新词。'
+        : (noTrustedNewWords
+          ? '已有进度和到期复习仍会保留；可切换词书或恢复全部内容。'
         : (deferredQueueCount
           ? (eligibleNewCount > 0
             ? `${deferredQueueCount} 个词正在等待短间隔复习；系统正在安排可学新词。`
             : `${deferredQueueCount} 个词正在等待短间隔复习；当前没有可加入的新词，到复习时间后会继续。`)
-          : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换主题、提高今日任务目标或去测验'))),
+          : (hasOpenQueue ? '请切换到全部，继续今天固定队列。' : '可以切换主题、提高今日任务目标或去测验')))),
       review: '没有到期复习时，可以继续学习新词'
     }[flashMode] || 'No words';
     if (frontHint) {
@@ -4858,6 +5077,7 @@ function getCardRenderWord() {
 }
 
 function renderCardFront(w) {
+  window.RomanianVocabStudySessionUI?.onCardRendered(flashOverrideRo ? null : w);
   const frontHint = document.getElementById('fc-front-hint');
   if (frontHint) frontHint.textContent = '先在心里说出罗语，再点卡片看答案';
   document.getElementById('fc-cat').textContent = getTopicLabel(w.topic || w.cat);
@@ -5156,9 +5376,14 @@ function markCard(answer) {
     finishDailyQueuePerf(perf, { path: 'invalid-action', action, vocabScanned: 0 });
     return;
   }
+  if (window.RomanianVocabStudySessionUI?.beforeAnswer(w) === false) {
+    finishDailyQueuePerf(perf, { path: 'session-paused', action, vocabScanned: 0 });
+    return;
+  }
   flashcardAnswerInFlight = true;
   setFlashcardAnswerButtonsDisabled(true);
   let path = 'answer';
+  let answerCommitted = false;
   try {
     const p = getProgress(w.ro);
     const schedulerBefore = normalizeScheduler(p || {});
@@ -5178,10 +5403,11 @@ function markCard(answer) {
     const interaction = isReviewTask
       ? (isKnownAction ? 'review_correct' : (isFuzzyAction ? 'review_fuzzy' : 'review_wrong'))
       : (isKnownAction ? 'flashcard_known' : (isFuzzyAction ? 'flashcard_fuzzy' : 'flashcard_unknown'));
-    if (flashMode === 'today') queueTodayAccuracyAttempt(isKnownAction);
-    const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true });
-    setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() }, { source: 'markCard' });
-    if (flashMode === 'today' && queuePhaseBefore === 'new') markTodayNewIntroduction(w.ro);
+    const progressResult = buildNextProgressForInteraction(w.ro, interaction, { skipDailyQueueReconcile: true, responseMs: window.RomanianVocabStudySessionUI?.getResponseMs?.() });
+    const evidenceIdsBefore = new Set((p?.learningEvidence?.events || []).map(event => String(event?.id || '')).filter(Boolean));
+    answerSnapshot.evidenceEventId = (progressResult.progress?.learningEvidence?.events || [])
+      .map(event => String(event?.id || ''))
+      .find(eventId => eventId && !evidenceIdsBefore.has(eventId)) || '';
     let dailyStateResult = null;
     const isOpenTodayWord = flashMode === 'today'
       && roListIncludes(todayQueue, w.ro)
@@ -5190,6 +5416,17 @@ function markCard(answer) {
     // update above moves dueAt into the future, so calling isDueReviewWord here
     // would incorrectly turn every just-completed external review into false.
     const wasTodayBlockingReviewWord = flashMode === 'today' && !isOpenTodayWord && isReviewTask;
+    const dailyCommit = flashMode === 'today'
+      ? buildCardAnswerDailyCommit(w, queuePhaseBefore,
+          completesTodayTask && (isOpenTodayWord || (wasTodayBlockingReviewWord && !setHasRo(todayQueueCompleted, w.ro))), isKnownAction)
+      : null;
+    const saved = persistFastCardAnswer(progressResult, dailyCommit);
+    if (!saved.ok) throw saved.error || new Error('本机作答保存失败');
+    answerCommitted = true;
+    setProgress(progressResult.canonicalRo, { ...progressResult.progress, pendingSync: !isOfflineMode() }, { source: 'markCard' });
+    if (dailyCommit) pendingTodayAccuracyStats = { correct: 0, total: 0 };
+    if (flashMode === 'today' && queuePhaseBefore === 'new') markTodayNewIntroduction(w.ro);
+    setSyncBadge(isOfflineMode() ? '已存本机' : '本机待同步', isOfflineMode() ? 'saved' : '');
     if (flashMode === 'today' && completesTodayTask) {
       lastLearningHint = '';
       dailyStateResult = (isOpenTodayWord || wasTodayBlockingReviewWord)
@@ -5207,6 +5444,7 @@ function markCard(answer) {
     } else if (isFuzzyAction) {
       showToast('已按模糊处理，系统会安排较近的复习');
     }
+    window.RomanianVocabStudySessionUI?.onAnswerCommitted(w, action, answerSnapshot);
     const shouldStopForGoal = flashMode === 'today' && !!dailyStateResult?.reachedGoal;
     const shouldStopForCheckin = flashMode === 'today' && (shouldPauseTodayStudyForCheckin() || shouldStopForGoal);
     // 跳下一张，重置为中文面
@@ -5221,7 +5459,6 @@ function markCard(answer) {
       });
     }
     renderNextFlashCardInstantFront();
-    persistFastCardAnswer(progressResult);
     lastCardAnswerSnapshot = answerSnapshot;
     if (flashMode === 'today') {
       scheduleTodayStatePersistence(!!dailyStateResult?.reachedGoal);
@@ -5234,8 +5471,17 @@ function markCard(answer) {
   } catch (error) {
     path = 'error';
     console.warn('Flashcard answer failed', error);
-    setFlashcardAnswerButtonsDisabled(false);
-    showToast('保存失败，请稍后重试');
+    if (answerCommitted) {
+      // A rendering error must never invite a second submission of a saved answer.
+      progressLoaded = false;
+      lastCardAnswerSnapshot = null;
+      filtered = [];
+      setFlashcardAnswerButtonsDisabled(true);
+      showToast('作答已保存，页面更新失败，请刷新后继续');
+    } else {
+      setFlashcardAnswerButtonsDisabled(false);
+      showToast('保存失败，请稍后重试');
+    }
   } finally {
     flashcardAnswerInFlight = false;
     updateCardHistoryControls();
@@ -5309,10 +5555,19 @@ async function undoLastCardAnswer() {
     const bufferedEventCount = Array.isArray(bufferedAfterAnswer?.pendingEvents) ? bufferedAfterAnswer.pendingEvents.length : 0;
     const snapshotEventCount = Array.isArray(snapshot.fastProgressEntry?.pendingEvents) ? snapshot.fastProgressEntry.pendingEvents.length : 0;
     const answerExistsOnlyInFastBuffer = bufferedEventCount > snapshotEventCount;
+    const currentProgress = getProgress(snapshot.wordRo) || {};
+    const retainedEvidence = window.RomanianVocabLearningEvidence?.normalizeEvidence({
+      ...(currentProgress.learningEvidence || {}),
+      events: (currentProgress.learningEvidence?.events || [])
+        .filter(event => String(event?.id || '') !== String(snapshot.evidenceEventId || ''))
+    });
+    const restoredProgress = snapshot.hadProgress
+      ? { ...snapshot.progress, ...(retainedEvidence ? { learningEvidence: retainedEvidence } : {}) }
+      : null;
     fastProgressQueue.delete(snapshot.wordRo);
     if (snapshot.fastProgressEntry) fastProgressQueue.set(snapshot.wordRo, snapshot.fastProgressEntry);
     if (snapshot.hadProgress) {
-      setProgress(snapshot.wordRo, snapshot.progress, { replace: true, source: 'undoLastCardAnswer' });
+      setProgress(snapshot.wordRo, restoredProgress, { replace: true, source: 'undoLastCardAnswer' });
     } else {
       deleteProgress(snapshot.wordRo);
     }
@@ -5321,8 +5576,9 @@ async function undoLastCardAnswer() {
         currentUser.id,
         snapshot.wordId,
         snapshot.wordRo,
-        snapshot.hadProgress ? snapshot.progress : null,
-        snapshot.progress || {}
+        restoredProgress,
+        snapshot.progress || {},
+        { evidenceDeletedEventIds: snapshot.evidenceEventId ? [snapshot.evidenceEventId] : [] }
       );
       if (!correctionStatus.ok) throw correctionStatus.error || new Error('撤销进度写入失败');
     }
@@ -5369,6 +5625,7 @@ async function undoLastCardAnswer() {
     updateTodayCalendarCell();
     upStats();
     updateReviewBadge();
+    window.RomanianVocabStudySessionUI?.onUndo(snapshot);
     setSyncBadge(isOfflineMode() ? '已撤销并存本机' : '撤销待同步', isOfflineMode() ? 'saved' : '');
     showToast(`已撤销「${getWordByRo(snapshot.wordRo)?.zh || snapshot.wordRo}」的上次作答`);
   } catch (error) {
@@ -6121,6 +6378,7 @@ function getCachedScopedPracticePool() {
   const key = [
     currentUser?.id || 'local',
     learningCollectionId,
+    learningContentScope,
     curCat,
     qPracticeScope,
     qExerciseMode,
@@ -6571,6 +6829,10 @@ async function answerQ(btn, ok, ro, zh) {
   }
   const word = getCurrentQuizWord();
   const itemType = getCurrentQuizItemType();
+  const responseMs = Math.max(0, Date.now() - qItemStartedAt);
+  const promptMode = itemType === 'listening'
+    ? 'audio-to-meaning-choice'
+    : `${qExerciseMode === 'diagnostic' ? 'ro-to-zh' : (qMode === 'zh' ? 'zh-to-ro' : 'ro-to-zh')}-choice`;
   qRoundResults.push({
     type: itemType,
     exact: ok,
@@ -6578,11 +6840,18 @@ async function answerQ(btn, ok, ro, zh) {
     difficulty: getQuizDifficultyRank(word),
     replayCount: isCurrentQuizAudioItem() ? qCurrentAudioPlays : 0,
     audioSource: isCurrentQuizAudioItem() ? qCurrentAudioSource : '',
-    responseMs: Math.max(0, Date.now() - qItemStartedAt),
+    responseMs,
     optionsCount: btn.parentElement.querySelectorAll('.opt').length
   });
   document.getElementById('qfb').innerHTML = buildFeedbackHtml(word, ok, { type: itemType });
-  await recordInteraction(word.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: itemType });
+  await recordInteraction(word.ro, ok ? 'quiz_correct' : 'quiz_wrong', {
+    exerciseType: itemType,
+    promptMode,
+    exact: ok,
+    correct: ok,
+    responseMs,
+    ...(itemType === 'listening' ? { listeningCorrect: ok } : {})
+  });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -6612,6 +6881,7 @@ async function answerExerciseQ(btn, ok) {
   }
   const ex = qList[qIdx];
   const w = ex.word;
+  const responseMs = Math.max(0, Date.now() - qItemStartedAt);
   qRoundResults.push({
     type: ex.type,
     exact: ok,
@@ -6619,11 +6889,17 @@ async function answerExerciseQ(btn, ok) {
     difficulty: getQuizDifficultyRank(w),
     replayCount: 0,
     audioSource: '',
-    responseMs: Math.max(0, Date.now() - qItemStartedAt),
+    responseMs,
     optionsCount: btn.parentElement.querySelectorAll('.opt').length
   });
   document.getElementById('qfb').innerHTML = buildFeedbackHtml(w, ok, { type: ex.type, answer: ex.answer });
-  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong', { exerciseType: qExerciseMode });
+  await recordInteraction(w.ro, ok ? 'quiz_correct' : 'quiz_wrong', {
+    exerciseType: ex.type,
+    promptMode: `${ex.type}-choice`,
+    exact: ok,
+    correct: ok,
+    responseMs
+  });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -6645,6 +6921,7 @@ async function answerDictation(event) {
   if (submit) submit.disabled = true;
   qTotal++;
   qRoundTotal++;
+  const responseMs = Math.max(0, Date.now() - qItemStartedAt);
   if (result.exact) {
     qRight++;
     qRoundRight++;
@@ -6658,7 +6935,7 @@ async function answerDictation(event) {
     difficulty: getQuizDifficultyRank(word),
     replayCount: qCurrentAudioPlays,
     audioSource: qCurrentAudioSource,
-    responseMs: Math.max(0, Date.now() - qItemStartedAt),
+    responseMs,
     optionsCount: 0
   });
   const feedback = document.getElementById('qfb');
@@ -6672,7 +6949,15 @@ async function answerDictation(event) {
     feedback.style.color = 'var(--red-text)';
     feedback.innerHTML = `<div>未识别正确</div><div style="font-weight:500">答案：${escapeHtml(word.ro)} · ${escapeHtml(word.zh)}</div><div style="font-size:12px;margin-top:5px">再对照词首、重音和结尾，避免只凭词形猜测。</div>`;
   }
-  await recordInteraction(word.ro, result.listeningCorrect ? 'quiz_correct' : 'quiz_wrong', { exerciseType: 'listening' });
+  await recordInteraction(word.ro, result.listeningCorrect ? 'quiz_correct' : 'quiz_wrong', {
+    exerciseType: 'dictation',
+    promptMode: 'audio-to-text',
+    exact: result.exact,
+    spellingExact: result.exact,
+    listeningCorrect: result.listeningCorrect,
+    correct: result.listeningCorrect,
+    responseMs
+  });
   upStats();
   document.getElementById('qnxt').style.display = 'block';
 }
@@ -6811,6 +7096,7 @@ function calcCurrentCollectionProgressSummary() {
 }
 
 async function renderStatsPage() {
+  renderLearningEvidenceStats();
   let activePanel = 'personal';
   try { activePanel = sessionStorage.getItem('stats-active-panel') || 'personal'; } catch {}
   switchStatsPanel(activePanel);
@@ -6841,6 +7127,38 @@ async function renderStatsPage() {
     catEl.innerHTML = '<div class="empty-state">主题统计暂时无法读取</div>';
     if (hardEl) hardEl.innerHTML = '<div class="empty-state">错词统计暂时无法读取</div>';
   }
+}
+
+function renderLearningEvidenceStats() {
+  const panel = document.getElementById('learning-evidence-stats');
+  const engine = window.RomanianVocabLearningEvidence;
+  if (!panel || !engine || !currentUser?.id) return;
+  const wordIds = new Set(W.filter(word => wordMatchesLearningCollection(word, learningCollectionId)).map(word => String(word.id)));
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const events = Object.values(apiReadLearningEvidence(currentUser.id))
+    .filter(record => wordIds.has(String(record.wordId)))
+    .flatMap(record => (record.evidence?.events || []).map(event => ({ ...event, wordId: record.wordId, wordRo: record.wordRo })))
+    .filter(event => new Date(event.at).getTime() >= cutoff);
+  const summary = engine.summarizeEvidence(events);
+  const due = engine.summarizeEvidence(events.filter(event => event.exerciseType === 'activeRecall')).dueReviewFirstAttempt;
+  const grammar = ['nounPlural', 'verbConj', 'stress', 'grammar'].reduce((sum, type) => {
+    const rate = summary.byExerciseType[type];
+    return { total: sum.total + (rate?.total || 0), correct: sum.correct + (rate?.correct || 0) };
+  }, { total: 0, correct: 0 });
+  const rates = [
+    ['主动回忆（自评）', summary.byExerciseType.activeRecall],
+    ['词义选择', summary.byExerciseType.translation],
+    ['听辨正确', summary.listening],
+    ['听写拼写准确', summary.spelling],
+    ['语法与重音题', grammar],
+    ['到期首次回忆（自评）', due]
+  ];
+  panel.innerHTML = rates.map(([label, rate]) => {
+    const total = Number(rate?.total || 0);
+    const score = total ? `${Math.round(Number(rate.correct || 0) / total * 100)}%` : '暂无样本';
+    return `<div class="metric"><div class="metric-n">${score}</div><div class="metric-l">${label}</div><div class="metric-l">${total} 次</div></div>`;
+  }).join('');
+  setText('learning-evidence-count', `当前词书 · 近30天 ${events.length} 条记录`);
 }
 
 function renderStudyCoach(summary, logs = []) {
@@ -6913,13 +7231,16 @@ function renderAchievements(summary, logs = []) {
 function exportProgressBackup() {
   const payload = {
     app: 'romanian-vocab',
-    version: 2,
+    version: 3,
+    learningEvidenceScope: isOfflineMode() ? 'local-device' : 'account-synced',
     exportedAt: new Date().toISOString(),
     user: { id: currentUser?.id || null, email: currentUser?.email || null },
     dailyGoal: defaultDailyGoal,
     todayGoal: dailyGoal,
     dailyNewLimit,
-    progress: progressMap,
+    progress: attachLocalLearningEvidence(currentUser.id, cloneCardState(progressMap)),
+    learningEvidenceTombstones: [...readLearningEvidenceTombstones(currentUser.id).values()],
+    learningEvidencePending: readPendingLearningEvidence(currentUser.id),
     dailyQueue: {
       collection_id: learningCollectionId,
       word_id: queueIdsToWordIds(todayQueue),
@@ -6993,6 +7314,12 @@ async function importProgressBackup(file) {
   try {
     const payload = JSON.parse(await file.text());
     if (!payload || payload.app !== 'romanian-vocab' || !payload.progress) throw new Error('文件格式不正确');
+    if (typeof importLearningEvidenceSyncState === 'function') {
+      importLearningEvidenceSyncState(currentUser.id, {
+        tombstones: payload.learningEvidenceTombstones || [],
+        pending: payload.learningEvidencePending || []
+      });
+    }
     const incoming = payload.progress || {};
     replaceProgressMap(mergeProgressMaps(progressMap, incoming));
     const rows = Object.entries(incoming);
@@ -7045,6 +7372,7 @@ async function importProgressBackup(file) {
         console.warn('Progress backup row import failed', wordRo, rowError);
       }
     }
+    replaceProgressMap(attachLocalLearningEvidence(currentUser.id, progressMap));
     if (payload.dailyGoal) {
       defaultDailyGoal = normalizeDailyGoalValue(payload.dailyGoal, defaultDailyGoal);
       dailyGoal = defaultDailyGoal;
@@ -7291,6 +7619,7 @@ function renderWordDetail(w) {
       <div class="detail-label">例句</div>
       <div class="detail-value" id="detail-example">${exampleHtml(example)}</div>
     </div>
+    ${renderWordQualityDetail(w)}
     <div class="detail-actions">
       <button class="btn-sm" onclick="speakDetailWord(1)">正常播放</button>
       <button class="btn-sm" onclick="speakDetailWord(0.45)">慢速播放</button>
@@ -7528,6 +7857,9 @@ function listQueueAction(w) {
     const collection = w.learning_track === 'specialist' ? w.specialist_book : w.learning_track;
     return `<span class="word-queued">请先切换到${escapeHtml(getLearningCollectionLabel(collection))}</span>`;
   }
+  if (learningContentScope === 'trusted' && !isTrustedWord(w)) {
+    return '<span class="word-queued">待核对，暂不加入新词</span>';
+  }
   if (roListIncludes(todayQueue, w.ro) && !setHasRo(todayQueueCompleted, w.ro)) {
     return '<span class="word-queued">今日队列</span>';
   }
@@ -7687,6 +8019,7 @@ function getVocabularyQualityAudit() {
     if (!duplicateKeys.has(key)) duplicateKeys.set(key, []);
     duplicateKeys.get(key).push(word);
     const issues = getTaxonomyQualityIssues(word);
+    if (!isTrustedWord(word) && !issues.includes('needs_review')) issues.push('needs_review');
     if (issues.length) rowsById.set(String(word.id), { word, issues: [...issues] });
   });
   duplicateKeys.forEach(words => {
@@ -7697,7 +8030,8 @@ function getVocabularyQualityAudit() {
       rowsById.set(String(word.id), entry);
     });
   });
-  const rows = [...rowsById.values()];
+  const orderedWords = sortWordsForContentReview([...rowsById.values()].map(row => row.word));
+  const rows = orderedWords.map(word => rowsById.get(String(word.id)));
   const counts = {};
   rows.forEach(row => row.issues.forEach(issue => { counts[issue] = (counts[issue] || 0) + 1; }));
   return { rows, counts, clean: W.length - rows.length };
@@ -7735,6 +8069,7 @@ function renderVocabularyQualityPanel() {
     .join(' · ');
   el.innerHTML = `<div class="admin-chart">
     <div class="admin-chart-title">词库质量门 <span style="font-weight:400;color:var(--red-text)">${audit.rows.length} 个词条待处理</span></div>
+    <div style="padding:0 0 8px;font-size:12px;color:var(--text2)">优先显示尚未核对的新闻通用核心词；语料来源与人工审阅记录分开判断。</div>
     <div style="padding:0 0 10px;font-size:12px;color:var(--text2)">${escapeHtml(summary)}</div>
     ${audit.rows.slice(0, 30).map(({ word, issues }) => `<div class="admin-word-row">
       <div>

@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const runtime = require('./runtime-version');
 
 function functionBlock(source, name) {
   const start = source.indexOf(`function ${name}(`);
@@ -27,7 +28,7 @@ const mobileToastRule = html.indexOf('.toast{bottom:calc(64px + env(safe-area-in
 assert(baseToastRule !== -1 && mobileToastRule > baseToastRule, 'mobile toast override should follow the base rule and clear the bottom navigation');
 assert(html.includes('id="toast" role="status" aria-live="polite"'), 'toast should announce status updates accessibly');
 assert(html.includes('id="sync-badge-text" role="status" aria-live="polite"'), 'sync status should announce changes accessibly');
-assert(html.includes('app.js?v=20260831-leaderboard-sync-v1'), 'app cache buster should include the leaderboard sync fix');
-assert(serviceWorker.includes('ro-vocab-pwa-v47-leaderboard-sync-v1'), 'service worker cache should include the leaderboard sync fix');
+assert(html.includes(runtime.script('app.js')), 'app cache buster must match the unified runtime version entrypoint');
+assert(serviceWorker.includes(runtime.cacheName), 'service worker cache must match the unified runtime version entrypoint');
 
 console.log('user feedback UI verification passed');

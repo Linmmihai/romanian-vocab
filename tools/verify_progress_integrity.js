@@ -1,8 +1,26 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const scheduler = require('../scheduler.js');
 const progressModel = require('../progress-model.js');
+
+function loadApiProgressMerge() {
+  const storage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const sandbox = {
+    console,
+    localStorage: storage,
+    sessionStorage: storage,
+    RomanianVocabScheduler: scheduler,
+    RomanianVocabProgressModel: progressModel,
+    setTimeout,
+    clearTimeout
+  };
+  sandbox.window = sandbox;
+  const source = fs.readFileSync(path.join(__dirname, '..', 'api.js'), 'utf8');
+  vm.runInNewContext(`${source}\nglobalThis.__mergeCloudProgress = mergeCloudProgress;`, sandbox);
+  return sandbox.__mergeCloudProgress;
+}
 
 function hasWordProgress(progress) {
   if (!progress) return false;
@@ -118,6 +136,132 @@ assert.strictEqual(progressModel.getGrammarTotal({ grammarQt: 5 }), 5);
 }
 
 {
+  const previousFailureState = {
+    ...matureProgress,
+    qt: 20,
+    reps: 20,
+    wrongCount: 4,
+    errorStreak: 3,
+    correctStreakSinceWrong: 0,
+    dueAt: '2026-06-20T00:10:00.000Z',
+    nextReviewAt: '2026-06-20T00:10:00.000Z',
+    lastReviewedAt: '2026-06-20T00:00:00.000Z',
+    syncRevision: 7
+  };
+  const successfulReview = {
+    ...previousFailureState,
+    qr: 19,
+    qt: 21,
+    reps: 21,
+    wrongCount: 3,
+    errorStreak: 0,
+    correctStreakSinceWrong: 1,
+    dueAt: '2026-06-22T00:00:00.000Z',
+    nextReviewAt: '2026-06-22T00:00:00.000Z',
+    lastReviewedAt: '2026-06-21T00:00:00.000Z'
+  };
+  const merged = progressModel.mergeEntries(previousFailureState, successfulReview);
+  assert.strictEqual(merged.qt, 21, 'a newer answer must advance cumulative quiz totals');
+  assert.strictEqual(merged.wrongCount, 3, 'a newer successful state must be allowed to lower wrongCount');
+  assert.strictEqual(merged.errorStreak, 0, 'a newer successful state must be allowed to clear errorStreak');
+  assert.strictEqual(merged.correctStreakSinceWrong, 1, 'current streak must come from the newer state snapshot');
+  assert.strictEqual(merged.dueAt, successfulReview.dueAt, 'dueAt must come from the selected newer snapshot');
+  assert.strictEqual(merged.nextReviewAt, successfulReview.nextReviewAt, 'nextReviewAt must come from the same selected snapshot as dueAt');
+  assert.strictEqual(merged.syncRevision, 7, 'an unsynced local answer must retain its server base revision');
+}
+
+{
+  const mergeCloudProgress = loadApiProgressMerge();
+  const cloudRow = {
+    quiz_right: 18,
+    quiz_total: 20,
+    wrong_count: 4,
+    error_streak: 3,
+    correct_streak_since_wrong: 0,
+    card_state: 'review',
+    due_at: '2026-06-20T00:10:00.000Z',
+    next_review_at: '2026-06-20T00:10:00.000Z',
+    last_reviewed_at: '2026-06-20T00:00:00.000Z',
+    reps: 20,
+    sync_revision: 7
+  };
+  const localProgress = {
+    qr: 19,
+    qt: 21,
+    wrongCount: 3,
+    errorStreak: 0,
+    correctStreakSinceWrong: 1,
+    cardState: 'review',
+    dueAt: '2026-06-22T00:00:00.000Z',
+    nextReviewAt: '2026-06-22T00:00:00.000Z',
+    lastReviewedAt: '2026-06-21T00:00:00.000Z',
+    reps: 21,
+    syncRevision: 7
+  };
+  const merged = mergeCloudProgress(localProgress, cloudRow);
+  assert.strictEqual(merged.errorStreak, 0, 'API cloud merge must preserve a newer explicit streak reset');
+  assert.strictEqual(merged.wrongCount, 3, 'API cloud merge must preserve a newer decreased wrongCount');
+  assert.strictEqual(merged.dueAt, localProgress.dueAt, 'API cloud merge must use the newer scheduler snapshot');
+  assert.strictEqual(merged.nextReviewAt, localProgress.nextReviewAt, 'API cloud merge must keep both due fields on that snapshot');
+}
+
+{
+  const beforeFailure = {
+    ...matureProgress,
+    qt: 21,
+    reps: 21,
+    errorStreak: 0,
+    correctStreakSinceWrong: 3,
+    lastReviewedAt: '2026-06-21T00:00:00.000Z'
+  };
+  const failedReview = {
+    ...beforeFailure,
+    qt: 22,
+    reps: 22,
+    wrongCount: 1,
+    errorStreak: 1,
+    correctStreakSinceWrong: 0,
+    dueAt: '2026-06-22T00:10:00.000Z',
+    nextReviewAt: '2026-06-22T00:10:00.000Z',
+    lastReviewedAt: '2026-06-22T00:00:00.000Z'
+  };
+  const merged = progressModel.mergeEntries(beforeFailure, failedReview);
+  assert.strictEqual(merged.correctStreakSinceWrong, 0, 'a newer failure must clear the consecutive-success state');
+  assert.strictEqual(merged.errorStreak, 1, 'a newer failure must set the current error streak');
+}
+
+{
+  const current = {
+    ...matureProgress,
+    errorStreak: 0,
+    wrongCount: 2,
+    correctStreakSinceWrong: 2,
+    dueAt: '2026-07-20T00:00:00.000Z',
+    nextReviewAt: '2026-07-20T00:00:00.000Z',
+    stateUpdatedAt: '2026-06-22T00:00:00.000Z',
+    syncRevision: 9
+  };
+  const stale = {
+    ...current,
+    errorStreak: 3,
+    wrongCount: 5,
+    correctStreakSinceWrong: 0,
+    dueAt: '2026-09-20T00:00:00.000Z',
+    nextReviewAt: '2026-09-20T00:00:00.000Z',
+    lastReviewedAt: '2026-06-23T00:00:00.000Z',
+    stateUpdatedAt: '2026-06-21T00:00:00.000Z',
+    syncRevision: 8
+  };
+  const merged = progressModel.mergeEntries(current, stale);
+  assert.strictEqual(merged.errorStreak, 0, 'a lower sync revision must not revive stale current-state fields');
+  assert.strictEqual(merged.wrongCount, 2, 'a lower sync revision must not overwrite current wrongCount');
+  assert.strictEqual(merged.dueAt, current.dueAt, 'a stale future due date must not replace the current scheduler snapshot');
+  assert.strictEqual(merged.nextReviewAt, current.nextReviewAt, 'legacy and scheduler due fields must stay on the current snapshot');
+  assert.strictEqual(merged.lastReviewedAt, current.lastReviewedAt, 'a stale revision must not replace the current review timestamp');
+  assert.strictEqual(merged.syncRevision, 9, 'syncRevision must remain monotonic');
+}
+
+{
   const stalePending = {
     word_id: matureProgress.word_id,
     known: false,
@@ -173,7 +317,8 @@ assert.strictEqual(progressModel.getGrammarTotal({ grammarQt: 5 }), 5);
   assert(app.includes('blocked-progress-not-loaded'), 'answer/list/repair paths must be blocked before progress load');
   assert(app.includes('debugProgressWrite'), 'progress writes should be instrumented behind debug mode');
   assert(app.includes('RomanianVocabProgressModel.mergeEntries'), 'front-end progress writes must use the shared progress model');
-  assert(api.includes('RomanianVocabProgressModel.selectSchedulerBase'), 'local/cloud progress merge must use the shared progress model');
+  assert(api.includes('const merged = RomanianVocabProgressModel.mergeEntries(cloudProgress, localProgress);'), 'local/cloud progress merge must delegate to the shared progress model');
+  assert(!api.includes('const wrongCount = Math.max(Number(localProgress.wrongCount'), 'API layer must not redefine current-state merge rules');
   assert(api.includes('function mergeStoredProgress'), 'all storage overlays must use one monotonic progress merge helper');
   assert(api.includes('map[nextKey] = mergeStoredProgress(map[nextKey]'), 'pending progress must merge with cloud progress instead of overwriting it');
   assert(api.includes('const { preferCloud = !isOfflineMode() } = options;'), 'online vocabulary loading must be cloud-first');

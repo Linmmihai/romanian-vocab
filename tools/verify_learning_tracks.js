@@ -110,7 +110,9 @@ assert.match(appSource, /getLearningCollectionWords\(words = W\)/, 'app must sco
 assert.match(appSource, /frequencyRank > 0/, 'new-card ordering must use corpus frequency');
 assert.match(appSource, /verification_status === 'verified'.*phrase_quality === 'core'/,
   'reviewed core expressions must outrank unreviewed lemma-frequency cards');
-assert.match(appSource, /learningCollectionId,\s*\n\s*curCat/, 'quiz cache must vary by selected collection');
+const quizCacheKey = appSource.match(/function getCachedScopedPracticePool\(\)\s*\{\s*const key = \[([\s\S]*?)\]\.join/)[1];
+assert(quizCacheKey.includes('learningCollectionId'), 'quiz cache must vary by selected collection');
+assert(quizCacheKey.includes('learningContentScope'), 'quiz cache must vary by selected content scope');
 assert.match(apiSource, /collection_id/, 'daily queue sync must carry its selected collection');
 assert.match(apiSource, /cloudQueue\.collection_id.*expectedQueue\.collection_id/,
   'cloud read-back must verify queue collection ownership');

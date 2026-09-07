@@ -1,8 +1,13 @@
-const CACHE_NAME = 'ro-vocab-pwa-v47-leaderboard-sync-v1';
+const CACHE_NAME = 'ro-vocab-pwa-v50-learning-evidence-cloud-v1';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
   './scheduler.js',
+  './learning-evidence.js',
+  './content-quality.js',
+  './study-session.js',
+  './study-session-ui.js',
+  './content-quality-ui.js',
   './progress-model.js',
   './daily-plan.js',
   './taxonomy.js',
