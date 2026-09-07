@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ro-vocab-pwa-v50-learning-evidence-cloud-v1';
+const CACHE_NAME = 'ro-vocab-pwa-v51-learning-evidence-cloud-v2';
 const APP_SHELL_PATHS = [
   './',
   './index.html',
