@@ -1104,6 +1104,13 @@ const DEXONLINE_VERB_FALLBACK_WORDS = [
 // ── 入口 ─────────────────────────────────────────────────
 
 async function init() {
+  try {
+    await prepareStudyStorage();
+  } catch (error) {
+    console.error('Study storage recovery failed', error);
+    showAuthMsg('本机学习记录恢复未完成，原始记录已保留。请刷新重试：' + authErrorMessage(error), 'error');
+    return;
+  }
   if (localStorage.getItem('offline-mode') === '1') {
     await doOfflineLogin();
     return;
@@ -1123,6 +1130,7 @@ async function init() {
 }
 
 async function onLogin(user) {
+  await prepareStudyStorage();
   currentUser = user;
   const profile = await apiGetProfile(user.id);
   userRole = profile?.role || 'pending';

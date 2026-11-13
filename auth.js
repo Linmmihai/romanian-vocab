@@ -58,6 +58,7 @@ function authErrorMessage(error) {
 }
 
 async function doOfflineLogin() {
+  await prepareStudyStorage();
   localStorage.setItem('offline-mode', '1');
   await onLogin({
     id: OFFLINE_USER_ID,

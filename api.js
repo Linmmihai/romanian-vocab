@@ -262,7 +262,14 @@ function recoverStudyCommits() {
   for (const key of keys.sort()) {
     const record = JSON.parse(localStorage.getItem(key));
     if (!record) continue;
-    for (const [target, value] of record.writes) writeLocalStorageString(target, value);
+    while (record.writes.length) {
+      const [target, value] = record.writes[0];
+      writeLocalStorageString(target, value);
+      record.writes.shift();
+      // A shorter receipt cannot require more quota. Never discard an
+      // unapplied target, including when materialization fails midway.
+      if (record.writes.length) localStorage.setItem(key, JSON.stringify(record));
+    }
     localStorage.removeItem(key);
   }
 }
@@ -1195,6 +1202,12 @@ function writeLocalProgressSnapshot(userId, progressMap = {}) {
     if (!nextKey) return;
     snapshot[nextKey] = mergeStoredProgress(snapshot[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo });
     delete snapshot[nextKey].pendingSync;
+    // Evidence has its own durable record/outbox; copying the growing event
+    // history into every progress mirror needlessly exhausts localStorage.
+    const evidenceRecord = readJson(learningEvidenceRecordKey(userId, wordId, wordRo), null);
+    if (evidenceRecord && JSON.stringify(evidenceRecord.evidence) === JSON.stringify(snapshot[nextKey].learningEvidence)) {
+      delete snapshot[nextKey].learningEvidence;
+    }
   });
   try {
     writeJson(localKey(userId, 'progress'), snapshot);
@@ -1245,6 +1258,10 @@ function writeLocalProgressEntry(userId, wordId, wordRo, progress = {}) {
   const map = readJson(localKey(userId, 'progress'), {});
   map[key] = mergeCloudProgress({ ...(progress || {}), word_id: getProgressEntryWordId(key, progress), word_ro: wordRo || progress?.word_ro || progress?.wordRo || '' }, map[key] || null);
   delete map[key].pendingSync;
+  const evidenceRecord = readJson(learningEvidenceRecordKey(userId, getProgressEntryWordId(key, progress), wordRo), null);
+  if (evidenceRecord && JSON.stringify(evidenceRecord.evidence) === JSON.stringify(map[key].learningEvidence)) {
+    delete map[key].learningEvidence;
+  }
   try {
     writeJson(localKey(userId, 'progress'), map);
     return { ok: true };
@@ -3509,5 +3526,81 @@ function apiGetLocalDailyGoal(userId = OFFLINE_USER_ID) {
   return Number(localStorage.getItem(localKey(userId, 'daily_goal'))) || API_DEFAULT_DAILY_GOAL;
 }
 
-// Recover an interrupted answer before authentication loads local state.
-try { recoverStudyCommits(); } catch (error) { console.warn('Study commit recovery deferred', error); }
+// Free a stranded receipt only after its original bytes and a full study-data
+// snapshot have committed to a separate durable store. Authentication tokens
+// are deliberately excluded from the backup. Startup awaits recovery before
+// any cloud sync can acknowledge or remove these event IDs.
+let studyStoragePreparation = null;
+function prepareStudyStorage() {
+  if (studyStoragePreparation) return studyStoragePreparation;
+  studyStoragePreparation = (async () => {
+    if (!globalThis.indexedDB) { recoverStudyCommits(); return; }
+    const run = async () => {
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open('romanian-vocab-storage-recovery', 1);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('pending', { keyPath: 'key' });
+          request.result.createObjectStore('backups');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error('本机记录备份被其他页面阻塞，请关闭其他词汇学习页面后重试'));
+      });
+      const transact = (stores, mode, action) => new Promise((resolve, reject) => {
+        const tx = db.transaction(stores, mode);
+        let result;
+        tx.oncomplete = () => resolve(result);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('本机记录备份事务未完成'));
+        result = action(tx);
+      });
+      try {
+        const current = [];
+        const snapshot = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          const raw = localStorage.getItem(key);
+          if (key?.startsWith('study_commit:')) {
+            const record = JSON.parse(raw);
+            if (!Array.isArray(record?.writes) || record.writes.some(write =>
+              !Array.isArray(write) || write.length !== 2 || write.some(value => typeof value !== 'string'))) {
+              throw new Error('本机答题恢复记录格式异常，已保留原始记录');
+            }
+            current.push({ key, raw });
+          }
+          if (criticalStorageUserId(key) || /^(progress|progress_memory|today_|daily_|wrongbook_)/.test(key || '')) {
+            snapshot[key] = raw;
+          }
+        }
+        if (current.length) {
+          await transact(['pending', 'backups'], 'readwrite', tx => {
+            tx.objectStore('backups').put({ createdAt: new Date().toISOString(), values: snapshot },
+              `before-recovery:${Date.now()}:${Math.random().toString(36).slice(2)}`);
+            for (const record of current) tx.objectStore('pending').put(record);
+          });
+        }
+        const request = await transact(['pending'], 'readonly', tx => tx.objectStore('pending').getAll());
+        const pending = request.result.sort((a, b) => a.key.localeCompare(b.key));
+        // No study data is removed until the IDB transaction above completes.
+        for (const { key, raw } of current) {
+          if (localStorage.getItem(key) !== raw) throw new Error('另一页面正在修改答题记录，请关闭其他词汇学习页面后重试');
+          localStorage.removeItem(key);
+        }
+        for (const { raw } of pending) {
+          const record = JSON.parse(raw);
+          for (const [key, value] of record.writes) localStorage.setItem(key, value);
+        }
+        if (pending.length) {
+          await transact(['pending'], 'readwrite', tx => {
+            for (const { key } of pending) tx.objectStore('pending').delete(key);
+          });
+        }
+        recoverStudyCommits();
+        if (pending.length) console.info(`Recovered ${pending.length} study receipts; original study data backed up in IndexedDB`);
+      } finally { db.close(); }
+    };
+    if (globalThis.navigator?.locks) await navigator.locks.request('romanian-vocab-storage-recovery', run);
+    else await run();
+  })().catch(error => { studyStoragePreparation = null; throw error; });
+  return studyStoragePreparation;
+}
