@@ -154,7 +154,8 @@ const DEFAULT_DAILY_NEW_LIMIT = 30;
 const DAILY_NEW_LIMIT_MAX = 500;
 const PENDING_PROGRESS_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 const CLOUD_PROGRESS_REFRESH_COOLDOWN_MS = 60 * 1000;
-const IDLE_PROGRESS_BACKUP_MS = 150 * 1000;
+const IDLE_PROGRESS_BACKUP_MS = 15 * 1000;
+const PROGRESS_RETRY_MAX_MS = 60 * 1000;
 const DEFAULT_LEARNING_COLLECTION = 'news_core';
 
 // 每日任务目标状态
@@ -172,6 +173,8 @@ let calendarCache = { key: '', logs: null, fetchedAt: 0 };
 let lastProgressWarningAt = 0;
 let progressCloudSyncInFlight = null;
 let progressCloudSyncTimer = null;
+let progressCloudRetryTimer = null;
+let progressCloudRetryDelay = 5000;
 let progressLoaded = false;
 let dailyReminderTimer = null;
 let dailyCheckinPromptShown = false;
@@ -1621,8 +1624,7 @@ function setupProgressAutoBackup() {
       triggerCloudProgressBackup('页面隐藏', { limit: 100 });
     }
     else {
-      scheduleIdleProgressBackup();
-      refreshCloudProgressAfterLocalLoad({ force: true });
+      triggerCloudProgressBackup('回到页面', { force: true, limit: 100 });
     }
   });
   window.addEventListener('pagehide', () => {
@@ -1641,23 +1643,29 @@ function setupProgressAutoBackup() {
 }
 
 function scheduleIdleProgressBackup() {
-  if (progressCloudSyncTimer) clearTimeout(progressCloudSyncTimer);
+  // Activity must not postpone the deadline indefinitely during study.
+  if (progressCloudSyncTimer) return;
   progressCloudSyncTimer = setTimeout(() => {
-    triggerCloudProgressBackup('空闲备份', { limit: 100 });
+    progressCloudSyncTimer = null;
+    triggerCloudProgressBackup('自动备份', { limit: 100 });
   }, IDLE_PROGRESS_BACKUP_MS);
 }
 
 async function triggerCloudProgressBackup(reason = '备份', options = {}) {
   if (isOfflineMode() || !currentUser?.id || typeof apiRetryPendingProgress !== 'function') return null;
   if (progressCloudSyncInFlight) return progressCloudSyncInFlight;
+  flushPendingFastCardState();
   if (!hasPendingSync() && !options.force) return null;
+  if (progressCloudRetryTimer) clearTimeout(progressCloudRetryTimer);
+  progressCloudRetryTimer = null;
   setSyncBadge(`${reason}中...`, '');
   progressCloudSyncInFlight = (async () => {
     let cloudReadConfirmed = false;
+    let madeProgress = false;
     try {
       const [progressResult, dailyResult, evidenceResult] = await Promise.allSettled([
         apiRetryPendingProgress(currentUser.id, options.limit || 100),
-        syncDailyStateToCloud(),
+        syncDailyStateToCloud({ limit: options.limit || 100 }),
         apiRetryPendingLearningEvidence(currentUser.id, options.limit || 100)
       ]);
       const result = progressResult.status === 'fulfilled'
@@ -1687,6 +1695,8 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
           result.evidenceError = evidenceResult.value?.error || new Error('学习证据仍有待同步项');
         }
       }
+      madeProgress = Number(result.saved || 0) + Number(dailyResult.value?.retry?.saved || 0) +
+        Number(result.evidenceSaved || 0) > 0;
       let pendingSummary = reconcileProgressPendingFlags();
       result.pendingSummary = pendingSummary;
       if (!result.failed && pendingSummary.totalCount === 0) {
@@ -1721,6 +1731,16 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
       return { failed: true, error };
     } finally {
       progressCloudSyncInFlight = null;
+      if (!isOfflineMode() && currentUser?.id && (hasPendingSync() || !cloudReadConfirmed)) {
+        const delay = madeProgress ? 1000 : progressCloudRetryDelay;
+        progressCloudRetryDelay = madeProgress ? 5000 : Math.min(PROGRESS_RETRY_MAX_MS, progressCloudRetryDelay * 2);
+        progressCloudRetryTimer = setTimeout(() => {
+          progressCloudRetryTimer = null;
+          triggerCloudProgressBackup('自动重试', { force: true, limit: 100 });
+        }, delay);
+      } else {
+        progressCloudRetryDelay = 5000;
+      }
       renderSyncStatus();
       setTimeout(() => {
         if (cloudReadConfirmed && !hasPendingSync()) setSyncBadge('', '');
@@ -1730,7 +1750,7 @@ async function triggerCloudProgressBackup(reason = '备份', options = {}) {
   return progressCloudSyncInFlight;
 }
 
-async function syncDailyStateToCloud() {
+async function syncDailyStateToCloud(options = {}) {
   if (isOfflineMode() || !currentUser?.id) return null;
   if (!ensureDailyStateCurrent({ reload: true })) return null;
   const checkinDone = isDailyCheckinDone();
@@ -1752,7 +1772,7 @@ async function syncDailyStateToCloud() {
   const rejected = results.find(result => result.status === 'rejected');
   if (rejected) throw rejected.reason;
   const retryResult = typeof apiRetryPendingDailyState === 'function'
-    ? await apiRetryPendingDailyState(currentUser.id)
+    ? await apiRetryPendingDailyState(currentUser.id, options.limit || 100)
     : { attempted: 0, failed: 0, remaining: 0 };
   const syncError = results
     .filter(result => result.status === 'fulfilled' && result.value?.syncError)
@@ -1761,7 +1781,7 @@ async function syncDailyStateToCloud() {
   if (syncError || retryResult.failed || retryResult.remaining) {
     return {
       saved: false,
-      syncError: syncError || '每日状态仍有待同步项',
+      syncError: retryResult.error?.message || syncError || `每日状态仍有 ${retryResult.remaining || 0} 项待同步`,
       retry: retryResult
     };
   }

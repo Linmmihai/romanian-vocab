@@ -1191,6 +1191,31 @@ function readLocalProgressFallback(userId) {
   return attachLocalLearningEvidence(userId, map);
 }
 
+// The evidence store adds word identity to events; the in-memory version may
+// omit it. Compare normalized contents before dropping a duplicate history.
+function compactProgressMirror(userId, progress, wordId, wordRo) {
+  const next = { ...progress };
+  const record = readJson(learningEvidenceRecordKey(userId, wordId, wordRo), null);
+  if (record && next.learningEvidence) {
+    const stored = record.evidence || {};
+    const incoming = next.learningEvidence;
+    const storedById = new Map((stored.events || []).map(event => [String(event.id), event]));
+    const sameMetadata = Object.entries(incoming).every(([key, value]) =>
+      key === 'events' || JSON.stringify(stored[key]) === JSON.stringify(value));
+    const safelyStored = (incoming.events || []).every(event => {
+      const normalized = normalizeLearningEvidenceEvent(event, wordId, wordRo);
+      const saved = storedById.get(String(normalized?.id));
+      return saved && Object.entries(normalized).every(([key, value]) =>
+        JSON.stringify(saved[key]) === JSON.stringify(value));
+    });
+    if (sameMetadata && safelyStored) delete next.learningEvidence;
+  }
+  // Keep canonical identity only; readers already support these field names.
+  if (next.wordId === next.word_id) delete next.wordId;
+  if (next.wordRo === next.word_ro) delete next.wordRo;
+  return next;
+}
+
 function writeLocalProgressSnapshot(userId, progressMap = {}) {
   if (!userId) return { ok: true, skipped: true };
   const snapshot = {};
@@ -1202,12 +1227,7 @@ function writeLocalProgressSnapshot(userId, progressMap = {}) {
     if (!nextKey) return;
     snapshot[nextKey] = mergeStoredProgress(snapshot[nextKey], { ...(progress || {}), word_id: wordId, word_ro: wordRo });
     delete snapshot[nextKey].pendingSync;
-    // Evidence has its own durable record/outbox; copying the growing event
-    // history into every progress mirror needlessly exhausts localStorage.
-    const evidenceRecord = readJson(learningEvidenceRecordKey(userId, wordId, wordRo), null);
-    if (evidenceRecord && JSON.stringify(evidenceRecord.evidence) === JSON.stringify(snapshot[nextKey].learningEvidence)) {
-      delete snapshot[nextKey].learningEvidence;
-    }
+    snapshot[nextKey] = compactProgressMirror(userId, snapshot[nextKey], wordId, wordRo);
   });
   try {
     writeJson(localKey(userId, 'progress'), snapshot);
@@ -1258,10 +1278,7 @@ function writeLocalProgressEntry(userId, wordId, wordRo, progress = {}) {
   const map = readJson(localKey(userId, 'progress'), {});
   map[key] = mergeCloudProgress({ ...(progress || {}), word_id: getProgressEntryWordId(key, progress), word_ro: wordRo || progress?.word_ro || progress?.wordRo || '' }, map[key] || null);
   delete map[key].pendingSync;
-  const evidenceRecord = readJson(learningEvidenceRecordKey(userId, getProgressEntryWordId(key, progress), wordRo), null);
-  if (evidenceRecord && JSON.stringify(evidenceRecord.evidence) === JSON.stringify(map[key].learningEvidence)) {
-    delete map[key].learningEvidence;
-  }
+  map[key] = compactProgressMirror(userId, map[key], getProgressEntryWordId(key, progress), wordRo);
   try {
     writeJson(localKey(userId, 'progress'), map);
     return { ok: true };
@@ -2626,20 +2643,32 @@ async function apiRetryPendingDailyState(userId, limit = PENDING_DAILY_STATE_RET
 
   const batch = events.slice(0, Math.max(1, Number(limit || PENDING_DAILY_STATE_RETRY_LIMIT)));
   let saved = 0;
+  let lastError = null;
+  let attempted = 0;
   for (const event of batch) {
+    attempted++;
+    // Draining one client's prefix may already have acknowledged this event.
+    if (!readPendingDailyEvents(userId).some(pending => pending.eventId === event.eventId)) {
+      saved++;
+      continue;
+    }
     try {
       await enqueueDailyStateEventSync(userId, event);
       saved++;
     } catch (error) {
+      lastError = error;
       console.warn('Pending daily state event retry failed', event.date, event.eventId, error);
+      // Later deltas depend on this prefix. Retrying the same broken prefix
+      // for every event makes a single timeout take minutes to return.
+      break;
     }
   }
   const remainingEvents = readPendingDailyEvents(userId);
   const remainingLegacy = Object.values(readPendingDailyState(userId) || {})
     .reduce((count, state) => count + (state?.queue ? 1 : 0) + (state?.log ? 1 : 0), 0);
   const remaining = remainingEvents.length || remainingLegacy;
-  const failed = Math.max(0, batch.length - saved);
-  return { attempted: batch.length, saved, failed, remaining, totalPending: events.length };
+  const failed = Math.max(0, attempted - saved);
+  return { attempted, saved, failed, remaining, totalPending: events.length, error: lastError };
 }
 
 /**

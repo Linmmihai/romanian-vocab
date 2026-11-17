@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ro-vocab-pwa-v52-storage-recovery';
+const CACHE_NAME = 'ro-vocab-pwa-v53-sync-reliability';
 const APP_SHELL_PATHS = [
   './',
   './index.html',

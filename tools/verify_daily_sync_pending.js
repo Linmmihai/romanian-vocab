@@ -49,7 +49,7 @@ assert(api.includes('function syncPendingDailyEventsThrough'), 'daily sync must 
 
 assert(app.includes('function hasPendingSync'), 'UI sync state must include daily pending state');
 assert(app.includes('function reconcileProgressPendingFlags'), 'UI flags must be reconciled from the durable pending queue after retry');
-assert(app.includes('apiRetryPendingDailyState(currentUser.id)'), 'app must retry daily pending state');
+assert(app.includes('apiRetryPendingDailyState(currentUser.id, options.limit || 100)'), 'app must retry daily pending state');
 assert(app.includes("window.addEventListener('online'"), 'app must retry when the network comes back');
 assert(app.includes('if (!hasPendingSync()) setSyncBadge'), 'sync badge must not clear while any pending state remains');
 assert(app.includes('retryPendingProgressAfterLoad();'), 'startup must trigger pending retry');
