@@ -222,6 +222,7 @@ test('noun exercises accept structured and legacy forms while excluding unsuppor
 });
 
 test('first-day plan can be checked in after every available word is recalled', async ({ page }) => {
+  test.slow(); // This flow clicks through all 30 cards on shared CI runners.
   await enterApp(page);
   await expect(page.locator('#review-new-count')).toHaveText('0/30');
   for (let index = 0; index < 30; index++) {
