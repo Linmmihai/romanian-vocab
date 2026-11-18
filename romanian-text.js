@@ -16,7 +16,8 @@
     return RO_VOWELS.includes(char);
   }
 
-  function autoStressToken(token) {
+  function getVowelGroups(value) {
+    const token = String(value || "");
     const groups = [];
     let start = -1;
     for (let index = 0; index < token.length; index++) {
@@ -28,6 +29,11 @@
       }
     }
     if (start !== -1) groups.push({ start, end: token.length });
+    return groups;
+  }
+
+  function autoStressToken(token) {
+    const groups = getVowelGroups(token);
     if (!groups.length) return token;
 
     const target = groups[Math.max(0, groups.length - 2)];
@@ -117,6 +123,8 @@
   }
 
   global.RomanianVocabText = Object.freeze({
+    isRoVowel,
+    getVowelGroups,
     autoStressToken,
     autoStressWord,
     getStressDisplay,

@@ -27,7 +27,7 @@ assert(app.includes('scheduleRenderList'), 'vocabulary search should be debounce
 
 assert(app.includes('function endQuizEarly()'), 'quiz needs an explicit end-round action');
 assert(app.includes('快捷键：1–4 选择 · Enter 下一题'), 'quiz should expose keyboard shortcuts');
-assert(app.includes('本轮测验已结束'), 'leaving an active quiz should explain what happened');
+assert(app.includes('本轮测验已暂停，返回测验可继续'), 'navigation must preserve an active quiz and explain how to resume');
 
 assert(html.includes('role="button" tabindex="0" aria-expanded="false" aria-label="翻转查看答案"'), 'flashcards must be keyboard-accessible controls');
 assert(html.includes('role="dialog" aria-modal="true"'), 'modals must expose dialog semantics');

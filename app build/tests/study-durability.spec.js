@@ -18,7 +18,7 @@ test('markCard persists progress before exposing the answer in the UI', async ({
   });
   expect(result.progressKeys).toBeGreaterThan(0);
   expect(Object.keys(result.pending)).toHaveLength(1);
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
 });
 
 test('a failed study commit leaves the card unchanged and retry creates one event', async ({ page }) => {
@@ -81,7 +81,7 @@ test('receipt survives materialization failure and recovery is idempotent after 
   expect(second.newCount).toBe(first.newCount);
   expect(second.receiptCount).toBe(0);
   await page.reload();
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
 });
 
 
@@ -97,5 +97,5 @@ test('a render failure after durable commit cannot submit the answer twice', asy
   });
   expect(result).toEqual({ events: 1, count: 1, progressLoaded: false });
   await page.reload();
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
 });

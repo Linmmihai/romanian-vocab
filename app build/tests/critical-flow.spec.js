@@ -13,11 +13,11 @@ test('offline study answer persists and advances the fixed daily goal', async ({
   page.on('pageerror', error => pageErrors.push(error.message));
   await enterOfflineApp(page);
 
-  await expect(page.locator('#review-new-count')).toHaveText('0/200');
+  await expect(page.locator('#review-new-count')).toHaveText('0/30');
   await page.locator('#main-card').click();
   await expect(page.locator('#mark-known-btn')).toBeVisible();
   await page.locator('#mark-known-btn').click();
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
 
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('progress:local-offline-user');
@@ -26,7 +26,7 @@ test('offline study answer persists and advances the fixed daily goal', async ({
 
   await page.reload();
   await expect(page.locator('#app-screen')).toBeVisible();
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
   expect(pageErrors).toEqual([]);
 });
 
@@ -37,7 +37,7 @@ test('failed new cards stay in Anki learning steps instead of becoming reinforce
   await page.locator('#main-card').click();
   const wordRo = (await page.locator('#fc-ro').innerText()).trim();
   await page.locator('#mark-unknown-btn').click();
-  await expect(page.locator('#review-new-count')).toHaveText('0/200');
+  await expect(page.locator('#review-new-count')).toHaveText('0/30');
 
   await page.locator('.nav-tab[data-page="list"]').click();
   await page.locator('#search-input').fill(wordRo);
@@ -91,12 +91,13 @@ test('scientific diagnostic uses a trusted, non-repeating blueprint with listeni
   await expect(page.getByText('听音选择中文')).toBeVisible();
   await expect(page.locator('.opt[data-quiz-action="answer"]')).toHaveCount(4);
   await expect(page.locator('.opt[data-quiz-action="answer"]:enabled')).toHaveCount(0);
-  expect(await page.evaluate(() => qRoundTotal)).toBe(0);
+  expect(await page.evaluate(() => qRoundResults.length)).toBe(0);
 
   await page.evaluate(() => {
     speechSynthesis.cancel = () => {};
-    speechSynthesis.speak = () => {};
-    speechSynthesis.getVoices = () => [];
+    window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+    speechSynthesis.speak = utterance => utterance.onstart?.();
+    speechSynthesis.getVoices = () => [{ lang: 'ro-RO' }];
   });
   await page.locator('#quiz-play-btn').click();
   await expect(page.locator('.opt[data-quiz-action="answer"]:enabled')).toHaveCount(4);
@@ -141,9 +142,6 @@ test('dictation separates sound recognition from Romanian diacritic spelling', a
     qList = [word];
     qIdx = 0;
     qStarted = true;
-    qRoundRight = 0;
-    qRoundTotal = 0;
-    qRoundWrong = 0;
     qRoundResults = [];
     renderQuiz();
     return { ro: word.ro, withoutDiacritics: window.RomanianVocabQuizEngine.stripRomanianDiacritics(word.ro) };
@@ -152,8 +150,9 @@ test('dictation separates sound recognition from Romanian diacritic spelling', a
   await expect(page.locator('#quiz-dictation-input')).toBeDisabled();
   await page.evaluate(() => {
     speechSynthesis.cancel = () => {};
-    speechSynthesis.speak = () => {};
-    speechSynthesis.getVoices = () => [];
+    window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+    speechSynthesis.speak = utterance => utterance.onstart?.();
+    speechSynthesis.getVoices = () => [{ lang: 'ro-RO' }];
   });
   await page.locator('#quiz-play-btn').click();
   await page.locator('#quiz-dictation-input').fill(target.withoutDiacritics);
@@ -161,7 +160,7 @@ test('dictation separates sound recognition from Romanian diacritic spelling', a
 
   await expect(page.locator('#qfb')).toContainText('听辨正确，拼写部分得分');
   await expect(page.locator('#qfb')).toContainText(target.ro);
-  const evidence = await page.evaluate(() => ({ result: qRoundResults[0], right: qRoundRight, total: qRoundTotal }));
+  const evidence = await page.evaluate(() => ({ result: qRoundResults[0], right: summarizeQuizResults(qRoundResults).exact, total: qRoundResults.length }));
   expect(evidence.result.points).toBe(0.5);
   expect(evidence.result.exact).toBe(false);
   expect(evidence.right).toBe(0);
@@ -250,7 +249,7 @@ test('offline account panel explains that today is saved only on this device', a
   await page.getByRole('button', { name: '账号与提醒' }).click();
 
   await expect(page.locator('#account-sync-status')).toHaveText('仅保存在本机');
-  await expect(page.locator('#account-sync-summary')).toContainText('今日已通过 0/200 · 新词 0/30');
+  await expect(page.locator('#account-sync-summary')).toContainText('今日已通过 0/30 · 新词 0/30');
   await expect(page.locator('#manual-sync-btn')).toBeDisabled();
   await expect(page.locator('#manual-sync-btn')).toHaveText('离线模式');
   await expect(page.locator('#sync-badge-text')).toHaveText('本机保存');
@@ -357,7 +356,7 @@ test('manual sync is serialized and only succeeds after cloud verification', asy
   await expect(page.locator('#sync-badge-text')).toContainText('已同步');
   await page.locator('#sync-badge').click();
   await expect(page.locator('#account-sync-status')).toHaveText('已同步到云端');
-  await expect(page.locator('#account-sync-summary')).toContainText('今日已通过 7/200');
+  await expect(page.locator('#account-sync-summary')).toContainText('今日已通过 7/7');
   await expect(page.locator('#manual-sync-btn')).toBeEnabled();
 });
 
@@ -487,7 +486,7 @@ test('cloud progress loading paginates beyond one thousand rows', async ({ page 
 test('daily completion goal and new-card cap remain separate', async ({ page }) => {
   await enterOfflineApp(page);
 
-  await expect(page.locator('#review-new-count')).toHaveText('0/200');
+  await expect(page.locator('#review-new-count')).toHaveText('0/30');
   await expect(page.locator('#review-new-remaining')).toHaveText('0/30');
   await expect(page.locator('#goal-input')).toHaveValue('200');
   await expect(page.locator('#new-limit-input')).toHaveValue('30');
@@ -875,7 +874,7 @@ test('history is read-only and undo restores the entire last answer', async ({ p
 
   await page.locator('#main-card').click();
   await page.locator('#mark-known-btn').click();
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
   await expect(page.locator('#review-new-remaining')).toHaveText('1/30');
 
   await page.locator('#history-nav-btn').click();
@@ -888,7 +887,7 @@ test('history is read-only and undo restores the entire last answer', async ({ p
   expect(await page.evaluate(() => todayNewWords)).toBe(beforeBlockedAnswer);
 
   await page.locator('#undo-last-answer-btn').click();
-  await expect(page.locator('#review-new-count')).toHaveText('0/200');
+  await expect(page.locator('#review-new-count')).toHaveText('0/30');
   await expect(page.locator('#review-new-remaining')).toHaveText('0/30');
   await expect(page.locator('#fc-zh')).toHaveText(originalChinese);
   await expect(page.locator('#undo-last-answer-btn')).toBeDisabled();

@@ -18,11 +18,16 @@
 
   if (isLocalDevHost) {
     navigator.serviceWorker.getRegistrations()
-      .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+      .then(registrations => {
+        const appWorkerUrl = new URL('./sw.js', location.href).href;
+        return Promise.all(registrations.filter(registration =>
+          [registration.active, registration.waiting, registration.installing].some(worker => worker?.scriptURL === appWorkerUrl)
+        ).map(registration => registration.unregister()));
+      })
       .catch(error => global.reportClientIssue?.('service_worker_cleanup_failed', error, { operation: 'unregister' }));
     if ('caches' in global) {
       caches.keys()
-        .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+        .then(keys => Promise.all(keys.filter(key => key.startsWith('ro-vocab-pwa-')).map(key => caches.delete(key))))
         .catch(error => global.reportClientIssue?.('service_worker_cleanup_failed', error, { operation: 'cache_clear' }));
     }
     return;

@@ -22,7 +22,7 @@ test('card evidence is durable, omitted from cloud journals, and removed by undo
   await page.evaluate(() => undoLastCardAnswer());
   expect(await page.evaluate(() => Object.keys(apiReadLearningEvidence(currentUser.id)).length)).toBe(0);
   await page.reload();
-  await expect(page.locator('#review-new-count')).toHaveText('0/200');
+  await expect(page.locator('#review-new-count')).toHaveText('0/30');
 });
 
 test('cloud refresh cannot remove local evidence and backup round-trip is idempotent', async ({ page }) => {

@@ -276,6 +276,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .result-next-title{font-size:13px;font-weight:850;color:var(--text);margin-bottom:4px}
 .result-next-text{font-size:13px;color:var(--text2);line-height:1.5}
 .restart-btn{padding:10px 28px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:white;font-size:14px;cursor:pointer;font-weight:500}
+#quiz-area:has(.quiz-session-tools) + #spelling-review-action{display:none}
 /* STATS + LEADERBOARD */
 .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
 .metric{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
@@ -717,7 +718,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           </div>
           <div class="review-grid">
             <div class="review-metric"><div class="review-n" id="review-due-count">0</div><div class="review-l">总到期（学习+复习）</div></div>
-            <div class="review-metric"><div class="review-n" id="review-new-count">0/200</div><div class="review-l">已通过</div></div>
+            <div class="review-metric"><div class="review-n" id="review-new-count">—</div><div class="review-l">已通过</div></div>
             <div class="review-metric"><div class="review-n" id="review-new-remaining">0/30</div><div class="review-l">已引入新词</div></div>
           </div>
           <div class="review-note" id="review-note">按学习步骤、到期复习、新词的顺序出卡。</div>
@@ -736,7 +737,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <div class="daily-goal-panel">
           <div id="daily-goal-bar"></div>
           <div class="goal-setting-row">
-            <label for="goal-input" style="font-size:13px;color:var(--text2)">每日通过目标：</label>
+            <label for="goal-input" style="font-size:13px;color:var(--text2)">每日通过目标上限：</label>
             <input type="number" id="goal-input" min="1" max="5000" style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" value="200">
             <span style="font-size:13px;color:var(--text2)">个词</span>
             <label for="new-limit-input" style="font-size:13px;color:var(--text2)">每日新词上限：</label>
@@ -890,6 +891,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               <button class="study-mode-btn" data-scope="due" onclick="setPracticeScope('due')">到期</button>
               <button class="study-mode-btn" data-scope="new" onclick="setPracticeScope('new')">未学</button>
               <button class="study-mode-btn" data-scope="all" onclick="setPracticeScope('all')">全部</button>
+              <button class="study-mode-btn" data-scope="spelling" onclick="configureQuiz({ scope: 'spelling', mode: 'dictation', difficulty: 'standard' })">拼写待复习（本机）</button>
             </div>
           </div>
           <div class="quiz-section" id="quiz-direction-section">
@@ -902,6 +904,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         </div>
       </details>
       <div id="quiz-area"></div>
+      <button type="button" id="spelling-review-action" class="restart-btn" hidden onclick="configureQuiz({ scope: 'spelling', mode: 'dictation', difficulty: 'standard' }, { start: true })"></button>
     </div>
   </div>
 
@@ -928,6 +931,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div class="panel-title"><span>分项学习证据</span><span id="learning-evidence-count" style="font-size:12px;color:var(--text2)">近30天记录</span></div>
       <div class="metric-grid" id="learning-evidence-stats"></div>
       <p style="font-size:12px;line-height:1.6;color:var(--text2);margin-bottom:0">同账号登录后支持跨设备同步；离线模式仅保存在本机。每词本机保留最近500条，可随进度备份恢复。到期首次回忆按每词每天的首次作答统计，升级前的历史记录不推测题型。</p>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><span>首次跨天回忆</span><span style="font-size:12px;color:var(--text2)">当前词书 · 本机记录</span></div>
+      <div id="stat-first-cross-day"></div>
     </div>
     <div class="panel">
       <div class="panel-title"><span>下一步建议</span><span style="font-size:12px;color:var(--text2)">按当前记录生成</span></div>
@@ -1074,7 +1081,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div class="manual-grid">
         <div class="manual-item">
           <div class="manual-title">① 今日顺序</div>
-          <div class="manual-text">先处理已经到点的学习步骤，再做正式到期复习，最后学习今日新词。等待中的卡片会在时间到后自动回到前面。</div>
+          <div class="manual-text">先完成正式到期复习及重新学习，再处理已经到点的初次学习步骤，最后学习今日新词。等待中的卡片会在时间到后自动回到前面。</div>
         </div>
         <div class="manual-item">
           <div class="manual-title">② 翻卡与作答</div>
@@ -1271,7 +1278,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           <div class="account-sync-detail" id="account-sync-detail">点击“立即同步”可主动确认今日记录已保存到云端。</div>
         </div>
       </div>
-      <div class="account-sync-summary" id="account-sync-summary">今日已通过 0/200 · 新词 0/30 · 未打卡</div>
+      <div class="account-sync-summary" id="account-sync-summary">正在读取今日学习进度</div>
       <div class="account-sync-actions">
         <button class="btn-save" id="manual-sync-btn" type="button" onclick="manualSyncToday()">立即同步</button>
       </div>
@@ -1295,19 +1302,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <div class="modal" role="dialog" aria-modal="true" aria-label="今日打卡" tabindex="-1">
     <div class="modal-title">今日目标 <button class="modal-close" onclick="closeDailyCheckinModal()">✕</button></div>
     <div style="display:grid;gap:12px">
-      <div style="font-size:18px;font-weight:800;color:var(--text)">固定通过目标已达成</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">今日学习计划已完成</div>
       <div class="checkin-metrics">
         <div class="review-metric"><div class="review-n" id="checkin-fixed-goal">0</div><div class="review-l">通过目标</div></div>
         <div class="review-metric"><div class="review-n" id="checkin-today-count">0</div><div class="review-l">今日已通过</div></div>
         <div class="review-metric"><div class="review-n" id="checkin-review-remaining">0</div><div class="review-l">剩余复习</div></div>
         <div class="review-metric"><div class="review-n" id="checkin-accuracy">0%</div><div class="review-l">今日正确率</div></div>
       </div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.6">现在已经达标。可以到此为止，也可以再完成指定数量，或清空剩余复习；只要还有到期复习，系统就不会开始新词。</div>
+      <div id="checkin-next-hint" style="font-size:13px;color:var(--text2);line-height:1.6"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
         <button class="btn-cancel" onclick="stopTodayAfterGoal()">今天到这里</button>
-        <button class="btn-cancel" onclick="continueTodayAfterGoal(10)">再完成 10 个</button>
-        <button class="btn-cancel" onclick="continueTodayCustomAfterGoal()">自定义</button>
-        <button class="btn-save" id="checkin-finish-reviews-btn" onclick="continueRemainingReviewsToday()">完成剩余复习</button>
+        <button class="btn-cancel" data-extend-plan onclick="continueTodayAfterGoal(10)">再完成 10 个</button>
+        <button class="btn-cancel" data-extend-plan onclick="continueTodayCustomAfterGoal()">自定义</button>
+        <button class="btn-save" data-extend-plan id="checkin-finish-reviews-btn" onclick="continueRemainingReviewsToday()">完成剩余复习</button>
       </div>
     </div>
   </div>
@@ -1369,6 +1376,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="form-group"><label>词汇单位</label><select id="em-unit"></select></div>
     <div class="form-group"><label>CEFR（只填已核实的精确等级）</label><select id="em-cefr"><option value="">未核实，不显示</option></select></div>
     <div class="form-group"><label>语域（可选）</label><select id="em-register"><option value="">未标注，不显示</option></select></div>
+    <div class="form-group"><label for="em-naturalness">词条自然度核对</label><select id="em-naturalness">
+      <option value="">保留现有状态</option><option value="verified">已核对，可用于诊断</option><option value="revised">已修订并核对，可用于诊断</option><option value="needs_review">待复核</option>
+    </select></div>
     <div class="form-group"><label>罗语例句</label><textarea id="em-example-ro" placeholder="例：Am cumpărat mere proaspete din piață." style="min-height:70px"></textarea></div>
     <div class="form-group"><label>中文例句</label><textarea id="em-example-zh" placeholder="例：我从市场买了新鲜苹果。" style="min-height:70px"></textarea></div>
     <div id="em-example-source" style="font-size:12px;color:var(--text3);margin-top:-6px;margin-bottom:8px"></div>
@@ -1433,22 +1443,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </div>
 
 <!-- ── JS 文件加载顺序由 ARCHITECTURE.md 和自动检查共同约束 ───── -->
-<script>window.ROMANIAN_VOCAB_APP_VERSION='20261117-sync-reliability';</script>
-<script src="scheduler.js?v=20261117-sync-reliability"></script>
-<script src="learning-evidence.js?v=20261117-sync-reliability"></script>
-<script src="progress-model.js?v=20261117-sync-reliability"></script>
-<script src="daily-plan.js?v=20261117-sync-reliability"></script>
-<script src="taxonomy.js?v=20261117-sync-reliability"></script>
-<script src="content-quality.js?v=20261117-sync-reliability"></script>
-<script src="romanian-text.js?v=20261117-sync-reliability"></script>
-<script src="quiz-engine.js?v=20261117-sync-reliability"></script>
-<script src="study-session.js?v=20261117-sync-reliability"></script>
-<script src="api.js?v=20261117-sync-reliability"></script>
-<script src="telemetry.js?v=20261117-sync-reliability"></script>
-<script src="auth.js?v=20261117-sync-reliability"></script>
-<script src="study-session-ui.js?v=20261117-sync-reliability"></script>
-<script src="content-quality-ui.js?v=20261117-sync-reliability"></script>
-<script src="app.js?v=20261117-sync-reliability"></script>
-<script src="pwa.js?v=20261117-sync-reliability"></script>
+<script>window.ROMANIAN_VOCAB_APP_VERSION='20261118-learning-review';</script>
+<script src="scheduler.js?v=20261118-learning-review"></script>
+<script src="learning-evidence.js?v=20261118-learning-review"></script>
+<script src="progress-model.js?v=20261118-learning-review"></script>
+<script src="daily-plan.js?v=20261118-learning-review"></script>
+<script src="taxonomy.js?v=20261118-learning-review"></script>
+<script src="content-quality.js?v=20261118-learning-review"></script>
+<script src="romanian-text.js?v=20261118-learning-review"></script>
+<script src="quiz-engine.js?v=20261118-learning-review"></script>
+<script src="study-session.js?v=20261118-learning-review"></script>
+<script src="api.js?v=20261118-learning-review"></script>
+<script src="telemetry.js?v=20261118-learning-review"></script>
+<script src="auth.js?v=20261118-learning-review"></script>
+<script src="study-session-ui.js?v=20261118-learning-review"></script>
+<script src="content-quality-ui.js?v=20261118-learning-review"></script>
+<script src="app.js?v=20261118-learning-review"></script>
+<script src="pwa.js?v=20261118-learning-review"></script>
 </body>
 </html>

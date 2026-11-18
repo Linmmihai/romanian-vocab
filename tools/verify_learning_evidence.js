@@ -111,9 +111,9 @@ assert.equal(wholeBook.total, 1501, 'whole-book summaries must not truncate at a
 assert.equal(wholeBook.byExerciseType.translation.correct, 751);
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-assert(app.includes("exerciseType: 'dictation'"), 'dictation evidence must keep its own exercise type');
+assert(app.includes("exerciseType: type") && app.includes("recordQuizAnswer(word, 'dictation', result)"), 'dictation evidence must keep its own exercise type');
 assert(app.includes('spellingExact: result.exact'), 'dictation must persist spelling correctness separately');
-assert(app.includes('listeningCorrect: result.listeningCorrect'), 'dictation must persist listening correctness separately');
+assert(app.includes('listeningCorrect: memoryCorrect') && app.includes('result.listeningCorrect ?? result.exact'), 'dictation must persist listening correctness separately');
 assert(app.includes('if (!coreMemory)'), 'non-active exercises need an isolated progress branch');
 
 console.log('learning evidence checks passed');

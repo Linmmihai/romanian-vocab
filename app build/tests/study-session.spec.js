@@ -42,7 +42,7 @@ test('quantity mode remains the default and does not block an answer', async ({ 
   expect(await page.evaluate(() => RomanianVocabStudySessionUI.getState().mode)).toBe('count');
   await answerKnown(page);
 
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
   const evidence = await page.evaluate(() => {
     const session = RomanianVocabStudySessionUI.getState();
     return {
@@ -139,7 +139,7 @@ test('an expired test budget saves the current answer and blocks the next one', 
 
   await answerKnown(page);
   await expect.poll(() => page.evaluate(() => RomanianVocabStudySessionUI.getState().status)).toBe('paused');
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
   const saved = await page.evaluate(() => ({
     completedCount: RomanianVocabStudySessionUI.getState().completedCount,
     answers: RomanianVocabStudySessionUI.getState().answers.length,
@@ -165,7 +165,7 @@ test('an expired test budget saves the current answer and blocks the next one', 
   await expect.poll(() => page.evaluate(() => RomanianVocabStudySessionUI.getState().status)).toBe('active');
   await page.locator('#mark-known-btn').click();
   await expect.poll(() => page.evaluate(() => RomanianVocabStudySessionUI.getState().completedCount)).toBe(2);
-  await expect(page.locator('#review-new-count')).toHaveText('2/200');
+  await expect(page.locator('#review-new-count')).toHaveText('2/30');
 });
 
 test('undo removes its session sample and refreshed session progress is retained', async ({ page }) => {
@@ -195,5 +195,5 @@ test('undo removes its session sample and refreshed session progress is retained
   await expect.poll(() => page.evaluate(() => RomanianVocabStudySessionUI.getState().completedCount)).toBe(1);
   const recovered = await studyStorage(page);
   expect(recovered.samples.map(sample => sample.id)).not.toContain(removedSampleId);
-  await expect(page.locator('#review-new-count')).toHaveText('1/200');
+  await expect(page.locator('#review-new-count')).toHaveText('1/30');
 });

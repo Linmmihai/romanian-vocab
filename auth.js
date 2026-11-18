@@ -265,6 +265,8 @@ async function doSignup() {
  * 登出
  */
 async function doLogout() {
+  resetQuizSession();
+  scheduleStudyRefresh(Infinity);
   localStorage.removeItem('offline-mode');
   try { await sb.auth.signOut(); } catch {}
   currentUser = null;

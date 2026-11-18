@@ -145,7 +145,7 @@ assert(app.includes('综合诊断只使用“已核对/已修订”词条'), 'th
 assert(index.includes('不等于 CEFR'), 'the UI must not overclaim CEFR alignment');
 assert(app.includes("qExerciseMode = 'diagnostic'"), 'the quiz tab should default to the multidimensional diagnostic');
 assert(app.includes("qCurrentAudioPlays >= 2"), 'listening assessment must cap replay count');
-assert(app.includes("result.listeningCorrect ? 'quiz_correct' : 'quiz_wrong'"), 'dictation spelling partials must not erase correct sound recognition');
+assert(app.includes("result.listeningCorrect ?? result.exact"), 'dictation spelling partials must not erase correct sound recognition');
 assert(!app.includes('setTimeout(() => speakQuizWord'), 'listening assessment must require an explicit playback action');
 assert(!app.includes('data-ok='), 'the rendered DOM must not disclose which option is correct');
 
